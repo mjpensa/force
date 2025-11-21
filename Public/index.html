@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <title>AI Roadmap Generator</title>
+    
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Load html2canvas for exporting -->
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+      xintegrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+cHio/BJLMBKSnQYjDRMvMMlPzgw6D/LIIXbaK3ddhiNRVbcC+WfcD+WjGg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <!-- 3. Load DOMPurify for XSS protection -->
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"
+      integrity="sha512-H+rglffZ6f5gF7UJgvH4Naa+fGCgjrHKMgoFOGmcPTRwR6oILo5R+gtzNrpDp7iMV3udbymBVjkeZGNz1Em4rQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <!-- 3.5. Load Chart.js for Research Synthesis visualizations -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- 4. Load the original chart styles (must be loaded AFTER Tailwind for overrides) -->
+    <!-- NOTE: style.css includes all presentation slide styles for embedded component -->
+    <link rel="stylesheet" href="/style.css" />
+
+    <!-- 5. Configure Tailwind with custom theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'custom-text': '#0c2340',
+                        'custom-outline': '#da291c',
+                        // Set the button color to #da291c
+                        'custom-button': '#da291c', 
+                        // Updated hover color to a slightly darker shade of #da291c for contrast
+                        'custom-button-hover': '#b82317', 
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+            plugins: [],
+        }
+    </script>
+
+    <!-- 6. Add custom styles -->
+    <style>
+        /* Ensure proper viewport scaling and prevent layout issues */
+        html {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            font-size: 16px; /* Base font size for rem calculations */
+        }
+
+        body {
+            overflow-x: hidden;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Apply the custom text color globally to WHITE (#FFFFFF) */
+        body, h1, h2, p, div, span, label {
+            color: #FFFFFF;
+        }
+
+        /* Style the placeholder with the white color and slight opacity */
+        .custom-placeholder::placeholder {
+            color: #FFFFFF;
+            opacity: 0.5;
+        }
+
+        /* Custom focus ring for form elements (Keeping red outline) */
+        .custom-focus:focus {
+            outline: none;
+            border-color: transparent;
+            box-shadow: 0 0 0 2px #da291c; /* Use box-shadow for a ring effect */
+        }
+        
+        /* New: Style for scaling the content on hover */
+        .dropzone-container:hover .dropzone-content {
+             /* Scale the content up slightly on hover */
+             transform: scale(1.03);
+        }
+
+        /* Ensure responsive text scaling */
+        @media screen and (max-width: 640px) {
+            html {
+                font-size: 14px;
+            }
+        }
+
+        @media screen and (min-width: 1920px) {
+            html {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-[#0c2340] font-sans relative min-h-screen overflow-hidden">
+
+    <!-- 
+      Dynamic Roadmap Background SVG
+    -->
+    <svg id="roadmap-svg" class="absolute w-full -z-10" preserveAspectRatio="none">
+        <!-- Lines will be dynamically added here by JS -->
+        <g id="roadmap-lines"></g>
+        <!-- Points will be dynamically added here by JS -->
+        <g id="roadmap-points"></g>
+    </svg>
+
+    <!-- Main container -->
+    <div class="relative min-h-screen flex flex-col items-center justify-center p-6 md:p-12">
+
+        <!-- Content -->
+        <main class="w-full max-w-6xl z-10">
+            <!-- Header Text -->
+            <!-- Ensure title block text is white if global style fails -->
+            <div class="text-center mb-10 text-white" id="title-block">
+                <h1 class="text-5xl md:text-6xl font-bold mb-4">
+                    AI Roadmap Generator
+                </h1>
+                <p class="text-2xl md:text-3xl opacity-90 max-w-3xl mx-auto font-light leading-relaxed">
+                    Transform your research documents into interactive Gantt charts with AI-powered analysis
+                </p>
+            </div>
+
+            <!-- 
+              Main Form
+              The form background is now set to very dark grey (#1B1A1A).
+            -->
+            <form id="gantt-form" class="bg-[#1B1A1A] rounded-2xl shadow-xl p-8 md:p-12 w-full relative">
+                
+                <!-- NEW LOGO HEADER ADDED HERE -->
+                <header class="absolute top-0 right-0 p-8 md:p-12">
+                    <!-- LOGO SIZE is h-12 -->
+                    <img src="/bip_logo.png" alt="BIP Logo" class="h-12 w-auto">
+                </header>
+
+                <!-- Project Instructions Section -->
+                <section class="mt-20">
+                    <h2 class="text-3xl md:text-4xl font-semibold mb-6">
+                        Project Instructions
+                    </h2>
+
+                    <!-- Added bg-gray-800 for dark field background and text-white for input text -->
+                    <textarea id="prompt-input" rows="6" class="w-full p-5 text-xl md:text-2xl leading-relaxed border border-gray-300 rounded-lg resize-none custom-placeholder custom-focus transition-shadow bg-gray-800 text-white border-gray-600"
+                              placeholder="Describe your project goals, timeline preferences, key milestones, or any specific requirements for the roadmap generation..."></textarea>
+                </section>
+                
+                <!-- Upload Section -->
+                <section class="mt-10">
+                    <h2 class="text-3xl md:text-4xl font-semibold mb-6">
+                        Upload Research Documents
+                    </h2>
+
+                    <!--
+                      File Dropzone
+                    -->
+                    <label for="upload-input" class="border-2 border-dashed border-custom-outline rounded-lg p-12 md:p-16 flex flex-col items-center justify-center text-center cursor-pointer transition-colors min-h-[350px] dropzone-container">
+
+                        <div id="dropzone-prompt" class="flex flex-col items-center justify-center dropzone-content transition-transform duration-300 ease-in-out">
+                            <!-- Upload Icon SVG -->
+                            <svg class="w-20 h-20 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                            </svg>
+
+                            <p id="dropzone-title" class="text-2xl md:text-3xl font-medium mt-6">
+                                Drop files here or click to browse
+                            </p>
+                            <p class="text-lg md:text-xl opacity-60 mt-3">
+                                Supports .doc, .docx, .md, and .txt files
+                            </p>
+                        </div>
+
+                        <!-- Container for file/folder statistics -->
+                        <div id="file-list-container" class="hidden w-full">
+                            <div id="folder-stats" class="hidden mb-6 p-4 bg-gray-700 rounded-lg">
+                                <p class="text-xl md:text-2xl font-semibold mb-2">Folder Statistics:</p>
+                                <div class="grid grid-cols-2 gap-4 text-left">
+                                    <div>
+                                        <p class="text-sm opacity-60">Total Files:</p>
+                                        <p id="total-files" class="text-lg font-semibold">0</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm opacity-60">Valid Files:</p>
+                                        <p id="valid-files" class="text-lg font-semibold text-green-400">0</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm opacity-60">Total Size:</p>
+                                        <p id="total-size" class="text-lg font-semibold">0 MB</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm opacity-60">File Types:</p>
+                                        <p id="file-types" class="text-lg font-semibold">.md, .txt, .docx</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-xl md:text-2xl font-semibold mb-4">Selected Files:</p>
+                            <ul id="file-list" class="list-none text-left text-lg md:text-xl space-y-3 max-h-64 overflow-y-auto bg-gray-800 rounded-lg p-4 border border-gray-600">
+                                <!-- File names will be injected here by JS -->
+                            </ul>
+                            <p class="text-lg md:text-xl opacity-75 mt-5 font-light">Click again or drop to change selection</p>
+                        </div>
+                    </label>
+
+                    <!-- The actual file input, hidden but functional -->
+                    <input type="file" id="upload-input" multiple accept=".md, .txt, .docx, application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
+                </section>
+                
+                <!-- Semantic Mode Toggle -->
+                <section class="mt-10">
+                    <div class="bg-gradient-to-r from-blue-900 to-blue-800 rounded-lg p-6 border-2 border-blue-600">
+                        <div class="flex items-start gap-4">
+                            <!-- Checkbox -->
+                            <input type="checkbox" id="semantic-mode-toggle" class="mt-1 w-6 h-6 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer">
+
+                            <!-- Label and Description -->
+                            <div class="flex-1">
+                                <label for="semantic-mode-toggle" class="text-xl md:text-2xl font-semibold text-white cursor-pointer flex items-center gap-2">
+                                    🔬 Enable Semantic Overlay Mode
+                                    <span class="text-sm bg-green-600 text-white px-2 py-1 rounded font-normal">NEW</span>
+                                </label>
+                                <p class="text-base md:text-lg text-blue-200 mt-2 leading-relaxed">
+                                    Separates <strong>explicit facts</strong> (100% confidence, cited sources) from <strong>AI inferences</strong> (estimated confidence, logical reasoning).
+                                    Enables real-time filtering by confidence level and dependency management.
+                                </p>
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <span class="text-xs bg-blue-700 text-blue-100 px-2 py-1 rounded">✅ Provenance Tracking</span>
+                                    <span class="text-xs bg-blue-700 text-blue-100 px-2 py-1 rounded">✅ Confidence Scoring</span>
+                                    <span class="text-xs bg-blue-700 text-blue-100 px-2 py-1 rounded">✅ Banking Intelligence</span>
+                                    <span class="text-xs bg-blue-700 text-blue-100 px-2 py-1 rounded">✅ 100% Deterministic</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Form Actions (Button & Loader) -->
+                <div class="form-actions mt-12">
+                    <div class="flex items-center gap-6">
+                        <button type="submit" id="generate-btn" class="text-white bg-custom-button hover:bg-custom-button-hover focus:ring-4 focus:ring-custom-outline font-semibold rounded-lg text-xl md:text-2xl px-10 py-4 transition-colors disabled:opacity-50">
+                            Generate Chart
+                        </button>
+
+                        <div id="loading-indicator" class="flex items-center gap-3" style="display: none;">
+                            <div class="spinner w-8 h-8 border-3 border-gray-200 border-t-custom-button rounded-full animate-spin"></div>
+                            <span class="text-xl md:text-2xl">Analyzing...</span>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+            
+            <!-- Error Message Box -->
+            <div id="error-message" class="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg relative my-6 text-lg md:text-xl" style="display: none;"></div>
+
+            <!-- Chart will be rendered here -->
+            <div id="chart-output" class="w-full">
+                <!-- This is where main.js will build the chart -->
+            </div>
+
+            <!-- Toggle Button for Research Synthesis -->
+            <button id="toggle-research-synthesis"
+                    class="fixed bottom-8 right-8 bg-custom-button hover:bg-custom-button-hover text-white px-6 py-3 rounded-lg shadow-lg transition-all flex items-center gap-2 z-50">
+                <span>🔬</span>
+                <span id="toggle-research-text">Cross-LLM Research Synthesis</span>
+            </button>
+
+            <!-- Research Synthesis Section (hidden by default) -->
+            <section id="research-synthesis-section" class="hidden mt-12">
+                <div id="research-synthesis-container"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Script for Dynamic SVG Background -->
+    <script>
+        // Wait for the window to load
+        window.onload = function() {
+            
+            // --- DOM Elements ---
+            let titleEl, formEl, svg, linesGroup, pointsGroup;
+
+            // --- Animation Parameters ---
+            // Set lines and dots to white (#FFFFFF) with transparency
+            const pointColor = 'rgba(255, 255, 255, 0.5)'; // White with 50% opacity
+            const lineColor = 'rgba(255, 255, 255, 0.4)';  // White with 40% opacity
+            const numMilestonesPerSide = 3; 
+            const pointRadius = 5;
+            const zigZagAmount = 80;
+
+            // --- Animation State ---
+            let milestones = []; 
+            let milestoneElements = []; 
+            let tracerPath; 
+            let totalPathLength = 0;
+            
+            // Animation state for Draw-On / Recede effect
+            let animationPhase = "drawing"; 
+            let headPosition = 0;
+            let tailPosition = 0;
+            const animationSpeed = 2;
+
+            // SVG Namespace for creating elements
+            const svgNS = "http://www.w3.org/2000/svg";
+
+            /**
+             * Updates all coordinate calculations.
+             * Called on init and on window resize.
+             */
+            function updateDimensions() {
+                // Get dimensions of content
+                const titleRect = titleEl.getBoundingClientRect();
+                const formRect = formEl.getBoundingClientRect();
+                const topOffset = titleRect.top + titleRect.height + 20;
+                const availableHeight = window.innerHeight - topOffset;
+                
+                // Set SVG dimensions
+                svg.style.top = `${topOffset}px`;
+                svg.style.height = `${availableHeight}px`;
+                svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${availableHeight}`);
+                
+                const cardLeft = formRect.left;
+                const cardRight = formRect.right;
+                const gutterLeft = cardLeft * 0.5;
+                const gutterRight = cardLeft + (window.innerWidth - cardRight) * 0.5;
+                
+                const numTotalMilestones = numMilestonesPerSide * 2;
+                const verticalSpacing = availableHeight / (numMilestonesPerSide + 1);
+
+                milestones = [];
+                
+                // Add virtual start point
+                milestones.push({ x: -200, y: verticalSpacing, length: 0 });
+
+                // Add left-side dots (top to bottom)
+                for (let i = 0; i < numMilestonesPerSide; i++) {
+                    const x = gutterLeft + (Math.random() - 0.5) * zigZagAmount;
+                    const y = verticalSpacing * (i + 1);
+                    milestones.push({ x, y, length: 0 });
+                }
+                
+                // Add right-side dots (BOTTOM to TOP)
+                for (let i = 0; i < numMilestonesPerSide; i++) {
+                    const x = gutterRight + (Math.random() - 0.5) * zigZagAmount;
+                    const y = verticalSpacing * (numMilestonesPerSide - i);
+                    milestones.push({ x, y, length: 0 });
+                }
+
+                // Add virtual end point
+                milestones.push({ x: window.innerWidth + 200, y: verticalSpacing, length: 0 });
+                
+                // Path has changed, rebuild it
+                buildStaticPath();
+            }
+
+            /**
+             * Builds the <path> element, dots, and calculates lengths.
+             */
+            function buildStaticPath() {
+                if (milestones.length === 0) return;
+                
+                // Clear old elements
+                pointsGroup.innerHTML = '';
+                milestoneElements = [];
+                
+                let d = `M ${milestones[0].x} ${milestones[0].y}`;
+                for (let i = 1; i < milestones.length; i++) {
+                    d += ` L ${milestones[i].x} ${milestones[i].y}`;
+                }
+
+                // Use a temporary path to measure lengths
+                let tempPath = document.createElementNS(svgNS, 'path');
+                tempPath.setAttribute('d', d);
+                totalPathLength = tempPath.getTotalLength();
+
+                // Draw static milestone dots and store them
+                for (let i = 1; i < milestones.length - 1; i++) { // Skip virtual points
+                    const dot = document.createElementNS(svgNS, 'circle');
+                    dot.setAttribute('cx', milestones[i].x);
+                    dot.setAttribute('cy', milestones[i].y);
+                    dot.setAttribute('r', pointRadius);
+                    dot.setAttribute('fill', pointColor);
+                    dot.style.opacity = 0; // Start hidden
+                    dot.style.transition = 'opacity 0.3s ease';
+                    pointsGroup.appendChild(dot);
+                    milestoneElements.push(dot);
+                    
+                    // Get length at this dot
+                    // Create a *new* path segment for measuring
+                    let measurePath = document.createElementNS(svgNS, 'path');
+                    let measureD = `M ${milestones[0].x} ${milestones[0].y}`;
+                    for (let j = 1; j <= i; j++) {
+                        measureD += ` L ${milestones[j].x} ${milestones[j].y}`;
+                    }
+                    measurePath.setAttribute('d', measureD);
+                    milestones[i].length = measurePath.getTotalLength();
+                    measurePath = null; // Clean up
+                }
+                
+                // Set the final path for the visible tracer
+                tracerPath.setAttribute('d', d);
+                
+                // Clean up the temp path
+                tempPath = null;
+            }
+
+            /**
+             * One-time setup.
+             */
+            function init() {
+                // Create the main <path> element for the line
+                tracerPath = document.createElementNS(svgNS, 'path');
+                tracerPath.setAttribute('stroke', lineColor);
+                tracerPath.setAttribute('stroke-width', '2');
+                tracerPath.setAttribute('fill', 'none');
+                linesGroup.appendChild(tracerPath);
+                
+                // Set initial dimensions and build the path
+                updateDimensions();
+                
+                // Add resize listener
+                window.addEventListener('resize', updateDimensions);
+            }
+
+            /**
+             * The main animation loop.
+             */
+            function animate() {
+                // Safety check: Don't run if path isn't ready
+                if (!tracerPath || !totalPathLength || totalPathLength === 0) {
+                    requestAnimationFrame(animate); // Wait
+                    return;
+                }
+
+                // --- Draw-On / Recede Animation Logic ---
+
+                if (animationPhase === "drawing") {
+                    headPosition += animationSpeed;
+                    
+                    const dashLength = headPosition;
+                    const gapLength = totalPathLength - dashLength;
+                    
+                    if (tracerPath.style) {
+                        tracerPath.style.strokeDasharray = `${dashLength} ${gapLength}`;
+                        tracerPath.style.strokeDashoffset = 0;
+                    }
+
+                    if (headPosition >= totalPathLength) {
+                        headPosition = totalPathLength;
+                        animationPhase = "receding";
+                    }
+
+                } else if (animationPhase === "receding") {
+                    tailPosition += animationSpeed;
+
+                    if (tracerPath.style) {
+                        tracerPath.style.strokeDasharray = `${totalPathLength} ${totalPathLength}`;
+                        tracerPath.style.strokeDashoffset = -tailPosition;
+                    }
+                    
+                    if (tailPosition >= totalPathLength) {
+                        tailPosition = 0;
+                        headPosition = 0;
+                        animationPhase = "drawing";
+                    }
+                }
+
+                // UPDATE DOT VISIBILITY
+                for (let i = 0; i < milestoneElements.length; i++) {
+                    // milestone[i+1] because [0] is virtual start
+                    const dotLength = milestones[i+1].length; 
+                    const dotElement = milestoneElements[i];
+
+                    // Safety check: Check elements before styling
+                    if (dotElement && dotElement.style) {
+                        const isVisible = (dotLength > tailPosition && dotLength < headPosition);
+                        dotElement.style.opacity = isVisible ? 1 : 0;
+                    }
+                }
+                
+                // Request the next animation frame
+                requestAnimationFrame(animate);
+            }
+
+            /**
+             * Robust Initialization:
+             * Waits for key DOM elements to be ready AND RENDERED.
+             */
+            function retryInit(attemptsLeft = 10) {
+                // Find all required elements
+                titleEl = document.getElementById('title-block');
+                formEl = document.getElementById('gantt-form');
+                svg = document.getElementById('roadmap-svg');
+                linesGroup = document.getElementById('roadmap-lines');
+                pointsGroup = document.getElementById('roadmap-points');
+                
+                // Check if all elements were found AND are rendered
+                let allElementsReady = false;
+                if (titleEl && formEl && svg && linesGroup && pointsGroup) {
+                    // Now, check if they are rendered
+                    try {
+                        const titleRect = titleEl.getBoundingClientRect();
+                        const formRect = formEl.getBoundingClientRect();
+                        // Check for valid, non-zero dimensions (or at least that they exist)
+                        if (titleRect && formRect) {
+                            allElementsReady = true;
+                        }
+                    } catch (e) {
+                        // Bounding rect failed, not ready
+                    }
+                }
+                
+                if (allElementsReady) {
+                    // All elements found and rendered, proceed
+                    console.log("DOM elements are ready, initializing animation.");
+                    init();
+                    // Start the animation loop
+                    animate();
+                } else if (attemptsLeft > 0) {
+                    // Elements not found or not rendered, wait and retry
+                    console.log("Waiting for DOM elements to render...");
+                    setTimeout(() => retryInit(attemptsLeft - 1), 200);
+                } else {
+                    // Failed after all attempts
+                    console.error("Failed to initialize animation: DOM elements not found or not rendered.");
+                }
+            }
+            
+            // Start the initialization check
+            retryInit();
+        };
+    </script>
+    
+    <!-- Load the main application logic -->
+    <script type="module" src="/main.js"></script>
+    
+</body>
+</html>

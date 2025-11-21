@@ -1,0 +1,46 @@
+User
+provide detailed requirements describing this applications functionality and purpose
+Gemini 2.5 Pro
+Ran for 30s
+lightbulb
+Thought for 30 seconds
+Of course. Based on a thorough analysis of the application's codebase, here is a detailed description of its functionality and purpose.
+Project Purpose
+The "Cross-LLM Research Synthesis" application is a sophisticated tool designed to address a critical challenge in the age of artificial intelligence: the inconsistency and lack of verifiable provenance in AI-generated research. Its primary purpose is to ingest research outputs from multiple, diverse Large Language Models (LLMs), automatically analyze them for consensus and contradictions, and synthesize the findings into a single, cohesive, and rigorously cited report.
+This application acts as an automated research analyst and fact-checker, creating a final document that is more reliable and transparent than the output of any single LLM by enforcing strict provenance rules at every step.
+Core Functionality & Key Features
+The application is architected as a multi-stage, "best-of-each" pipeline, where each step performs a specialized task. Users can run the entire pipeline automatically or execute each step individually.
+1. Multi-Source Ingestion & Processing
+Flexible Input: Users can upload multiple source documents in common formats, including PDF, DOCX, and Markdown.
+Source Attribution: Each uploaded file is assigned to a specific LLM provider (e.g., GEMINI, GPT, CLAUDE, GROK) to track the origin of the information.
+Robust Parsing: The application intelligently parses the content of these files, converting them into raw text ready for analysis.
+2. The Synthesis Pipeline
+The core of the application is an 8-step automated workflow:
+Step 1: Claim Extraction: Using a powerful Gemini model, the application reads each source text and meticulously extracts every "atomic claim"—a single, verifiable statement of fact. This deconstructs dense paragraphs into a structured list of individual data points.
+Step 2: Ledger Merging & Visualization: All claims from all sources are aggregated into a single "claim ledger." The application provides immediate visual feedback with bar charts that break down the number of claims by both LLM provider and topic, offering a high-level view of the source data.
+Step 3: Contradiction Detection: The unified ledger is analyzed by the Gemini API to identify and classify discrepancies. The system intelligently detects various types of conflicts, such as:
+Numerical Conflicts: Disagreements on numbers, dates, or statistics.
+Polarity Differences: Opposing conclusions (e.g., positive vs. negative).
+Definitional Nuances: Subtle differences in the meaning of key terms.
+Temporal Shifts: One source presenting outdated information superseded by another.
+Step 4: Report Synthesis: The application generates a comprehensive research report in Markdown format. This report is highly structured, including:
+An Executive Summary.
+A breakdown of findings by topic, clearly separating points of Consensus from areas of Disagreement.
+A list of identified Evidence Gaps (claims with no citation).
+A complete Sources Appendix.
+Step 5: Provenance Auditing: To ensure integrity, the generated report is subjected to a strict automated audit. The Gemini API re-examines the report against the original source texts to flag critical issues like:
+Hallucination: Factual statements not supported by any source text.
+Incorrect Attribution: Citing the wrong LLM provider for a claim.
+Missing or Incorrect Citations.
+Step 6: Verified Claims Compilation: The application presents a final, clean list of all claims, separating them into "High-Consensus" and "Disputed" categories. This allows users to easily identify the most reliable information and the areas that require further scrutiny.
+Step 7: Executive Summary Generation: For quick insights, a concise, high-level executive summary of the findings is generated.
+Step 8: Analysis Dashboard: The final output is a visual dashboard of pie charts that quantify the quality of the synthesized research, showing breakdowns of claims by citation status, source verification, and overall consensus level.
+3. Strict Provenance and Transparency
+This is the application's cornerstone feature.
+Inline Citations: Every factual statement in the final report is followed by a numerical citation (e.g., [1]) and the name of the source LLM provider (e.g., (GEMINI)).
+Clickable Sources: Citations are hyperlinked, allowing the user to click through directly to the source URL.
+Flagging Uncited Claims: Any claim originating from a source that lacked its own citation is explicitly highlighted in the report, making evidence gaps transparent.
+4. User Experience (UX)
+Interactive Pipeline: The UI is built around a series of clear, interactive "Step Cards" that guide the user through the process, displaying the status and results of each stage.
+API Key Integration: The application securely integrates with Google AI Studio's API key management, prompting the user to select a key before starting.
+Modern Interface: The application features a clean, professional, dark-themed design that is both aesthetic and functional, allowing for clear presentation of complex data.

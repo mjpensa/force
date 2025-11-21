@@ -1,0 +1,1101 @@
+I'll create a professional, executive-level presentation template system that strictly adheres to your brand identity. Let me design all 7 slide templates with a clean, minimalist approach.
+
+## presentation.css
+
+```css
+/* ========================================
+   PRESENTATION STYLES
+   Dark Mode Executive Template
+   ======================================== */
+
+/* Import Work Sans Font */
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700;800&display=swap');
+
+/* Root Variables */
+:root {
+  --primary-bg: #0c2340;
+  --slide-bg: #1A1A1A;
+  --slide-bg-alt: #1B1B1B;
+  --text-primary: #FFFFFF;
+  --text-secondary: #E8E8E8;
+  --text-muted: #B0B0B0;
+  --accent-red: #da291c;
+  --accent-green: #50AF7B;
+  --accent-yellow: #EE9E20;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --shadow-light: rgba(0, 0, 0, 0.3);
+  --shadow-dark: rgba(0, 0, 0, 0.5);
+}
+
+/* Global Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Work Sans', sans-serif;
+  background: var(--primary-bg);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Swiper Container Styles */
+.swiper {
+  width: 100%;
+  height: 100vh;
+  background: var(--primary-bg);
+}
+
+.swiper-wrapper {
+  align-items: center;
+}
+
+.swiper-slide {
+  background: var(--slide-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Slide Container Base */
+.slide-container {
+  width: 90%;
+  max-width: 1200px;
+  height: 85%;
+  max-height: 700px;
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Slide Number */
+.slide-number {
+  position: absolute;
+  bottom: 30px;
+  right: 40px;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Typography Base */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
+h2 { font-size: clamp(2rem, 4vw, 3rem); }
+h3 { font-size: clamp(1.5rem, 3vw, 2rem); }
+h4 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); }
+
+p {
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   1. TITLE SLIDE
+   ======================================== */
+.slide-title {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.title-content {
+  transform: translateY(-20px);
+}
+
+.main-title {
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  position: relative;
+}
+
+.title-accent {
+  display: block;
+  height: 4px;
+  width: 120px;
+  background: var(--accent-red);
+  margin: 30px auto;
+  border-radius: 2px;
+  box-shadow: 0 0 20px rgba(218, 41, 28, 0.5);
+}
+
+.subtitle {
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+/* ========================================
+   2. STRATEGIC NARRATIVE SLIDE
+   ======================================== */
+.slide-narrative .slide-container {
+  justify-content: flex-start;
+  padding-top: 80px;
+}
+
+.narrative-header {
+  margin-bottom: 50px;
+}
+
+.narrative-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  border-left: 4px solid var(--accent-red);
+  padding-left: 20px;
+  margin-bottom: 0;
+}
+
+.narrative-content {
+  max-width: 900px;
+}
+
+.narrative-content p {
+  margin-bottom: 25px;
+  font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+  line-height: 1.9;
+  color: var(--text-secondary);
+  text-align: justify;
+}
+
+.narrative-content p:first-child {
+  font-size: clamp(1.2rem, 2vw, 1.4rem);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ========================================
+   3. KEY DRIVERS SLIDE
+   ======================================== */
+.slide-drivers .slide-container {
+  padding-top: 60px;
+}
+
+.drivers-header {
+  margin-bottom: 50px;
+}
+
+.drivers-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  text-align: center;
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.drivers-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: var(--accent-green);
+  border-radius: 2px;
+}
+
+.drivers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.driver-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-green);
+  transition: all 0.3s ease;
+}
+
+.driver-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(10px);
+}
+
+.driver-bullet {
+  width: 32px;
+  height: 32px;
+  background: var(--accent-green);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 20px;
+  font-weight: 700;
+  color: var(--slide-bg);
+}
+
+.driver-content {
+  flex: 1;
+}
+
+.driver-title {
+  font-size: clamp(1.2rem, 2vw, 1.4rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.driver-description {
+  font-size: clamp(1rem, 1.6vw, 1.1rem);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ========================================
+   4. CRITICAL DEPENDENCIES SLIDE
+   ======================================== */
+.slide-dependencies .slide-container {
+  padding-top: 60px;
+}
+
+.dependencies-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.dependencies-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.dependencies-flow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 30px;
+  margin-top: 40px;
+}
+
+.dependency-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 30px;
+  min-width: 250px;
+  position: relative;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.dependency-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px var(--shadow-dark);
+}
+
+.dependency-item.critical {
+  border-color: var(--accent-red);
+  background: rgba(218, 41, 28, 0.05);
+}
+
+.dependency-item.moderate {
+  border-color: var(--accent-yellow);
+  background: rgba(238, 158, 32, 0.05);
+}
+
+.dependency-item.low {
+  border-color: var(--accent-green);
+  background: rgba(80, 175, 123, 0.05);
+}
+
+.dependency-arrow {
+  position: absolute;
+  right: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 24px;
+}
+
+.dependency-name {
+  font-size: clamp(1.2rem, 2vw, 1.4rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 15px;
+}
+
+.dependency-criticality {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 15px;
+}
+
+.criticality-high {
+  background: var(--accent-red);
+  color: white;
+}
+
+.criticality-medium {
+  background: var(--accent-yellow);
+  color: var(--slide-bg);
+}
+
+.criticality-low {
+  background: var(--accent-green);
+  color: white;
+}
+
+.dependency-impact {
+  font-size: clamp(0.9rem, 1.5vw, 1rem);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ========================================
+   5. STRATEGIC RISKS SLIDE (MATRIX)
+   ======================================== */
+.slide-risks .slide-container {
+  padding-top: 50px;
+}
+
+.risks-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.risks-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+}
+
+.risk-matrix {
+  display: grid;
+  grid-template-columns: 80px repeat(3, 1fr);
+  grid-template-rows: repeat(4, minmax(120px, 1fr));
+  gap: 2px;
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--border-color);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.matrix-label {
+  background: var(--slide-bg-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.matrix-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.matrix-cell.low-low {
+  background: rgba(80, 175, 123, 0.15);
+}
+
+.matrix-cell.low-medium,
+.matrix-cell.medium-low {
+  background: rgba(80, 175, 123, 0.25);
+}
+
+.matrix-cell.medium-medium,
+.matrix-cell.low-high,
+.matrix-cell.high-low {
+  background: rgba(238, 158, 32, 0.25);
+}
+
+.matrix-cell.medium-high,
+.matrix-cell.high-medium {
+  background: rgba(238, 158, 32, 0.35);
+}
+
+.matrix-cell.high-high {
+  background: rgba(218, 41, 28, 0.35);
+}
+
+.risk-item {
+  background: var(--slide-bg);
+  border-radius: 6px;
+  padding: 10px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.risk-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px var(--shadow-dark);
+  z-index: 10;
+}
+
+.risk-description {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.axis-label {
+  position: absolute;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+}
+
+.axis-label.x-axis {
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.9rem;
+}
+
+.axis-label.y-axis {
+  left: -80px;
+  top: 50%;
+  transform: rotate(-90deg) translateX(-50%);
+  transform-origin: left center;
+  font-size: 0.9rem;
+}
+
+/* ========================================
+   6. KEY INSIGHTS SLIDE (CARDS)
+   ======================================== */
+.slide-insights .slide-container {
+  padding-top: 60px;
+}
+
+.insights-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.insights-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.insight-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 25px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.insight-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-red), var(--accent-yellow));
+  border-radius: 12px 12px 0 0;
+}
+
+.insight-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px var(--shadow-dark);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+.insight-category {
+  display: inline-block;
+  background: var(--accent-red);
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 15px;
+}
+
+.insight-card:nth-child(2n) .insight-category {
+  background: var(--accent-green);
+}
+
+.insight-card:nth-child(3n) .insight-category {
+  background: var(--accent-yellow);
+  color: var(--slide-bg);
+}
+
+.insight-text {
+  font-size: clamp(1rem, 1.6vw, 1.1rem);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ========================================
+   7. SIMPLE TEXT SLIDE
+   ======================================== */
+.slide-simple .slide-container {
+  justify-content: center;
+  align-items: flex-start;
+  max-width: 900px;
+}
+
+.simple-content {
+  width: 100%;
+}
+
+.simple-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  margin-bottom: 40px;
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.simple-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: var(--accent-red);
+  border-radius: 2px;
+}
+
+.simple-text {
+  font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+  color: var(--text-secondary);
+  line-height: 1.8;
+  text-align: justify;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+@media (max-width: 1024px) {
+  .slide-container {
+    padding: 40px;
+  }
+  
+  .risk-matrix {
+    grid-template-columns: 60px repeat(3, 1fr);
+    grid-template-rows: repeat(4, minmax(100px, 1fr));
+  }
+  
+  .insights-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .slide-container {
+    padding: 30px;
+    width: 95%;
+    height: 90%;
+  }
+  
+  .dependencies-flow {
+    flex-direction: column;
+  }
+  
+  .dependency-arrow {
+    display: none;
+  }
+  
+  .risk-matrix {
+    grid-template-columns: 50px repeat(3, 1fr);
+    grid-template-rows: repeat(4, minmax(80px, 1fr));
+    gap: 1px;
+  }
+  
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .driver-item {
+    padding: 15px;
+  }
+  
+  .driver-bullet {
+    width: 28px;
+    height: 28px;
+    margin-right: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .slide-container {
+    padding: 20px;
+  }
+  
+  .slide-number {
+    bottom: 20px;
+    right: 20px;
+    font-size: 12px;
+  }
+  
+  .main-title {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+  
+  .subtitle {
+    font-size: clamp(1rem, 3vw, 1.3rem);
+  }
+  
+  .narrative-content p,
+  .simple-text {
+    text-align: left;
+    font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+  }
+  
+  .risk-matrix {
+    grid-template-columns: 40px repeat(3, 1fr);
+    font-size: 0.75rem;
+  }
+  
+  .matrix-label {
+    font-size: 0.7rem;
+  }
+  
+  .risk-description {
+    font-size: 0.7rem;
+  }
+}
+
+/* ========================================
+   SWIPER CUSTOMIZATION
+   ======================================== */
+.swiper-pagination {
+  bottom: 30px;
+}
+
+.swiper-pagination-bullet {
+  background: var(--text-muted);
+  opacity: 0.5;
+  width: 10px;
+  height: 10px;
+}
+
+.swiper-pagination-bullet-active {
+  background: var(--accent-red);
+  opacity: 1;
+  width: 30px;
+  border-radius: 5px;
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+}
+
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+  color: var(--accent-red);
+}
+
+/* Dark Mode Scrollbar (if needed) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--slide-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-red);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+```
+
+## presentation.html (Body Only)
+
+```html
+<body>
+  <!-- Swiper Container -->
+  <div class="swiper">
+    <div class="swiper-wrapper">
+      
+      <!-- SLIDE 1: TITLE SLIDE -->
+      <div class="swiper-slide slide-title">
+        <div class="slide-container">
+          <div class="title-content">
+            <h1 class="main-title">AI-Powered Strategic Intelligence</h1>
+            <div class="title-accent"></div>
+            <p class="subtitle">Strategic Intelligence Brief</p>
+          </div>
+          <span class="slide-number">01</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 2: STRATEGIC NARRATIVE -->
+      <div class="swiper-slide slide-narrative">
+        <div class="slide-container">
+          <div class="narrative-header">
+            <h2 class="narrative-title">Elevator Pitch</h2>
+          </div>
+          <div class="narrative-content">
+            <p>Our AI-powered strategic intelligence platform transforms raw data into actionable executive insights, enabling Fortune 500 companies to anticipate market shifts 3-6 months ahead of competitors.</p>
+            <p>By leveraging advanced machine learning algorithms and natural language processing, we analyze millions of data points from diverse sources including market trends, social signals, regulatory filings, and competitive intelligence. This comprehensive approach delivers predictive insights that have helped our clients increase strategic decision accuracy by 47% and reduce time-to-market by an average of 23%.</p>
+            <p>Unlike traditional business intelligence tools that focus on historical reporting, our platform provides forward-looking intelligence that identifies emerging opportunities and risks before they become apparent to the broader market. This competitive advantage has enabled our clients to capture over $2.3 billion in new market opportunities in the past 24 months alone.</p>
+          </div>
+          <span class="slide-number">02</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 3: KEY DRIVERS -->
+      <div class="swiper-slide slide-drivers">
+        <div class="slide-container">
+          <div class="drivers-header">
+            <h2 class="drivers-title">Key Strategic Drivers</h2>
+          </div>
+          <div class="drivers-list">
+            <div class="driver-item">
+              <div class="driver-bullet">1</div>
+              <div class="driver-content">
+                <h3 class="driver-title">Market Intelligence Automation</h3>
+                <p class="driver-description">Automated collection and analysis of market data reducing manual research time by 85% while increasing coverage breadth by 10x</p>
+              </div>
+            </div>
+            <div class="driver-item">
+              <div class="driver-bullet">2</div>
+              <div class="driver-content">
+                <h3 class="driver-title">Predictive Analytics Engine</h3>
+                <p class="driver-description">Machine learning models trained on 15 years of market data delivering 89% accuracy in trend prediction</p>
+              </div>
+            </div>
+            <div class="driver-item">
+              <div class="driver-bullet">3</div>
+              <div class="driver-content">
+                <h3 class="driver-title">Real-time Competitive Monitoring</h3>
+                <p class="driver-description">24/7 monitoring of competitor activities across 150+ data sources with instant alert capabilities</p>
+              </div>
+            </div>
+            <div class="driver-item">
+              <div class="driver-bullet">4</div>
+              <div class="driver-content">
+                <h3 class="driver-title">Executive Dashboard Integration</h3>
+                <p class="driver-description">Seamless integration with existing C-suite dashboards providing unified strategic view</p>
+              </div>
+            </div>
+          </div>
+          <span class="slide-number">03</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 4: CRITICAL DEPENDENCIES -->
+      <div class="swiper-slide slide-dependencies">
+        <div class="slide-container">
+          <div class="dependencies-header">
+            <h2 class="dependencies-title">Critical Dependencies</h2>
+          </div>
+          <div class="dependencies-flow">
+            <div class="dependency-item critical">
+              <h3 class="dependency-name">Data Infrastructure</h3>
+              <span class="dependency-criticality criticality-high">Critical</span>
+              <p class="dependency-impact">Cloud-based infrastructure must maintain 99.99% uptime to ensure continuous data collection and processing</p>
+              <span class="dependency-arrow">→</span>
+            </div>
+            <div class="dependency-item moderate">
+              <h3 class="dependency-name">API Integrations</h3>
+              <span class="dependency-criticality criticality-medium">Moderate</span>
+              <p class="dependency-impact">Third-party data provider APIs require stable connections and SLA compliance for real-time updates</p>
+              <span class="dependency-arrow">→</span>
+            </div>
+            <div class="dependency-item low">
+              <h3 class="dependency-name">User Adoption</h3>
+              <span class="dependency-criticality criticality-low">Low Risk</span>
+              <p class="dependency-impact">Executive buy-in and training programs ensure platform utilization across decision-making processes</p>
+            </div>
+          </div>
+          <span class="slide-number">04</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 5: STRATEGIC RISKS MATRIX -->
+      <div class="swiper-slide slide-risks">
+        <div class="slide-container">
+          <div class="risks-header">
+            <h2 class="risks-title">Strategic Risk Matrix</h2>
+          </div>
+          <div class="risk-matrix">
+            <!-- Matrix Labels -->
+            <div class="matrix-label"></div>
+            <div class="matrix-label">Low</div>
+            <div class="matrix-label">Medium</div>
+            <div class="matrix-label">High</div>
+            
+            <!-- High Probability Row -->
+            <div class="matrix-label">High</div>
+            <div class="matrix-cell high-low">
+              <div class="risk-item">
+                <p class="risk-description">Market Saturation</p>
+              </div>
+            </div>
+            <div class="matrix-cell high-medium"></div>
+            <div class="matrix-cell high-high">
+              <div class="risk-item">
+                <p class="risk-description">Data Privacy Regulation</p>
+              </div>
+            </div>
+            
+            <!-- Medium Probability Row -->
+            <div class="matrix-label">Medium</div>
+            <div class="matrix-cell medium-low"></div>
+            <div class="matrix-cell medium-medium">
+              <div class="risk-item">
+                <p class="risk-description">Competitor Innovation</p>
+              </div>
+            </div>
+            <div class="matrix-cell medium-high">
+              <div class="risk-item">
+                <p class="risk-description">Cybersecurity Breach</p>
+              </div>
+            </div>
+            
+            <!-- Low Probability Row -->
+            <div class="matrix-label">Low</div>
+            <div class="matrix-cell low-low">
+              <div class="risk-item">
+                <p class="risk-description">Tech Stack Obsolescence</p>
+              </div>
+            </div>
+            <div class="matrix-cell low-medium"></div>
+            <div class="matrix-cell low-high"></div>
+          </div>
+          <span class="axis-label x-axis">Impact →</span>
+          <span class="axis-label y-axis">Probability</span>
+          <span class="slide-number">05</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 6: KEY INSIGHTS -->
+      <div class="swiper-slide slide-insights">
+        <div class="slide-container">
+          <div class="insights-header">
+            <h2 class="insights-title">Expert Conversation Points</h2>
+          </div>
+          <div class="insights-grid">
+            <div class="insight-card">
+              <span class="insight-category">Technology</span>
+              <p class="insight-text">Our proprietary NLP engine processes unstructured data 40% faster than industry-standard solutions, enabling real-time insight generation from breaking news and social trends.</p>
+            </div>
+            <div class="insight-card">
+              <span class="insight-category">Market Position</span>
+              <p class="insight-text">Currently serving 47 Fortune 500 clients with a 94% retention rate, positioning us as the market leader in enterprise strategic intelligence solutions.</p>
+            </div>
+            <div class="insight-card">
+              <span class="insight-category">Innovation</span>
+              <p class="insight-text">Q3 2024 launch of quantum-resistant encryption ensures long-term data security, addressing enterprise concerns about future cryptographic vulnerabilities.</p>
+            </div>
+            <div class="insight-card">
+              <span class="insight-category">Financial Impact</span>
+              <p class="insight-text">Clients report average ROI of 312% within first year of implementation, with cost savings from improved decision-making exceeding $45M annually.</p>
+            </div>
+            <div class="insight-card">
+              <span class="insight-category">Expansion</span>
+              <p class="insight-text">Strategic partnerships with leading cloud providers enable global deployment capabilities, supporting expansion into APAC and EMEA markets.</p>
+            </div>
+            <div class="insight-card">
+              <span class="insight-category">Differentiation</span>
+              <p class="insight-text">Only platform combining structured and unstructured data analysis with behavioral economics models for comprehensive strategic intelligence.</p>
+            </div>
+          </div>
+          <span class="slide-number">06</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 7: SIMPLE TEXT -->
+      <div class="swiper-slide slide-simple">
+        <div class="slide-container">
+          <div class="simple-content">
+            <h2 class="simple-title">Executive Summary</h2>
+            <p class="simple-text">
+              The strategic intelligence platform represents a paradigm shift in how enterprises approach market intelligence and competitive analysis. By combining advanced artificial intelligence with deep domain expertise, we've created a solution that not only monitors the present but anticipates the future. Our technology stack, built on cutting-edge machine learning algorithms and supported by robust cloud infrastructure, processes over 50 million data points daily to deliver insights that drive strategic advantage. The platform's intuitive executive interface ensures that critical intelligence reaches decision-makers in real-time, enabling rapid response to market opportunities and threats. As we continue to enhance our capabilities with quantum computing integration and advanced predictive models, we remain committed to our mission of transforming data into strategic advantage for the world's leading enterprises. This positions our clients not just to compete, but to define the markets of tomorrow.
+            </p>
+          </div>
+          <span class="slide-number">07</span>
+        </div>
+      </div>
+
+    </div>
+    
+    <!-- Swiper Pagination -->
+    <div class="swiper-pagination"></div>
+    
+    <!-- Swiper Navigation -->
+    <div class="swiper-button-next"></div>
+    <div class="swiper-button-prev"></div>
+  </div>
+
+  <!-- Swiper JS -->
+  <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
+  
+  <!-- Initialize Swiper -->
+  <script>
+    const swiper = new Swiper('.swiper', {
+      direction: 'horizontal',
+      loop: false,
+      speed: 800,
+      
+      // Pagination
+      pagination: {
+        el: '.swiper-pagination',
+        clickable: true,
+      },
+      
+      // Navigation arrows
+      navigation: {
+        nextEl: '.swiper-button-next',
+        prevEl: '.swiper-button-prev',
+      },
+      
+      // Keyboard control
+      keyboard: {
+        enabled: true,
+        onlyInViewport: false,
+      },
+      
+      // Mouse wheel control
+      mousewheel: {
+        invert: false,
+        forceToAxis: true,
+      },
+      
+      // Effects
+      effect: 'slide',
+      
+      // Responsive breakpoints
+      breakpoints: {
+        320: {
+          slidesPerView: 1,
+          spaceBetween: 0
+        },
+        768: {
+          slidesPerView: 1,
+          spaceBetween: 0
+        },
+        1024: {
+          slidesPerView: 1,
+          spaceBetween: 0
+        }
+      }
+    });
+  </script>
+</body>
+```
+
+I've created a comprehensive presentation template system that:
+
+## Key Features:
+
+### Design Excellence:
+- **Dark mode theme** strictly adhering to your brand colors
+- **Professional typography** using Work Sans font with proper hierarchy
+- **Minimalist aesthetics** with strategic use of whitespace
+- **Smooth animations** for enhanced visual appeal
+
+### 7 Distinct Slide Templates:
+1. **Title Slide** - Bold gradient text with red accent bar
+2. **Strategic Narrative** - Clean paragraphs with emphasized first paragraph
+3. **Key Drivers** - Interactive bullet list with green accent and hover effects
+4. **Critical Dependencies** - Visual flow with criticality color coding
+5. **Strategic Risks** - Full 3x3 risk matrix with heat map coloring
+6. **Key Insights** - Card-based layout with rotating accent colors
+7. **Simple Text** - Minimalist design with red underline accent
+
+### Technical Implementation:
+- **Swiper.js compatible** structure
+- **Fully responsive** across all devices (desktop, tablet, mobile)
+- **Accessible** with proper semantic HTML
+- **Performance optimized** with CSS animations
+- **Customizable** Swiper navigation and pagination
+
+### Color Coding System:
+- **Red (#da291c)** - Primary accent, high criticality
+- **Green (#50AF7B)** - Success, low risk
+- **Yellow (#EE9E20)** - Warning, medium risk
+- **Gradients** for visual hierarchy
+
+The presentation system is production-ready and can be easily integrated with your existing web application. Each slide template can be duplicated and modified with your actual content while maintaining the consistent design language.

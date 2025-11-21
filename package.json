@@ -1,0 +1,44 @@
+{
+  "name": "dynamic-gantt-chart-app",
+  "version": "1.0.0",
+  "description": "Dynamic Gantt chart generator",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest --coverage",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest --watch",
+    "test:unit": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest tests/unit",
+    "test:integration": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest tests/integration",
+    "test:semantic": "node test-semantic-engine.js all",
+    "test:semantic:generate": "node test-semantic-engine.js generate",
+    "test:semantic:banking": "node test-semantic-engine.js banking",
+    "test:semantic:endpoints": "node test-semantic-engine.js endpoints",
+    "test:semantic:determinism": "node test-semantic-engine.js determinism"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "chart.js": "^4.4.1",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^8.0.0",
+    "jsonrepair": "^3.13.1",
+    "mammoth": "^1.7.2",
+    "multer": "^1.4.5-lts.1",
+    "pdf-parse": "^1.1.1",
+    "uuid": "^13.0.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "@types/jest": "^30.0.0",
+    "form-data": "^4.0.5",
+    "jest": "^30.2.0",
+    "node-fetch": "^3.3.2",
+    "node-mocks-http": "^1.17.2",
+    "supertest": "^7.1.4"
+  }
+}

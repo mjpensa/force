@@ -1,0 +1,802 @@
+/* ========================================
+   PRESENTATION STYLES
+   Dark Mode Executive Template
+   ======================================== */
+
+/* Import Work Sans Font */
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700;800&display=swap');
+
+/* Root Variables */
+:root {
+  --primary-bg: #0c2340;
+  --slide-bg: #1A1A1A;
+  --slide-bg-alt: #1B1B1B;
+  --text-primary: #FFFFFF;
+  --text-secondary: #E8E8E8;
+  --text-muted: #B0B0B0;
+  --accent-red: #da291c;
+  --accent-green: #50AF7B;
+  --accent-yellow: #EE9E20;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --shadow-light: rgba(0, 0, 0, 0.3);
+  --shadow-dark: rgba(0, 0, 0, 0.5);
+}
+
+/* Global Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Work Sans', sans-serif;
+  background: var(--primary-bg);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Swiper Container Styles */
+.swiper {
+  width: 100%;
+  height: 100vh;
+  background: var(--primary-bg);
+}
+
+.swiper-wrapper {
+  align-items: center;
+}
+
+.swiper-slide {
+  background: var(--slide-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* Slide Container Base */
+.slide-container {
+  width: 90%;
+  max-width: 1200px;
+  max-height: 100vh;
+  height: 100vh;
+  padding: 40px 60px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  animation: fadeIn 0.6s ease-out;
+  overflow: hidden;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+/* Slide Number */
+.slide-number {
+  position: absolute;
+  bottom: 30px;
+  right: 40px;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Typography Base */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
+h2 { font-size: clamp(2rem, 4vw, 3rem); }
+h3 { font-size: clamp(1.5rem, 3vw, 2rem); }
+h4 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); }
+
+p {
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   1. TITLE SLIDE
+   ======================================== */
+.slide-title {
+  align-items: center !important;
+  justify-content: center;
+  text-align: center;
+}
+
+.slide-title .slide-container {
+  justify-content: center;
+}
+
+.title-content {
+  transform: translateY(-20px);
+}
+
+.main-title {
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  position: relative;
+}
+
+.title-accent {
+  display: block;
+  height: 4px;
+  width: 120px;
+  background: var(--accent-red);
+  margin: 30px auto;
+  border-radius: 2px;
+  box-shadow: 0 0 20px rgba(218, 41, 28, 0.5);
+}
+
+.subtitle {
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+/* ========================================
+   2. STRATEGIC NARRATIVE SLIDE
+   ======================================== */
+.slide-narrative .slide-container {
+  justify-content: center;
+}
+
+.narrative-header {
+  margin-bottom: 30px;
+  flex-shrink: 0;
+}
+
+.narrative-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  border-left: 4px solid var(--accent-red);
+  padding-left: 20px;
+  margin-bottom: 0;
+}
+
+.narrative-content {
+  max-width: 900px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.narrative-content p {
+  margin-bottom: 20px;
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  line-height: 1.7;
+  color: var(--text-secondary);
+  text-align: justify;
+}
+
+.narrative-content p:first-child {
+  font-size: clamp(1.2rem, 2vw, 1.4rem);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ========================================
+   3. KEY DRIVERS SLIDE
+   ======================================== */
+.drivers-header {
+  margin-bottom: 30px;
+  flex-shrink: 0;
+}
+
+.drivers-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  text-align: center;
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.drivers-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: var(--accent-green);
+  border-radius: 2px;
+}
+
+.drivers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.driver-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-green);
+  transition: all 0.3s ease;
+}
+
+.driver-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(10px);
+}
+
+.driver-bullet {
+  width: 32px;
+  height: 32px;
+  background: var(--accent-green);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 20px;
+  font-weight: 700;
+  color: var(--slide-bg);
+}
+
+.driver-content {
+  flex: 1;
+}
+
+.driver-title {
+  font-size: clamp(1.2rem, 2vw, 1.4rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.driver-description {
+  font-size: clamp(1rem, 1.6vw, 1.1rem);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ========================================
+   4. CRITICAL DEPENDENCIES SLIDE
+   ======================================== */
+.dependencies-header {
+  text-align: center;
+  margin-bottom: 30px;
+  flex-shrink: 0;
+}
+
+.dependencies-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.dependencies-flow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+.dependency-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 220px;
+  position: relative;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.dependency-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px var(--shadow-dark);
+}
+
+.dependency-item.critical {
+  border-color: var(--accent-red);
+  background: rgba(218, 41, 28, 0.05);
+}
+
+.dependency-item.moderate {
+  border-color: var(--accent-yellow);
+  background: rgba(238, 158, 32, 0.05);
+}
+
+.dependency-item.low {
+  border-color: var(--accent-green);
+  background: rgba(80, 175, 123, 0.05);
+}
+
+.dependency-arrow {
+  position: absolute;
+  right: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 24px;
+}
+
+.dependency-name {
+  font-size: clamp(1.2rem, 2vw, 1.4rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 15px;
+}
+
+.dependency-criticality {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 15px;
+}
+
+.criticality-high {
+  background: var(--accent-red);
+  color: white;
+}
+
+.criticality-medium {
+  background: var(--accent-yellow);
+  color: var(--slide-bg);
+}
+
+.criticality-low {
+  background: var(--accent-green);
+  color: white;
+}
+
+.dependency-impact {
+  font-size: clamp(0.9rem, 1.5vw, 1rem);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ========================================
+   5. STRATEGIC RISKS SLIDE (MATRIX)
+   ======================================== */
+.risks-header {
+  text-align: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.risks-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+}
+
+.risk-matrix {
+  display: grid;
+  grid-template-columns: 70px repeat(3, 1fr);
+  grid-template-rows: repeat(4, minmax(80px, 1fr));
+  gap: 2px;
+  max-width: 700px;
+  max-height: 400px;
+  margin: 0 auto;
+  background: var(--border-color);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.matrix-label {
+  background: var(--slide-bg-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.matrix-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.matrix-cell.low-low {
+  background: rgba(80, 175, 123, 0.15);
+}
+
+.matrix-cell.low-medium,
+.matrix-cell.medium-low {
+  background: rgba(80, 175, 123, 0.25);
+}
+
+.matrix-cell.medium-medium,
+.matrix-cell.low-high,
+.matrix-cell.high-low {
+  background: rgba(238, 158, 32, 0.25);
+}
+
+.matrix-cell.medium-high,
+.matrix-cell.high-medium {
+  background: rgba(238, 158, 32, 0.35);
+}
+
+.matrix-cell.high-high {
+  background: rgba(218, 41, 28, 0.35);
+}
+
+.risk-item {
+  background: var(--slide-bg);
+  border-radius: 6px;
+  padding: 10px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.risk-item:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px var(--shadow-dark);
+  z-index: 10;
+}
+
+.risk-description {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.axis-label {
+  position: absolute;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+}
+
+.axis-label.x-axis {
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.9rem;
+}
+
+.axis-label.y-axis {
+  left: -80px;
+  top: 50%;
+  transform: rotate(-90deg) translateX(-50%);
+  transform-origin: left center;
+  font-size: 0.9rem;
+}
+
+/* ========================================
+   6. KEY INSIGHTS SLIDE (CARDS)
+   ======================================== */
+.insights-header {
+  text-align: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.insights-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  max-width: 1000px;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+}
+
+.insight-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 15px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.insight-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-red), var(--accent-yellow));
+  border-radius: 12px 12px 0 0;
+}
+
+.insight-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px var(--shadow-dark);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+.insight-category {
+  display: inline-block;
+  background: var(--accent-red);
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 15px;
+}
+
+.insight-card:nth-child(2n) .insight-category {
+  background: var(--accent-green);
+}
+
+.insight-card:nth-child(3n) .insight-category {
+  background: var(--accent-yellow);
+  color: var(--slide-bg);
+}
+
+.insight-text {
+  font-size: clamp(0.9rem, 1.5vw, 1rem);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ========================================
+   7. SIMPLE TEXT SLIDE
+   ======================================== */
+.slide-simple .slide-container {
+  justify-content: center;
+  align-items: flex-start;
+  max-width: 900px;
+}
+
+.simple-content {
+  width: 100%;
+}
+
+.simple-title {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  color: var(--text-primary);
+  margin-bottom: 40px;
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.simple-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: var(--accent-red);
+  border-radius: 2px;
+}
+
+.simple-text {
+  font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+  color: var(--text-secondary);
+  line-height: 1.8;
+  text-align: justify;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+@media (max-width: 1024px) {
+  .slide-container {
+    padding: 40px;
+  }
+
+  .risk-matrix {
+    grid-template-columns: 60px repeat(3, 1fr);
+    grid-template-rows: repeat(4, minmax(100px, 1fr));
+  }
+
+  .insights-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .slide-container {
+    padding: 20px 30px;
+    width: 95%;
+    height: 100vh;
+  }
+
+  .swiper-slide {
+    padding: 0;
+  }
+
+  .dependencies-flow {
+    flex-direction: column;
+  }
+
+  .dependency-arrow {
+    display: none;
+  }
+
+  .risk-matrix {
+    grid-template-columns: 50px repeat(3, 1fr);
+    grid-template-rows: repeat(4, minmax(80px, 1fr));
+    gap: 1px;
+  }
+
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .driver-item {
+    padding: 15px;
+  }
+
+  .driver-bullet {
+    width: 28px;
+    height: 28px;
+    margin-right: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .slide-container {
+    padding: 15px 20px;
+    height: 100vh;
+  }
+
+  .swiper-slide {
+    padding: 0;
+  }
+
+  .slide-number {
+    bottom: 20px;
+    right: 20px;
+    font-size: 12px;
+  }
+
+  .main-title {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+
+  .subtitle {
+    font-size: clamp(1rem, 3vw, 1.3rem);
+  }
+
+  .narrative-content p,
+  .simple-text {
+    text-align: left;
+    font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+  }
+
+  .risk-matrix {
+    grid-template-columns: 40px repeat(3, 1fr);
+    font-size: 0.75rem;
+  }
+
+  .matrix-label {
+    font-size: 0.7rem;
+  }
+
+  .risk-description {
+    font-size: 0.7rem;
+  }
+}
+
+/* ========================================
+   SWIPER CUSTOMIZATION
+   ======================================== */
+.swiper-pagination {
+  bottom: 30px;
+}
+
+.swiper-pagination-bullet {
+  background: var(--text-muted);
+  opacity: 0.5;
+  width: 10px;
+  height: 10px;
+}
+
+.swiper-pagination-bullet-active {
+  background: var(--accent-red);
+  opacity: 1;
+  width: 30px;
+  border-radius: 5px;
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+}
+
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+  color: var(--accent-red);
+}
+
+/* Dark Mode Scrollbar (if needed) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--slide-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-red);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
