@@ -134,12 +134,10 @@ select:focus-visible {
   background-color: #0c2340; /* CHANGED to new color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color (Correctly not white) */
   border-left: 0.5px solid #0D0D0D; /* Grid line color (CHANGED to black) */
-  border-top: 0.5px solid #0D0D0D; /* CHANGED to black */
   color: #FFFFFF; /* Text Color */
 }
 .gantt-header-label { /* First header cell (empty) */
   border-left: 0; /* Keep left border at 0 */
-  border-top: 0.5px solid #0D0D0D; /* OVERRIDE: Keep top border dark, changed to 0.5px */
   /* background-color: #28228; */ /* Removed this override */
 }
 
