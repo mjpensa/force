@@ -10,8 +10,6 @@
  * Phase 2: Image, Section, Quote, Table, Comparison slides
  */
 
-import { SLIDE_SCHEMAS } from './SlideDataModel.js';
-
 export class WebRenderer {
   /**
    * Create a new WebRenderer instance
