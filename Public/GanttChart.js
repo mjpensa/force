@@ -1384,17 +1384,31 @@ export class GanttChart {
         // Remove problematic attributes that cause XHTML parsing errors
         const allElements = clonedContainer.querySelectorAll('*');
         allElements.forEach(el => {
-          // Remove event handlers (onclick, onload, etc.)
-          Array.from(el.attributes).forEach(attr => {
-            if (attr.name.startsWith('on')) {
+          // Get all attribute names to iterate safely
+          const attrs = Array.from(el.attributes);
+
+          attrs.forEach(attr => {
+            const name = attr.name.toLowerCase();
+
+            // Remove event handlers (onclick, onload, etc.)
+            if (name.startsWith('on')) {
+              el.removeAttribute(attr.name);
+              return;
+            }
+
+            // Remove contenteditable
+            if (name === 'contenteditable') {
+              el.removeAttribute(attr.name);
+              return;
+            }
+
+            // Remove attributes with invalid XML name characters
+            // Valid XML names: letters, digits, hyphens, underscores, periods, colons
+            if (!/^[a-z_:][\w\-:.]*$/i.test(attr.name)) {
+              console.warn('Removing invalid attribute name:', attr.name);
               el.removeAttribute(attr.name);
             }
           });
-
-          // Remove contenteditable as it can cause issues
-          if (el.hasAttribute('contenteditable')) {
-            el.removeAttribute('contenteditable');
-          }
         });
 
         // Convert all images to base64 data URLs
