@@ -1378,7 +1378,31 @@ export class GanttChart {
         const width = bbox.width;
         const height = bbox.height;
 
-        // Get all stylesheet rules
+        // Clone the chart container
+        const clonedContainer = chartContainer.cloneNode(true);
+
+        // Convert all images to base64 data URLs
+        const images = clonedContainer.querySelectorAll('img');
+        for (const img of images) {
+          try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const originalImg = chartContainer.querySelector(`img[src="${img.src}"]`);
+
+            if (originalImg && originalImg.complete) {
+              canvas.width = originalImg.naturalWidth;
+              canvas.height = originalImg.naturalHeight;
+              ctx.drawImage(originalImg, 0, 0);
+              img.src = canvas.toDataURL('image/png');
+            }
+          } catch (e) {
+            console.warn('Could not convert image to base64:', e);
+            // Remove image if conversion fails
+            img.remove();
+          }
+        }
+
+        // Get all stylesheet rules and strip problematic external references
         const styleSheets = Array.from(document.styleSheets);
         let cssText = '';
 
@@ -1387,7 +1411,16 @@ export class GanttChart {
             try {
               const rules = Array.from(sheet.cssRules || sheet.rules || []);
               rules.forEach(rule => {
-                cssText += rule.cssText + '\n';
+                let ruleText = rule.cssText;
+
+                // Remove external font URLs (they won't load in standalone SVG)
+                ruleText = ruleText.replace(/url\(['"]?https?:\/\/[^)'"]+['"]?\)/g, '');
+
+                // Remove background-image URLs that reference external files
+                // but keep data URLs and inline SVGs
+                ruleText = ruleText.replace(/background-image:\s*url\(['"]?(?!data:)[^)'"]+['"]?\)/g, '');
+
+                cssText += ruleText + '\n';
               });
             } catch (e) {
               // Skip external stylesheets due to CORS
@@ -1398,27 +1431,24 @@ export class GanttChart {
           console.warn('Error collecting styles:', e);
         }
 
-        // Clone the chart container
-        const clonedContainer = chartContainer.cloneNode(true);
         const htmlString = clonedContainer.outerHTML;
 
         // Create SVG with embedded styles
-        const svg = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-            <defs>
-              <style type="text/css">
-                <![CDATA[
-                  ${cssText}
-                ]]>
-              </style>
-            </defs>
-            <foreignObject x="0" y="0" width="100%" height="100%">
-              <div xmlns="http://www.w3.org/1999/xhtml">
-                ${htmlString}
-              </div>
-            </foreignObject>
-          </svg>
-        `;
+        const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}">
+  <defs>
+    <style type="text/css">
+      <![CDATA[
+        ${cssText}
+      ]]>
+    </style>
+  </defs>
+  <foreignObject x="0" y="0" width="100%" height="100%">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%;">
+      ${htmlString}
+    </div>
+  </foreignObject>
+</svg>`;
 
         // Create blob and download
         const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
