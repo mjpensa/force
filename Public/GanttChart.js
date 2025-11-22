@@ -1238,12 +1238,23 @@ export class GanttChart {
         // Use requestAnimationFrame to prevent UI blocking
         await new Promise(resolve => requestAnimationFrame(resolve));
 
+        // Get the full dimensions of the chart container
+        const rect = chartContainer.getBoundingClientRect();
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+
         const canvas = await html2canvas(chartContainer, {
           useCORS: true,
           logging: false,
           scale: 2, // Render at 2x resolution for quality
           allowTaint: false,
-          backgroundColor: null
+          backgroundColor: null,
+          scrollY: -scrollY,
+          scrollX: -scrollX,
+          windowWidth: chartContainer.scrollWidth,
+          windowHeight: chartContainer.scrollHeight,
+          width: chartContainer.scrollWidth,
+          height: chartContainer.scrollHeight
         });
 
         // Create download link
