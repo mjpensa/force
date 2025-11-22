@@ -174,16 +174,6 @@ export class GanttChart {
     svgExportBtn.setAttribute('aria-label', 'Export Gantt chart as SVG vector image');
     exportContainer.appendChild(svgExportBtn);
 
-    // BANKING ENHANCEMENT: Theme toggle button (for presentations)
-    const themeToggleBtn = document.createElement('button');
-    themeToggleBtn.id = 'theme-toggle-btn';
-    themeToggleBtn.className = 'theme-toggle-btn';
-    themeToggleBtn.title = 'Toggle between dark and light theme';
-    themeToggleBtn.setAttribute('aria-label', 'Toggle between dark and light theme for presentations');
-    themeToggleBtn.setAttribute('aria-pressed', 'false');
-    themeToggleBtn.innerHTML = '<span class="theme-icon">☀️</span><span class="theme-label">Light Mode</span>';
-    exportContainer.appendChild(themeToggleBtn);
-
     // FEATURE #8: Copy Share URL button (persistent database storage)
     const copyUrlBtn = document.createElement('button');
     copyUrlBtn.id = 'copy-url-btn';
@@ -206,7 +196,6 @@ export class GanttChart {
     this._addEditModeToggleListener();
     this._addExportListener(); // PNG export
     this._addSvgExportListener(); // SVG export
-    this._addThemeToggleListener(); // BANKING ENHANCEMENT: Theme toggle
     this._addCopyUrlListener(); // FEATURE #8: Copy share URL
     this._addKeyboardShortcuts(); // ADVANCED GANTT: Keyboard navigation
 
@@ -1499,56 +1488,6 @@ export class GanttChart {
     return overlay;
   }
 
-  /**
-   * BANKING ENHANCEMENT: Adds theme toggle button event listener
-   * Switches between dark (developer) and light (executive/presentation) themes
-   * @private
-   */
-  _addThemeToggleListener() {
-    const toggleBtn = document.getElementById('theme-toggle-btn');
-    if (!toggleBtn) return;
-
-    // Check for saved preference (persist across page loads)
-    const savedTheme = localStorage.getItem('gantt-theme') || 'dark';
-    if (savedTheme === 'light') {
-      this._applyLightTheme();
-      toggleBtn.querySelector('.theme-icon').textContent = '🌙';
-      toggleBtn.querySelector('.theme-label').textContent = 'Dark Mode';
-      toggleBtn.setAttribute('aria-pressed', 'true');
-    }
-
-    toggleBtn.addEventListener('click', () => {
-      const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
-
-      if (currentTheme === 'dark') {
-        this._applyLightTheme();
-        localStorage.setItem('gantt-theme', 'light');
-        toggleBtn.querySelector('.theme-icon').textContent = '🌙';
-        toggleBtn.querySelector('.theme-label').textContent = 'Dark Mode';
-        toggleBtn.setAttribute('aria-pressed', 'true');
-        // ACCESSIBILITY: Announce theme change to screen readers
-        this._announceToScreenReader('Light theme enabled for presentations');
-
-        // FEATURE #9: Track theme toggle
-        trackEvent('feature_theme_toggle', {
-          theme: 'light'
-        });
-      } else {
-        this._applyDarkTheme();
-        localStorage.setItem('gantt-theme', 'dark');
-        toggleBtn.querySelector('.theme-icon').textContent = '☀️';
-        toggleBtn.querySelector('.theme-label').textContent = 'Light Mode';
-        toggleBtn.setAttribute('aria-pressed', 'false');
-        // ACCESSIBILITY: Announce theme change to screen readers
-        this._announceToScreenReader('Dark theme enabled');
-
-        // FEATURE #9: Track theme toggle
-        trackEvent('feature_theme_toggle', {
-          theme: 'dark'
-        });
-      }
-    });
-  }
 
   /**
    * FEATURE #8: Adds Copy Share URL button functionality
@@ -1728,27 +1667,6 @@ export class GanttChart {
     console.log('⌨️ Keyboard shortcuts enabled: E=Executive, D=Detail, T=Timeline, P=Presentation, S=Summary');
   }
 
-  /**
-   * BANKING ENHANCEMENT: Applies light theme for executive presentations
-   * @private
-   */
-  _applyLightTheme() {
-    document.body.classList.add('light-theme');
-    if (this.chartWrapper) {
-      this.chartWrapper.classList.add('light-theme');
-    }
-  }
-
-  /**
-   * BANKING ENHANCEMENT: Applies dark theme (default developer mode)
-   * @private
-   */
-  _applyDarkTheme() {
-    document.body.classList.remove('light-theme');
-    if (this.chartWrapper) {
-      this.chartWrapper.classList.remove('light-theme');
-    }
-  }
 
   /**
    * ACCESSIBILITY: Announces messages to screen readers via ARIA live region
