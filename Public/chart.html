@@ -34,6 +34,13 @@
       link.type = 'text/css';
       link.href = '/style.css?t=' + new Date().getTime(); // Appends a unique timestamp
       head.appendChild(link);
+
+      // Load modern presentation viewer CSS
+      const presentationLink = document.createElement('link');
+      presentationLink.rel = 'stylesheet';
+      presentationLink.type = 'text/css';
+      presentationLink.href = '/presentation-viewer.css?t=' + new Date().getTime();
+      head.appendChild(presentationLink);
     </script>
 
 </head>
