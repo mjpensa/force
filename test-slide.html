@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Custom Slides</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f0f0f0;
+      font-family: 'Work Sans', sans-serif;
+    }
+    .test-container {
+      max-width: 1500px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h2>Testing BIP Three-Column Template</h2>
+    <div id="slide-output"></div>
+    <div id="error-output" style="color: red; margin-top: 20px;"></div>
+  </div>
+
+  <script type="module">
+    try {
+      // Import the custom templates
+      const { CUSTOM_SLIDE_TYPES } = await import('./Public/SlideTemplates.js');
+      
+      console.log('Available templates:', Object.keys(CUSTOM_SLIDE_TYPES));
+      
+      // Test data for BIP three-column slide
+      const testSlide = {
+        type: 'bip-three-column',
+        content: {
+          eyebrow: { text: 'TEST SLIDE' },
+          title: { text: 'This is a Test Title' },
+          columns: [
+            { text: 'First column text goes here. This should be visible on the slide.' },
+            { text: 'Second column text goes here. This should also be visible.' },
+            { text: 'Third column text goes here. All three columns should show.' }
+          ],
+          showCornerGraphic: true
+        }
+      };
+      
+      const theme = { colors: { primary: '#d02010' } };
+      
+      console.log('Test slide data:', testSlide);
+      console.log('Rendering slide...');
+      
+      // Render the slide
+      const rendered = CUSTOM_SLIDE_TYPES['bip-three-column'].render(testSlide, theme, 1);
+      
+      console.log('Rendered element:', rendered);
+      console.log('Rendered HTML:', rendered.outerHTML.substring(0, 500));
+      
+      // Add to page
+      document.getElementById('slide-output').appendChild(rendered);
+      
+      document.getElementById('error-output').innerHTML = '<p style="color: green;">✅ Slide rendered successfully! Check above.</p>';
+      
+    } catch (error) {
+      console.error('Error:', error);
+      document.getElementById('error-output').innerHTML = `<h3>Error:</h3><pre>${error.message}\n${error.stack}</pre>`;
+    }
+  </script>
+</body>
+</html>
