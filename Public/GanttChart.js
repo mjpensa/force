@@ -339,11 +339,12 @@ export class GanttChart {
     this.gridElement.setAttribute('aria-label', 'Project timeline Gantt chart');
     this.gridElement.setAttribute('aria-readonly', 'true'); // Will be updated when edit mode is toggled
 
-    const numCols = this.ganttData.timeColumns.length;
+    // UPDATED: Use sub-intervals for grid columns (more precise granularity)
+    const numCols = this.ganttData.subIntervals ? this.ganttData.subIntervals.length : this.ganttData.timeColumns.length;
     // Use max-content for first column to auto-expand and fit all text on single line
     this.gridElement.style.gridTemplateColumns = `max-content repeat(${numCols}, 1fr)`;
 
-    // Create header row
+    // Create header rows (main intervals + sub-intervals)
     this._createHeaderRow(numCols);
 
     // Create data rows
@@ -353,11 +354,75 @@ export class GanttChart {
   }
 
   /**
-   * Creates the header row with time column labels
-   * @param {number} numCols - Number of time columns
+   * Creates the header rows with main intervals and sub-intervals
+   * @param {number} numCols - Number of sub-interval columns
    * @private
    */
   _createHeaderRow(numCols) {
+    // Check if sub-intervals are present (new feature)
+    const hasSubIntervals = this.ganttData.subIntervals && this.ganttData.subIntervals.length > 0;
+
+    if (!hasSubIntervals) {
+      // Fallback to legacy single-row header if no sub-intervals
+      this._createLegacyHeaderRow();
+      return;
+    }
+
+    // Calculate how many sub-intervals per main interval
+    const numMainIntervals = this.ganttData.timeColumns.length;
+    const numSubIntervals = this.ganttData.subIntervals.length;
+    const subIntervalsPerMain = Math.round(numSubIntervals / numMainIntervals);
+
+    // ROW 1: Main intervals (spanning multiple sub-intervals)
+    const mainHeaderFragment = document.createDocumentFragment();
+
+    // Empty cell for row label column
+    const mainHeaderLabel = document.createElement('div');
+    mainHeaderLabel.className = 'gantt-header gantt-header-label gantt-main-interval';
+    mainHeaderFragment.appendChild(mainHeaderLabel);
+
+    // Create spanning main interval cells
+    let subIntervalIndex = 1; // 1-based grid column index (column 1 is the label)
+    for (const mainInterval of this.ganttData.timeColumns) {
+      const mainCell = document.createElement('div');
+      mainCell.className = 'gantt-header gantt-main-interval';
+      mainCell.textContent = mainInterval;
+
+      // Span across sub-intervals: start at current position, end after all sub-intervals for this main interval
+      const startCol = subIntervalIndex + 1; // +1 because column 1 is the label
+      const endCol = startCol + subIntervalsPerMain;
+      mainCell.style.gridColumn = `${startCol} / ${endCol}`;
+
+      mainHeaderFragment.appendChild(mainCell);
+      subIntervalIndex += subIntervalsPerMain;
+    }
+
+    this.gridElement.appendChild(mainHeaderFragment);
+
+    // ROW 2: Sub-intervals (one column each)
+    const subHeaderFragment = document.createDocumentFragment();
+
+    // Empty cell for row label column
+    const subHeaderLabel = document.createElement('div');
+    subHeaderLabel.className = 'gantt-header gantt-header-label gantt-sub-interval';
+    subHeaderFragment.appendChild(subHeaderLabel);
+
+    // Create individual sub-interval cells
+    for (const subInterval of this.ganttData.subIntervals) {
+      const subCell = document.createElement('div');
+      subCell.className = 'gantt-header gantt-sub-interval';
+      subCell.textContent = subInterval;
+      subHeaderFragment.appendChild(subCell);
+    }
+
+    this.gridElement.appendChild(subHeaderFragment);
+  }
+
+  /**
+   * Creates legacy single-row header (backward compatibility)
+   * @private
+   */
+  _createLegacyHeaderRow() {
     const headerFragment = document.createDocumentFragment();
 
     const headerLabel = document.createElement('div');
@@ -1705,7 +1770,9 @@ export class GanttChart {
   addTodayLine(today) {
     if (!this.gridElement) return;
 
-    const position = findTodayColumnPosition(today, this.ganttData.timeColumns);
+    // UPDATED: Use sub-intervals for more precise "Today" line positioning
+    const intervals = this.ganttData.subIntervals || this.ganttData.timeColumns;
+    const position = findTodayColumnPosition(today, intervals);
     if (!position) return; // Today is not in the chart's range
 
     try {
@@ -1723,9 +1790,9 @@ export class GanttChart {
       const gridClientWidth = this.gridElement.clientWidth;
       const labelColWidth = labelCol.offsetWidth;
 
-      // Calculate pixel position
+      // Calculate pixel position using sub-intervals for precision
       const timeColAreaWidth = gridClientWidth - labelColWidth;
-      const oneColWidth = timeColAreaWidth / this.ganttData.timeColumns.length;
+      const oneColWidth = timeColAreaWidth / intervals.length;
       const todayOffset = (position.index + position.percentage) * oneColWidth;
 
       const lineLeftPosition = labelColWidth + todayOffset;
