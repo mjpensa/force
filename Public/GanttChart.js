@@ -158,13 +158,21 @@ export class GanttChart {
     editModeBtn.style.backgroundColor = this.isEditMode ? '#50AF7B' : '#BA3930';
     exportContainer.appendChild(editModeBtn);
 
-    // Export button
+    // PNG Export button
     const exportBtn = document.createElement('button');
     exportBtn.id = 'export-png-btn';
     exportBtn.className = 'export-button';
     exportBtn.textContent = 'Export as PNG';
     exportBtn.setAttribute('aria-label', 'Export Gantt chart as PNG image');
     exportContainer.appendChild(exportBtn);
+
+    // SVG Export button
+    const svgExportBtn = document.createElement('button');
+    svgExportBtn.id = 'export-svg-btn';
+    svgExportBtn.className = 'export-button';
+    svgExportBtn.textContent = 'Export as SVG';
+    svgExportBtn.setAttribute('aria-label', 'Export Gantt chart as SVG vector image');
+    exportContainer.appendChild(svgExportBtn);
 
     // BANKING ENHANCEMENT: Theme toggle button (for presentations)
     const themeToggleBtn = document.createElement('button');
@@ -196,7 +204,8 @@ export class GanttChart {
     this._addExecutiveViewToggleListener(); // EXECUTIVE-FIRST: Executive View toggle
     this._addCriticalPathViewToggleListener(); // ADVANCED GANTT: Critical Path View toggle
     this._addEditModeToggleListener();
-    this._addExportListener();
+    this._addExportListener(); // PNG export
+    this._addSvgExportListener(); // SVG export
     this._addThemeToggleListener(); // BANKING ENHANCEMENT: Theme toggle
     this._addCopyUrlListener(); // FEATURE #8: Copy share URL
     this._addKeyboardShortcuts(); // ADVANCED GANTT: Keyboard navigation
@@ -1348,6 +1357,174 @@ export class GanttChart {
 
     const message = document.createElement('div');
     message.textContent = 'Generating high-resolution PNG...';
+    message.style.cssText = `
+      font-size: 16px;
+      font-weight: 500;
+    `;
+
+    overlay.appendChild(spinner);
+    overlay.appendChild(message);
+
+    return overlay;
+  }
+
+  /**
+   * Adds SVG export button event listener
+   * Exports the Gantt chart as SVG (vector format, perfect alignment)
+   * @private
+   */
+  _addSvgExportListener() {
+    const exportBtn = document.getElementById('export-svg-btn');
+    const chartContainer = document.getElementById('gantt-chart-container');
+
+    if (!exportBtn || !chartContainer) {
+      console.warn('SVG export button or chart container not found.');
+      return;
+    }
+
+    exportBtn.addEventListener('click', async () => {
+      const startTime = performance.now();
+
+      // Update button state
+      exportBtn.textContent = 'Exporting...';
+      exportBtn.disabled = true;
+
+      // Create loading overlay
+      const loadingOverlay = this._createSvgExportLoadingOverlay();
+      document.body.appendChild(loadingOverlay);
+
+      try {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+
+        // Get the computed dimensions of the chart
+        const bbox = chartContainer.getBoundingClientRect();
+        const width = bbox.width;
+        const height = bbox.height;
+
+        // Clone the chart container
+        const clonedContainer = chartContainer.cloneNode(true);
+
+        // Get all computed styles and apply them inline
+        this._inlineAllStyles(chartContainer, clonedContainer);
+
+        // Serialize the cloned HTML to string
+        const htmlString = clonedContainer.outerHTML;
+
+        // Create SVG with foreignObject
+        const svg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+            <foreignObject width="100%" height="100%">
+              <div xmlns="http://www.w3.org/1999/xhtml">
+                ${htmlString}
+              </div>
+            </foreignObject>
+          </svg>
+        `;
+
+        // Create blob and download
+        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'gantt-chart.svg';
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+
+        // Performance logging
+        const duration = Math.round(performance.now() - startTime);
+        console.log(`✓ SVG export completed in ${duration}ms`);
+
+        // Track SVG export
+        trackEvent('export_svg', {
+          taskCount: this.ganttData.data.length,
+          exportTime: duration,
+          isExecutiveView: this.isExecutiveView,
+          isCriticalPathView: this.isCriticalPathView
+        });
+
+        // Update button state
+        exportBtn.textContent = 'Export as SVG';
+        exportBtn.disabled = false;
+
+        // Remove loading overlay
+        document.body.removeChild(loadingOverlay);
+      } catch (err) {
+        console.error('Error exporting SVG:', err);
+        exportBtn.textContent = 'Export as SVG';
+        exportBtn.disabled = false;
+
+        if (loadingOverlay.parentNode) {
+          document.body.removeChild(loadingOverlay);
+        }
+
+        alert('Error exporting chart as SVG. See console for details.');
+      }
+    });
+  }
+
+  /**
+   * Inline all computed styles from source to target element and children
+   * This ensures the SVG preserves all styling
+   * @param {HTMLElement} sourceEl - Source element with computed styles
+   * @param {HTMLElement} targetEl - Target element to apply styles to
+   * @private
+   */
+  _inlineAllStyles(sourceEl, targetEl) {
+    const sourceChildren = sourceEl.children;
+    const targetChildren = targetEl.children;
+
+    // Apply computed styles to target element
+    const computedStyle = window.getComputedStyle(sourceEl);
+    for (let prop of computedStyle) {
+      targetEl.style[prop] = computedStyle.getPropertyValue(prop);
+    }
+
+    // Recursively apply to children
+    for (let i = 0; i < sourceChildren.length; i++) {
+      if (targetChildren[i]) {
+        this._inlineAllStyles(sourceChildren[i], targetChildren[i]);
+      }
+    }
+  }
+
+  /**
+   * Creates a loading overlay for SVG export operations
+   * @returns {HTMLElement} Loading overlay element
+   * @private
+   */
+  _createSvgExportLoadingOverlay() {
+    const overlay = document.createElement('div');
+    overlay.className = 'export-loading-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      color: white;
+      font-family: 'Work Sans', sans-serif;
+    `;
+
+    const spinner = document.createElement('div');
+    spinner.className = 'export-spinner';
+    spinner.style.cssText = `
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #50AF7B;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    `;
+
+    const message = document.createElement('div');
+    message.textContent = 'Generating vector SVG...';
     message.style.cssText = `
       font-size: 16px;
       font-weight: 500;
