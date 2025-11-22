@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detailed Diagnostic Test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@100;300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 20px;
+      font-family: 'Work Sans', sans-serif;
+      background: #f5f5f5;
+    }
+    .log {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .log h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+    .info { color: #3b82f6; }
+    pre {
+      background: #f9fafb;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    #slideOutput {
+      margin-top: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>🔬 Slide Template Diagnostic</h1>
+
+  <div id="logs"></div>
+  <div id="slideOutput"></div>
+
+  <script type="module">
+    const logs = document.getElementById('logs');
+    const slideOutput = document.getElementById('slideOutput');
+
+    function log(title, content, type = 'info') {
+      const div = document.createElement('div');
+      div.className = 'log';
+      div.innerHTML = `<h3 class="${type}">${title}</h3><pre>${content}</pre>`;
+      logs.appendChild(div);
+    }
+
+    async function runDiagnostic() {
+      try {
+        // Step 1: Import SlideTemplates
+        log('Step 1: Importing SlideTemplates.js...', 'Attempting import...', 'info');
+        const SlideTemplatesModule = await import('./Public/SlideTemplates.js');
+        log('Step 1: Import SUCCESS', JSON.stringify(Object.keys(SlideTemplatesModule), null, 2), 'success');
+
+        const { CUSTOM_SLIDE_TYPES } = SlideTemplatesModule;
+
+        // Step 2: Check available templates
+        const templateNames = Object.keys(CUSTOM_SLIDE_TYPES);
+        log('Step 2: Available Templates', JSON.stringify(templateNames, null, 2), 'success');
+
+        // Step 3: Test bip-three-column template
+        if (!CUSTOM_SLIDE_TYPES['bip-three-column']) {
+          throw new Error('bip-three-column template not found!');
+        }
+        log('Step 3: Template Found', 'bip-three-column exists', 'success');
+
+        // Step 4: Check template structure
+        const template = CUSTOM_SLIDE_TYPES['bip-three-column'];
+        log('Step 4: Template Structure',
+          `name: ${template.name}\n` +
+          `description: ${template.description}\n` +
+          `has validate: ${typeof template.validate === 'function'}\n` +
+          `has render: ${typeof template.render === 'function'}`,
+          'success');
+
+        // Step 5: Create test data
+        const testSlide = {
+          type: 'bip-three-column',
+          content: {
+            eyebrow: { text: 'DIAGNOSTIC TEST' },
+            title: { text: 'Test Title Here' },
+            columns: [
+              { text: 'Column 1: This is test text that should appear on the slide.' },
+              { text: 'Column 2: More test text to verify rendering.' },
+              { text: 'Column 3: Final column with test content.' }
+            ],
+            showCornerGraphic: true
+          }
+        };
+        log('Step 5: Test Data Created', JSON.stringify(testSlide, null, 2), 'success');
+
+        // Step 6: Validate data
+        const validationErrors = template.validate(testSlide.content);
+        if (validationErrors.length > 0) {
+          log('Step 6: Validation FAILED', validationErrors.join('\n'), 'error');
+          throw new Error('Validation failed: ' + validationErrors.join(', '));
+        }
+        log('Step 6: Validation Passed', 'No errors', 'success');
+
+        // Step 7: Render the slide
+        const theme = { colors: { primary: '#d02010' } };
+        log('Step 7: Rendering slide...', 'Calling render function', 'info');
+
+        const rendered = template.render(testSlide, theme, 1);
+        log('Step 7: Render SUCCESS',
+          `Element type: ${rendered.tagName}\n` +
+          `Class name: ${rendered.className}\n` +
+          `Child count: ${rendered.children.length}\n` +
+          `Has content: ${rendered.textContent.length > 0}`,
+          'success');
+
+        // Step 8: Check rendered content
+        const textContent = rendered.textContent;
+        const hasEyebrow = textContent.includes('DIAGNOSTIC TEST');
+        const hasTitle = textContent.includes('Test Title');
+        const hasColumn1 = textContent.includes('Column 1');
+        const hasColumn2 = textContent.includes('Column 2');
+        const hasColumn3 = textContent.includes('Column 3');
+
+        log('Step 8: Content Check',
+          `Eyebrow found: ${hasEyebrow ? '✅' : '❌'}\n` +
+          `Title found: ${hasTitle ? '✅' : '❌'}\n` +
+          `Column 1 found: ${hasColumn1 ? '✅' : '❌'}\n` +
+          `Column 2 found: ${hasColumn2 ? '✅' : '❌'}\n` +
+          `Column 3 found: ${hasColumn3 ? '✅' : '❌'}`,
+          (hasEyebrow && hasTitle && hasColumn1 && hasColumn2 && hasColumn3) ? 'success' : 'error');
+
+        // Step 9: Add to page
+        slideOutput.innerHTML = '<h2>Rendered Slide:</h2>';
+        slideOutput.appendChild(rendered);
+        log('Step 9: Display Complete', 'Slide added to page', 'success');
+
+        // Final summary
+        log('🎉 DIAGNOSTIC COMPLETE',
+          'All tests passed! Template is working correctly.\n\n' +
+          'If you still see blank slides in your app, the issue is with:\n' +
+          '1. How the data is structured in your presentation\n' +
+          '2. How the presentation is being loaded\n' +
+          '3. The data not matching the expected format',
+          'success');
+
+      } catch (error) {
+        log('❌ DIAGNOSTIC FAILED',
+          `Error: ${error.message}\n\nStack trace:\n${error.stack}`,
+          'error');
+
+        console.error('Full error:', error);
+      }
+    }
+
+    // Run diagnostic on load
+    runDiagnostic();
+  </script>
+</body>
+</html>
