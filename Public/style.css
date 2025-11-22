@@ -149,7 +149,7 @@ select:focus-visible {
   white-space: nowrap; /* Prevent text wrapping - column will auto-expand */
   overflow: visible; /* Allow text to be fully visible */
   display: flex;
-  align-items: center;
+  /* REMOVED: align-items: center - causes html2canvas misalignment */
   justify-content: space-between;
   gap: 12px;
   min-height: 40px; /* Ensure minimum height for proper centering */
@@ -161,9 +161,10 @@ select:focus-visible {
   min-width: 0;
   transition: all 0.2s;
   border-radius: 4px;
-  padding: 10px 12px; /* Move padding here for html2canvas compatibility */
-  display: block; /* Ensure block-level for proper html2canvas rendering */
-  align-self: center; /* Explicit vertical centering for html2canvas */
+  padding: 10px 12px;
+  display: block;
+  line-height: 1.2; /* Explicit line-height */
+  /* Vertical centering via padding (html2canvas compatible) */
 }
 
 /* Show outline on label hover when in edit mode (for both tasks and swimlanes) */
@@ -178,7 +179,8 @@ select:focus-visible {
 .row-actions {
   display: none; /* Hidden by default */
   gap: 6px;
-  align-items: center;
+  /* REMOVED: align-items: center - use margin instead for html2canvas compatibility */
+  margin: auto 0; /* Vertically center in flex parent */
 }
 
 /* Show row actions on hover only when edit mode is enabled */
