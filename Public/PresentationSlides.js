@@ -13,6 +13,8 @@ import { WebRenderer } from './WebRenderer.js';
 import { getDefaultTheme, migrateOldSlideData } from './SlideDataModel.js';
 import { exportWithProgressDialog } from './PPTExporter.js';
 import { PresenterMode } from './PresenterMode.js';
+import { SlideEditor } from './SlideEditor.js';
+import { SlideManager } from './SlideManager.js';
 
 /**
  * PresentationSlides Class
@@ -59,11 +61,44 @@ export class PresentationSlides {
     // Presenter mode
     this.presenterMode = new PresenterMode(this);
 
+    // Slide editing and management
+    this.editor = new SlideEditor(this);
+    this.manager = new SlideManager(this);
+
+    // Check for auto-saved presentation
+    this._checkAutoSave();
+
     // Keyboard shortcuts binding
     this.handleKeyPress = this.handleKeyPress.bind(this);
 
     // Legacy compatibility - keep reference to slides array
     this.slidesData = { slides: this.presentationData.slides };
+  }
+
+  /**
+   * Check for auto-saved presentation
+   * @private
+   */
+  _checkAutoSave() {
+    const autoSaved = SlideEditor.restoreAutoSave();
+    if (autoSaved) {
+      const savedDate = new Date(autoSaved.savedAt);
+      const restore = confirm(
+        `Found auto-saved changes from ${savedDate.toLocaleString()}.\n\nRestore them?`
+      );
+
+      if (restore) {
+        this.presentationData.slides = autoSaved.slides;
+        this.presentationData.theme = autoSaved.theme;
+        this.presentationData.metadata = autoSaved.metadata;
+        this.slidesData.slides = autoSaved.slides;
+
+        console.log('[PresentationSlides] Restored from auto-save');
+      } else {
+        SlideEditor.clearAutoSave();
+        console.log('[PresentationSlides] Discarded auto-save');
+      }
+    }
   }
 
   /**
@@ -182,6 +217,14 @@ export class PresentationSlides {
     // Keyboard shortcuts button
     const shortcutsBtn = this._createButton('icon-only', '?', 'Keyboard Shortcuts', () => this._toggleShortcuts());
 
+    // Edit Slides button
+    const editBtn = this._createButton('', '✏️', 'Edit Slides', () => this._toggleEditMode());
+    editBtn.id = 'editModeBtn';
+
+    // Manage Slides button
+    const manageBtn = this._createButton('', '📋', 'Manage Slides', () => this._showSlideManager());
+    manageBtn.id = 'manageSlidesBtn';
+
     // Presenter Mode button
     const presenterBtn = this._createButton('', '🎤', 'Presenter Mode', () => this._launchPresenterMode());
     presenterBtn.id = 'presenterModeBtn';
@@ -194,6 +237,8 @@ export class PresentationSlides {
     rightSide.appendChild(gridBtn);
     rightSide.appendChild(fullscreenBtn);
     rightSide.appendChild(shortcutsBtn);
+    rightSide.appendChild(editBtn);
+    rightSide.appendChild(manageBtn);
     rightSide.appendChild(presenterBtn);
     rightSide.appendChild(exportBtn);
 
@@ -458,6 +503,10 @@ export class PresentationSlides {
       { action: 'Toggle grid view', keys: ['G'] },
       { action: 'Toggle fullscreen', keys: ['F'] },
       { action: 'Toggle thumbnails', keys: ['T'] },
+      { action: 'Edit slides', keys: ['E'] },
+      { action: 'Manage slides', keys: ['S'] },
+      { action: 'Undo', keys: ['Ctrl+Z'] },
+      { action: 'Redo', keys: ['Ctrl+Shift+Z'] },
       { action: 'Presenter mode', keys: ['M'] },
       { action: 'Export to PowerPoint', keys: ['P'] },
       { action: 'Show shortcuts', keys: ['?'] },
@@ -742,6 +791,19 @@ export class PresentationSlides {
     // Don't handle if shortcuts overlay is visible (except Escape)
     if (this.shortcutsOverlayVisible && e.key !== 'Escape') return;
 
+    // Undo/Redo shortcuts (Ctrl+Z, Ctrl+Shift+Z)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      this.editor.undo();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+      e.preventDefault();
+      this.editor.redo();
+      return;
+    }
+
     switch(e.key) {
       case 'ArrowRight':
       case ' ':
@@ -780,6 +842,16 @@ export class PresentationSlides {
         e.preventDefault();
         this._exportToPowerPoint();
         break;
+      case 'e':
+      case 'E':
+        e.preventDefault();
+        this._toggleEditMode();
+        break;
+      case 's':
+      case 'S':
+        e.preventDefault();
+        this._showSlideManager();
+        break;
       case 'm':
       case 'M':
         e.preventDefault();
@@ -799,6 +871,32 @@ export class PresentationSlides {
           this._toggleGridView();
         }
         break;
+    }
+  }
+
+  /**
+   * Toggle edit mode
+   * @private
+   */
+  _toggleEditMode() {
+    try {
+      this.editor.toggleEditMode();
+    } catch (error) {
+      console.error('[PresentationSlides] Failed to toggle edit mode:', error);
+      alert('Failed to toggle edit mode. Please try again.');
+    }
+  }
+
+  /**
+   * Show slide manager modal
+   * @private
+   */
+  _showSlideManager() {
+    try {
+      this.manager.showManagementPanel();
+    } catch (error) {
+      console.error('[PresentationSlides] Failed to show slide manager:', error);
+      alert('Failed to show slide manager. Please try again.');
     }
   }
 
@@ -862,6 +960,11 @@ export class PresentationSlides {
     // Cleanup presenter mode
     if (this.presenterMode) {
       this.presenterMode.cleanup();
+    }
+
+    // Cleanup editor
+    if (this.editor) {
+      this.editor.cleanup();
     }
   }
 }
