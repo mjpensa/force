@@ -129,7 +129,9 @@ export class DraggableGantt {
     const barArea = this.dragState.barArea;
     const rect = barArea.getBoundingClientRect();
     // UPDATED: Use sub-intervals for finer-grained snapping
-    const intervals = this.ganttData.subIntervals || this.ganttData.timeColumns;
+    const intervals = (this.ganttData.subIntervals && this.ganttData.subIntervals.length > 0)
+      ? this.ganttData.subIntervals
+      : this.ganttData.timeColumns;
     const columnWidth = rect.width / intervals.length;
     const columnDelta = Math.round(deltaX / columnWidth);
 
@@ -180,7 +182,9 @@ export class DraggableGantt {
       // Notify callback with updated task info
       if (this.onTaskUpdate) {
         // UPDATED: Use sub-intervals for date labels
-        const intervals = this.ganttData.subIntervals || this.ganttData.timeColumns;
+        const intervals = (this.ganttData.subIntervals && this.ganttData.subIntervals.length > 0)
+          ? this.ganttData.subIntervals
+          : this.ganttData.timeColumns;
         const taskInfo = {
           taskName: this.dragState.taskData.title,
           entity: this.dragState.taskData.entity,
