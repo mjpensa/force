@@ -42,7 +42,6 @@ export class GanttChart {
     this.resizableGantt = null; // Phase 2: Bar resizing functionality
     this.contextMenu = null; // Phase 5: Context menu for color changing
     this.isEditMode = false; // Edit mode toggle - default is read-only
-    this.isCriticalPathView = false; // ADVANCED GANTT: Critical Path View toggle - shows only critical path tasks
     this.titleElement = null; // Reference to the title element for edit mode
     this.legendElement = null; // Reference to the legend element for edit mode
     this.hamburgerMenu = null; // Hamburger menu for section navigation
@@ -108,17 +107,6 @@ export class GanttChart {
     const exportContainer = document.createElement('div');
     exportContainer.className = 'export-container';
 
-    // ADVANCED GANTT: Critical Path View toggle button
-    const criticalPathBtn = document.createElement('button');
-    criticalPathBtn.id = 'critical-path-toggle-btn';
-    criticalPathBtn.className = 'critical-path-toggle-button';
-    criticalPathBtn.textContent = this.isCriticalPathView ? '🔴 Critical Path: ON' : '🔵 All Tasks: ON';
-    criticalPathBtn.title = 'Toggle Critical Path View (show only tasks on critical path)';
-    criticalPathBtn.setAttribute('aria-label', 'Toggle Critical Path View to show only time-sensitive tasks');
-    criticalPathBtn.setAttribute('aria-pressed', this.isCriticalPathView ? 'true' : 'false');
-    criticalPathBtn.style.backgroundColor = this.isCriticalPathView ? '#DC3545' : '#6C757D';
-    exportContainer.appendChild(criticalPathBtn);
-
     // Edit mode toggle button
     const editModeBtn = document.createElement('button');
     editModeBtn.id = 'edit-mode-toggle-btn';
@@ -163,7 +151,6 @@ export class GanttChart {
     this._addHamburgerMenu();
 
     // Add listeners
-    this._addCriticalPathViewToggleListener(); // ADVANCED GANTT: Critical Path View toggle
     this._addEditModeToggleListener();
     this._addExportListener(); // PNG export
     this._addSvgExportListener(); // SVG export
@@ -941,102 +928,6 @@ export class GanttChart {
     this.chartWrapper.appendChild(footerSvgEl);
   }
 
-
-  /**
-   * ADVANCED GANTT: Adds Critical Path View toggle functionality
-   * Filters chart to show only tasks on the critical path
-   * @private
-   */
-  _addCriticalPathViewToggleListener() {
-    const criticalPathBtn = document.getElementById('critical-path-toggle-btn');
-
-    if (!criticalPathBtn) {
-      console.warn('Critical Path View toggle button not found.');
-      return;
-    }
-
-    criticalPathBtn.addEventListener('click', () => {
-      this.isCriticalPathView = !this.isCriticalPathView;
-      criticalPathBtn.textContent = this.isCriticalPathView ? '🔴 Critical Path: ON' : '🔵 All Tasks: ON';
-      criticalPathBtn.style.backgroundColor = this.isCriticalPathView ? '#DC3545' : '#6C757D';
-      criticalPathBtn.setAttribute('aria-pressed', this.isCriticalPathView ? 'true' : 'false');
-
-      // Re-render the grid with filtered data
-      this._updateGridForCriticalPathView();
-
-      // ACCESSIBILITY: Announce view change to screen readers
-      this._announceToScreenReader(`${this.isCriticalPathView ? 'Critical path' : 'All tasks'} view enabled`);
-
-      // FEATURE #9: Track feature usage
-      trackEvent('feature_critical_path', {
-        enabled: this.isCriticalPathView,
-        taskCount: this.ganttData.data.length
-      });
-
-      console.log(`✓ ${this.isCriticalPathView ? 'Critical Path View' : 'All Tasks View'} enabled`);
-    });
-  }
-
-  /**
-   * ADVANCED GANTT: Updates the grid to show/hide tasks based on Critical Path View
-   * Shows only tasks on the critical path when enabled
-   * @private
-   */
-  _updateGridForCriticalPathView() {
-    if (!this.gridElement) {
-      console.warn('Grid element not found for Critical Path View update');
-      return;
-    }
-
-    // Get all row labels - each row has a label and a corresponding bar area
-    const allRowLabels = this.gridElement.querySelectorAll('.gantt-row-label');
-
-    allRowLabels.forEach((labelElement, index) => {
-      const dataItem = this.ganttData.data[index];
-
-      // Skip swimlanes - always show them
-      if (dataItem && dataItem.isSwimlane) {
-        labelElement.style.display = '';
-        // Also show corresponding bar area
-        const barArea = this.gridElement.querySelector(`.gantt-bar-area[data-task-index="${index}"]`);
-        if (barArea) {
-          barArea.style.display = '';
-        }
-        return;
-      }
-
-      // For tasks, check isCriticalPath
-      if (this.isCriticalPathView) {
-        // Show only critical path tasks
-        const isCriticalPath = dataItem?.isCriticalPath || false;
-
-        if (isCriticalPath) {
-          labelElement.style.display = '';
-          // Also show corresponding bar area
-          const barArea = this.gridElement.querySelector(`.gantt-bar-area[data-task-index="${index}"]`);
-          if (barArea) {
-            barArea.style.display = '';
-          }
-        } else {
-          labelElement.style.display = 'none';
-          // Also hide corresponding bar area
-          const barArea = this.gridElement.querySelector(`.gantt-bar-area[data-task-index="${index}"]`);
-          if (barArea) {
-            barArea.style.display = 'none';
-          }
-        }
-      } else {
-        // Show all tasks
-        labelElement.style.display = '';
-        // Also show corresponding bar area
-        const barArea = this.gridElement.querySelector(`.gantt-bar-area[data-task-index="${index}"]`);
-        if (barArea) {
-          barArea.style.display = '';
-        }
-      }
-    });
-  }
-
   /**
    * Adds edit mode toggle functionality
    * @private
@@ -1144,8 +1035,7 @@ export class GanttChart {
         trackEvent('export_png', {
           taskCount: this.ganttData.data.length,
           exportTime: duration,
-          isExecutiveView: this.isExecutiveView,
-          isCriticalPathView: this.isCriticalPathView
+          isExecutiveView: this.isExecutiveView
         });
 
         // Update button state
@@ -1299,8 +1189,7 @@ export class GanttChart {
         trackEvent('export_svg', {
           taskCount: this.ganttData.data.length,
           exportTime: duration,
-          isExecutiveView: this.isExecutiveView,
-          isCriticalPathView: this.isCriticalPathView
+          isExecutiveView: this.isExecutiveView
         });
 
         // Update button state
