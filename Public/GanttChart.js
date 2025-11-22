@@ -1377,123 +1377,36 @@ export class GanttChart {
         const bbox = chartContainer.getBoundingClientRect();
         const width = bbox.width;
         const height = bbox.height;
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
 
-        // Clone the chart container
-        const clonedContainer = chartContainer.cloneNode(true);
-
-        // Remove problematic attributes that cause XHTML parsing errors
-        const allElements = clonedContainer.querySelectorAll('*');
-        allElements.forEach(el => {
-          // Get all attribute names to iterate safely
-          const attrs = Array.from(el.attributes);
-
-          attrs.forEach(attr => {
-            const name = attr.name.toLowerCase();
-
-            // Remove event handlers (onclick, onload, etc.)
-            if (name.startsWith('on')) {
-              el.removeAttribute(attr.name);
-              return;
-            }
-
-            // Remove contenteditable
-            if (name === 'contenteditable') {
-              el.removeAttribute(attr.name);
-              return;
-            }
-
-            // Remove attributes with invalid XML name characters
-            // Valid XML names: letters, digits, hyphens, underscores, periods, colons
-            if (!/^[a-z_:][\w\-:.]*$/i.test(attr.name)) {
-              console.warn('Removing invalid attribute name:', attr.name);
-              el.removeAttribute(attr.name);
-            }
-          });
+        // Use html2canvas to render the chart (more reliable than foreignObject)
+        const canvas = await html2canvas(chartContainer, {
+          useCORS: true,
+          logging: false,
+          scale: 2,
+          allowTaint: false,
+          backgroundColor: null,
+          scrollY: -scrollY,
+          scrollX: -scrollX,
+          windowWidth: chartContainer.scrollWidth,
+          windowHeight: chartContainer.scrollHeight,
+          width: chartContainer.scrollWidth,
+          height: chartContainer.scrollHeight
         });
 
-        // Convert all images to base64 data URLs
-        const images = clonedContainer.querySelectorAll('img');
-        const originalImages = chartContainer.querySelectorAll('img');
+        // Convert canvas to base64
+        const imageData = canvas.toDataURL('image/png');
 
-        for (let i = 0; i < images.length; i++) {
-          try {
-            const img = images[i];
-            const originalImg = originalImages[i];
-
-            if (originalImg && originalImg.complete && originalImg.naturalWidth > 0) {
-              const canvas = document.createElement('canvas');
-              const ctx = canvas.getContext('2d');
-              canvas.width = originalImg.naturalWidth;
-              canvas.height = originalImg.naturalHeight;
-              ctx.drawImage(originalImg, 0, 0);
-              img.setAttribute('src', canvas.toDataURL('image/png'));
-            } else {
-              // Remove image if not loaded or invalid
-              console.warn('Image not loaded or invalid, removing:', originalImg?.src);
-              img.remove();
-            }
-          } catch (e) {
-            console.warn('Could not convert image to base64:', e);
-            // Remove image if conversion fails
-            images[i]?.remove();
-          }
-        }
-
-        // Get all stylesheet rules and strip problematic external references
-        const styleSheets = Array.from(document.styleSheets);
-        let cssText = '';
-
-        try {
-          styleSheets.forEach(sheet => {
-            try {
-              const rules = Array.from(sheet.cssRules || sheet.rules || []);
-              rules.forEach(rule => {
-                let ruleText = rule.cssText;
-
-                // Remove external font URLs (they won't load in standalone SVG)
-                ruleText = ruleText.replace(/url\(['"]?https?:\/\/[^)'"]+['"]?\)/g, '');
-
-                // Remove background-image URLs that reference external files
-                // but keep data URLs and inline SVGs
-                ruleText = ruleText.replace(/background-image:\s*url\(['"]?(?!data:)[^)'"]+['"]?\)/g, '');
-
-                cssText += ruleText + '\n';
-              });
-            } catch (e) {
-              // Skip external stylesheets due to CORS
-              console.warn('Could not access stylesheet:', e);
-            }
-          });
-        } catch (e) {
-          console.warn('Error collecting styles:', e);
-        }
-
-        // Serialize using XMLSerializer for proper XHTML
-        const serializer = new XMLSerializer();
-        let htmlString = serializer.serializeToString(clonedContainer);
-
-        // Clean up any remaining issues
-        htmlString = htmlString
-          // Ensure self-closing tags are properly formatted
-          .replace(/<(br|hr|img|input|meta|link)([^>]*?)>/gi, '<$1$2 />')
-          // Remove duplicate xmlns attributes from inner elements (keep on root)
-          .replace(/(<[^>]+?)\sxmlns="http:\/\/www\.w3\.org\/1999\/xhtml"([^>]*>)/g, '$1$2');
-
-        // Create SVG with embedded styles
+        // Create SVG with embedded image (hybrid approach)
         const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}">
-  <defs>
-    <style type="text/css">
-      <![CDATA[
-        ${cssText}
-      ]]>
-    </style>
-  </defs>
-  <foreignObject x="0" y="0" width="100%" height="100%">
-    <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%;">
-      ${htmlString}
-    </div>
-  </foreignObject>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <title>Gantt Chart Export</title>
+  <desc>AI-generated Gantt chart exported as SVG with embedded raster image</desc>
+  <image x="0" y="0" width="${width}" height="${height}"
+         xlink:href="${imageData}"
+         preserveAspectRatio="xMidYMid meet"/>
 </svg>`;
 
         // Create blob and download
