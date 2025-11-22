@@ -25,28 +25,28 @@ You MUST respond with *only* a valid JSON object matching the schema.
     a. **Determine Sub-Interval Type:** Based on the main intervalType and the specificity of dates in the research:
        * intervalType "weekly" → subIntervalType MUST be "daily"
          - Generate 5 business days per week (Mon-Fri only, NO Saturday/Sunday)
-         - Example: ["Mon W1", "Tue W1", "Wed W1", "Thu W1", "Fri W1", "Mon W2", ...]
+         - Example: ["Mon", "Tue", "Wed", "Thu", "Fri"] for each week
        * intervalType "monthly" → subIntervalType MUST be "weekly"
-         - Generate ~4 weeks per month (W1, W2, W3, W4)
-         - Example: ["W1 Jan", "W2 Jan", "W3 Jan", "W4 Jan", "W1 Feb", ...]
+         - Generate 4 weeks per month (W1, W2, W3, W4)
+         - Example: ["W1", "W2", "W3", "W4"] for each month
        * intervalType "quarterly" → subIntervalType is "monthly" OR "weekly" (YOU DECIDE):
          - If research mentions specific months/dates → use "monthly" (3 months per quarter)
-           Example: ["Jan 2026", "Feb 2026", "Mar 2026", "Apr 2026", ...]
-         - If research only has quarter-level detail → use "weekly" (12-13 weeks per quarter)
-           Example: ["W1 Q1", "W2 Q1", ..., "W13 Q1", "W1 Q2", ...]
-       * intervalType "yearly" → subIntervalType is "quarterly" OR "monthly" (YOU DECIDE):
-         - If research mentions specific quarters → use "quarterly" (4 quarters per year)
-           Example: ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", ...]
-         - If research mentions specific months → use "monthly" (12 months per year)
-           Example: ["Jan 2020", "Feb 2020", ..., "Dec 2020", "Jan 2021", ...]
+           Example: ["Jan", "Feb", "Mar"] for Q1, ["Apr", "May", "Jun"] for Q2, etc.
+         - If research only has quarter-level detail → use "weekly" (13 weeks per quarter)
+           Example: ["W1", "W2", ..., "W13"] for each quarter
+       * intervalType "yearly" → subIntervalType MUST be "quarterly"
+         - ALWAYS use "quarterly" (4 quarters per year)
+         - Example: ["Q1", "Q2", "Q3", "Q4"] for each year (DO NOT include year in label)
        * intervalType "multi-year" → subIntervalType MUST be "yearly"
          - Generate individual years for each multi-year period
          - Example for "2020-2025": ["2020", "2021", "2022", "2023", "2024", "2025"]
     b. **Generate subIntervals Array:** Create a flat array of ALL sub-interval labels across the entire time horizon
        * The number of sub-intervals = (number of main intervals) × (sub-intervals per main interval)
-       * Each label should clearly indicate which sub-interval it represents
-       * Example for yearly/quarterly: ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", "Q2 2021", ...]
-       * Example for quarterly/monthly: ["Jan 2026", "Feb 2026", "Mar 2026", "Apr 2026", "May 2026", "Jun 2026", ...]
+       * **CRITICAL LABELING RULE:** Sub-interval labels should be SHORT and NOT repeat the main interval identifier
+         - For yearly/quarterly: ["Q1", "Q2", "Q3", "Q4", "Q1", "Q2", "Q3", "Q4", ...] (one set per year)
+         - For quarterly/monthly: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", ...] (NOT "Jan 2026", just "Jan")
+         - For monthly/weekly: ["W1", "W2", "W3", "W4", "W1", "W2", ...] (one set per month)
+       * The main interval (top row) provides the context, so sub-intervals only need the granular detail
     c. **CRITICAL:** The subIntervals array length MUST equal the product of timeColumns length and the number of sub-intervals per main interval
 3.  **CHART DATA:** Create the 'data' array.
     - First, identify all logical swimlanes. **ADVANCED GANTT - STAKEHOLDER SWIMLANES:** For banking/enterprise projects, PREFER organizing by stakeholder departments:
@@ -62,17 +62,18 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - 'startCol' is the 1-based index of the 'subIntervals' array where the task begins
     - 'endCol' is the 1-based index of the 'subIntervals' array where the task ends, **PLUS ONE**
     - **Examples:**
-      * If subIntervals = ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", ...] and a task runs "Q1 2020" to "Q2 2020":
-        → startCol: 1, endCol: 3 (Q1 2020 is index 1, Q2 2020 is index 2, so endCol = 2 + 1 = 3)
-      * If subIntervals = ["Jan 2026", "Feb 2026", "Mar 2026", ...] and a task runs "Feb 2026" to "Apr 2026":
-        → startCol: 2, endCol: 5 (Feb is index 2, Apr is index 4, so endCol = 4 + 1 = 5)
-      * If a task date is vague (e.g., "2022" when using monthly sub-intervals), map it to the first sub-interval of that period
-        - "2022" with monthly sub-intervals → "Jan 2022" (find the index of "Jan 2022" in subIntervals)
+      * If timeColumns = ["2020", "2021"] and subIntervals = ["Q1", "Q2", "Q3", "Q4", "Q1", "Q2", "Q3", "Q4"]:
+        - A task in "Q1 2020" → startCol: 1, endCol: 2 (Q1 is at index 1)
+        - A task spanning "Q2 2020" to "Q1 2021" → startCol: 2, endCol: 6 (Q2 2020 is index 2, Q1 2021 is index 5, endCol = 5 + 1)
+      * If timeColumns = ["Q1 2026", "Q2 2026"] and subIntervals = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]:
+        - A task in "Feb 2026" → find index 2 (Feb is second month)
+      * If a task date is vague (e.g., "2022"), map it to the first sub-interval of that year
+        - "2022" with quarterly sub-intervals → First "Q1" in the 2022 section of subIntervals
     - If a date is unknown ("null"), the 'bar' object must be \`{ "startCol": null, "endCol": null, "color": "..." }\`
-    - **Mapping Strategy:** For each task date, find the CLOSEST matching sub-interval in the subIntervals array:
-      * Exact match: "Q1 2020" → find "Q1 2020" in subIntervals
-      * Month to quarter: "March 2020" → find "Q1 2020" in subIntervals (March is in Q1)
-      * Vague to specific: "2020" → find "Q1 2020" or "Jan 2020" (first sub-interval of 2020)
+    - **Mapping Strategy:** For each task date, determine which main interval it belongs to, then which sub-interval within that:
+      * "Q1 2020" with yearly/quarterly → Find "2020" in timeColumns (index 0), first sub-interval is at index 1
+      * "March 2020" with yearly/quarterly → Find "2020", March is in Q1, so index 1
+      * "2020" with yearly/quarterly → Find "2020", default to first sub-interval (Q1)
 5.  **COLORS & LEGEND:** This is a two-step process to assign meaningful colors and create a clear legend.
     a.  **Step 1: Analyze for Cross-Swimlane Themes:** Examine ALL tasks from ALL swimlanes to identify logical thematic groupings that span across multiple swimlanes (e.g., "Product Launch", "Technical Implementation"). A valid theme must:
         - Appear in at least 2 different swimlanes
