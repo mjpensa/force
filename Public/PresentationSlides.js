@@ -15,6 +15,7 @@ import { exportWithProgressDialog } from './PPTExporter.js';
 import { PresenterMode } from './PresenterMode.js';
 import { SlideEditor } from './SlideEditor.js';
 import { SlideManager } from './SlideManager.js';
+import { ExportManager } from './ExportManager.js';
 
 /**
  * PresentationSlides Class
@@ -64,6 +65,9 @@ export class PresentationSlides {
     // Slide editing and management
     this.editor = new SlideEditor(this);
     this.manager = new SlideManager(this);
+
+    // Export manager
+    this.exportManager = new ExportManager(this);
 
     // Check for auto-saved presentation
     this._checkAutoSave();
@@ -229,9 +233,8 @@ export class PresentationSlides {
     const presenterBtn = this._createButton('', '🎤', 'Presenter Mode', () => this._launchPresenterMode());
     presenterBtn.id = 'presenterModeBtn';
 
-    // Export to PowerPoint button
-    const exportBtn = this._createButton('primary', '📥', 'Export to PowerPoint', () => this._exportToPowerPoint());
-    exportBtn.id = 'exportPPTBtn';
+    // Export dropdown
+    const exportDropdown = this._createExportDropdown();
 
     rightSide.appendChild(thumbBtn);
     rightSide.appendChild(gridBtn);
@@ -240,7 +243,7 @@ export class PresentationSlides {
     rightSide.appendChild(editBtn);
     rightSide.appendChild(manageBtn);
     rightSide.appendChild(presenterBtn);
-    rightSide.appendChild(exportBtn);
+    rightSide.appendChild(exportDropdown);
 
     topbar.appendChild(leftSide);
     topbar.appendChild(rightSide);
@@ -257,6 +260,153 @@ export class PresentationSlides {
     btn.innerHTML = `<span class="viewer-btn-icon">${icon}</span>${text ? `<span>${text}</span>` : ''}`;
     btn.addEventListener('click', onClick);
     return btn;
+  }
+
+  /**
+   * Creates export dropdown menu
+   * @private
+   */
+  _createExportDropdown() {
+    const container = document.createElement('div');
+    container.className = 'export-dropdown-container';
+    container.id = 'exportDropdownContainer';
+
+    const button = document.createElement('button');
+    button.className = 'viewer-btn primary';
+    button.id = 'exportDropdownBtn';
+    button.innerHTML = '<span class="viewer-btn-icon">📥</span><span>Export</span><span class="dropdown-arrow">▼</span>';
+
+    const menu = document.createElement('div');
+    menu.className = 'export-dropdown-menu';
+    menu.id = 'exportDropdownMenu';
+
+    const menuItems = [
+      { icon: '📊', text: 'PowerPoint (.pptx)', action: () => this._exportToPowerPoint() },
+      { icon: '📄', text: 'PDF Document', action: () => this._exportToPDF() },
+      { icon: '🖼️', text: 'Current Slide (PNG)', action: () => this._exportCurrentSlideToPNG() },
+      { icon: '🎞️', text: 'All Slides (PNG)', action: () => this._exportAllSlidesToPNG() },
+      { icon: '🖨️', text: 'Print View', action: () => this._openPrintView() }
+    ];
+
+    menuItems.forEach(item => {
+      const menuItem = document.createElement('div');
+      menuItem.className = 'export-dropdown-item';
+      menuItem.innerHTML = `<span class="export-item-icon">${item.icon}</span><span>${item.text}</span>`;
+      menuItem.addEventListener('click', () => {
+        item.action();
+        this._closeExportDropdown();
+      });
+      menu.appendChild(menuItem);
+    });
+
+    container.appendChild(button);
+    container.appendChild(menu);
+
+    // Toggle dropdown on button click
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._toggleExportDropdown();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('exportDropdownContainer');
+      if (dropdown && !dropdown.contains(e.target)) {
+        this._closeExportDropdown();
+      }
+    });
+
+    return container;
+  }
+
+  /**
+   * Toggle export dropdown visibility
+   * @private
+   */
+  _toggleExportDropdown() {
+    const menu = document.getElementById('exportDropdownMenu');
+    const button = document.getElementById('exportDropdownBtn');
+
+    if (menu && button) {
+      const isOpen = menu.classList.contains('open');
+      if (isOpen) {
+        menu.classList.remove('open');
+        button.classList.remove('active');
+      } else {
+        menu.classList.add('open');
+        button.classList.add('active');
+      }
+    }
+  }
+
+  /**
+   * Close export dropdown
+   * @private
+   */
+  _closeExportDropdown() {
+    const menu = document.getElementById('exportDropdownMenu');
+    const button = document.getElementById('exportDropdownBtn');
+
+    if (menu && button) {
+      menu.classList.remove('open');
+      button.classList.remove('active');
+    }
+  }
+
+  /**
+   * Export to PDF
+   * @private
+   */
+  async _exportToPDF() {
+    try {
+      console.log('[PresentationSlides] Exporting to PDF');
+      await this.exportManager.exportToPDF();
+    } catch (error) {
+      console.error('[PresentationSlides] PDF export failed:', error);
+      alert('Failed to export to PDF. Please try again.');
+    }
+  }
+
+  /**
+   * Export current slide to PNG
+   * @private
+   */
+  async _exportCurrentSlideToPNG() {
+    try {
+      console.log('[PresentationSlides] Exporting current slide to PNG');
+      await this.exportManager.exportCurrentSlideToPNG();
+    } catch (error) {
+      console.error('[PresentationSlides] PNG export failed:', error);
+      alert('Failed to export to PNG. Please try again.');
+    }
+  }
+
+  /**
+   * Export all slides to PNG
+   * @private
+   */
+  async _exportAllSlidesToPNG() {
+    try {
+      console.log('[PresentationSlides] Exporting all slides to PNG');
+      await this.exportManager.exportAllSlidesToPNG();
+    } catch (error) {
+      console.error('[PresentationSlides] PNG export failed:', error);
+      alert('Failed to export all slides to PNG. Please try again.');
+    }
+  }
+
+  /**
+   * Open print view
+   * @private
+   */
+  _openPrintView() {
+    try {
+      console.log('[PresentationSlides] Opening print view');
+      this.exportManager.openPrintView();
+    } catch (error) {
+      console.error('[PresentationSlides] Print view failed:', error);
+      alert('Failed to open print view. Please try again.');
+    }
   }
 
   /**
@@ -508,7 +658,7 @@ export class PresentationSlides {
       { action: 'Undo', keys: ['Ctrl+Z'] },
       { action: 'Redo', keys: ['Ctrl+Shift+Z'] },
       { action: 'Presenter mode', keys: ['M'] },
-      { action: 'Export to PowerPoint', keys: ['P'] },
+      { action: 'Export menu', keys: ['P'] },
       { action: 'Show shortcuts', keys: ['?'] },
       { action: 'Close overlay', keys: ['Esc'] }
     ];
@@ -840,7 +990,7 @@ export class PresentationSlides {
       case 'p':
       case 'P':
         e.preventDefault();
-        this._exportToPowerPoint();
+        this._toggleExportDropdown();
         break;
       case 'e':
       case 'E':
