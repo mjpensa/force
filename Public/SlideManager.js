@@ -12,7 +12,7 @@
  * Part of Phase 2: Slide Editing Capabilities
  */
 
-import { SlideDataModel } from './SlideDataModel.js';
+import { createBlankSlide } from './SlideDataModel.js';
 
 export class SlideManager {
   /**
@@ -30,7 +30,7 @@ export class SlideManager {
   addSlide(type = 'bullets') {
     try {
       // Create blank slide of specified type
-      const newSlide = SlideDataModel.createBlankSlide(type);
+      const newSlide = createBlankSlide(type);
 
       // Insert after current slide
       const insertIndex = this.presentation.currentSlideIndex + 1;
