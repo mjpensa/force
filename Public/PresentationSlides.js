@@ -1,553 +1,736 @@
 /**
- * PresentationSlides Module
- * Renders AI-generated presentation slides in a collapsible format
- * Displays professional slide content with navigation
+ * Modern Presentation Viewer Module
+ * Fixed 16:9 aspect ratio | Ultra modern design
+ * Features: Thumbnail sidebar, grid view, fullscreen, keyboard shortcuts
  */
 
 import { CONFIG } from './config.js';
 
 /**
  * PresentationSlides Class
- * Responsible for rendering and managing the presentation slides component
+ * Manages the modern presentation viewer with advanced navigation
  */
 export class PresentationSlides {
   /**
    * Creates a new PresentationSlides instance
    * @param {Object} slidesData - The presentation slides data from the API
-   * @param {string} footerSVG - The SVG content for the header/footer decoration
+   * @param {string} footerSVG - The SVG content for decorations (legacy, unused in modern viewer)
    */
   constructor(slidesData, footerSVG) {
     this.slidesData = slidesData;
     this.footerSVG = footerSVG;
-    this.isExpanded = true; // Default to expanded on load
     this.currentSlideIndex = 0;
     this.container = null;
+    this.isGridView = false;
+    this.isFullscreen = false;
+    this.isSidebarVisible = true;
+    this.shortcutsOverlayVisible = false;
+
+    // Keyboard shortcuts binding
+    this.handleKeyPress = this.handleKeyPress.bind(this);
   }
 
   /**
-   * Renders the presentation slides component
-   * @returns {HTMLElement} The rendered presentation slides container
+   * Renders the modern presentation viewer
+   * @returns {HTMLElement} The rendered presentation viewer container
    */
   render() {
     // Create main container
     this.container = document.createElement('div');
-    this.container.className = 'presentation-slides-container';
-    this.container.id = 'presentationSlides';
+    this.container.className = 'presentation-viewer';
+    this.container.id = 'presentationViewer';
 
     // Check if slides data exists
     if (!this.slidesData || !this.slidesData.slides || this.slidesData.slides.length === 0) {
-      this.container.innerHTML = '<p class="slides-unavailable">Presentation slides not available for this chart.</p>';
+      this.container.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #9ca3af;">
+          <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+            <p style="font-size: 1.25rem; font-weight: 500;">No slides available</p>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">Slides will appear here once generated</p>
+          </div>
+        </div>
+      `;
       return this.container;
     }
 
-    // Build header
-    const header = this._buildHeader();
-    this.container.appendChild(header);
+    // Build modern viewer structure
+    this._buildProgressBar();
+    this._buildTopBar();
 
-    // Build content
-    const content = this._buildContent();
-    this.container.appendChild(content);
+    const mainContent = this._buildMainContent();
+    this.container.appendChild(mainContent);
+
+    this._buildBottomBar();
+    this._buildShortcutsOverlay();
+
+    // Add keyboard event listeners
+    document.addEventListener('keydown', this.handleKeyPress);
 
     return this.container;
   }
 
   /**
-   * Builds the header section with title and toggle button
+   * Builds the progress bar
    * @private
-   * @returns {HTMLElement} The header element
    */
-  _buildHeader() {
-    const header = document.createElement('div');
-    header.className = 'slides-header';
+  _buildProgressBar() {
+    const progress = document.createElement('div');
+    progress.className = 'viewer-progress';
 
-    const title = document.createElement('h2');
-    title.className = 'slides-title';
-    title.innerHTML = '<span class="icon">📊</span> Presentation Slides';
+    const progressBar = document.createElement('div');
+    progressBar.className = 'viewer-progress-bar';
+    progressBar.id = 'viewerProgressBar';
+    progressBar.style.width = this._calculateProgress();
 
-    const toggleBtn = document.createElement('button');
-    toggleBtn.className = 'expand-toggle';
-    toggleBtn.setAttribute('aria-label', 'Toggle slides');
-    toggleBtn.innerHTML = `<span class="chevron">${this.isExpanded ? '▼' : '▶'}</span>`;
-
-    // Make entire header clickable
-    header.addEventListener('click', () => this._toggleExpand());
-
-    header.appendChild(title);
-    header.appendChild(toggleBtn);
-
-    return header;
+    progress.appendChild(progressBar);
+    this.container.appendChild(progress);
   }
 
   /**
-   * Builds the content section with all slides
+   * Calculates progress percentage
    * @private
-   * @returns {HTMLElement} The content element
+   * @returns {string} Progress percentage
    */
-  _buildContent() {
+  _calculateProgress() {
+    const total = this.slidesData.slides.length;
+    const current = this.currentSlideIndex + 1;
+    return `${(current / total) * 100}%`;
+  }
+
+  /**
+   * Builds the top bar with controls
+   * @private
+   */
+  _buildTopBar() {
+    const topbar = document.createElement('div');
+    topbar.className = 'viewer-topbar';
+
+    // Left side
+    const leftSide = document.createElement('div');
+    leftSide.className = 'viewer-topbar-left';
+
+    const title = document.createElement('div');
+    title.className = 'viewer-title';
+    title.innerHTML = `<span class="viewer-title-icon">🎯</span> Presentation`;
+
+    const counter = document.createElement('div');
+    counter.className = 'slide-counter';
+    counter.id = 'slideCounter';
+    counter.innerHTML = `
+      <span class="slide-counter-current">${this.currentSlideIndex + 1}</span>
+      <span>/</span>
+      <span>${this.slidesData.slides.length}</span>
+    `;
+
+    leftSide.appendChild(title);
+    leftSide.appendChild(counter);
+
+    // Right side
+    const rightSide = document.createElement('div');
+    rightSide.className = 'viewer-topbar-right';
+
+    // Toggle thumbnails button
+    const thumbBtn = this._createButton('icon-only', '☰', 'Toggle Thumbnails', () => this._toggleSidebar());
+    thumbBtn.id = 'toggleSidebarBtn';
+    if (this.isSidebarVisible) thumbBtn.classList.add('active');
+
+    // Grid view button
+    const gridBtn = this._createButton('', '⊞', 'Grid View', () => this._toggleGridView());
+    gridBtn.id = 'toggleGridBtn';
+
+    // Fullscreen button
+    const fullscreenBtn = this._createButton('', '⛶', 'Fullscreen', () => this._toggleFullscreen());
+    fullscreenBtn.id = 'toggleFullscreenBtn';
+
+    // Keyboard shortcuts button
+    const shortcutsBtn = this._createButton('icon-only', '?', 'Keyboard Shortcuts', () => this._toggleShortcuts());
+
+    rightSide.appendChild(thumbBtn);
+    rightSide.appendChild(gridBtn);
+    rightSide.appendChild(fullscreenBtn);
+    rightSide.appendChild(shortcutsBtn);
+
+    topbar.appendChild(leftSide);
+    topbar.appendChild(rightSide);
+    this.container.appendChild(topbar);
+  }
+
+  /**
+   * Creates a control button
+   * @private
+   */
+  _createButton(additionalClass, icon, text, onClick) {
+    const btn = document.createElement('button');
+    btn.className = `viewer-btn ${additionalClass}`;
+    btn.innerHTML = `<span class="viewer-btn-icon">${icon}</span>${text ? `<span>${text}</span>` : ''}`;
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  /**
+   * Builds the main content area (sidebar + stage)
+   * @private
+   * @returns {HTMLElement} Main content container
+   */
+  _buildMainContent() {
+    const main = document.createElement('div');
+    main.className = 'viewer-main';
+
+    // Sidebar with thumbnails
+    const sidebar = this._buildSidebar();
+    main.appendChild(sidebar);
+
+    // Stage area
+    const stage = this._buildStage();
+    main.appendChild(stage);
+
+    return main;
+  }
+
+  /**
+   * Builds the thumbnail sidebar
+   * @private
+   * @returns {HTMLElement} Sidebar container
+   */
+  _buildSidebar() {
+    const sidebar = document.createElement('div');
+    sidebar.className = 'viewer-sidebar';
+    sidebar.id = 'viewerSidebar';
+    if (!this.isSidebarVisible) sidebar.classList.add('hidden');
+
+    const header = document.createElement('div');
+    header.className = 'sidebar-header';
+    header.innerHTML = '<div class="sidebar-title">Slides</div>';
+
+    const thumbnailContainer = document.createElement('div');
+    thumbnailContainer.className = 'thumbnail-container';
+    thumbnailContainer.id = 'thumbnailContainer';
+
+    // Generate thumbnails for all slides
+    this.slidesData.slides.forEach((slide, index) => {
+      const thumbnail = this._createThumbnail(slide, index);
+      thumbnailContainer.appendChild(thumbnail);
+    });
+
+    sidebar.appendChild(header);
+    sidebar.appendChild(thumbnailContainer);
+
+    return sidebar;
+  }
+
+  /**
+   * Creates a thumbnail item
+   * @private
+   */
+  _createThumbnail(slide, index) {
+    const item = document.createElement('div');
+    item.className = 'thumbnail-item';
+    item.setAttribute('data-slide-index', index);
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('role', 'button');
+    item.setAttribute('aria-label', `Go to slide ${index + 1}`);
+
+    if (index === this.currentSlideIndex) {
+      item.classList.add('active');
+    }
+
+    const slidePreview = document.createElement('div');
+    slidePreview.className = 'thumbnail-slide';
+    slidePreview.innerHTML = `
+      <div class="thumbnail-number">${String(index + 1).padStart(2, '0')}</div>
+      <div class="thumbnail-placeholder">Slide ${index + 1}</div>
+    `;
+
+    item.appendChild(slidePreview);
+
+    // Click handler
+    item.addEventListener('click', () => this._goToSlide(index));
+    item.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this._goToSlide(index);
+      }
+    });
+
+    return item;
+  }
+
+  /**
+   * Builds the stage area (main slide display)
+   * @private
+   * @returns {HTMLElement} Stage container
+   */
+  _buildStage() {
+    const stage = document.createElement('div');
+    stage.className = 'viewer-stage';
+    stage.id = 'viewerStage';
+
+    // Create slide viewport with 16:9 aspect ratio
+    const viewport = document.createElement('div');
+    viewport.className = 'slide-viewport';
+    viewport.id = 'slideViewport';
+
+    // Navigation arrows
+    const prevArrow = this._createNavArrow('prev');
+    const nextArrow = this._createNavArrow('next');
+
+    // Slide content
+    const slideContent = this._buildSlideContent(this.currentSlideIndex);
+
+    viewport.appendChild(prevArrow);
+    viewport.appendChild(slideContent);
+    viewport.appendChild(nextArrow);
+
+    stage.appendChild(viewport);
+
+    return stage;
+  }
+
+  /**
+   * Creates navigation arrow button
+   * @private
+   */
+  _createNavArrow(direction) {
+    const arrow = document.createElement('button');
+    arrow.className = `slide-nav-arrow ${direction}`;
+    arrow.setAttribute('aria-label', direction === 'prev' ? 'Previous slide' : 'Next slide');
+    arrow.innerHTML = direction === 'prev' ? '◀' : '▶';
+
+    arrow.addEventListener('click', () => {
+      if (direction === 'prev') {
+        this._previousSlide();
+      } else {
+        this._nextSlide();
+      }
+    });
+
+    // Update disabled state
+    this._updateArrowState(arrow, direction);
+
+    return arrow;
+  }
+
+  /**
+   * Updates arrow button disabled state
+   * @private
+   */
+  _updateArrowState(arrow, direction) {
+    if (direction === 'prev') {
+      arrow.disabled = this.currentSlideIndex === 0;
+    } else {
+      arrow.disabled = this.currentSlideIndex === this.slidesData.slides.length - 1;
+    }
+  }
+
+  /**
+   * Builds slide content (blank white slide for now)
+   * @private
+   */
+  _buildSlideContent(index) {
     const content = document.createElement('div');
-    content.className = 'slides-content';
-    content.style.display = this.isExpanded ? 'block' : 'none';
+    content.className = 'slide-content';
+    content.id = 'slideContent';
 
-    // Create slide viewer
-    const slideViewer = document.createElement('div');
-    slideViewer.className = 'slide-viewer';
-
-    // Create slide display
-    const slideDisplay = document.createElement('div');
-    slideDisplay.className = 'slide-display';
-    slideDisplay.id = 'currentSlide';
-
-    // Render the first slide
-    this._renderSlide(slideDisplay, this.currentSlideIndex);
-
-    slideViewer.appendChild(slideDisplay);
-
-    // Create navigation controls
-    const navigation = this._buildNavigation();
-    slideViewer.appendChild(navigation);
-
-    content.appendChild(slideViewer);
+    // Blank white slide with placeholder
+    content.innerHTML = `
+      <div class="slide-placeholder">
+        <div class="slide-placeholder-icon">📄</div>
+        <div class="slide-placeholder-text">Slide ${index + 1}</div>
+        <div class="slide-placeholder-subtext">Custom slide templates will be loaded here</div>
+      </div>
+    `;
 
     return content;
   }
 
   /**
-   * Renders a specific slide
-   * @private
-   * @param {HTMLElement} container - The container to render the slide into
-   * @param {number} index - The index of the slide to render
-   */
-  _renderSlide(container, index) {
-    const slide = this.slidesData.slides[index];
-    container.innerHTML = '';
-
-    // Create swiper-slide structure matching the template
-    const swiperSlide = document.createElement('div');
-    swiperSlide.className = `swiper-slide slide-${slide.type}`;
-
-    const slideContainer = document.createElement('div');
-    slideContainer.className = 'slide-container';
-
-    // Add slide number
-    const slideNumber = document.createElement('div');
-    slideNumber.className = 'slide-number';
-    slideNumber.textContent = `${String(index + 1).padStart(2, '0')}`;
-
-    // Render based on slide type
-    switch (slide.type) {
-      case 'title':
-        this._renderTitleSlide(slideContainer, slide);
-        break;
-      case 'narrative':
-        this._renderNarrativeSlide(slideContainer, slide);
-        break;
-      case 'drivers':
-        this._renderDriversSlide(slideContainer, slide);
-        break;
-      case 'dependencies':
-        this._renderDependenciesSlide(slideContainer, slide);
-        break;
-      case 'risks':
-        this._renderRisksSlide(slideContainer, slide);
-        break;
-      case 'insights':
-        this._renderInsightsSlide(slideContainer, slide);
-        break;
-      case 'simple':
-        this._renderSimpleSlide(slideContainer, slide);
-        break;
-      default:
-        this._renderSimpleSlide(slideContainer, slide);
-    }
-
-    slideContainer.appendChild(slideNumber);
-    swiperSlide.appendChild(slideContainer);
-    container.appendChild(swiperSlide);
-  }
-
-  /**
-   * Renders a title slide
+   * Builds the bottom navigation bar
    * @private
    */
-  _renderTitleSlide(container, slide) {
-    const content = document.createElement('div');
-    content.className = 'title-content';
-    content.innerHTML = `
-      <h1 class="main-title">${slide.title || 'AI-Powered Strategic Intelligence'}</h1>
-      <div class="title-accent"></div>
-      <p class="subtitle">${slide.subtitle || 'Strategic Intelligence Brief'}</p>
-    `;
-    container.appendChild(content);
-  }
-
-  /**
-   * Renders a narrative slide
-   * @private
-   */
-  _renderNarrativeSlide(container, slide) {
-    const header = document.createElement('div');
-    header.className = 'narrative-header';
-
-    const title = document.createElement('h2');
-    title.className = 'narrative-title';
-    title.textContent = slide.title || 'Elevator Pitch';
-    header.appendChild(title);
-
-    const narrativeContent = document.createElement('div');
-    narrativeContent.className = 'narrative-content';
-
-    if (Array.isArray(slide.content)) {
-      slide.content.forEach(paragraph => {
-        const p = document.createElement('p');
-        p.textContent = paragraph;
-        narrativeContent.appendChild(p);
-      });
-    } else {
-      const p = document.createElement('p');
-      p.textContent = slide.content;
-      narrativeContent.appendChild(p);
-    }
-
-    container.appendChild(header);
-    container.appendChild(narrativeContent);
-  }
-
-  /**
-   * Renders a drivers slide
-   * @private
-   */
-  _renderDriversSlide(container, slide) {
-    const header = document.createElement('div');
-    header.className = 'drivers-header';
-
-    const title = document.createElement('h2');
-    title.className = 'drivers-title';
-    title.textContent = slide.title || 'Key Strategic Drivers';
-    header.appendChild(title);
-
-    const driversList = document.createElement('div');
-    driversList.className = 'drivers-list';
-
-    if (slide.drivers && Array.isArray(slide.drivers)) {
-      slide.drivers.forEach((driver, idx) => {
-        const driverItem = document.createElement('div');
-        driverItem.className = 'driver-item';
-        driverItem.innerHTML = `
-          <div class="driver-bullet">${idx + 1}</div>
-          <div class="driver-content">
-            <h3 class="driver-title">${driver.title}</h3>
-            <p class="driver-description">${driver.description}</p>
-          </div>
-        `;
-        driversList.appendChild(driverItem);
-      });
-    }
-
-    container.appendChild(header);
-    container.appendChild(driversList);
-  }
-
-  /**
-   * Renders a dependencies slide
-   * @private
-   */
-  _renderDependenciesSlide(container, slide) {
-    const header = document.createElement('div');
-    header.className = 'dependencies-header';
-
-    const title = document.createElement('h2');
-    title.className = 'dependencies-title';
-    title.textContent = slide.title || 'Critical Dependencies';
-    header.appendChild(title);
-
-    const dependenciesFlow = document.createElement('div');
-    dependenciesFlow.className = 'dependencies-flow';
-
-    if (slide.dependencies && Array.isArray(slide.dependencies)) {
-      slide.dependencies.forEach((dep, idx) => {
-        const depItem = document.createElement('div');
-        depItem.className = `dependency-item ${dep.criticality}`;
-        depItem.innerHTML = `
-          <h3 class="dependency-name">${dep.name}</h3>
-          <span class="dependency-criticality criticality-${dep.criticalityLevel}">${dep.criticality}</span>
-          <p class="dependency-impact">${dep.impact}</p>
-          ${idx < slide.dependencies.length - 1 ? '<span class="dependency-arrow">→</span>' : ''}
-        `;
-        dependenciesFlow.appendChild(depItem);
-      });
-    }
-
-    container.appendChild(header);
-    container.appendChild(dependenciesFlow);
-  }
-
-  /**
-   * Renders a risks slide as 3x3 matrix grid
-   * @private
-   */
-  _renderRisksSlide(container, slide) {
-    const header = document.createElement('div');
-    header.className = 'risks-header';
-
-    const title = document.createElement('h2');
-    title.className = 'risks-title';
-    title.textContent = slide.title || 'Strategic Risk Matrix';
-    header.appendChild(title);
-
-    // Create 3x3 risk matrix grid
-    const riskMatrix = document.createElement('div');
-    riskMatrix.className = 'risk-matrix';
-
-    // Group risks by probability and impact for positioning
-    const risksByCell = {};
-    if (slide.risks && Array.isArray(slide.risks)) {
-      slide.risks.forEach(risk => {
-        const key = `${risk.probability}-${risk.impact}`;
-        if (!risksByCell[key]) {
-          risksByCell[key] = [];
-        }
-        risksByCell[key].push(risk);
-      });
-    }
-
-    // Build matrix: 4 rows (header + 3 probability levels) x 4 columns (label + 3 impact levels)
-
-    // Row 1: Column headers
-    riskMatrix.appendChild(this._createMatrixLabel('')); // Empty top-left corner
-    riskMatrix.appendChild(this._createMatrixLabel('Low'));
-    riskMatrix.appendChild(this._createMatrixLabel('Medium'));
-    riskMatrix.appendChild(this._createMatrixLabel('High'));
-
-    // Row 2: High Probability
-    riskMatrix.appendChild(this._createMatrixLabel('High'));
-    riskMatrix.appendChild(this._createMatrixCell('high', 'low', risksByCell['high-low']));
-    riskMatrix.appendChild(this._createMatrixCell('high', 'medium', risksByCell['high-medium']));
-    riskMatrix.appendChild(this._createMatrixCell('high', 'high', risksByCell['high-high']));
-
-    // Row 3: Medium Probability
-    riskMatrix.appendChild(this._createMatrixLabel('Medium'));
-    riskMatrix.appendChild(this._createMatrixCell('medium', 'low', risksByCell['medium-low']));
-    riskMatrix.appendChild(this._createMatrixCell('medium', 'medium', risksByCell['medium-medium']));
-    riskMatrix.appendChild(this._createMatrixCell('medium', 'high', risksByCell['medium-high']));
-
-    // Row 4: Low Probability
-    riskMatrix.appendChild(this._createMatrixLabel('Low'));
-    riskMatrix.appendChild(this._createMatrixCell('low', 'low', risksByCell['low-low']));
-    riskMatrix.appendChild(this._createMatrixCell('low', 'medium', risksByCell['low-medium']));
-    riskMatrix.appendChild(this._createMatrixCell('low', 'high', risksByCell['low-high']));
-
-    // Create wrapper for matrix and axis labels
-    const matrixWrapper = document.createElement('div');
-    matrixWrapper.style.position = 'relative';
-    matrixWrapper.style.display = 'inline-block';
-    matrixWrapper.style.margin = '0 auto';
-
-    // Add axis labels
-    const xAxisLabel = document.createElement('span');
-    xAxisLabel.className = 'axis-label x-axis';
-    xAxisLabel.textContent = 'Impact →';
-
-    const yAxisLabel = document.createElement('span');
-    yAxisLabel.className = 'axis-label y-axis';
-    yAxisLabel.textContent = 'Probability';
-
-    matrixWrapper.appendChild(riskMatrix);
-    matrixWrapper.appendChild(xAxisLabel);
-    matrixWrapper.appendChild(yAxisLabel);
-
-    container.appendChild(header);
-    container.appendChild(matrixWrapper);
-  }
-
-  /**
-   * Creates a matrix label cell
-   * @private
-   */
-  _createMatrixLabel(text) {
-    const label = document.createElement('div');
-    label.className = 'matrix-label';
-    label.textContent = text;
-    return label;
-  }
-
-  /**
-   * Creates a matrix cell with risks
-   * @private
-   */
-  _createMatrixCell(probability, impact, risks) {
-    const cell = document.createElement('div');
-    cell.className = `matrix-cell ${probability}-${impact}`;
-
-    if (risks && risks.length > 0) {
-      risks.forEach(risk => {
-        const riskItem = document.createElement('div');
-        riskItem.className = 'risk-item';
-        riskItem.innerHTML = `<p class="risk-description">${risk.description}</p>`;
-        cell.appendChild(riskItem);
-      });
-    }
-
-    return cell;
-  }
-
-  /**
-   * Renders an insights slide
-   * @private
-   */
-  _renderInsightsSlide(container, slide) {
-    const header = document.createElement('div');
-    header.className = 'insights-header';
-
-    const title = document.createElement('h2');
-    title.className = 'insights-title';
-    title.textContent = slide.title || 'Expert Conversation Points';
-    header.appendChild(title);
-
-    const insightsGrid = document.createElement('div');
-    insightsGrid.className = 'insights-grid';
-
-    if (slide.insights && Array.isArray(slide.insights)) {
-      slide.insights.forEach(insight => {
-        const insightCard = document.createElement('div');
-        insightCard.className = 'insight-card';
-        insightCard.innerHTML = `
-          <span class="insight-category">${insight.category}</span>
-          <p class="insight-text">${insight.text}</p>
-        `;
-        insightsGrid.appendChild(insightCard);
-      });
-    }
-
-    container.appendChild(header);
-    container.appendChild(insightsGrid);
-  }
-
-  /**
-   * Renders a simple text slide
-   * @private
-   */
-  _renderSimpleSlide(container, slide) {
-    const content = document.createElement('div');
-    content.className = 'simple-content';
-
-    const header = document.createElement('h2');
-    header.className = 'simple-title';
-    header.textContent = slide.title || 'Summary';
-
-    const textContent = document.createElement('div');
-    textContent.className = 'simple-text';
-
-    // Handle content as array or string for backwards compatibility
-    if (Array.isArray(slide.content)) {
-      slide.content.forEach(item => {
-        const p = document.createElement('p');
-        p.textContent = item;
-        textContent.appendChild(p);
-      });
-    } else {
-      const p = document.createElement('p');
-      p.textContent = slide.content || slide.text || '';
-      textContent.appendChild(p);
-    }
-
-    content.appendChild(header);
-    content.appendChild(textContent);
-    container.appendChild(content);
-  }
-
-  /**
-   * Builds the navigation controls
-   * @private
-   * @returns {HTMLElement} The navigation element
-   */
-  _buildNavigation() {
-    const nav = document.createElement('div');
-    nav.className = 'slide-navigation';
+  _buildBottomBar() {
+    const bottombar = document.createElement('div');
+    bottombar.className = 'viewer-bottombar';
 
     const prevBtn = document.createElement('button');
-    prevBtn.className = 'nav-btn prev-btn';
+    prevBtn.className = 'viewer-nav-btn';
+    prevBtn.id = 'prevSlideBtn';
     prevBtn.innerHTML = '◀ Previous';
-    prevBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this._previousSlide();
-    });
-
-    const slideIndicator = document.createElement('div');
-    slideIndicator.className = 'slide-indicator';
-    slideIndicator.id = 'slideIndicator';
-    slideIndicator.textContent = `${this.currentSlideIndex + 1} / ${this.slidesData.slides.length}`;
+    prevBtn.addEventListener('click', () => this._previousSlide());
+    prevBtn.disabled = this.currentSlideIndex === 0;
 
     const nextBtn = document.createElement('button');
-    nextBtn.className = 'nav-btn next-btn';
+    nextBtn.className = 'viewer-nav-btn';
+    nextBtn.id = 'nextSlideBtn';
     nextBtn.innerHTML = 'Next ▶';
-    nextBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this._nextSlide();
-    });
+    nextBtn.addEventListener('click', () => this._nextSlide());
+    nextBtn.disabled = this.currentSlideIndex === this.slidesData.slides.length - 1;
 
-    nav.appendChild(prevBtn);
-    nav.appendChild(slideIndicator);
-    nav.appendChild(nextBtn);
+    bottombar.appendChild(prevBtn);
+    bottombar.appendChild(nextBtn);
 
-    return nav;
+    this.container.appendChild(bottombar);
   }
 
   /**
-   * Navigates to the previous slide
+   * Builds keyboard shortcuts overlay
+   * @private
+   */
+  _buildShortcutsOverlay() {
+    const overlay = document.createElement('div');
+    overlay.className = 'shortcuts-overlay';
+    overlay.id = 'shortcutsOverlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'shortcuts-modal';
+
+    const header = document.createElement('div');
+    header.className = 'shortcuts-header';
+    header.innerHTML = `
+      <h2 class="shortcuts-title">Keyboard Shortcuts</h2>
+      <button class="shortcuts-close" aria-label="Close">×</button>
+    `;
+
+    const closeBtn = header.querySelector('.shortcuts-close');
+    closeBtn.addEventListener('click', () => this._toggleShortcuts());
+
+    const shortcuts = [
+      { action: 'Next slide', keys: ['→', 'Space'] },
+      { action: 'Previous slide', keys: ['←'] },
+      { action: 'First slide', keys: ['Home'] },
+      { action: 'Last slide', keys: ['End'] },
+      { action: 'Toggle grid view', keys: ['G'] },
+      { action: 'Toggle fullscreen', keys: ['F'] },
+      { action: 'Toggle thumbnails', keys: ['T'] },
+      { action: 'Show shortcuts', keys: ['?'] },
+      { action: 'Close overlay', keys: ['Esc'] }
+    ];
+
+    const list = document.createElement('div');
+    list.className = 'shortcuts-list';
+
+    shortcuts.forEach(shortcut => {
+      const item = document.createElement('div');
+      item.className = 'shortcut-item';
+
+      const action = document.createElement('div');
+      action.className = 'shortcut-action';
+      action.textContent = shortcut.action;
+
+      const keys = document.createElement('div');
+      keys.className = 'shortcut-keys';
+      shortcut.keys.forEach(key => {
+        const keyEl = document.createElement('span');
+        keyEl.className = 'shortcut-key';
+        keyEl.textContent = key;
+        keys.appendChild(keyEl);
+      });
+
+      item.appendChild(action);
+      item.appendChild(keys);
+      list.appendChild(item);
+    });
+
+    modal.appendChild(header);
+    modal.appendChild(list);
+    overlay.appendChild(modal);
+
+    // Click outside to close
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        this._toggleShortcuts();
+      }
+    });
+
+    this.container.appendChild(overlay);
+  }
+
+  /**
+   * Navigation: Go to specific slide
+   * @private
+   */
+  _goToSlide(index) {
+    if (index < 0 || index >= this.slidesData.slides.length) return;
+
+    this.currentSlideIndex = index;
+    this._updateViewer();
+  }
+
+  /**
+   * Navigation: Previous slide
    * @private
    */
   _previousSlide() {
     if (this.currentSlideIndex > 0) {
       this.currentSlideIndex--;
-      const slideDisplay = document.getElementById('currentSlide');
-      const slideIndicator = document.getElementById('slideIndicator');
-
-      if (slideDisplay) {
-        this._renderSlide(slideDisplay, this.currentSlideIndex);
-      }
-
-      if (slideIndicator) {
-        slideIndicator.textContent = `${this.currentSlideIndex + 1} / ${this.slidesData.slides.length}`;
-      }
+      this._updateViewer();
     }
   }
 
   /**
-   * Navigates to the next slide
+   * Navigation: Next slide
    * @private
    */
   _nextSlide() {
     if (this.currentSlideIndex < this.slidesData.slides.length - 1) {
       this.currentSlideIndex++;
-      const slideDisplay = document.getElementById('currentSlide');
-      const slideIndicator = document.getElementById('slideIndicator');
+      this._updateViewer();
+    }
+  }
 
-      if (slideDisplay) {
-        this._renderSlide(slideDisplay, this.currentSlideIndex);
+  /**
+   * Updates the viewer UI after slide change
+   * @private
+   */
+  _updateViewer() {
+    // Update slide content
+    const slideContent = document.getElementById('slideContent');
+    if (slideContent) {
+      const newContent = this._buildSlideContent(this.currentSlideIndex);
+      slideContent.replaceWith(newContent);
+    }
+
+    // Update counter
+    const counter = document.getElementById('slideCounter');
+    if (counter) {
+      counter.innerHTML = `
+        <span class="slide-counter-current">${this.currentSlideIndex + 1}</span>
+        <span>/</span>
+        <span>${this.slidesData.slides.length}</span>
+      `;
+    }
+
+    // Update progress bar
+    const progressBar = document.getElementById('viewerProgressBar');
+    if (progressBar) {
+      progressBar.style.width = this._calculateProgress();
+    }
+
+    // Update thumbnails
+    const thumbnails = document.querySelectorAll('.thumbnail-item');
+    thumbnails.forEach((thumb, index) => {
+      thumb.classList.toggle('active', index === this.currentSlideIndex);
+    });
+
+    // Scroll active thumbnail into view
+    const activeThumbnail = document.querySelector('.thumbnail-item.active');
+    if (activeThumbnail) {
+      activeThumbnail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Update navigation buttons
+    const prevBtn = document.getElementById('prevSlideBtn');
+    const nextBtn = document.getElementById('nextSlideBtn');
+    if (prevBtn) prevBtn.disabled = this.currentSlideIndex === 0;
+    if (nextBtn) nextBtn.disabled = this.currentSlideIndex === this.slidesData.slides.length - 1;
+
+    // Update nav arrows
+    const prevArrow = document.querySelector('.slide-nav-arrow.prev');
+    const nextArrow = document.querySelector('.slide-nav-arrow.next');
+    if (prevArrow) prevArrow.disabled = this.currentSlideIndex === 0;
+    if (nextArrow) nextArrow.disabled = this.currentSlideIndex === this.slidesData.slides.length - 1;
+  }
+
+  /**
+   * Toggle sidebar visibility
+   * @private
+   */
+  _toggleSidebar() {
+    this.isSidebarVisible = !this.isSidebarVisible;
+
+    const sidebar = document.getElementById('viewerSidebar');
+    const toggleBtn = document.getElementById('toggleSidebarBtn');
+
+    if (sidebar) {
+      sidebar.classList.toggle('hidden', !this.isSidebarVisible);
+    }
+
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('active', this.isSidebarVisible);
+    }
+  }
+
+  /**
+   * Toggle grid view
+   * @private
+   */
+  _toggleGridView() {
+    this.isGridView = !this.isGridView;
+
+    const stage = document.getElementById('viewerStage');
+    const toggleBtn = document.getElementById('toggleGridBtn');
+
+    if (stage) {
+      if (this.isGridView) {
+        stage.classList.add('grid-view');
+        stage.innerHTML = '';
+
+        const grid = this._buildGridView();
+        stage.appendChild(grid);
+      } else {
+        stage.classList.remove('grid-view');
+        stage.innerHTML = '';
+
+        const viewport = document.createElement('div');
+        viewport.className = 'slide-viewport';
+        viewport.id = 'slideViewport';
+
+        const prevArrow = this._createNavArrow('prev');
+        const nextArrow = this._createNavArrow('next');
+        const slideContent = this._buildSlideContent(this.currentSlideIndex);
+
+        viewport.appendChild(prevArrow);
+        viewport.appendChild(slideContent);
+        viewport.appendChild(nextArrow);
+
+        stage.appendChild(viewport);
       }
+    }
 
-      if (slideIndicator) {
-        slideIndicator.textContent = `${this.currentSlideIndex + 1} / ${this.slidesData.slides.length}`;
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('active', this.isGridView);
+    }
+  }
+
+  /**
+   * Builds grid view layout
+   * @private
+   */
+  _buildGridView() {
+    const grid = document.createElement('div');
+    grid.className = 'slide-grid';
+
+    this.slidesData.slides.forEach((slide, index) => {
+      const item = document.createElement('div');
+      item.className = 'slide-grid-item';
+      if (index === this.currentSlideIndex) item.classList.add('active');
+      item.setAttribute('data-slide-index', index);
+
+      const slidePreview = document.createElement('div');
+      slidePreview.className = 'slide-grid-slide';
+      slidePreview.innerHTML = `
+        <div class="slide-placeholder">
+          <div class="slide-placeholder-icon">📄</div>
+          <div class="slide-placeholder-text">Slide ${index + 1}</div>
+        </div>
+      `;
+
+      const footer = document.createElement('div');
+      footer.className = 'slide-grid-footer';
+      footer.innerHTML = `<div class="slide-grid-number">Slide ${index + 1}</div>`;
+
+      item.appendChild(slidePreview);
+      item.appendChild(footer);
+
+      item.addEventListener('click', () => {
+        this._goToSlide(index);
+        this._toggleGridView(); // Exit grid view after selection
+      });
+
+      grid.appendChild(item);
+    });
+
+    return grid;
+  }
+
+  /**
+   * Toggle fullscreen mode
+   * @private
+   */
+  _toggleFullscreen() {
+    this.isFullscreen = !this.isFullscreen;
+
+    const viewer = this.container;
+    const toggleBtn = document.getElementById('toggleFullscreenBtn');
+
+    if (viewer) {
+      viewer.classList.toggle('fullscreen', this.isFullscreen);
+
+      // Update button text
+      if (toggleBtn) {
+        const icon = this.isFullscreen ? '⛶' : '⛶';
+        const text = this.isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+        toggleBtn.innerHTML = `<span class="viewer-btn-icon">${icon}</span><span>${text}</span>`;
+        toggleBtn.classList.toggle('active', this.isFullscreen);
       }
     }
   }
 
   /**
-   * Toggles the expand/collapse state of the slides
+   * Toggle keyboard shortcuts overlay
    * @private
    */
-  _toggleExpand() {
-    this.isExpanded = !this.isExpanded;
+  _toggleShortcuts() {
+    this.shortcutsOverlayVisible = !this.shortcutsOverlayVisible;
 
-    const content = this.container.querySelector('.slides-content');
-    const chevron = this.container.querySelector('.chevron');
-
-    if (content) {
-      content.style.display = this.isExpanded ? 'block' : 'none';
+    const overlay = document.getElementById('shortcutsOverlay');
+    if (overlay) {
+      overlay.classList.toggle('visible', this.shortcutsOverlayVisible);
     }
+  }
 
-    if (chevron) {
-      chevron.textContent = this.isExpanded ? '▼' : '▶';
+  /**
+   * Handle keyboard shortcuts
+   * @private
+   */
+  handleKeyPress(e) {
+    // Don't handle if shortcuts overlay is visible (except Escape)
+    if (this.shortcutsOverlayVisible && e.key !== 'Escape') return;
+
+    switch(e.key) {
+      case 'ArrowRight':
+      case ' ':
+        e.preventDefault();
+        this._nextSlide();
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        this._previousSlide();
+        break;
+      case 'Home':
+        e.preventDefault();
+        this._goToSlide(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        this._goToSlide(this.slidesData.slides.length - 1);
+        break;
+      case 'g':
+      case 'G':
+        e.preventDefault();
+        this._toggleGridView();
+        break;
+      case 'f':
+      case 'F':
+        e.preventDefault();
+        this._toggleFullscreen();
+        break;
+      case 't':
+      case 'T':
+        e.preventDefault();
+        this._toggleSidebar();
+        break;
+      case '?':
+        e.preventDefault();
+        this._toggleShortcuts();
+        break;
+      case 'Escape':
+        e.preventDefault();
+        if (this.shortcutsOverlayVisible) {
+          this._toggleShortcuts();
+        } else if (this.isFullscreen) {
+          this._toggleFullscreen();
+        } else if (this.isGridView) {
+          this._toggleGridView();
+        }
+        break;
     }
+  }
+
+  /**
+   * Cleanup method to remove event listeners
+   */
+  destroy() {
+    document.removeEventListener('keydown', this.handleKeyPress);
   }
 }
