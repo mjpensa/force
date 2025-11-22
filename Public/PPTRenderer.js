@@ -5,10 +5,9 @@
  * Part of the PPT-export-first architecture - ensures web and PowerPoint
  * rendering are perfectly synchronized.
  *
- * Phase 1 Implementation: Supports 3 core slide types
- * - Title slides
- * - Bullet point slides
- * - Two-column slides
+ * Complete Implementation: Supports all 8 slide types
+ * Phase 1: Title, Bullet point, Two-column slides
+ * Phase 2: Image, Section, Quote, Table, Comparison slides
  *
  * Requires: PptxGenJS library (loaded via CDN in chart.html)
  */
@@ -116,6 +115,16 @@ export class PPTRenderer {
         return this._addBulletsSlide(slide, slideNumber);
       case 'two-column':
         return this._addTwoColumnSlide(slide, slideNumber);
+      case 'image':
+        return this._addImageSlide(slide, slideNumber);
+      case 'section':
+        return this._addSectionSlide(slide, slideNumber);
+      case 'quote':
+        return this._addQuoteSlide(slide, slideNumber);
+      case 'table':
+        return this._addTableSlide(slide, slideNumber);
+      case 'comparison':
+        return this._addComparisonSlide(slide, slideNumber);
       default:
         console.warn(`[PPTRenderer] Unsupported slide type: ${slide.type}`);
         return this._addUnsupportedSlide(slide, slideNumber);
@@ -418,6 +427,445 @@ export class PPTRenderer {
         valign: 'top'
       });
     }
+  }
+
+  /**
+   * Add an image slide
+   * @private
+   */
+  _addImageSlide(slideData, slideNumber) {
+    const pptSlide = this.pptx.addSlide();
+    const content = slideData.content || {};
+
+    // Set background
+    pptSlide.background = { color: this._hexToRgb(this.theme.colors.background) };
+
+    // Add branding
+    this._addBranding(pptSlide, slideNumber);
+
+    let currentY = this.theme.spacing.titleTop;
+
+    // Title
+    if (content.title && content.title.text) {
+      pptSlide.addText(content.title.text, {
+        x: this.theme.spacing.slideMargin,
+        y: currentY,
+        w: this.slideWidth - (this.theme.spacing.slideMargin * 2),
+        h: 0.6,
+        align: 'left',
+        valign: 'top',
+        fontFace: this.theme.fonts.title.family,
+        fontSize: this.theme.fonts.title.size,
+        bold: true,
+        color: this._hexToRgb(this.theme.colors.primary)
+      });
+      currentY += 0.8;
+    }
+
+    // Image
+    if (content.image && content.image.src) {
+      const imageWidth = (this.slideWidth - (this.theme.spacing.slideMargin * 2)) * 0.9;
+      const imageHeight = this.slideHeight - currentY - 0.8;
+      const imageX = this.theme.spacing.slideMargin + ((this.slideWidth - (this.theme.spacing.slideMargin * 2)) - imageWidth) / 2;
+
+      try {
+        pptSlide.addImage({
+          path: content.image.src,
+          x: imageX,
+          y: currentY,
+          w: imageWidth,
+          h: imageHeight,
+          sizing: { type: 'contain' }
+        });
+      } catch (error) {
+        console.warn('[PPTRenderer] Could not add image:', error.message);
+        // Add placeholder text
+        pptSlide.addText('[Image placeholder]', {
+          x: imageX,
+          y: currentY + imageHeight / 2,
+          w: imageWidth,
+          h: 0.5,
+          align: 'center',
+          fontSize: 16,
+          color: '999999'
+        });
+      }
+
+      // Caption
+      if (content.image.caption) {
+        pptSlide.addText(content.image.caption, {
+          x: this.theme.spacing.slideMargin,
+          y: this.slideHeight - 0.5,
+          w: this.slideWidth - (this.theme.spacing.slideMargin * 2),
+          h: 0.3,
+          align: 'center',
+          fontSize: this.theme.fonts.caption.size,
+          color: this._hexToRgb(this.theme.fonts.caption.color)
+        });
+      }
+    }
+
+    // Add notes if present
+    if (slideData.notes) {
+      pptSlide.addNotes(slideData.notes);
+    }
+
+    return pptSlide;
+  }
+
+  /**
+   * Add a section header slide
+   * @private
+   */
+  _addSectionSlide(slideData, slideNumber) {
+    const pptSlide = this.pptx.addSlide();
+    const content = slideData.content || {};
+
+    // Apply gradient background
+    if (content.background && content.background.type === 'gradient') {
+      const gradient = content.background.gradient;
+      const colors = gradient.colors || ['3b82f6', '8b5cf6'];
+
+      // PptxGenJS gradient format
+      pptSlide.background = {
+        fill: colors[0].replace('#', '')
+      };
+
+      // Add gradient shape overlay
+      pptSlide.addShape(this.pptx.ShapeType.rect, {
+        x: 0,
+        y: 0,
+        w: this.slideWidth,
+        h: this.slideHeight,
+        fill: {
+          type: 'solid',
+          color: colors[1].replace('#', ''),
+          transparency: 40
+        },
+        line: { type: 'none' }
+      });
+    } else {
+      pptSlide.background = { color: this._hexToRgb(this.theme.colors.primary) };
+    }
+
+    // Section number
+    if (content.sectionNumber) {
+      pptSlide.addText(content.sectionNumber, {
+        x: 0,
+        y: 1.5,
+        w: this.slideWidth,
+        h: 1.5,
+        align: 'center',
+        valign: 'middle',
+        fontSize: 80,
+        bold: true,
+        color: 'FFFFFF',
+        transparency: 70
+      });
+    }
+
+    // Section title
+    if (content.sectionTitle && content.sectionTitle.text) {
+      pptSlide.addText(content.sectionTitle.text, {
+        x: 0.5,
+        y: 2.3,
+        w: this.slideWidth - 1,
+        h: 1,
+        align: 'center',
+        valign: 'middle',
+        fontSize: content.sectionTitle.fontSize || 48,
+        bold: true,
+        color: 'FFFFFF'
+      });
+    }
+
+    // Description
+    if (content.description && content.description.text) {
+      pptSlide.addText(content.description.text, {
+        x: 1,
+        y: 3.5,
+        w: this.slideWidth - 2,
+        h: 0.8,
+        align: 'center',
+        valign: 'top',
+        fontSize: content.description.fontSize || 20,
+        color: 'FFFFFF'
+      });
+    }
+
+    // Add notes if present
+    if (slideData.notes) {
+      pptSlide.addNotes(slideData.notes);
+    }
+
+    return pptSlide;
+  }
+
+  /**
+   * Add a quote slide
+   * @private
+   */
+  _addQuoteSlide(slideData, slideNumber) {
+    const pptSlide = this.pptx.addSlide();
+    const content = slideData.content || {};
+
+    // Set background
+    pptSlide.background = { color: this._hexToRgb(this.theme.colors.background) };
+
+    // Add branding
+    this._addBranding(pptSlide, slideNumber);
+
+    // Quote marks (decorative)
+    if (content.quoteMarks && content.quoteMarks.enabled) {
+      pptSlide.addText('"', {
+        x: 1,
+        y: 1.5,
+        w: 1,
+        h: 1,
+        fontSize: 120,
+        bold: true,
+        color: this._hexToRgb(content.quoteMarks.color || this.theme.colors.primary),
+        transparency: 80
+      });
+    }
+
+    // Quote text
+    if (content.quote && content.quote.text) {
+      pptSlide.addText(content.quote.text, {
+        x: 1,
+        y: 2,
+        w: this.slideWidth - 2,
+        h: 1.5,
+        align: content.quote.alignment || 'center',
+        valign: 'middle',
+        fontSize: content.quote.fontSize || 32,
+        italic: content.quote.fontStyle === 'italic',
+        color: this._hexToRgb(content.quote.color || this.theme.fonts.title.color)
+      });
+    }
+
+    // Attribution
+    if (content.attribution && content.attribution.text) {
+      pptSlide.addText(content.attribution.text, {
+        x: 1,
+        y: 4,
+        w: this.slideWidth - 2,
+        h: 0.4,
+        align: content.attribution.alignment || 'right',
+        fontSize: content.attribution.fontSize || 18,
+        color: this._hexToRgb(content.attribution.color || this.theme.fonts.caption.color)
+      });
+    }
+
+    // Add notes if present
+    if (slideData.notes) {
+      pptSlide.addNotes(slideData.notes);
+    }
+
+    return pptSlide;
+  }
+
+  /**
+   * Add a table slide
+   * @private
+   */
+  _addTableSlide(slideData, slideNumber) {
+    const pptSlide = this.pptx.addSlide();
+    const content = slideData.content || {};
+
+    // Set background
+    pptSlide.background = { color: this._hexToRgb(this.theme.colors.background) };
+
+    // Add branding
+    this._addBranding(pptSlide, slideNumber);
+
+    let currentY = this.theme.spacing.titleTop;
+
+    // Title
+    if (content.title && content.title.text) {
+      pptSlide.addText(content.title.text, {
+        x: this.theme.spacing.slideMargin,
+        y: currentY,
+        w: this.slideWidth - (this.theme.spacing.slideMargin * 2),
+        h: 0.6,
+        align: 'left',
+        valign: 'top',
+        fontFace: this.theme.fonts.title.family,
+        fontSize: this.theme.fonts.title.size,
+        bold: true,
+        color: this._hexToRgb(this.theme.colors.primary)
+      });
+      currentY += 0.8;
+    }
+
+    // Table
+    if (content.table && content.table.headers && content.table.rows) {
+      const tableRows = [];
+
+      // Header row
+      const headerCells = content.table.headers.map(header => ({
+        text: header.text || header,
+        options: {
+          bold: true,
+          fontSize: this.theme.fonts.body.size - 2,
+          color: this._hexToRgb(content.table.style?.headerTextColor || '#ffffff'),
+          fill: this._hexToRgb(content.table.style?.headerBackgroundColor || this.theme.colors.primary),
+          align: header.alignment || 'left'
+        }
+      }));
+      tableRows.push(headerCells);
+
+      // Data rows
+      content.table.rows.forEach((row, rowIndex) => {
+        const cells = row.map(cell => ({
+          text: cell.text || cell,
+          options: {
+            fontSize: this.theme.fonts.body.size - 4,
+            color: this._hexToRgb(this.theme.fonts.body.color),
+            fill: (content.table.style?.alternateRowColors && rowIndex % 2 === 1)
+              ? 'F9FAFB'
+              : 'FFFFFF',
+            align: cell.alignment || 'left'
+          }
+        }));
+        tableRows.push(cells);
+      });
+
+      pptSlide.addTable(tableRows, {
+        x: this.theme.spacing.slideMargin,
+        y: currentY,
+        w: this.slideWidth - (this.theme.spacing.slideMargin * 2),
+        h: this.slideHeight - currentY - 0.5,
+        border: {
+          pt: content.table.style?.borderWidth || 1,
+          color: this._hexToRgb(content.table.style?.borderColor || '#e5e7eb')
+        }
+      });
+    }
+
+    // Add notes if present
+    if (slideData.notes) {
+      pptSlide.addNotes(slideData.notes);
+    }
+
+    return pptSlide;
+  }
+
+  /**
+   * Add a comparison slide
+   * @private
+   */
+  _addComparisonSlide(slideData, slideNumber) {
+    const pptSlide = this.pptx.addSlide();
+    const content = slideData.content || {};
+
+    // Set background
+    pptSlide.background = { color: this._hexToRgb(this.theme.colors.background) };
+
+    // Add branding
+    this._addBranding(pptSlide, slideNumber);
+
+    let currentY = this.theme.spacing.titleTop;
+
+    // Title
+    if (content.title && content.title.text) {
+      pptSlide.addText(content.title.text, {
+        x: this.theme.spacing.slideMargin,
+        y: currentY,
+        w: this.slideWidth - (this.theme.spacing.slideMargin * 2),
+        h: 0.6,
+        align: 'left',
+        valign: 'top',
+        fontFace: this.theme.fonts.title.family,
+        fontSize: this.theme.fonts.title.size,
+        bold: true,
+        color: this._hexToRgb(this.theme.colors.primary)
+      });
+      currentY += 0.8;
+    }
+
+    // Comparison items
+    if (content.items && Array.isArray(content.items)) {
+      const itemCount = content.items.length;
+      const gap = 0.2;
+      const itemWidth = (this.slideWidth - (this.theme.spacing.slideMargin * 2) - (gap * (itemCount - 1))) / itemCount;
+      const itemHeight = this.slideHeight - currentY - 0.5;
+
+      content.items.forEach((item, index) => {
+        const itemX = this.theme.spacing.slideMargin + (index * (itemWidth + gap));
+
+        // Item background box
+        pptSlide.addShape(this.pptx.ShapeType.rect, {
+          x: itemX,
+          y: currentY,
+          w: itemWidth,
+          h: itemHeight,
+          fill: { color: this._hexToRgb(item.backgroundColor || this.theme.colors.surface) },
+          line: {
+            color: this._hexToRgb(item.borderColor || this.theme.colors.primary),
+            width: 2
+          }
+        });
+
+        let itemY = currentY + 0.2;
+
+        // Icon + Label header
+        const headerText = item.icon ? `${item.icon} ${item.label}` : item.label;
+        pptSlide.addText(headerText, {
+          x: itemX + 0.1,
+          y: itemY,
+          w: itemWidth - 0.2,
+          h: 0.5,
+          fontSize: this.theme.fonts.subtitle.size - 4,
+          bold: true,
+          color: this._hexToRgb(this.theme.fonts.title.color)
+        });
+
+        itemY += 0.6;
+
+        // Add divider line
+        pptSlide.addShape(this.pptx.ShapeType.line, {
+          x: itemX + 0.1,
+          y: itemY,
+          w: itemWidth - 0.2,
+          h: 0,
+          line: {
+            color: this._hexToRgb(item.borderColor || this.theme.colors.primary),
+            width: 1
+          }
+        });
+
+        itemY += 0.1;
+
+        // Bullets
+        if (item.bullets && item.bullets.length > 0) {
+          const bulletText = item.bullets.map(bullet => ({
+            text: `${bullet.icon || '•'} ${bullet.text}`,
+            options: {
+              bullet: false,
+              fontSize: this.theme.fonts.body.size - 6,
+              color: this._hexToRgb(this.theme.fonts.body.color)
+            }
+          }));
+
+          pptSlide.addText(bulletText, {
+            x: itemX + 0.15,
+            y: itemY,
+            w: itemWidth - 0.3,
+            h: itemHeight - (itemY - currentY) - 0.2,
+            fontSize: this.theme.fonts.body.size - 6,
+            color: this._hexToRgb(this.theme.fonts.body.color)
+          });
+        }
+      });
+    }
+
+    // Add notes if present
+    if (slideData.notes) {
+      pptSlide.addNotes(slideData.notes);
+    }
+
+    return pptSlide;
   }
 
   /**

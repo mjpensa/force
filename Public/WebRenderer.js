@@ -5,10 +5,9 @@
  * Part of the PPT-export-first architecture - consumes structured data
  * from SlideDataModel and generates semantic HTML.
  *
- * Phase 1 Implementation: Supports 3 core slide types
- * - Title slides
- * - Bullet point slides
- * - Two-column slides
+ * Complete Implementation: Supports all 8 slide types
+ * Phase 1: Title, Bullet point, Two-column slides
+ * Phase 2: Image, Section, Quote, Table, Comparison slides
  */
 
 import { SLIDE_SCHEMAS } from './SlideDataModel.js';
@@ -84,6 +83,16 @@ export class WebRenderer {
         return this._renderBulletsSlide(slide, slideNumber, totalSlides);
       case 'two-column':
         return this._renderTwoColumnSlide(slide, slideNumber, totalSlides);
+      case 'image':
+        return this._renderImageSlide(slide, slideNumber, totalSlides);
+      case 'section':
+        return this._renderSectionSlide(slide, slideNumber, totalSlides);
+      case 'quote':
+        return this._renderQuoteSlide(slide, slideNumber, totalSlides);
+      case 'table':
+        return this._renderTableSlide(slide, slideNumber, totalSlides);
+      case 'comparison':
+        return this._renderComparisonSlide(slide, slideNumber, totalSlides);
       default:
         console.warn(`[WebRenderer] Unsupported slide type: ${slide.type}`);
         return this._renderUnsupportedSlide(slide, slideNumber, totalSlides);
@@ -399,6 +408,488 @@ export class WebRenderer {
     }
 
     return column;
+  }
+
+  /**
+   * Render an image slide
+   * @private
+   */
+  _renderImageSlide(slide, slideNumber, totalSlides) {
+    const container = this._createSlideContainer(slide, slideNumber);
+    const content = slide.content || {};
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'slide-content-wrapper';
+    wrapper.style.cssText = `
+      padding: ${this._toPixels(this.theme.spacing.slideMargin)}px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    `;
+
+    // Title
+    if (content.title && content.title.text) {
+      const titleEl = document.createElement('h2');
+      titleEl.className = 'slide-title';
+      titleEl.textContent = content.title.text;
+      titleEl.style.cssText = `
+        font-family: ${this.theme.fonts.title.family}, sans-serif;
+        font-size: ${this.theme.fonts.title.size}px;
+        font-weight: ${this.theme.fonts.title.weight};
+        color: ${this.theme.colors.primary};
+        margin: 0 0 ${this._toPixels(0.5)}px 0;
+        padding: 0;
+        line-height: 1.2;
+      `;
+      wrapper.appendChild(titleEl);
+    }
+
+    // Image container
+    if (content.image && content.image.src) {
+      const imageContainer = document.createElement('div');
+      imageContainer.className = 'slide-image-container';
+      imageContainer.style.cssText = `
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: ${this._toPixels(0.5)}px 0;
+      `;
+
+      const img = document.createElement('img');
+      img.src = content.image.src;
+      img.alt = content.image.alt || 'Slide image';
+      img.style.cssText = `
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      `;
+      imageContainer.appendChild(img);
+
+      // Caption
+      if (content.image.caption) {
+        const caption = document.createElement('p');
+        caption.className = 'image-caption';
+        caption.textContent = content.image.caption;
+        caption.style.cssText = `
+          font-family: ${this.theme.fonts.caption.family}, sans-serif;
+          font-size: ${this.theme.fonts.caption.size}px;
+          color: ${this.theme.fonts.caption.color};
+          margin-top: ${this._toPixels(0.25)}px;
+          text-align: center;
+        `;
+        imageContainer.appendChild(caption);
+      }
+
+      wrapper.appendChild(imageContainer);
+    }
+
+    container.appendChild(wrapper);
+    return container;
+  }
+
+  /**
+   * Render a section header slide
+   * @private
+   */
+  _renderSectionSlide(slide, slideNumber, totalSlides) {
+    const container = this._createSlideContainer(slide, slideNumber);
+    const content = slide.content || {};
+
+    // Apply gradient background
+    if (content.background && content.background.type === 'gradient') {
+      const gradient = content.background.gradient;
+      const angle = gradient.angle || 135;
+      const colors = gradient.colors || ['#3b82f6', '#8b5cf6'];
+      container.style.background = `linear-gradient(${angle}deg, ${colors.join(', ')})`;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'slide-content-wrapper';
+    wrapper.style.cssText = `
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: ${this._toPixels(this.theme.spacing.slideMargin)}px;
+    `;
+
+    // Section number
+    if (content.sectionNumber) {
+      const sectionNum = document.createElement('div');
+      sectionNum.className = 'section-number';
+      sectionNum.textContent = content.sectionNumber;
+      sectionNum.style.cssText = `
+        font-family: ${this.theme.fonts.title.family}, sans-serif;
+        font-size: 80px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.3);
+        margin-bottom: ${this._toPixels(0.5)}px;
+      `;
+      wrapper.appendChild(sectionNum);
+    }
+
+    // Section title
+    if (content.sectionTitle && content.sectionTitle.text) {
+      const sectionTitle = document.createElement('h1');
+      sectionTitle.className = 'section-title';
+      sectionTitle.textContent = content.sectionTitle.text;
+      sectionTitle.style.cssText = `
+        font-family: ${this.theme.fonts.title.family}, sans-serif;
+        font-size: ${content.sectionTitle.fontSize || 48}px;
+        font-weight: 700;
+        color: ${content.sectionTitle.color || '#ffffff'};
+        margin: 0 0 ${this._toPixels(0.5)}px 0;
+        padding: 0;
+        line-height: 1.2;
+      `;
+      wrapper.appendChild(sectionTitle);
+    }
+
+    // Description
+    if (content.description && content.description.text) {
+      const description = document.createElement('p');
+      description.className = 'section-description';
+      description.textContent = content.description.text;
+      description.style.cssText = `
+        font-family: ${this.theme.fonts.body.family}, sans-serif;
+        font-size: ${content.description.fontSize || 20}px;
+        color: ${content.description.color || '#ffffff'};
+        margin: 0;
+        max-width: 80%;
+      `;
+      wrapper.appendChild(description);
+    }
+
+    container.appendChild(wrapper);
+    return container;
+  }
+
+  /**
+   * Render a quote slide
+   * @private
+   */
+  _renderQuoteSlide(slide, slideNumber, totalSlides) {
+    const container = this._createSlideContainer(slide, slideNumber);
+    const content = slide.content || {};
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'slide-content-wrapper';
+    wrapper.style.cssText = `
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: ${this._toPixels(this.theme.spacing.slideMargin * 2)}px;
+    `;
+
+    // Quote marks (decorative)
+    if (content.quoteMarks && content.quoteMarks.enabled) {
+      const openQuote = document.createElement('div');
+      openQuote.className = 'quote-mark-open';
+      openQuote.textContent = '"';
+      openQuote.style.cssText = `
+        font-size: 120px;
+        font-weight: 700;
+        color: ${content.quoteMarks.color || this.theme.colors.primary};
+        opacity: 0.2;
+        line-height: 0.8;
+        margin-bottom: ${this._toPixels(0.5)}px;
+      `;
+      wrapper.appendChild(openQuote);
+    }
+
+    // Quote text
+    if (content.quote && content.quote.text) {
+      const quoteText = document.createElement('blockquote');
+      quoteText.className = 'quote-text';
+      quoteText.textContent = content.quote.text;
+      quoteText.style.cssText = `
+        font-family: ${this.theme.fonts.title.family}, sans-serif;
+        font-size: ${content.quote.fontSize || 32}px;
+        font-style: ${content.quote.fontStyle || 'italic'};
+        color: ${content.quote.color || this.theme.fonts.title.color};
+        text-align: ${content.quote.alignment || 'center'};
+        margin: 0 0 ${this._toPixels(0.75)}px 0;
+        max-width: 80%;
+        line-height: 1.4;
+      `;
+      wrapper.appendChild(quoteText);
+    }
+
+    // Attribution
+    if (content.attribution && content.attribution.text) {
+      const attribution = document.createElement('cite');
+      attribution.className = 'quote-attribution';
+      attribution.textContent = content.attribution.text;
+      attribution.style.cssText = `
+        font-family: ${this.theme.fonts.body.family}, sans-serif;
+        font-size: ${content.attribution.fontSize || 18}px;
+        font-style: normal;
+        color: ${content.attribution.color || this.theme.fonts.caption.color};
+        text-align: ${content.attribution.alignment || 'right'};
+        display: block;
+        width: 80%;
+      `;
+      wrapper.appendChild(attribution);
+    }
+
+    container.appendChild(wrapper);
+    return container;
+  }
+
+  /**
+   * Render a table slide
+   * @private
+   */
+  _renderTableSlide(slide, slideNumber, totalSlides) {
+    const container = this._createSlideContainer(slide, slideNumber);
+    const content = slide.content || {};
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'slide-content-wrapper';
+    wrapper.style.cssText = `
+      padding: ${this._toPixels(this.theme.spacing.slideMargin)}px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    `;
+
+    // Title
+    if (content.title && content.title.text) {
+      const titleEl = document.createElement('h2');
+      titleEl.className = 'slide-title';
+      titleEl.textContent = content.title.text;
+      titleEl.style.cssText = `
+        font-family: ${this.theme.fonts.title.family}, sans-serif;
+        font-size: ${this.theme.fonts.title.size}px;
+        font-weight: ${this.theme.fonts.title.weight};
+        color: ${this.theme.colors.primary};
+        margin: 0 0 ${this._toPixels(0.5)}px 0;
+        padding: 0;
+        line-height: 1.2;
+      `;
+      wrapper.appendChild(titleEl);
+    }
+
+    // Table
+    if (content.table && content.table.headers && content.table.rows) {
+      const tableContainer = document.createElement('div');
+      tableContainer.className = 'table-container';
+      tableContainer.style.cssText = `
+        flex: 1;
+        overflow: auto;
+        border-radius: 8px;
+      `;
+
+      const table = document.createElement('table');
+      table.style.cssText = `
+        width: 100%;
+        border-collapse: collapse;
+        font-family: ${this.theme.fonts.body.family}, sans-serif;
+        font-size: ${this.theme.fonts.body.size}px;
+      `;
+
+      // Header row
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      content.table.headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header.text || header;
+        th.style.cssText = `
+          background-color: ${content.table.style?.headerBackgroundColor || this.theme.colors.primary};
+          color: ${content.table.style?.headerTextColor || '#ffffff'};
+          padding: ${this._toPixels(0.2)}px;
+          text-align: ${header.alignment || 'left'};
+          border: ${content.table.style?.borderWidth || 1}px solid ${content.table.style?.borderColor || '#e5e7eb'};
+        `;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Data rows
+      const tbody = document.createElement('tbody');
+      content.table.rows.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
+
+        // Alternate row colors if enabled
+        if (content.table.style?.alternateRowColors && rowIndex % 2 === 1) {
+          tr.style.backgroundColor = '#f9fafb';
+        }
+
+        row.forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell.text || cell;
+          td.style.cssText = `
+            padding: ${this._toPixels(0.15)}px;
+            text-align: ${cell.alignment || 'left'};
+            border: ${content.table.style?.borderWidth || 1}px solid ${content.table.style?.borderColor || '#e5e7eb'};
+          `;
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      tableContainer.appendChild(table);
+      wrapper.appendChild(tableContainer);
+    }
+
+    container.appendChild(wrapper);
+    return container;
+  }
+
+  /**
+   * Render a comparison slide
+   * @private
+   */
+  _renderComparisonSlide(slide, slideNumber, totalSlides) {
+    const container = this._createSlideContainer(slide, slideNumber);
+    const content = slide.content || {};
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'slide-content-wrapper';
+    wrapper.style.cssText = `
+      padding: ${this._toPixels(this.theme.spacing.slideMargin)}px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    `;
+
+    // Title
+    if (content.title && content.title.text) {
+      const titleEl = document.createElement('h2');
+      titleEl.className = 'slide-title';
+      titleEl.textContent = content.title.text;
+      titleEl.style.cssText = `
+        font-family: ${this.theme.fonts.title.family}, sans-serif;
+        font-size: ${this.theme.fonts.title.size}px;
+        font-weight: ${this.theme.fonts.title.weight};
+        color: ${this.theme.colors.primary};
+        margin: 0 0 ${this._toPixels(0.5)}px 0;
+        padding: 0;
+        line-height: 1.2;
+      `;
+      wrapper.appendChild(titleEl);
+    }
+
+    // Comparison grid
+    if (content.items && Array.isArray(content.items)) {
+      const grid = document.createElement('div');
+      grid.className = 'comparison-grid';
+      grid.style.cssText = `
+        display: grid;
+        grid-template-columns: repeat(${content.items.length}, 1fr);
+        gap: ${this._toPixels(0.5)}px;
+        flex: 1;
+      `;
+
+      content.items.forEach(item => {
+        const itemCard = document.createElement('div');
+        itemCard.className = 'comparison-item';
+        itemCard.style.cssText = `
+          background-color: ${item.backgroundColor || this.theme.colors.surface};
+          border: 2px solid ${item.borderColor || this.theme.colors.primary};
+          border-radius: 8px;
+          padding: ${this._toPixels(0.5)}px;
+          display: flex;
+          flex-direction: column;
+        `;
+
+        // Item header with icon and label
+        const header = document.createElement('div');
+        header.className = 'comparison-header';
+        header.style.cssText = `
+          display: flex;
+          align-items: center;
+          gap: ${this._toPixels(0.2)}px;
+          margin-bottom: ${this._toPixels(0.3)}px;
+          padding-bottom: ${this._toPixels(0.2)}px;
+          border-bottom: 1px solid ${item.borderColor || this.theme.colors.primary};
+        `;
+
+        if (item.icon) {
+          const icon = document.createElement('span');
+          icon.className = 'comparison-icon';
+          icon.textContent = item.icon;
+          icon.style.cssText = `
+            font-size: 32px;
+          `;
+          header.appendChild(icon);
+        }
+
+        const label = document.createElement('h3');
+        label.className = 'comparison-label';
+        label.textContent = item.label;
+        label.style.cssText = `
+          font-family: ${this.theme.fonts.subtitle.family}, sans-serif;
+          font-size: ${this.theme.fonts.subtitle.size}px;
+          font-weight: ${this.theme.fonts.subtitle.weight};
+          color: ${this.theme.fonts.title.color};
+          margin: 0;
+        `;
+        header.appendChild(label);
+
+        itemCard.appendChild(header);
+
+        // Bullets
+        if (item.bullets && item.bullets.length > 0) {
+          const bulletList = document.createElement('ul');
+          bulletList.style.cssText = `
+            list-style: none;
+            margin: 0;
+            padding: 0;
+          `;
+
+          item.bullets.forEach(bullet => {
+            const li = document.createElement('li');
+            li.style.cssText = `
+              font-family: ${this.theme.fonts.body.family}, sans-serif;
+              font-size: ${this.theme.fonts.body.size - 2}px;
+              color: ${this.theme.fonts.body.color};
+              margin-bottom: ${this._toPixels(0.15)}px;
+              padding-left: ${this._toPixels(0.3)}px;
+              position: relative;
+            `;
+
+            if (bullet.icon) {
+              const bulletIcon = document.createElement('span');
+              bulletIcon.textContent = bullet.icon;
+              bulletIcon.style.cssText = `
+                position: absolute;
+                left: 0;
+                color: ${bullet.type === 'pro' ? '#10b981' : '#ef4444'};
+              `;
+              li.appendChild(bulletIcon);
+            }
+
+            const bulletText = document.createElement('span');
+            bulletText.textContent = bullet.text;
+            bulletText.style.marginLeft = bullet.icon ? `${this._toPixels(0.25)}px` : '0';
+            li.appendChild(bulletText);
+
+            bulletList.appendChild(li);
+          });
+
+          itemCard.appendChild(bulletList);
+        }
+
+        grid.appendChild(itemCard);
+      });
+
+      wrapper.appendChild(grid);
+    }
+
+    container.appendChild(wrapper);
+    return container;
   }
 
   /**
