@@ -64,7 +64,7 @@
       try {
         // Step 1: Import SlideTemplates
         log('Step 1: Importing SlideTemplates.js...', 'Attempting import...', 'info');
-        const SlideTemplatesModule = await import('./Public/SlideTemplates.js');
+        const SlideTemplatesModule = await import('./SlideTemplates.js');
         log('Step 1: Import SUCCESS', JSON.stringify(Object.keys(SlideTemplatesModule), null, 2), 'success');
 
         const { CUSTOM_SLIDE_TYPES } = SlideTemplatesModule;
