@@ -167,21 +167,23 @@ select:focus-visible {
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   white-space: nowrap; /* Prevent text wrapping - column will auto-expand */
   overflow: visible; /* Allow text to be fully visible */
-  display: table; /* Table layout for html2canvas compatibility */
-  width: 100%; /* Full width */
+  display: flex;
+  /* REMOVED: align-items: center - causes html2canvas misalignment */
+  justify-content: space-between;
+  gap: 12px;
   min-height: 40px; /* Ensure minimum height for proper centering */
-  border-spacing: 12px 0; /* Replaces flexbox gap (horizontal spacing only) */
 }
 
 /* Phase 3: Label content wrapper */
 .gantt-row-label .label-content {
-  display: table-cell; /* Table-cell for vertical-align support */
-  vertical-align: middle; /* Html2canvas fully supports this */
-  width: 100%; /* Take all available horizontal space */
+  flex: 1;
+  min-width: 0;
   transition: all 0.2s;
   border-radius: 4px;
   padding: 10px 12px;
+  display: block;
   line-height: 1.2; /* Explicit line-height */
+  /* Vertical centering via padding (html2canvas compatible) */
 }
 
 /* Show outline on label hover when in edit mode (for both tasks and swimlanes) */
@@ -195,15 +197,14 @@ select:focus-visible {
 /* Phase 3: Row action buttons */
 .row-actions {
   display: none; /* Hidden by default */
-  vertical-align: middle; /* Align with label text - html2canvas compatible */
-  white-space: nowrap; /* Prevent wrapping of buttons */
-  text-align: right; /* Align buttons to the right */
-  padding-right: 12px; /* Match border-spacing for visual consistency */
+  gap: 6px;
+  /* REMOVED: align-items: center - use margin instead for html2canvas compatibility */
+  margin: auto 0; /* Vertically center in flex parent */
 }
 
 /* Show row actions on hover only when edit mode is enabled */
 .gantt-grid.edit-mode-enabled .gantt-row-label:hover .row-actions {
-  display: table-cell; /* Changed from flex to table-cell */
+  display: flex;
 }
 
 .row-action-btn {
@@ -214,19 +215,13 @@ select:focus-visible {
   font-size: 22px; /* Increased from 18px */
   font-weight: bold;
   cursor: pointer;
-  display: inline-block; /* Changed from flex for table-cell compatibility */
-  vertical-align: middle; /* Align buttons vertically */
-  text-align: center; /* Center text horizontally */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s;
-  line-height: 32px; /* Match height for vertical centering */
+  line-height: 1;
   padding: 0;
-  margin-left: 6px; /* Spacing between buttons (replaces flex gap) */
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); /* Add shadow for depth */
-}
-
-/* Remove left margin from first button */
-.row-action-btn:first-child {
-  margin-left: 0;
 }
 
 .row-action-btn.add-task {
