@@ -1243,41 +1243,7 @@ export class GanttChart {
           logging: false,
           scale: 2, // Render at 2x resolution for quality
           allowTaint: false,
-          backgroundColor: null,
-          onclone: (clonedDoc) => {
-            // FIX: Html2canvas doesn't handle flexbox align-items properly
-            // Manipulate the cloned DOM to force vertical centering
-            const clonedLabels = clonedDoc.querySelectorAll('.gantt-row-label');
-
-            clonedLabels.forEach((label) => {
-              // Remove flexbox, use padding-based centering instead
-              label.style.display = 'block';
-              label.style.position = 'relative';
-
-              const labelContent = label.querySelector('.label-content');
-              if (labelContent) {
-                const computedStyle = window.getComputedStyle(labelContent);
-                const paddingTop = parseFloat(computedStyle.paddingTop);
-                const paddingBottom = parseFloat(computedStyle.paddingBottom);
-                const fontSize = parseFloat(computedStyle.fontSize);
-                const lineHeight = parseFloat(computedStyle.lineHeight) || fontSize * 1.2;
-
-                // Force equal vertical padding
-                const verticalPadding = Math.max(paddingTop, paddingBottom);
-                labelContent.style.paddingTop = `${verticalPadding}px`;
-                labelContent.style.paddingBottom = `${verticalPadding}px`;
-                labelContent.style.lineHeight = `${lineHeight}px`;
-                labelContent.style.display = 'block';
-
-                // Position absolutely within parent for precise control
-                labelContent.style.position = 'absolute';
-                labelContent.style.top = '50%';
-                labelContent.style.transform = 'translateY(-50%)';
-                labelContent.style.left = '0';
-                labelContent.style.right = '0';
-              }
-            });
-          }
+          backgroundColor: null
         });
 
         // Create download link
@@ -1401,19 +1367,41 @@ export class GanttChart {
         const width = bbox.width;
         const height = bbox.height;
 
+        // Get all stylesheet rules
+        const styleSheets = Array.from(document.styleSheets);
+        let cssText = '';
+
+        try {
+          styleSheets.forEach(sheet => {
+            try {
+              const rules = Array.from(sheet.cssRules || sheet.rules || []);
+              rules.forEach(rule => {
+                cssText += rule.cssText + '\n';
+              });
+            } catch (e) {
+              // Skip external stylesheets due to CORS
+              console.warn('Could not access stylesheet:', e);
+            }
+          });
+        } catch (e) {
+          console.warn('Error collecting styles:', e);
+        }
+
         // Clone the chart container
         const clonedContainer = chartContainer.cloneNode(true);
-
-        // Get all computed styles and apply them inline
-        this._inlineAllStyles(chartContainer, clonedContainer);
-
-        // Serialize the cloned HTML to string
         const htmlString = clonedContainer.outerHTML;
 
-        // Create SVG with foreignObject
+        // Create SVG with embedded styles
         const svg = `
           <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-            <foreignObject width="100%" height="100%">
+            <defs>
+              <style type="text/css">
+                <![CDATA[
+                  ${cssText}
+                ]]>
+              </style>
+            </defs>
+            <foreignObject x="0" y="0" width="100%" height="100%">
               <div xmlns="http://www.w3.org/1999/xhtml">
                 ${htmlString}
               </div>
@@ -1422,7 +1410,7 @@ export class GanttChart {
         `;
 
         // Create blob and download
-        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.download = 'gantt-chart.svg';
@@ -1460,31 +1448,6 @@ export class GanttChart {
         alert('Error exporting chart as SVG. See console for details.');
       }
     });
-  }
-
-  /**
-   * Inline all computed styles from source to target element and children
-   * This ensures the SVG preserves all styling
-   * @param {HTMLElement} sourceEl - Source element with computed styles
-   * @param {HTMLElement} targetEl - Target element to apply styles to
-   * @private
-   */
-  _inlineAllStyles(sourceEl, targetEl) {
-    const sourceChildren = sourceEl.children;
-    const targetChildren = targetEl.children;
-
-    // Apply computed styles to target element
-    const computedStyle = window.getComputedStyle(sourceEl);
-    for (let prop of computedStyle) {
-      targetEl.style[prop] = computedStyle.getPropertyValue(prop);
-    }
-
-    // Recursively apply to children
-    for (let i = 0; i < sourceChildren.length; i++) {
-      if (targetChildren[i]) {
-        this._inlineAllStyles(sourceChildren[i], targetChildren[i]);
-      }
-    }
   }
 
   /**
