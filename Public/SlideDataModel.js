@@ -4,6 +4,8 @@
  * Designed for dual rendering (Web + PowerPoint export)
  */
 
+import { CUSTOM_SLIDE_TYPES } from './SlideTemplates.js';
+
 /**
  * Validate complete presentation data
  * @param {Object} data - Presentation data object
@@ -167,6 +169,11 @@ const SLIDE_TYPE_VALIDATORS = {
     return errors;
   }
 };
+
+// Register custom slide template validators
+Object.keys(CUSTOM_SLIDE_TYPES).forEach(type => {
+  SLIDE_TYPE_VALIDATORS[type] = CUSTOM_SLIDE_TYPES[type].validate;
+});
 
 /**
  * Generate unique slide ID

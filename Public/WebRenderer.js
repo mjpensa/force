@@ -8,7 +8,10 @@
  * Complete Implementation: Supports all 8 slide types
  * Phase 1: Title, Bullet point, Two-column slides
  * Phase 2: Image, Section, Quote, Table, Comparison slides
+ * Phase 3: Custom slide templates from SlideTemplates.js
  */
+
+import { CUSTOM_SLIDE_TYPES } from './SlideTemplates.js';
 
 export class WebRenderer {
   /**
@@ -71,6 +74,12 @@ export class WebRenderer {
     if (!slide || !slide.type) {
       console.error('[WebRenderer] Invalid slide data:', slide);
       return this._renderErrorSlide('Invalid slide data');
+    }
+
+    // Check for custom slide templates first
+    if (CUSTOM_SLIDE_TYPES[slide.type]) {
+      console.log(`[WebRenderer] Rendering custom slide type: ${slide.type}`);
+      return CUSTOM_SLIDE_TYPES[slide.type].render(slide, this.theme, slideNumber);
     }
 
     // Route to appropriate renderer based on slide type
