@@ -34,6 +34,15 @@ async function processChartGeneration(jobId, reqBody, files) {
 
     const userPrompt = reqBody.prompt;
 
+    // Parse content generation preferences (default to true for backward compatibility)
+    const generateExecutiveSummary = reqBody.generateExecutiveSummary !== 'false';
+    const generatePresentation = reqBody.generatePresentation !== 'false';
+
+    console.log(`Job ${jobId}: Content generation preferences:`, {
+      generateExecutiveSummary,
+      generatePresentation
+    });
+
     // Sanitize user prompt to prevent prompt injection attacks
     const sanitizedPrompt = sanitizePrompt(userPrompt);
 
@@ -153,15 +162,16 @@ ${researchTextCache}`;
 
     console.log(`Job ${jobId}: Data validation passed - timeColumns: ${ganttData.timeColumns.length} items, data: ${ganttData.data.length} tasks`);
 
-    // Update progress
-    updateJob(jobId, {
-      status: 'processing',
-      progress: 'Generating executive summary...'
-    });
-
-    // NEW: Executive Summary Generation
+    // NEW: Executive Summary Generation (conditional)
     let executiveSummary = null;
-    try {
+    if (generateExecutiveSummary) {
+      // Update progress
+      updateJob(jobId, {
+        status: 'processing',
+        progress: 'Generating executive summary...'
+      });
+
+      try {
       console.log(`Job ${jobId}: Generating executive summary from research data...`);
 
       const executiveSummaryQuery = `${sanitizedPrompt}
@@ -210,22 +220,26 @@ ${researchTextCache}`;
         executiveSummary.metadata.documentsCited = researchFilesCache.length;
       }
 
-      console.log(`Job ${jobId}: Executive summary generated successfully`);
-    } catch (summaryError) {
-      console.error(`Job ${jobId}: Failed to generate executive summary:`, summaryError);
-      // Don't fail the entire job if executive summary fails - just log it
-      executiveSummary = null;
+        console.log(`Job ${jobId}: Executive summary generated successfully`);
+      } catch (summaryError) {
+        console.error(`Job ${jobId}: Failed to generate executive summary:`, summaryError);
+        // Don't fail the entire job if executive summary fails - just log it
+        executiveSummary = null;
+      }
+    } else {
+      console.log(`Job ${jobId}: Skipping executive summary generation (user disabled)`);
     }
 
-    // Update progress
-    updateJob(jobId, {
-      status: 'processing',
-      progress: 'Generating presentation slides...'
-    });
-
-    // NEW: Presentation Slides Generation (Two-Phase Approach)
+    // NEW: Presentation Slides Generation (conditional, Two-Phase Approach)
     let presentationSlides = null;
-    try {
+    if (generatePresentation) {
+      // Update progress
+      updateJob(jobId, {
+        status: 'processing',
+        progress: 'Generating presentation slides...'
+      });
+
+      try {
       console.log(`Job ${jobId}: Generating presentation slides (Phase 1: Outline)...`);
 
       // PHASE 1: Generate slide outline (types and titles only)
@@ -427,13 +441,16 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
         presentationSlides = null;
       }
 
-    } catch (slidesError) {
-      console.error(`Job ${jobId}: ❌ FAILED to generate presentation slides`);
-      console.error(`Job ${jobId}: Error type:`, slidesError.constructor.name);
-      console.error(`Job ${jobId}: Error message:`, slidesError.message);
-      console.error(`Job ${jobId}: Error stack:`, slidesError.stack?.substring(0, 500));
-      // Don't fail the entire job if presentation slides fail - just log it
-      presentationSlides = null;
+      } catch (slidesError) {
+        console.error(`Job ${jobId}: ❌ FAILED to generate presentation slides`);
+        console.error(`Job ${jobId}: Error type:`, slidesError.constructor.name);
+        console.error(`Job ${jobId}: Error message:`, slidesError.message);
+        console.error(`Job ${jobId}: Error stack:`, slidesError.stack?.substring(0, 500));
+        // Don't fail the entire job if presentation slides fail - just log it
+        presentationSlides = null;
+      }
+    } else {
+      console.log(`Job ${jobId}: Skipping presentation slides generation (user disabled)`);
     }
 
     // Update progress
