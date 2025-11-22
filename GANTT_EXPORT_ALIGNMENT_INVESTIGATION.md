@@ -6,10 +6,14 @@
 
 **Root Cause**: Html2canvas library does not properly render CSS flexbox `align-items: center` property, causing vertical misalignment during export.
 
-**Current Status**: ⚠️ Partially resolved - CSS changes attempted but alignment issue persists. Requires further investigation.
+**Solution**: ✅ Implemented CSS table-cell layout with `vertical-align: middle` - fully supported by html2canvas (Attempt #11)
+
+**Current Status**: ⏳ Pending user testing - Solution deployed to branch and ready for validation
 
 **Date**: 2025-11-22
-**Session ID**: claude/fix-gantt-export-alignment-01LVdBsX2MA6ZyrCNxMf6d7t
+**Session IDs**:
+- Session 1: claude/fix-gantt-export-alignment-01LVdBsX2MA6ZyrCNxMf6d7t (Attempts 1-10)
+- Session 2: claude/gantt-export-alignment-fix-01ReLTqp6PzDhozUXqFJ5VvY (Attempt 11 - Recommended)
 
 ---
 
@@ -325,6 +329,84 @@ const svg = `
 
 ---
 
+### Attempt #11: CSS Table-Cell Layout (Recommended Solution)
+**Date**: 2025-11-22 (Session 2)
+**Approach**: Replace flexbox entirely with CSS table-cell layout and `vertical-align: middle`
+
+**Rationale**:
+Based on investigation findings (Appendix C), html2canvas has:
+- ✅ **Full support** for table-cell rendering
+- ✅ **Full support** for `vertical-align: middle`
+- ❌ **No support** for flexbox `align-items: center`
+
+This is the recommended approach from Option 2 in "Alternative Solutions to Consider".
+
+**Changes Made**:
+```css
+/* 1. Parent container: flex → table */
+.gantt-row-label {
+  display: table; /* Changed from flex */
+  width: 100%;
+  border-spacing: 12px 0; /* Replaces gap: 12px */
+  /* Removed: justify-content, align-items */
+}
+
+/* 2. Label content: block → table-cell */
+.gantt-row-label .label-content {
+  display: table-cell; /* Changed from block */
+  vertical-align: middle; /* KEY FIX - html2canvas compatible */
+  width: 100%; /* Take all available space */
+  /* Removed: flex: 1 */
+}
+
+/* 3. Action buttons: flex → table-cell */
+.row-actions {
+  display: none; /* Hidden by default */
+  vertical-align: middle; /* Align with label text */
+  text-align: right;
+  padding-right: 12px;
+}
+
+.gantt-grid.edit-mode-enabled .gantt-row-label:hover .row-actions {
+  display: table-cell; /* Changed from flex */
+}
+
+/* 4. Individual buttons: flex → inline-block */
+.row-action-btn {
+  display: inline-block; /* Changed from flex */
+  vertical-align: middle;
+  text-align: center;
+  line-height: 32px; /* Match height for vertical centering */
+  margin-left: 6px; /* Replaces flex gap */
+}
+
+.row-action-btn:first-child {
+  margin-left: 0;
+}
+```
+
+**Technical Advantages**:
+1. **Html2canvas compatibility**: Table-cell rendering is fully supported
+2. **Vertical-align support**: Works correctly in html2canvas (unlike align-items)
+3. **No JavaScript needed**: Pure CSS solution, no onclone manipulation
+4. **Maintains functionality**: All features preserved (edit mode, buttons, hover states)
+5. **Low risk**: CSS-only change, easy to revert if needed
+
+**Testing Checklist**:
+- [ ] Browser rendering identical to previous version
+- [ ] PNG export shows centered text (KEY TEST)
+- [ ] SVG export shows centered text (KEY TEST)
+- [ ] Edit mode buttons appear on hover
+- [ ] Edit mode buttons function correctly
+- [ ] No layout shifts or visual regressions
+- [ ] Responsive behavior maintained
+
+**Result**: ⏳ **Pending User Testing** - Implemented and pushed to branch
+**Commit**: `b024aab`
+**Session**: claude/gantt-export-alignment-fix-01ReLTqp6PzDhozUXqFJ5VvY
+
+---
+
 ## Technical Analysis
 
 ### Why Html2canvas Fails with Flexbox
@@ -393,6 +475,7 @@ Html2canvas:
 | 8 | Attribute sanitization | JS | ❌ Failed | Errors persisted |
 | 9 | SVG hybrid (image in SVG) | JS | ✅ Works | But inherits html2canvas issues |
 | 10 | Remove flexbox alignment | CSS | ⏳ Testing | Padding-based centering |
+| 11 | **Table-cell layout** | CSS | ⏳ **Testing** | **Recommended - html2canvas fully supports vertical-align** |
 
 ---
 
@@ -400,27 +483,48 @@ Html2canvas:
 
 ### Files Modified
 
-**Public/style.css** (commit `5c37ddd`):
+**Public/style.css** (commit `b024aab` - Attempt #11):
 ```css
-/* Line 145-156: Parent container */
+/* Lines 164-174: Parent container - TABLE LAYOUT */
 .gantt-row-label {
-  display: flex;
-  justify-content: space-between;
-  /* align-items: center; ← REMOVED */
+  display: table; /* ← Changed from flex */
+  width: 100%;
+  border-spacing: 12px 0; /* ← Replaces gap: 12px */
+  min-height: 40px;
 }
 
-/* Line 159-168: Label content */
+/* Lines 177-185: Label content - TABLE-CELL */
 .gantt-row-label .label-content {
-  display: block; /* Not flex */
+  display: table-cell; /* ← Changed from block */
+  vertical-align: middle; /* ← KEY FIX for html2canvas */
+  width: 100%; /* ← Take all available space */
   padding: 10px 12px;
   line-height: 1.2;
 }
 
-/* Line 179-184: Action buttons */
+/* Lines 196-207: Action buttons - TABLE-CELL */
 .row-actions {
-  display: none;
-  gap: 6px;
-  margin: auto 0; /* Vertical centering */
+  display: none; /* Hidden by default */
+  vertical-align: middle; /* ← Align with label text */
+  text-align: right;
+  padding-right: 12px;
+}
+
+.gantt-grid.edit-mode-enabled .gantt-row-label:hover .row-actions {
+  display: table-cell; /* ← Changed from flex */
+}
+
+/* Lines 209-230: Individual buttons - INLINE-BLOCK */
+.row-action-btn {
+  display: inline-block; /* ← Changed from flex */
+  vertical-align: middle;
+  text-align: center;
+  line-height: 32px; /* ← Match height for centering */
+  margin-left: 6px; /* ← Replaces flex gap */
+}
+
+.row-action-btn:first-child {
+  margin-left: 0;
 }
 ```
 
@@ -657,26 +761,56 @@ text.textContent = 'Task Name';
 
 ## Recommended Next Steps
 
-### Immediate (This Session)
+### Immediate (User Testing Required)
 1. ✅ Document all troubleshooting attempts (this file)
-2. ⏳ Test latest CSS changes (commit `5c37ddd`)
-3. 📊 Measure exact alignment deviation in pixels
+2. ✅ Implement table-cell layout solution (Attempt #11, commit `b024aab`)
+3. ⏳ **USER ACTION REQUIRED**: Test PNG and SVG exports with new CSS
+4. ⏳ **USER ACTION REQUIRED**: Verify browser rendering matches previous version
+5. ⏳ **USER ACTION REQUIRED**: Test edit mode functionality
 
-### Short-term (Next Session)
-1. **If CSS fix works**:
-   - Test across different chart sizes
-   - Test with various font configurations
-   - Document success and close issue
+### Testing Instructions for User
+1. **Pull latest changes**:
+   ```bash
+   git checkout claude/gantt-export-alignment-fix-01ReLTqp6PzDhozUXqFJ5VvY
+   git pull
+   ```
 
-2. **If CSS fix fails**:
-   - Try Option 2 (table-cell layout)
-   - Try Option 3 (calculated padding)
-   - Evaluate Option 1 (different library)
+2. **Start server and generate/view a chart**:
+   - Navigate to any existing Gantt chart
+   - Verify labels look identical to previous version in browser
+
+3. **Test PNG export**:
+   - Click "Export as PNG"
+   - Open exported file
+   - **Check**: Are swimlane and task labels vertically centered? ✅/❌
+
+4. **Test SVG export**:
+   - Click "Export as SVG"
+   - Open exported file
+   - **Check**: Are swimlane and task labels vertically centered? ✅/❌
+
+5. **Test edit mode**:
+   - Enable edit mode
+   - Hover over swimlane/task labels
+   - **Check**: Do add/delete buttons appear correctly? ✅/❌
+   - **Check**: Do buttons function correctly? ✅/❌
+
+### If Table-Cell Solution Works ✅
+1. Merge branch to main
+2. Update CLAUDE.md with solution notes
+3. Close alignment issue as resolved
+4. Consider this the permanent fix
+
+### If Table-Cell Solution Fails ❌
+1. Revert commit `b024aab`
+2. Try Option 3 (calculated padding with JavaScript)
+3. Evaluate Option 1 (different export library: dom-to-image, html-to-image)
+4. Last resort: Option 6 (native SVG rewrite - significant development effort)
 
 ### Long-term (Future Enhancement)
-1. Research native SVG implementation (Option 6)
-2. Evaluate server-side rendering (Option 4)
-3. Consider canvas-based rewrite (Option 5)
+1. Research native SVG implementation (Option 6) for true vector exports
+2. Evaluate server-side rendering (Option 4) for perfect rendering
+3. Consider upgrading to newer export libraries with better CSS support
 
 ---
 
@@ -766,10 +900,12 @@ text.textContent = 'Task Name';
 | `91c6bab` | 2025-11-22 | Fix SVG export bugs | Failed |
 | `0a798dc` | 2025-11-22 | Add aggressive attribute name validation | Failed |
 | `d55db4a` | 2025-11-22 | Simplify SVG export (hybrid approach) | Success (works but same alignment issue) |
-| `5c37ddd` | 2025-11-22 | Remove flexbox align-items for html2canvas | Pending test |
+| `5c37ddd` | 2025-11-22 | Remove flexbox align-items for html2canvas | Pending test (Session 1) |
+| `b024aab` | 2025-11-22 | **Implement table-cell layout to fix export text alignment** | **Pending test (Session 2)** |
 
-### Branch
-`claude/fix-gantt-export-alignment-01LVdBsX2MA6ZyrCNxMf6d7t`
+### Branches
+- Session 1: `claude/fix-gantt-export-alignment-01LVdBsX2MA6ZyrCNxMf6d7t`
+- **Session 2 (current)**: `claude/gantt-export-alignment-fix-01ReLTqp6PzDhozUXqFJ5VvY`
 
 ---
 
@@ -817,8 +953,26 @@ text.textContent = 'Task Name';
 
 ## Conclusion
 
-The text alignment issue in PNG/SVG exports stems from html2canvas's incomplete support for CSS flexbox `align-items: center`. Despite 10+ attempted solutions including CSS modifications, JavaScript workarounds, and complete SVG export redesigns, the core issue remains unresolved.
+The text alignment issue in PNG/SVG exports stems from html2canvas's incomplete support for CSS flexbox `align-items: center`. After 10 failed attempts using various CSS and JavaScript approaches, **Attempt #11 (table-cell layout)** was implemented as the recommended solution.
 
-The most promising path forward is **Option 2** (table-cell layout) or **Option 1** (alternative library), with **Option 6** (native SVG) as a long-term solution for perfect exports.
+### Solution Summary
+**Approach**: Replace flexbox layout with CSS table-cell and `vertical-align: middle`
+**Rationale**: Html2canvas has full support for table-cell rendering and vertical-align property (confirmed in investigation)
+**Implementation**: Pure CSS solution, no JavaScript manipulation needed
+**Status**: ⏳ Pending user testing
 
-Current state: CSS changes deployed (commit `5c37ddd`) - awaiting user testing to confirm if padding-based centering resolves the issue.
+### Why This Should Work
+Based on html2canvas CSS Support Matrix (Appendix C):
+- ✅ Table-cell layout: **Full support**
+- ✅ `vertical-align: middle`: **Full support**
+- ❌ Flexbox `align-items: center`: **No support**
+
+This solution directly addresses the root cause by using only CSS properties that html2canvas fully supports.
+
+### Current State
+- **Implemented**: Commit `b024aab` on branch `claude/gantt-export-alignment-fix-01ReLTqp6PzDhozUXqFJ5VvY`
+- **Testing needed**: User validation of PNG/SVG exports and browser rendering
+- **Fallback options**: If this fails, Options 1, 3, or 6 from "Alternative Solutions" are available
+
+### Confidence Level
+**High (85%)** - Table-cell layout is a well-supported CSS feature in html2canvas, and the implementation is straightforward with no complex edge cases.
