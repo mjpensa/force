@@ -2,9 +2,16 @@
  * Modern Presentation Viewer Module
  * Fixed 16:9 aspect ratio | Ultra modern design
  * Features: Thumbnail sidebar, grid view, fullscreen, keyboard shortcuts
+ *
+ * PPT-Export-First Architecture:
+ * Uses WebRenderer to render structured slide data consistently
+ * for both web display and PowerPoint export
  */
 
 import { CONFIG } from './config.js';
+import { WebRenderer } from './WebRenderer.js';
+import { getDefaultTheme, migrateOldSlideData } from './SlideDataModel.js';
+import { exportWithProgressDialog } from './PPTExporter.js';
 
 /**
  * PresentationSlides Class
@@ -13,12 +20,34 @@ import { CONFIG } from './config.js';
 export class PresentationSlides {
   /**
    * Creates a new PresentationSlides instance
-   * @param {Object} slidesData - The presentation slides data from the API
+   * @param {Object} slidesData - The presentation slides data (old format) or complete presentation data (new format)
    * @param {string} footerSVG - The SVG content for decorations (legacy, unused in modern viewer)
    */
   constructor(slidesData, footerSVG) {
-    this.slidesData = slidesData;
     this.footerSVG = footerSVG;
+
+    // Detect format and migrate if needed
+    if (slidesData.metadata && slidesData.theme && Array.isArray(slidesData.slides)) {
+      // New structured format - use as-is
+      this.presentationData = slidesData;
+    } else if (slidesData.slides && Array.isArray(slidesData.slides)) {
+      // Old format with slides array - migrate
+      console.log('[PresentationSlides] Migrating old slide format to new structure');
+      this.presentationData = migrateOldSlideData(slidesData);
+    } else {
+      // Unknown format - create empty presentation
+      console.warn('[PresentationSlides] Unknown format, using empty presentation');
+      this.presentationData = {
+        metadata: { title: 'Presentation', author: '', slideCount: 0 },
+        theme: getDefaultTheme(),
+        slides: []
+      };
+    }
+
+    // Create renderer with theme
+    this.renderer = new WebRenderer(this.presentationData.theme);
+
+    // Viewer state
     this.currentSlideIndex = 0;
     this.container = null;
     this.isGridView = false;
@@ -28,6 +57,9 @@ export class PresentationSlides {
 
     // Keyboard shortcuts binding
     this.handleKeyPress = this.handleKeyPress.bind(this);
+
+    // Legacy compatibility - keep reference to slides array
+    this.slidesData = { slides: this.presentationData.slides };
   }
 
   /**
@@ -146,10 +178,15 @@ export class PresentationSlides {
     // Keyboard shortcuts button
     const shortcutsBtn = this._createButton('icon-only', '?', 'Keyboard Shortcuts', () => this._toggleShortcuts());
 
+    // Export to PowerPoint button
+    const exportBtn = this._createButton('primary', '📥', 'Export to PowerPoint', () => this._exportToPowerPoint());
+    exportBtn.id = 'exportPPTBtn';
+
     rightSide.appendChild(thumbBtn);
     rightSide.appendChild(gridBtn);
     rightSide.appendChild(fullscreenBtn);
     rightSide.appendChild(shortcutsBtn);
+    rightSide.appendChild(exportBtn);
 
     topbar.appendChild(leftSide);
     topbar.appendChild(rightSide);
@@ -324,24 +361,34 @@ export class PresentationSlides {
   }
 
   /**
-   * Builds slide content (blank white slide for now)
+   * Builds slide content using WebRenderer
    * @private
    */
   _buildSlideContent(index) {
-    const content = document.createElement('div');
-    content.className = 'slide-content';
-    content.id = 'slideContent';
+    const slide = this.presentationData.slides[index];
 
-    // Blank white slide with placeholder
-    content.innerHTML = `
-      <div class="slide-placeholder">
-        <div class="slide-placeholder-icon">📄</div>
-        <div class="slide-placeholder-text">Slide ${index + 1}</div>
-        <div class="slide-placeholder-subtext">Custom slide templates will be loaded here</div>
-      </div>
-    `;
+    if (!slide) {
+      // Fallback for missing slide
+      const content = document.createElement('div');
+      content.className = 'slide-content';
+      content.id = 'slideContent';
+      content.innerHTML = `
+        <div class="slide-placeholder">
+          <div class="slide-placeholder-icon">⚠️</div>
+          <div class="slide-placeholder-text">Slide not found</div>
+        </div>
+      `;
+      return content;
+    }
 
-    return content;
+    // Use WebRenderer to render the slide
+    const totalSlides = this.presentationData.slides.length;
+    const renderedSlide = this.renderer.render(slide, index + 1, totalSlides);
+
+    // Ensure it has the correct ID for updates
+    renderedSlide.id = 'slideContent';
+
+    return renderedSlide;
   }
 
   /**
@@ -402,6 +449,7 @@ export class PresentationSlides {
       { action: 'Toggle grid view', keys: ['G'] },
       { action: 'Toggle fullscreen', keys: ['F'] },
       { action: 'Toggle thumbnails', keys: ['T'] },
+      { action: 'Export to PowerPoint', keys: ['P'] },
       { action: 'Show shortcuts', keys: ['?'] },
       { action: 'Close overlay', keys: ['Esc'] }
     ];
@@ -600,24 +648,31 @@ export class PresentationSlides {
     const grid = document.createElement('div');
     grid.className = 'slide-grid';
 
-    this.slidesData.slides.forEach((slide, index) => {
+    this.presentationData.slides.forEach((slide, index) => {
       const item = document.createElement('div');
       item.className = 'slide-grid-item';
       if (index === this.currentSlideIndex) item.classList.add('active');
       item.setAttribute('data-slide-index', index);
 
+      // Render actual slide content using WebRenderer
       const slidePreview = document.createElement('div');
       slidePreview.className = 'slide-grid-slide';
-      slidePreview.innerHTML = `
-        <div class="slide-placeholder">
-          <div class="slide-placeholder-icon">📄</div>
-          <div class="slide-placeholder-text">Slide ${index + 1}</div>
-        </div>
-      `;
+
+      // Render the slide
+      const renderedSlide = this.renderer.render(slide, index + 1, this.presentationData.slides.length);
+      slidePreview.appendChild(renderedSlide);
 
       const footer = document.createElement('div');
       footer.className = 'slide-grid-footer';
-      footer.innerHTML = `<div class="slide-grid-number">Slide ${index + 1}</div>`;
+
+      // Get slide type and title for footer
+      const slideType = slide.type || 'slide';
+      const slideTitle = slide.content?.title || `Slide ${index + 1}`;
+
+      footer.innerHTML = `
+        <div class="slide-grid-number">${index + 1}</div>
+        <div class="slide-grid-title">${slideTitle}</div>
+      `;
 
       item.appendChild(slidePreview);
       item.appendChild(footer);
@@ -710,6 +765,11 @@ export class PresentationSlides {
         e.preventDefault();
         this._toggleSidebar();
         break;
+      case 'p':
+      case 'P':
+        e.preventDefault();
+        this._exportToPowerPoint();
+        break;
       case '?':
         e.preventDefault();
         this._toggleShortcuts();
@@ -725,6 +785,43 @@ export class PresentationSlides {
         }
         break;
     }
+  }
+
+  /**
+   * Export presentation to PowerPoint
+   * @private
+   */
+  async _exportToPowerPoint() {
+    try {
+      const filename = this.presentationData.metadata?.title || 'presentation';
+      console.log('[PresentationSlides] Exporting to PowerPoint:', filename);
+
+      // Use the export utility with progress dialog
+      await exportWithProgressDialog(this.presentationData, filename);
+
+      console.log('[PresentationSlides] Export completed successfully');
+    } catch (error) {
+      console.error('[PresentationSlides] Export failed:', error);
+      alert('Failed to export to PowerPoint. Please try again.');
+    }
+  }
+
+  /**
+   * Get current presentation data
+   * @returns {Object} Complete presentation data
+   */
+  getPresentationData() {
+    return this.presentationData;
+  }
+
+  /**
+   * Update presentation theme
+   * @param {Object} newTheme - New theme configuration
+   */
+  updateTheme(newTheme) {
+    this.presentationData.theme = { ...this.presentationData.theme, ...newTheme };
+    this.renderer.updateTheme(this.presentationData.theme);
+    this._updateViewer(); // Re-render current slide
   }
 
   /**
