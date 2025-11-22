@@ -143,7 +143,7 @@ select:focus-visible {
 
 /* 10. Row Label (Swimlane or Task) */
 .gantt-row-label {
-  padding: 10px 12px;
+  padding: 0; /* Remove padding from parent - will be applied to children */
   font-size: 13px; /* Base size */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   white-space: nowrap; /* Prevent text wrapping - column will auto-expand */
@@ -152,7 +152,7 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  line-height: 1; /* Explicit line-height for consistent html2canvas rendering */
+  min-height: 40px; /* Ensure minimum height for proper centering */
 }
 
 /* Phase 3: Label content wrapper */
@@ -161,8 +161,9 @@ select:focus-visible {
   min-width: 0;
   transition: all 0.2s;
   border-radius: 4px;
-  padding: 0; /* Removed padding to fix html2canvas alignment */
-  line-height: 1; /* Explicit line-height for consistent rendering */
+  padding: 10px 12px; /* Move padding here for html2canvas compatibility */
+  display: block; /* Ensure block-level for proper html2canvas rendering */
+  align-self: center; /* Explicit vertical centering for html2canvas */
 }
 
 /* Show outline on label hover when in edit mode (for both tasks and swimlanes) */
@@ -248,19 +249,26 @@ select:focus-visible {
   color: #FFFFFF; /* Text Color */
   background-color: #0C2340; /* Set swimlane title background */
   font-size: 30px; /* Increased from 28px for better readability */
-  padding: 16px 18px; /* Increased padding to match larger text */
+  padding: 0; /* Padding moved to .label-content */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
 }
 
+.gantt-row-label.swimlane .label-content {
+  padding: 16px 18px; /* Swimlane-specific padding */
+}
+
 .gantt-row-label.task {
-  padding: 14px 16px; /* Increased base padding for larger text */
-  padding-left: 36px; /* Increased indent from 32px */
+  padding: 0; /* Padding moved to .label-content */
   font-weight: 500; /* Increased from 400 for better readability */
   color: #FFFFFF; /* Text Color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   background-color: #354259; /* Set task title background - default blue */
   font-size: 26px; /* Increased from 24px for better readability */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
+}
+
+.gantt-row-label.task .label-content {
+  padding: 14px 16px 14px 36px; /* Task-specific padding with left indent */
 }
 
 .gantt-row-label.task:hover {
