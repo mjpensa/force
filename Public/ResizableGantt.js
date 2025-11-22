@@ -139,7 +139,9 @@ export class ResizableGantt {
     const barArea = this.resizeState.barArea;
     const rect = barArea.getBoundingClientRect();
     // UPDATED: Use sub-intervals for finer-grained snapping
-    const intervals = this.ganttData.subIntervals || this.ganttData.timeColumns;
+    const intervals = (this.ganttData.subIntervals && this.ganttData.subIntervals.length > 0)
+      ? this.ganttData.subIntervals
+      : this.ganttData.timeColumns;
     const columnWidth = rect.width / intervals.length;
     const columnDelta = Math.round(deltaX / columnWidth);
 
@@ -198,7 +200,9 @@ export class ResizableGantt {
       // Notify callback with updated task info
       if (this.onTaskResize) {
         // UPDATED: Use sub-intervals for date labels
-        const intervals = this.ganttData.subIntervals || this.ganttData.timeColumns;
+        const intervals = (this.ganttData.subIntervals && this.ganttData.subIntervals.length > 0)
+          ? this.ganttData.subIntervals
+          : this.ganttData.timeColumns;
         const taskInfo = {
           taskName: this.ganttData.data[this.resizeState.taskIndex].title,
           entity: this.ganttData.data[this.resizeState.taskIndex].entity,

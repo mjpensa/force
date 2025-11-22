@@ -340,7 +340,10 @@ export class GanttChart {
     this.gridElement.setAttribute('aria-readonly', 'true'); // Will be updated when edit mode is toggled
 
     // UPDATED: Use sub-intervals for grid columns (more precise granularity)
-    const numCols = this.ganttData.subIntervals ? this.ganttData.subIntervals.length : this.ganttData.timeColumns.length;
+    // Check if subIntervals exists AND has length > 0 (same check as in _createHeaderRow)
+    const numCols = (this.ganttData.subIntervals && this.ganttData.subIntervals.length > 0)
+      ? this.ganttData.subIntervals.length
+      : this.ganttData.timeColumns.length;
     // Use max-content for first column to auto-expand and fit all text on single line
     this.gridElement.style.gridTemplateColumns = `max-content repeat(${numCols}, 1fr)`;
 
@@ -382,14 +385,15 @@ export class GanttChart {
     mainHeaderFragment.appendChild(mainHeaderLabel);
 
     // Create spanning main interval cells
-    let subIntervalIndex = 1; // 1-based grid column index (column 1 is the label)
+    let subIntervalIndex = 0; // Track how many sub-intervals we've processed (0-indexed)
     for (const mainInterval of this.ganttData.timeColumns) {
       const mainCell = document.createElement('div');
       mainCell.className = 'gantt-header gantt-main-interval';
       mainCell.textContent = mainInterval;
 
       // Span across sub-intervals: start at current position, end after all sub-intervals for this main interval
-      const startCol = subIntervalIndex + 1; // +1 because column 1 is the label
+      // +2 because column 1 is the label, and grid columns are 1-indexed
+      const startCol = subIntervalIndex + 2;
       const endCol = startCol + subIntervalsPerMain;
       mainCell.style.gridColumn = `${startCol} / ${endCol}`;
 
