@@ -23,7 +23,7 @@ export class HamburgerMenu {
     this.isOpen = false;
     this.menuElement = null;
     this.router = router;
-    this.currentSection = 'roadmap'; // Track current section: 'roadmap', 'executive-summary', 'presentation', 'research-synthesis'
+    this.currentSection = 'roadmap'; // Track current section: 'roadmap', 'executive-summary', 'presentation'
     this.hasExecutiveSummary = contentAvailability.hasExecutiveSummary !== false; // Default to true for backward compatibility
     this.hasPresentationSlides = contentAvailability.hasPresentationSlides !== false; // Default to true for backward compatibility
   }
@@ -81,12 +81,6 @@ export class HamburgerMenu {
              data-section="presentation"${presentationTitle}>
             <span class="nav-icon">🎯</span>
             <span class="nav-text">Presentation${!this.hasPresentationSlides ? ' (Not Generated)' : ''}</span>
-          </a>
-        </li>
-        <li>
-          <a href="#research-synthesis" class="hamburger-nav-item" data-section="research-synthesis">
-            <span class="nav-icon">🔬</span>
-            <span class="nav-text">Research Synthesis</span>
           </a>
         </li>
       </ul>

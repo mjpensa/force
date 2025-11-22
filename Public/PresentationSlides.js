@@ -2,9 +2,20 @@
  * Modern Presentation Viewer Module
  * Fixed 16:9 aspect ratio | Ultra modern design
  * Features: Thumbnail sidebar, grid view, fullscreen, keyboard shortcuts
+ *
+ * PPT-Export-First Architecture:
+ * Uses WebRenderer to render structured slide data consistently
+ * for both web display and PowerPoint export
  */
 
 import { CONFIG } from './config.js';
+import { WebRenderer } from './WebRenderer.js';
+import { getDefaultTheme, migrateOldSlideData } from './SlideDataModel.js';
+import { exportWithProgressDialog } from './PPTExporter.js';
+import { PresenterMode } from './PresenterMode.js';
+import { SlideEditor } from './SlideEditor.js';
+import { SlideManager } from './SlideManager.js';
+import { ExportManager } from './ExportManager.js';
 
 /**
  * PresentationSlides Class
@@ -13,12 +24,34 @@ import { CONFIG } from './config.js';
 export class PresentationSlides {
   /**
    * Creates a new PresentationSlides instance
-   * @param {Object} slidesData - The presentation slides data from the API
+   * @param {Object} slidesData - The presentation slides data (old format) or complete presentation data (new format)
    * @param {string} footerSVG - The SVG content for decorations (legacy, unused in modern viewer)
    */
   constructor(slidesData, footerSVG) {
-    this.slidesData = slidesData;
     this.footerSVG = footerSVG;
+
+    // Detect format and migrate if needed
+    if (slidesData.metadata && slidesData.theme && Array.isArray(slidesData.slides)) {
+      // New structured format - use as-is
+      this.presentationData = slidesData;
+    } else if (slidesData.slides && Array.isArray(slidesData.slides)) {
+      // Old format with slides array - migrate
+      console.log('[PresentationSlides] Migrating old slide format to new structure');
+      this.presentationData = migrateOldSlideData(slidesData);
+    } else {
+      // Unknown format - create empty presentation
+      console.warn('[PresentationSlides] Unknown format, using empty presentation');
+      this.presentationData = {
+        metadata: { title: 'Presentation', author: '', slideCount: 0 },
+        theme: getDefaultTheme(),
+        slides: []
+      };
+    }
+
+    // Create renderer with theme
+    this.renderer = new WebRenderer(this.presentationData.theme);
+
+    // Viewer state
     this.currentSlideIndex = 0;
     this.container = null;
     this.isGridView = false;
@@ -26,8 +59,50 @@ export class PresentationSlides {
     this.isSidebarVisible = true;
     this.shortcutsOverlayVisible = false;
 
+    // Presenter mode
+    this.presenterMode = new PresenterMode(this);
+
+    // Slide editing and management
+    this.editor = new SlideEditor(this);
+    this.manager = new SlideManager(this);
+
+    // Export manager
+    this.exportManager = new ExportManager(this);
+
+    // Check for auto-saved presentation
+    this._checkAutoSave();
+
     // Keyboard shortcuts binding
     this.handleKeyPress = this.handleKeyPress.bind(this);
+
+    // Legacy compatibility - keep reference to slides array
+    this.slidesData = { slides: this.presentationData.slides };
+  }
+
+  /**
+   * Check for auto-saved presentation
+   * @private
+   */
+  _checkAutoSave() {
+    const autoSaved = SlideEditor.restoreAutoSave();
+    if (autoSaved) {
+      const savedDate = new Date(autoSaved.savedAt);
+      const restore = confirm(
+        `Found auto-saved changes from ${savedDate.toLocaleString()}.\n\nRestore them?`
+      );
+
+      if (restore) {
+        this.presentationData.slides = autoSaved.slides;
+        this.presentationData.theme = autoSaved.theme;
+        this.presentationData.metadata = autoSaved.metadata;
+        this.slidesData.slides = autoSaved.slides;
+
+        console.log('[PresentationSlides] Restored from auto-save');
+      } else {
+        SlideEditor.clearAutoSave();
+        console.log('[PresentationSlides] Discarded auto-save');
+      }
+    }
   }
 
   /**
@@ -146,10 +221,29 @@ export class PresentationSlides {
     // Keyboard shortcuts button
     const shortcutsBtn = this._createButton('icon-only', '?', 'Keyboard Shortcuts', () => this._toggleShortcuts());
 
+    // Edit Slides button
+    const editBtn = this._createButton('', '✏️', 'Edit Slides', () => this._toggleEditMode());
+    editBtn.id = 'editModeBtn';
+
+    // Manage Slides button
+    const manageBtn = this._createButton('', '📋', 'Manage Slides', () => this._showSlideManager());
+    manageBtn.id = 'manageSlidesBtn';
+
+    // Presenter Mode button
+    const presenterBtn = this._createButton('', '🎤', 'Presenter Mode', () => this._launchPresenterMode());
+    presenterBtn.id = 'presenterModeBtn';
+
+    // Export dropdown
+    const exportDropdown = this._createExportDropdown();
+
     rightSide.appendChild(thumbBtn);
     rightSide.appendChild(gridBtn);
     rightSide.appendChild(fullscreenBtn);
     rightSide.appendChild(shortcutsBtn);
+    rightSide.appendChild(editBtn);
+    rightSide.appendChild(manageBtn);
+    rightSide.appendChild(presenterBtn);
+    rightSide.appendChild(exportDropdown);
 
     topbar.appendChild(leftSide);
     topbar.appendChild(rightSide);
@@ -166,6 +260,153 @@ export class PresentationSlides {
     btn.innerHTML = `<span class="viewer-btn-icon">${icon}</span>${text ? `<span>${text}</span>` : ''}`;
     btn.addEventListener('click', onClick);
     return btn;
+  }
+
+  /**
+   * Creates export dropdown menu
+   * @private
+   */
+  _createExportDropdown() {
+    const container = document.createElement('div');
+    container.className = 'export-dropdown-container';
+    container.id = 'exportDropdownContainer';
+
+    const button = document.createElement('button');
+    button.className = 'viewer-btn primary';
+    button.id = 'exportDropdownBtn';
+    button.innerHTML = '<span class="viewer-btn-icon">📥</span><span>Export</span><span class="dropdown-arrow">▼</span>';
+
+    const menu = document.createElement('div');
+    menu.className = 'export-dropdown-menu';
+    menu.id = 'exportDropdownMenu';
+
+    const menuItems = [
+      { icon: '📊', text: 'PowerPoint (.pptx)', action: () => this._exportToPowerPoint() },
+      { icon: '📄', text: 'PDF Document', action: () => this._exportToPDF() },
+      { icon: '🖼️', text: 'Current Slide (PNG)', action: () => this._exportCurrentSlideToPNG() },
+      { icon: '🎞️', text: 'All Slides (PNG)', action: () => this._exportAllSlidesToPNG() },
+      { icon: '🖨️', text: 'Print View', action: () => this._openPrintView() }
+    ];
+
+    menuItems.forEach(item => {
+      const menuItem = document.createElement('div');
+      menuItem.className = 'export-dropdown-item';
+      menuItem.innerHTML = `<span class="export-item-icon">${item.icon}</span><span>${item.text}</span>`;
+      menuItem.addEventListener('click', () => {
+        item.action();
+        this._closeExportDropdown();
+      });
+      menu.appendChild(menuItem);
+    });
+
+    container.appendChild(button);
+    container.appendChild(menu);
+
+    // Toggle dropdown on button click
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._toggleExportDropdown();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('exportDropdownContainer');
+      if (dropdown && !dropdown.contains(e.target)) {
+        this._closeExportDropdown();
+      }
+    });
+
+    return container;
+  }
+
+  /**
+   * Toggle export dropdown visibility
+   * @private
+   */
+  _toggleExportDropdown() {
+    const menu = document.getElementById('exportDropdownMenu');
+    const button = document.getElementById('exportDropdownBtn');
+
+    if (menu && button) {
+      const isOpen = menu.classList.contains('open');
+      if (isOpen) {
+        menu.classList.remove('open');
+        button.classList.remove('active');
+      } else {
+        menu.classList.add('open');
+        button.classList.add('active');
+      }
+    }
+  }
+
+  /**
+   * Close export dropdown
+   * @private
+   */
+  _closeExportDropdown() {
+    const menu = document.getElementById('exportDropdownMenu');
+    const button = document.getElementById('exportDropdownBtn');
+
+    if (menu && button) {
+      menu.classList.remove('open');
+      button.classList.remove('active');
+    }
+  }
+
+  /**
+   * Export to PDF
+   * @private
+   */
+  async _exportToPDF() {
+    try {
+      console.log('[PresentationSlides] Exporting to PDF');
+      await this.exportManager.exportToPDF();
+    } catch (error) {
+      console.error('[PresentationSlides] PDF export failed:', error);
+      alert('Failed to export to PDF. Please try again.');
+    }
+  }
+
+  /**
+   * Export current slide to PNG
+   * @private
+   */
+  async _exportCurrentSlideToPNG() {
+    try {
+      console.log('[PresentationSlides] Exporting current slide to PNG');
+      await this.exportManager.exportCurrentSlideToPNG();
+    } catch (error) {
+      console.error('[PresentationSlides] PNG export failed:', error);
+      alert('Failed to export to PNG. Please try again.');
+    }
+  }
+
+  /**
+   * Export all slides to PNG
+   * @private
+   */
+  async _exportAllSlidesToPNG() {
+    try {
+      console.log('[PresentationSlides] Exporting all slides to PNG');
+      await this.exportManager.exportAllSlidesToPNG();
+    } catch (error) {
+      console.error('[PresentationSlides] PNG export failed:', error);
+      alert('Failed to export all slides to PNG. Please try again.');
+    }
+  }
+
+  /**
+   * Open print view
+   * @private
+   */
+  _openPrintView() {
+    try {
+      console.log('[PresentationSlides] Opening print view');
+      this.exportManager.openPrintView();
+    } catch (error) {
+      console.error('[PresentationSlides] Print view failed:', error);
+      alert('Failed to open print view. Please try again.');
+    }
   }
 
   /**
@@ -324,24 +565,34 @@ export class PresentationSlides {
   }
 
   /**
-   * Builds slide content (blank white slide for now)
+   * Builds slide content using WebRenderer
    * @private
    */
   _buildSlideContent(index) {
-    const content = document.createElement('div');
-    content.className = 'slide-content';
-    content.id = 'slideContent';
+    const slide = this.presentationData.slides[index];
 
-    // Blank white slide with placeholder
-    content.innerHTML = `
-      <div class="slide-placeholder">
-        <div class="slide-placeholder-icon">📄</div>
-        <div class="slide-placeholder-text">Slide ${index + 1}</div>
-        <div class="slide-placeholder-subtext">Custom slide templates will be loaded here</div>
-      </div>
-    `;
+    if (!slide) {
+      // Fallback for missing slide
+      const content = document.createElement('div');
+      content.className = 'slide-content';
+      content.id = 'slideContent';
+      content.innerHTML = `
+        <div class="slide-placeholder">
+          <div class="slide-placeholder-icon">⚠️</div>
+          <div class="slide-placeholder-text">Slide not found</div>
+        </div>
+      `;
+      return content;
+    }
 
-    return content;
+    // Use WebRenderer to render the slide
+    const totalSlides = this.presentationData.slides.length;
+    const renderedSlide = this.renderer.render(slide, index + 1, totalSlides);
+
+    // Ensure it has the correct ID for updates
+    renderedSlide.id = 'slideContent';
+
+    return renderedSlide;
   }
 
   /**
@@ -402,6 +653,12 @@ export class PresentationSlides {
       { action: 'Toggle grid view', keys: ['G'] },
       { action: 'Toggle fullscreen', keys: ['F'] },
       { action: 'Toggle thumbnails', keys: ['T'] },
+      { action: 'Edit slides', keys: ['E'] },
+      { action: 'Manage slides', keys: ['S'] },
+      { action: 'Undo', keys: ['Ctrl+Z'] },
+      { action: 'Redo', keys: ['Ctrl+Shift+Z'] },
+      { action: 'Presenter mode', keys: ['M'] },
+      { action: 'Export menu', keys: ['P'] },
       { action: 'Show shortcuts', keys: ['?'] },
       { action: 'Close overlay', keys: ['Esc'] }
     ];
@@ -600,24 +857,31 @@ export class PresentationSlides {
     const grid = document.createElement('div');
     grid.className = 'slide-grid';
 
-    this.slidesData.slides.forEach((slide, index) => {
+    this.presentationData.slides.forEach((slide, index) => {
       const item = document.createElement('div');
       item.className = 'slide-grid-item';
       if (index === this.currentSlideIndex) item.classList.add('active');
       item.setAttribute('data-slide-index', index);
 
+      // Render actual slide content using WebRenderer
       const slidePreview = document.createElement('div');
       slidePreview.className = 'slide-grid-slide';
-      slidePreview.innerHTML = `
-        <div class="slide-placeholder">
-          <div class="slide-placeholder-icon">📄</div>
-          <div class="slide-placeholder-text">Slide ${index + 1}</div>
-        </div>
-      `;
+
+      // Render the slide
+      const renderedSlide = this.renderer.render(slide, index + 1, this.presentationData.slides.length);
+      slidePreview.appendChild(renderedSlide);
 
       const footer = document.createElement('div');
       footer.className = 'slide-grid-footer';
-      footer.innerHTML = `<div class="slide-grid-number">Slide ${index + 1}</div>`;
+
+      // Get slide type and title for footer
+      const slideType = slide.type || 'slide';
+      const slideTitle = slide.content?.title || `Slide ${index + 1}`;
+
+      footer.innerHTML = `
+        <div class="slide-grid-number">${index + 1}</div>
+        <div class="slide-grid-title">${slideTitle}</div>
+      `;
 
       item.appendChild(slidePreview);
       item.appendChild(footer);
@@ -677,6 +941,19 @@ export class PresentationSlides {
     // Don't handle if shortcuts overlay is visible (except Escape)
     if (this.shortcutsOverlayVisible && e.key !== 'Escape') return;
 
+    // Undo/Redo shortcuts (Ctrl+Z, Ctrl+Shift+Z)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      this.editor.undo();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+      e.preventDefault();
+      this.editor.redo();
+      return;
+    }
+
     switch(e.key) {
       case 'ArrowRight':
       case ' ':
@@ -710,6 +987,26 @@ export class PresentationSlides {
         e.preventDefault();
         this._toggleSidebar();
         break;
+      case 'p':
+      case 'P':
+        e.preventDefault();
+        this._toggleExportDropdown();
+        break;
+      case 'e':
+      case 'E':
+        e.preventDefault();
+        this._toggleEditMode();
+        break;
+      case 's':
+      case 'S':
+        e.preventDefault();
+        this._showSlideManager();
+        break;
+      case 'm':
+      case 'M':
+        e.preventDefault();
+        this._launchPresenterMode();
+        break;
       case '?':
         e.preventDefault();
         this._toggleShortcuts();
@@ -728,9 +1025,96 @@ export class PresentationSlides {
   }
 
   /**
+   * Toggle edit mode
+   * @private
+   */
+  _toggleEditMode() {
+    try {
+      this.editor.toggleEditMode();
+    } catch (error) {
+      console.error('[PresentationSlides] Failed to toggle edit mode:', error);
+      alert('Failed to toggle edit mode. Please try again.');
+    }
+  }
+
+  /**
+   * Show slide manager modal
+   * @private
+   */
+  _showSlideManager() {
+    try {
+      this.manager.showManagementPanel();
+    } catch (error) {
+      console.error('[PresentationSlides] Failed to show slide manager:', error);
+      alert('Failed to show slide manager. Please try again.');
+    }
+  }
+
+  /**
+   * Launch presenter mode
+   * @private
+   */
+  _launchPresenterMode() {
+    try {
+      console.log('[PresentationSlides] Launching presenter mode');
+      this.presenterMode.launch();
+    } catch (error) {
+      console.error('[PresentationSlides] Failed to launch presenter mode:', error);
+      alert('Failed to launch presenter mode. Please check your pop-up settings and try again.');
+    }
+  }
+
+  /**
+   * Export presentation to PowerPoint
+   * @private
+   */
+  async _exportToPowerPoint() {
+    try {
+      const filename = this.presentationData.metadata?.title || 'presentation';
+      console.log('[PresentationSlides] Exporting to PowerPoint:', filename);
+
+      // Use the export utility with progress dialog
+      await exportWithProgressDialog(this.presentationData, filename);
+
+      console.log('[PresentationSlides] Export completed successfully');
+    } catch (error) {
+      console.error('[PresentationSlides] Export failed:', error);
+      alert('Failed to export to PowerPoint. Please try again.');
+    }
+  }
+
+  /**
+   * Get current presentation data
+   * @returns {Object} Complete presentation data
+   */
+  getPresentationData() {
+    return this.presentationData;
+  }
+
+  /**
+   * Update presentation theme
+   * @param {Object} newTheme - New theme configuration
+   */
+  updateTheme(newTheme) {
+    this.presentationData.theme = { ...this.presentationData.theme, ...newTheme };
+    this.renderer.updateTheme(this.presentationData.theme);
+    this._updateViewer(); // Re-render current slide
+  }
+
+  /**
    * Cleanup method to remove event listeners
    */
   destroy() {
     document.removeEventListener('keydown', this.handleKeyPress);
+
+    // Cleanup presenter mode
+    if (this.presenterMode) {
+      this.presenterMode.cleanup();
+    }
+
+    // Cleanup editor
+    if (this.editor) {
+      this.editor.cleanup();
+    }
   }
 }

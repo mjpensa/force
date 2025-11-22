@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presenter View</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="presenter-view.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="presenter-body">
+  <div class="presenter-container">
+    <!-- Top Bar: Timer and Controls -->
+    <div class="presenter-topbar">
+      <div class="presenter-branding">
+        <h1 class="presenter-title">Presenter View</h1>
+        <p id="presentation-title" class="presentation-subtitle">Loading...</p>
+      </div>
+
+      <div class="timer-section">
+        <div class="timer-display">
+          <span class="timer-label">Elapsed Time:</span>
+          <span id="timer-value" class="timer-value">00:00</span>
+        </div>
+        <button id="reset-timer-btn" class="btn-reset" title="Reset timer to 00:00">
+          🔄 Reset
+        </button>
+      </div>
+
+      <div class="slide-counter-section">
+        <span id="slide-counter" class="slide-counter">Slide 1 / 1</span>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="presenter-main">
+      <!-- Left: Current Slide (Large) -->
+      <div class="current-slide-panel">
+        <div class="panel-header">
+          <span class="panel-title">Current Slide</span>
+          <span id="current-slide-number" class="slide-number-badge">1</span>
+        </div>
+        <div id="current-slide-content" class="slide-preview large">
+          <div class="loading-placeholder">
+            <div class="loading-spinner"></div>
+            <p>Loading presentation...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar: Next Slide + Notes + Controls -->
+      <div class="presenter-sidebar">
+        <!-- Next Slide Preview (Small) -->
+        <div class="next-slide-panel">
+          <div class="panel-header">
+            <span class="panel-title">Next Slide</span>
+            <span id="next-slide-number" class="slide-number-badge">2</span>
+          </div>
+          <div id="next-slide-content" class="slide-preview small">
+            <div class="placeholder-message">
+              <p>Next slide will appear here</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Speaker Notes -->
+        <div class="notes-panel">
+          <div class="panel-header">
+            <span class="panel-title">📝 Speaker Notes</span>
+          </div>
+          <div id="speaker-notes" class="notes-content">
+            <p class="notes-placeholder">Speaker notes will appear here</p>
+          </div>
+        </div>
+
+        <!-- Navigation Controls -->
+        <div class="navigation-controls">
+          <button id="prev-btn" class="nav-btn nav-btn-prev" title="Previous slide (←)">
+            ← Previous
+          </button>
+          <button id="next-btn" class="nav-btn nav-btn-next" title="Next slide (→)">
+            Next →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="presenter-statusbar">
+      <div class="status-left">
+        <span class="status-indicator status-connected">● Connected to main window</span>
+      </div>
+      <div class="status-right">
+        <span class="keyboard-hint">Keyboard: ← → (navigate) | R (reset timer) | ESC (close)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Presenter Window Script -->
+  <script type="module">
+    let currentSlideIndex = 0;
+    let totalSlides = 1;
+    let isConnected = false;
+
+    // Listen for sync messages from main window
+    window.addEventListener('message', (event) => {
+      if (!event.data || !event.data.type) return;
+
+      switch (event.data.type) {
+        case 'SYNC':
+          handleSync(event.data.data);
+          break;
+        case 'TIMER_UPDATE':
+          updateTimer(event.data.data.elapsedTime);
+          break;
+      }
+    });
+
+    function handleSync(data) {
+      if (!isConnected) {
+        isConnected = true;
+        updateConnectionStatus(true);
+        console.log('[Presenter View] Connected to main window');
+      }
+
+      currentSlideIndex = data.currentSlideIndex;
+      totalSlides = data.totalSlides;
+
+      // Update presentation title
+      if (data.metadata && data.metadata.title) {
+        document.getElementById('presentation-title').textContent = data.metadata.title;
+        document.title = `Presenter View - ${data.metadata.title}`;
+      }
+
+      // Update current slide
+      const currentSlideEl = document.getElementById('current-slide-content');
+      currentSlideEl.innerHTML = data.currentSlide;
+
+      // Update current slide number badge
+      document.getElementById('current-slide-number').textContent = currentSlideIndex + 1;
+
+      // Update next slide
+      const nextSlideEl = document.getElementById('next-slide-content');
+      if (data.nextSlide) {
+        nextSlideEl.innerHTML = data.nextSlide;
+        document.getElementById('next-slide-number').textContent = currentSlideIndex + 2;
+        document.getElementById('next-slide-number').style.display = 'inline-block';
+      } else {
+        nextSlideEl.innerHTML = '<div class="end-message"><p>End of Presentation</p><p class="end-icon">🎉</p></div>';
+        document.getElementById('next-slide-number').style.display = 'none';
+      }
+
+      // Update notes
+      const notesEl = document.getElementById('speaker-notes');
+      if (data.notes && data.notes !== 'No notes for this slide') {
+        notesEl.innerHTML = `<p>${escapeHtml(data.notes)}</p>`;
+        notesEl.classList.remove('empty');
+      } else {
+        notesEl.innerHTML = '<p class="notes-placeholder">No notes for this slide</p>';
+        notesEl.classList.add('empty');
+      }
+
+      // Update timer
+      updateTimer(data.elapsedTime);
+
+      // Update slide counter
+      updateSlideCounter();
+
+      // Update navigation buttons
+      updateNavigationButtons();
+    }
+
+    function updateTimer(seconds) {
+      document.getElementById('timer-value').textContent = formatTime(seconds);
+    }
+
+    function formatTime(seconds) {
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+
+      if (hrs > 0) {
+        return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateSlideCounter() {
+      document.getElementById('slide-counter').textContent =
+        `Slide ${currentSlideIndex + 1} / ${totalSlides}`;
+    }
+
+    function updateNavigationButtons() {
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+
+      prevBtn.disabled = currentSlideIndex === 0;
+      nextBtn.disabled = currentSlideIndex === totalSlides - 1;
+    }
+
+    function updateConnectionStatus(connected) {
+      const statusEl = document.querySelector('.status-indicator');
+      if (connected) {
+        statusEl.textContent = '● Connected to main window';
+        statusEl.classList.add('status-connected');
+        statusEl.classList.remove('status-disconnected');
+      } else {
+        statusEl.textContent = '● Disconnected';
+        statusEl.classList.add('status-disconnected');
+        statusEl.classList.remove('status-connected');
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Navigation controls
+    document.getElementById('prev-btn').addEventListener('click', () => {
+      if (currentSlideIndex > 0) {
+        window.opener.postMessage({ type: 'NAVIGATE', slideIndex: currentSlideIndex - 1 }, '*');
+      }
+    });
+
+    document.getElementById('next-btn').addEventListener('click', () => {
+      if (currentSlideIndex < totalSlides - 1) {
+        window.opener.postMessage({ type: 'NAVIGATE', slideIndex: currentSlideIndex + 1 }, '*');
+      }
+    });
+
+    document.getElementById('reset-timer-btn').addEventListener('click', () => {
+      window.opener.postMessage({ type: 'RESET_TIMER' }, '*');
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (currentSlideIndex > 0) {
+            window.opener.postMessage({ type: 'NAVIGATE', slideIndex: currentSlideIndex - 1 }, '*');
+          }
+          break;
+        case 'ArrowRight':
+        case ' ':
+          e.preventDefault();
+          if (currentSlideIndex < totalSlides - 1) {
+            window.opener.postMessage({ type: 'NAVIGATE', slideIndex: currentSlideIndex + 1 }, '*');
+          }
+          break;
+        case 'Home':
+          e.preventDefault();
+          window.opener.postMessage({ type: 'NAVIGATE', slideIndex: 0 }, '*');
+          break;
+        case 'End':
+          e.preventDefault();
+          window.opener.postMessage({ type: 'NAVIGATE', slideIndex: totalSlides - 1 }, '*');
+          break;
+        case 'r':
+        case 'R':
+          e.preventDefault();
+          window.opener.postMessage({ type: 'RESET_TIMER' }, '*');
+          break;
+        case 'Escape':
+          e.preventDefault();
+          window.close();
+          break;
+      }
+    });
+
+    // Detect if main window closes
+    setInterval(() => {
+      if (window.opener && window.opener.closed) {
+        updateConnectionStatus(false);
+        setTimeout(() => {
+          window.close();
+        }, 3000);
+      }
+    }, 1000);
+
+    // Signal ready to main window
+    if (window.opener) {
+      window.opener.postMessage({ type: 'PRESENTER_READY' }, '*');
+      console.log('[Presenter View] Ready signal sent to main window');
+    } else {
+      console.error('[Presenter View] No opener window found');
+      updateConnectionStatus(false);
+    }
+  </script>
+</body>
+</html>
