@@ -1229,42 +1229,46 @@ export class GanttChart {
         // Use requestAnimationFrame to prevent UI blocking
         await new Promise(resolve => requestAnimationFrame(resolve));
 
-        // FIX: Apply explicit padding to label-content elements for html2canvas
-        // html2canvas doesn't properly handle flexbox align-items: center
-        const labelContents = chartContainer.querySelectorAll('.label-content');
-        const originalStyles = [];
-
-        labelContents.forEach((el, index) => {
-          // Store original style
-          originalStyles[index] = el.style.cssText;
-
-          // Get computed height and line-height to calculate centering
-          const computedStyle = window.getComputedStyle(el);
-          const fontSize = parseFloat(computedStyle.fontSize);
-          const lineHeight = parseFloat(computedStyle.lineHeight);
-          const paddingTop = parseFloat(computedStyle.paddingTop);
-          const paddingBottom = parseFloat(computedStyle.paddingBottom);
-
-          // Apply explicit padding that centers the text
-          // Ensure padding-top and padding-bottom are equal for perfect centering
-          const verticalPadding = Math.max(paddingTop, paddingBottom);
-          el.style.paddingTop = `${verticalPadding}px`;
-          el.style.paddingBottom = `${verticalPadding}px`;
-          el.style.display = 'block';
-          el.style.lineHeight = lineHeight ? `${lineHeight}px` : `${fontSize * 1.2}px`;
-        });
-
         const canvas = await html2canvas(chartContainer, {
           useCORS: true,
           logging: false,
           scale: 2, // Render at 2x resolution for quality
           allowTaint: false,
-          backgroundColor: null
-        });
+          backgroundColor: null,
+          onclone: (clonedDoc) => {
+            // FIX: Html2canvas doesn't handle flexbox align-items properly
+            // Manipulate the cloned DOM to force vertical centering
+            const clonedLabels = clonedDoc.querySelectorAll('.gantt-row-label');
 
-        // Restore original styles
-        labelContents.forEach((el, index) => {
-          el.style.cssText = originalStyles[index];
+            clonedLabels.forEach((label) => {
+              // Remove flexbox, use padding-based centering instead
+              label.style.display = 'block';
+              label.style.position = 'relative';
+
+              const labelContent = label.querySelector('.label-content');
+              if (labelContent) {
+                const computedStyle = window.getComputedStyle(labelContent);
+                const paddingTop = parseFloat(computedStyle.paddingTop);
+                const paddingBottom = parseFloat(computedStyle.paddingBottom);
+                const fontSize = parseFloat(computedStyle.fontSize);
+                const lineHeight = parseFloat(computedStyle.lineHeight) || fontSize * 1.2;
+
+                // Force equal vertical padding
+                const verticalPadding = Math.max(paddingTop, paddingBottom);
+                labelContent.style.paddingTop = `${verticalPadding}px`;
+                labelContent.style.paddingBottom = `${verticalPadding}px`;
+                labelContent.style.lineHeight = `${lineHeight}px`;
+                labelContent.style.display = 'block';
+
+                // Position absolutely within parent for precise control
+                labelContent.style.position = 'absolute';
+                labelContent.style.top = '50%';
+                labelContent.style.transform = 'translateY(-50%)';
+                labelContent.style.left = '0';
+                labelContent.style.right = '0';
+              }
+            });
+          }
         });
 
         // Create download link
