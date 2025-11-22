@@ -128,14 +128,16 @@ export class DraggableGantt {
     const deltaX = event.clientX - this.dragState.startX;
     const barArea = this.dragState.barArea;
     const rect = barArea.getBoundingClientRect();
-    const columnWidth = rect.width / this.ganttData.timeColumns.length;
+    // UPDATED: Use sub-intervals for finer-grained snapping
+    const intervals = this.ganttData.subIntervals || this.ganttData.timeColumns;
+    const columnWidth = rect.width / intervals.length;
     const columnDelta = Math.round(deltaX / columnWidth);
 
     let newStartCol = this.dragState.originalStartCol + columnDelta;
     let newEndCol = newStartCol + this.dragState.duration;
 
     // Clamp to valid range
-    const numCols = this.ganttData.timeColumns.length;
+    const numCols = intervals.length;
     newStartCol = Math.max(1, Math.min(newStartCol, numCols - this.dragState.duration + 1));
     newEndCol = newStartCol + this.dragState.duration;
 
@@ -177,6 +179,8 @@ export class DraggableGantt {
 
       // Notify callback with updated task info
       if (this.onTaskUpdate) {
+        // UPDATED: Use sub-intervals for date labels
+        const intervals = this.ganttData.subIntervals || this.ganttData.timeColumns;
         const taskInfo = {
           taskName: this.dragState.taskData.title,
           entity: this.dragState.taskData.entity,
@@ -186,8 +190,8 @@ export class DraggableGantt {
           oldEndCol: this.dragState.originalEndCol,
           newStartCol: newStartCol,
           newEndCol: newEndCol,
-          startDate: this.ganttData.timeColumns[newStartCol - 1],
-          endDate: this.ganttData.timeColumns[newEndCol - 2] // -2 because endCol is exclusive
+          startDate: intervals[newStartCol - 1],
+          endDate: intervals[newEndCol - 2] // -2 because endCol is exclusive
         };
 
         try {

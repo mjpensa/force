@@ -138,7 +138,9 @@ export class ResizableGantt {
     const deltaX = event.clientX - this.resizeState.startX;
     const barArea = this.resizeState.barArea;
     const rect = barArea.getBoundingClientRect();
-    const columnWidth = rect.width / this.ganttData.timeColumns.length;
+    // UPDATED: Use sub-intervals for finer-grained snapping
+    const intervals = this.ganttData.subIntervals || this.ganttData.timeColumns;
+    const columnWidth = rect.width / intervals.length;
     const columnDelta = Math.round(deltaX / columnWidth);
 
     let newStartCol = this.resizeState.originalStartCol;
@@ -155,7 +157,7 @@ export class ResizableGantt {
       // Resize from right (change end date)
       newEndCol = this.resizeState.originalEndCol + columnDelta;
       // Clamp to valid range
-      newEndCol = Math.min(this.ganttData.timeColumns.length + 1, newEndCol);
+      newEndCol = Math.min(intervals.length + 1, newEndCol);
       // Prevent end from going before start (minimum 1 column width)
       newEndCol = Math.max(newEndCol, this.resizeState.originalStartCol + 1);
     }
@@ -195,6 +197,8 @@ export class ResizableGantt {
 
       // Notify callback with updated task info
       if (this.onTaskResize) {
+        // UPDATED: Use sub-intervals for date labels
+        const intervals = this.ganttData.subIntervals || this.ganttData.timeColumns;
         const taskInfo = {
           taskName: this.ganttData.data[this.resizeState.taskIndex].title,
           entity: this.ganttData.data[this.resizeState.taskIndex].entity,
@@ -204,8 +208,8 @@ export class ResizableGantt {
           oldEndCol: this.resizeState.originalEndCol,
           newStartCol: newStartCol,
           newEndCol: newEndCol,
-          startDate: this.ganttData.timeColumns[newStartCol - 1],
-          endDate: this.ganttData.timeColumns[newEndCol - 2], // -2 because endCol is exclusive
+          startDate: intervals[newStartCol - 1],
+          endDate: intervals[newEndCol - 2], // -2 because endCol is exclusive
           resizeHandle: this.resizeState.handle
         };
 
