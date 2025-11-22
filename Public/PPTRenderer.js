@@ -12,8 +12,6 @@
  * Requires: PptxGenJS library (loaded via CDN in chart.html)
  */
 
-import { SLIDE_SCHEMAS } from './SlideDataModel.js';
-
 export class PPTRenderer {
   /**
    * Create a new PPTRenderer instance
