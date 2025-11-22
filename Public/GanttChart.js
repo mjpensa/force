@@ -1381,6 +1381,22 @@ export class GanttChart {
         // Clone the chart container
         const clonedContainer = chartContainer.cloneNode(true);
 
+        // Remove problematic attributes that cause XHTML parsing errors
+        const allElements = clonedContainer.querySelectorAll('*');
+        allElements.forEach(el => {
+          // Remove event handlers (onclick, onload, etc.)
+          Array.from(el.attributes).forEach(attr => {
+            if (attr.name.startsWith('on')) {
+              el.removeAttribute(attr.name);
+            }
+          });
+
+          // Remove contenteditable as it can cause issues
+          if (el.hasAttribute('contenteditable')) {
+            el.removeAttribute('contenteditable');
+          }
+        });
+
         // Convert all images to base64 data URLs
         const images = clonedContainer.querySelectorAll('img');
         for (const img of images) {
@@ -1393,7 +1409,7 @@ export class GanttChart {
               canvas.width = originalImg.naturalWidth;
               canvas.height = originalImg.naturalHeight;
               ctx.drawImage(originalImg, 0, 0);
-              img.src = canvas.toDataURL('image/png');
+              img.setAttribute('src', canvas.toDataURL('image/png'));
             }
           } catch (e) {
             console.warn('Could not convert image to base64:', e);
@@ -1431,16 +1447,16 @@ export class GanttChart {
           console.warn('Error collecting styles:', e);
         }
 
-        // Serialize as XHTML (required for SVG foreignObject)
+        // Serialize using XMLSerializer for proper XHTML
         const serializer = new XMLSerializer();
         let htmlString = serializer.serializeToString(clonedContainer);
 
-        // Fix common HTML to XHTML issues
+        // Clean up any remaining issues
         htmlString = htmlString
-          .replace(/<br>/g, '<br/>')
-          .replace(/<hr>/g, '<hr/>')
-          .replace(/<input([^>]*)>/g, '<input$1/>')
-          .replace(/<img([^>]*)>/g, '<img$1/>');
+          // Ensure self-closing tags are properly formatted
+          .replace(/<(br|hr|img|input|meta|link)([^>]*?)>/gi, '<$1$2 />')
+          // Remove any xmlns attributes that might have been added
+          .replace(/\sxmlns="[^"]*"/g, '');
 
         // Create SVG with embedded styles
         const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
