@@ -13,7 +13,6 @@ import { ContextMenu } from './ContextMenu.js';
 import { ExecutiveSummary } from './ExecutiveSummary.js';
 import { PresentationSlides } from './PresentationSlides.js';
 import { HamburgerMenu } from './HamburgerMenu.js';
-import { BimodalGanttController } from './BimodalGanttController.js';
 
 // Import Router (loaded as global from Router.js)
 // Note: Router.js is loaded via script tag in chart.html and exposed as window.Router
@@ -43,7 +42,6 @@ export class GanttChart {
     this.resizableGantt = null; // Phase 2: Bar resizing functionality
     this.contextMenu = null; // Phase 5: Context menu for color changing
     this.isEditMode = false; // Edit mode toggle - default is read-only
-    this.isExecutiveView = false; // EXECUTIVE-FIRST: Executive View toggle - shows only milestones/decisions
     this.isCriticalPathView = false; // ADVANCED GANTT: Critical Path View toggle - shows only critical path tasks
     this.titleElement = null; // Reference to the title element for edit mode
     this.legendElement = null; // Reference to the legend element for edit mode
@@ -51,7 +49,6 @@ export class GanttChart {
     this.executiveSummary = null; // Reference to ExecutiveSummary component
     this.presentationSlides = null; // Reference to PresentationSlides component
     this.router = null; // Router for navigation between sections
-    this.bimodalController = null; // Semantic overlay controller (Phase 3: Semantic Overlay)
   }
 
   /**
@@ -89,20 +86,6 @@ export class GanttChart {
 
     renderTimer.mark('Grid created');
 
-    // PHASE 3 SEMANTIC OVERLAY: Initialize bimodal controller if data is semantic
-    if (BimodalGanttController.isSemantic(this.ganttData)) {
-      console.log('[GanttChart] 🔬 Semantic data detected - initializing BimodalGanttController');
-      this.bimodalController = new BimodalGanttController(
-        this.ganttData,
-        this.chartWrapper,
-        this
-      );
-      this.bimodalController.initialize();
-      renderTimer.mark('Semantic overlay initialized');
-    } else {
-      console.log('[GanttChart] Standard roadmap data - semantic overlay not applicable');
-    }
-
     this._addLegend();
 
     // Add Executive Summary - Always create component, it will handle missing data gracefully
@@ -124,17 +107,6 @@ export class GanttChart {
     // Add export and edit mode toggle buttons
     const exportContainer = document.createElement('div');
     exportContainer.className = 'export-container';
-
-    // EXECUTIVE-FIRST: Executive View toggle button
-    const executiveViewBtn = document.createElement('button');
-    executiveViewBtn.id = 'executive-view-toggle-btn';
-    executiveViewBtn.className = 'executive-view-toggle-button';
-    executiveViewBtn.textContent = this.isExecutiveView ? '👔 Executive View: ON' : '📋 Detail View: ON';
-    executiveViewBtn.title = 'Toggle Executive View (show only milestones and decisions)';
-    executiveViewBtn.setAttribute('aria-label', 'Toggle Executive View to show only strategic-level tasks');
-    executiveViewBtn.setAttribute('aria-pressed', this.isExecutiveView ? 'true' : 'false');
-    executiveViewBtn.style.backgroundColor = this.isExecutiveView ? '#1976D2' : '#555555';
-    exportContainer.appendChild(executiveViewBtn);
 
     // ADVANCED GANTT: Critical Path View toggle button
     const criticalPathBtn = document.createElement('button');
@@ -191,7 +163,6 @@ export class GanttChart {
     this._addHamburgerMenu();
 
     // Add listeners
-    this._addExecutiveViewToggleListener(); // EXECUTIVE-FIRST: Executive View toggle
     this._addCriticalPathViewToggleListener(); // ADVANCED GANTT: Critical Path View toggle
     this._addEditModeToggleListener();
     this._addExportListener(); // PNG export
@@ -970,101 +941,6 @@ export class GanttChart {
     this.chartWrapper.appendChild(footerSvgEl);
   }
 
-  /**
-   * EXECUTIVE-FIRST: Adds Executive View toggle functionality
-   * Filters chart to show only milestones and decisions
-   * @private
-   */
-  _addExecutiveViewToggleListener() {
-    const executiveViewBtn = document.getElementById('executive-view-toggle-btn');
-
-    if (!executiveViewBtn) {
-      console.warn('Executive view toggle button not found.');
-      return;
-    }
-
-    executiveViewBtn.addEventListener('click', () => {
-      this.isExecutiveView = !this.isExecutiveView;
-      executiveViewBtn.textContent = this.isExecutiveView ? '👔 Executive View: ON' : '📋 Detail View: ON';
-      executiveViewBtn.style.backgroundColor = this.isExecutiveView ? '#1976D2' : '#555555';
-      executiveViewBtn.setAttribute('aria-pressed', this.isExecutiveView ? 'true' : 'false');
-
-      // Re-render the grid with filtered data
-      this._updateGridForExecutiveView();
-
-      // ACCESSIBILITY: Announce view change to screen readers
-      this._announceToScreenReader(`${this.isExecutiveView ? 'Executive' : 'Detail'} view enabled`);
-
-      // FEATURE #9: Track feature usage
-      trackEvent('feature_executive_view', {
-        enabled: this.isExecutiveView,
-        taskCount: this.ganttData.data.length
-      });
-
-      console.log(`✓ ${this.isExecutiveView ? 'Executive View' : 'Detail View'} enabled`);
-    });
-  }
-
-  /**
-   * EXECUTIVE-FIRST: Updates the grid to show/hide tasks based on Executive View
-   * Shows only milestones and decisions when enabled
-   * @private
-   */
-  _updateGridForExecutiveView() {
-    if (!this.gridElement) {
-      console.warn('Grid element not found for Executive View update');
-      return;
-    }
-
-    // Get all row labels - each row has a label and a corresponding bar area
-    const allRowLabels = this.gridElement.querySelectorAll('.gantt-row-label');
-
-    allRowLabels.forEach((labelElement, index) => {
-      const dataItem = this.ganttData.data[index];
-
-      // Skip swimlanes - always show them
-      if (dataItem && dataItem.isSwimlane) {
-        labelElement.style.display = '';
-        // Also show corresponding bar area
-        const barArea = this.gridElement.querySelector(`.gantt-bar-area[data-task-index="${index}"]`);
-        if (barArea) {
-          barArea.style.display = '';
-        }
-        return;
-      }
-
-      // For tasks, check taskType
-      if (this.isExecutiveView) {
-        // Show only milestone and decision tasks
-        const taskType = dataItem?.taskType || 'task';
-        const isExecutiveTask = ['milestone', 'decision'].includes(taskType);
-
-        if (isExecutiveTask) {
-          labelElement.style.display = '';
-          // Also show corresponding bar area
-          const barArea = this.gridElement.querySelector(`.gantt-bar-area[data-task-index="${index}"]`);
-          if (barArea) {
-            barArea.style.display = '';
-          }
-        } else {
-          labelElement.style.display = 'none';
-          // Also hide corresponding bar area
-          const barArea = this.gridElement.querySelector(`.gantt-bar-area[data-task-index="${index}"]`);
-          if (barArea) {
-            barArea.style.display = 'none';
-          }
-        }
-      } else {
-        // Show all tasks in detail view
-        labelElement.style.display = '';
-        // Also show corresponding bar area
-        const barArea = this.gridElement.querySelector(`.gantt-bar-area[data-task-index="${index}"]`);
-        if (barArea) {
-          barArea.style.display = '';
-        }
-      }
-    });
-  }
 
   /**
    * ADVANCED GANTT: Adds Critical Path View toggle functionality
@@ -1620,28 +1496,6 @@ export class GanttChart {
       const key = e.key.toLowerCase();
 
       switch (key) {
-        case 'e':
-          // E = Executive View (toggle ON)
-          if (!this.isExecutiveView) {
-            const executiveViewBtn = document.getElementById('executive-view-toggle-btn');
-            if (executiveViewBtn) {
-              executiveViewBtn.click();
-              console.log('⌨️ Keyboard shortcut: E (Executive View)');
-            }
-          }
-          break;
-
-        case 'd':
-          // D = Detail View (toggle Executive View OFF)
-          if (this.isExecutiveView) {
-            const executiveViewBtn = document.getElementById('executive-view-toggle-btn');
-            if (executiveViewBtn) {
-              executiveViewBtn.click();
-              console.log('⌨️ Keyboard shortcut: D (Detail View)');
-            }
-          }
-          break;
-
         case 't':
           // T = Timeline (navigate to roadmap view)
           if (this.router) {
