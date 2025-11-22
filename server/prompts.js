@@ -21,33 +21,56 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - 1-3 years total: Use "Quarters" (e.g., ["Q1 2026", "Q2 2026"]), set intervalType to "quarterly"
     - 3-5 years total: Use "Years" (e.g., ["2020", "2021", "2022"]), set intervalType to "yearly"
     - 5+ years total: Use multi-year intervals (e.g., ["2020-2025", "2025-2030"]), set intervalType to "multi-year"
-2.5 **SUB-INTERVALS (CRITICAL NEW FEATURE):** After determining the main interval, you MUST generate sub-intervals:
+2.5 **SUB-INTERVALS (CRITICAL MANDATORY FEATURE - CANNOT BE SKIPPED):** After determining the main interval, you MUST ALWAYS generate sub-intervals:
+
+    **CRITICAL VALIDATION RULES:**
+    - The subIntervals array MUST NEVER be empty []
+    - The subIntervals array MUST ALWAYS have length > 0
+    - BEFORE finishing your response, VERIFY: subIntervals.length = timeColumns.length × (sub-intervals per main interval)
+    - If this check fails, you MUST regenerate the subIntervals array correctly
+
     a. **Determine Sub-Interval Type:** Based on the main intervalType and the specificity of dates in the research:
        * intervalType "weekly" → subIntervalType MUST be "daily"
-         - Generate 5 business days per week (Mon-Fri only, NO Saturday/Sunday)
-         - Example: ["Mon W1", "Tue W1", "Wed W1", "Thu W1", "Fri W1", "Mon W2", ...]
+         - Generate EXACTLY 5 business days per week (Mon-Fri only, NO Saturday/Sunday)
+         - Example for 2 weeks: ["Mon W1", "Tue W1", "Wed W1", "Thu W1", "Fri W1", "Mon W2", "Tue W2", "Wed W2", "Thu W2", "Fri W2"]
+         - Total elements = timeColumns.length × 5
        * intervalType "monthly" → subIntervalType MUST be "weekly"
-         - Generate ~4 weeks per month (W1, W2, W3, W4)
-         - Example: ["W1 Jan", "W2 Jan", "W3 Jan", "W4 Jan", "W1 Feb", ...]
+         - Generate EXACTLY 4 weeks per month (W1, W2, W3, W4)
+         - Example for 2 months: ["W1 Jan", "W2 Jan", "W3 Jan", "W4 Jan", "W1 Feb", "W2 Feb", "W3 Feb", "W4 Feb"]
+         - Total elements = timeColumns.length × 4
        * intervalType "quarterly" → subIntervalType is "monthly" OR "weekly" (YOU DECIDE):
-         - If research mentions specific months/dates → use "monthly" (3 months per quarter)
-           Example: ["Jan 2026", "Feb 2026", "Mar 2026", "Apr 2026", ...]
-         - If research only has quarter-level detail → use "weekly" (12-13 weeks per quarter)
-           Example: ["W1 Q1", "W2 Q1", ..., "W13 Q1", "W1 Q2", ...]
+         - If research mentions specific months/dates → use "monthly" (EXACTLY 3 months per quarter)
+           Example for 2 quarters: ["Jan 2026", "Feb 2026", "Mar 2026", "Apr 2026", "May 2026", "Jun 2026"]
+           Total elements = timeColumns.length × 3
+         - If research only has quarter-level detail → use "weekly" (EXACTLY 12 weeks per quarter)
+           Example for 2 quarters: ["W1 Q1", "W2 Q1", ..., "W12 Q1", "W1 Q2", "W2 Q2", ..., "W12 Q2"]
+           Total elements = timeColumns.length × 12
        * intervalType "yearly" → subIntervalType is "quarterly" OR "monthly" (YOU DECIDE):
-         - If research mentions specific quarters → use "quarterly" (4 quarters per year)
-           Example: ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", ...]
-         - If research mentions specific months → use "monthly" (12 months per year)
-           Example: ["Jan 2020", "Feb 2020", ..., "Dec 2020", "Jan 2021", ...]
+         - If research mentions specific quarters → use "quarterly" (EXACTLY 4 quarters per year)
+           Example for 2 years: ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", "Q2 2021", "Q3 2021", "Q4 2021"]
+           Total elements = timeColumns.length × 4
+         - If research mentions specific months → use "monthly" (EXACTLY 12 months per year)
+           Example for 2 years: ["Jan 2020", "Feb 2020", ..., "Dec 2020", "Jan 2021", "Feb 2021", ..., "Dec 2021"]
+           Total elements = timeColumns.length × 12
        * intervalType "multi-year" → subIntervalType MUST be "yearly"
-         - Generate individual years for each multi-year period
-         - Example for "2020-2025": ["2020", "2021", "2022", "2023", "2024", "2025"]
-    b. **Generate subIntervals Array:** Create a flat array of ALL sub-interval labels across the entire time horizon
-       * The number of sub-intervals = (number of main intervals) × (sub-intervals per main interval)
+         - Generate EXACTLY all individual years for each multi-year period
+         - Example for "2020-2025" (1 interval, 6 years): ["2020", "2021", "2022", "2023", "2024", "2025"]
+         - Total elements = sum of all years across all multi-year intervals
+
+    b. **Generate subIntervals Array (MANDATORY - CANNOT BE EMPTY):**
+       * Create a flat array of ALL sub-interval labels across the entire time horizon
+       * You MUST generate every single sub-interval for every single main interval
+       * The array MUST contain actual string labels (e.g., "Q1 2020", "Jan 2026"), NOT just placeholders
        * Each label should clearly indicate which sub-interval it represents
-       * Example for yearly/quarterly: ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", "Q2 2021", ...]
-       * Example for quarterly/monthly: ["Jan 2026", "Feb 2026", "Mar 2026", "Apr 2026", "May 2026", "Jun 2026", ...]
-    c. **CRITICAL:** The subIntervals array length MUST equal the product of timeColumns length and the number of sub-intervals per main interval
+
+    c. **FINAL VALIDATION CHECK (MANDATORY BEFORE SUBMITTING):**
+       * Count: subIntervals.length = timeColumns.length × (sub-intervals per main interval)
+       * Example 1: If timeColumns = ["2020", "2021"] (2 years) and subIntervalType = "quarterly"
+         → MUST have subIntervals.length = 2 × 4 = 8 elements: ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", "Q2 2021", "Q3 2021", "Q4 2021"]
+       * Example 2: If timeColumns = ["Q1 2026", "Q2 2026"] (2 quarters) and subIntervalType = "monthly"
+         → MUST have subIntervals.length = 2 × 3 = 6 elements: ["Jan 2026", "Feb 2026", "Mar 2026", "Apr 2026", "May 2026", "Jun 2026"]
+       * IF this check fails, you HAVE FAILED and MUST regenerate the subIntervals array with the correct number of elements
+       * An empty array [] is NEVER acceptable and will cause the chart to completely fail
 3.  **CHART DATA:** Create the 'data' array.
     - First, identify all logical swimlanes. **ADVANCED GANTT - STAKEHOLDER SWIMLANES:** For banking/enterprise projects, PREFER organizing by stakeholder departments:
       * IT/Technology (technical implementation, infrastructure, systems)

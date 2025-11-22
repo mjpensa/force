@@ -160,7 +160,32 @@ ${researchTextCache}`;
       throw new Error('AI returned empty data array');
     }
 
-    console.log(`Job ${jobId}: Data validation passed - timeColumns: ${ganttData.timeColumns.length} items, data: ${ganttData.data.length} tasks`);
+    // CRITICAL VALIDATION: subIntervals must NEVER be empty
+    // This is a required field that the AI MUST populate correctly
+    if (!ganttData.subIntervals || !Array.isArray(ganttData.subIntervals)) {
+      console.error(`Job ${jobId}: Missing or invalid subIntervals. Type:`, typeof ganttData.subIntervals, 'Value:', ganttData.subIntervals);
+      throw new Error('AI returned missing or invalid subIntervals (required field)');
+    }
+
+    if (ganttData.subIntervals.length === 0) {
+      console.error(`Job ${jobId}: CRITICAL ERROR - Empty subIntervals array detected!`);
+      console.error(`Job ${jobId}: This will cause chart rendering to fail with 0 columns`);
+      console.error(`Job ${jobId}: timeColumns: ${ganttData.timeColumns.length} items, intervalType: ${ganttData.intervalType}, subIntervalType: ${ganttData.subIntervalType}`);
+      throw new Error('AI returned empty subIntervals array - this is a critical error that will break chart rendering. Please retry chart generation.');
+    }
+
+    // Validate that intervalType and subIntervalType are set
+    if (!ganttData.intervalType) {
+      console.error(`Job ${jobId}: Missing intervalType field`);
+      throw new Error('AI returned missing intervalType (required field)');
+    }
+
+    if (!ganttData.subIntervalType) {
+      console.error(`Job ${jobId}: Missing subIntervalType field`);
+      throw new Error('AI returned missing subIntervalType (required field)');
+    }
+
+    console.log(`Job ${jobId}: Data validation passed - timeColumns: ${ganttData.timeColumns.length} items, subIntervals: ${ganttData.subIntervals.length} items, data: ${ganttData.data.length} tasks`);
 
     // NEW: Executive Summary Generation (conditional)
     let executiveSummary = null;
