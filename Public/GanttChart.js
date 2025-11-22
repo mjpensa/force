@@ -393,20 +393,22 @@ export class GanttChart {
     mainHeaderFragment.appendChild(mainHeaderLabel);
 
     // Create spanning main interval cells
-    let subIntervalIndex = 0; // Track how many sub-intervals we've processed (0-indexed)
+    let subIntervalOffset = 0; // Track how many sub-intervals we've processed
     for (const mainInterval of this.ganttData.timeColumns) {
       const mainCell = document.createElement('div');
       mainCell.className = 'gantt-header gantt-main-interval';
       mainCell.textContent = mainInterval;
 
-      // Span across sub-intervals: start at current position, end after all sub-intervals for this main interval
-      // +2 because column 1 is the label, and grid columns are 1-indexed
-      const startCol = subIntervalIndex + 2;
+      // Grid column calculation:
+      // Column 1 is the label, so sub-intervals start at column 2
+      // startCol = 2 (first sub-interval) + offset (sub-intervals already processed)
+      // endCol = startCol + number of sub-intervals for this main interval
+      const startCol = 2 + subIntervalOffset;
       const endCol = startCol + subIntervalsPerMain;
       mainCell.style.gridColumn = `${startCol} / ${endCol}`;
 
       mainHeaderFragment.appendChild(mainCell);
-      subIntervalIndex += subIntervalsPerMain;
+      subIntervalOffset += subIntervalsPerMain;
     }
 
     this.gridElement.appendChild(mainHeaderFragment);
