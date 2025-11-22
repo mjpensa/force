@@ -5,6 +5,7 @@
  */
 
 import { CONFIG } from './config.js';
+import { ExportManagerDocument } from './ExportManagerDocument.js';
 
 /**
  * ExecutiveSummary Class
@@ -30,6 +31,9 @@ export class ExecutiveSummary {
 
     // Keyboard shortcuts binding
     this.handleKeyPress = this.handleKeyPress.bind(this);
+
+    // Export manager
+    this.exportManager = new ExportManagerDocument(this);
 
     // Generate multi-page document (for now, placeholder pages)
     this.pages = this._generatePages();
@@ -174,8 +178,8 @@ export class ExecutiveSummary {
     const tocBtn = this._createButton('', '📑', 'Contents', () => this._toggleTOC());
     tocBtn.id = 'toggleTOCBtn';
 
-    // Print button
-    const printBtn = this._createButton('', '🖨', 'Print', () => this._print());
+    // Export dropdown
+    const exportDropdown = this._createExportDropdown();
 
     // Fullscreen button
     const fullscreenBtn = this._createButton('', '⛶', 'Fullscreen', () => this._toggleFullscreen());
@@ -186,7 +190,7 @@ export class ExecutiveSummary {
 
     rightSide.appendChild(pagesBtn);
     rightSide.appendChild(tocBtn);
-    rightSide.appendChild(printBtn);
+    rightSide.appendChild(exportDropdown);
     rightSide.appendChild(fullscreenBtn);
     rightSide.appendChild(shortcutsBtn);
 
@@ -245,6 +249,152 @@ export class ExecutiveSummary {
     btn.innerHTML = `<span class="doc-viewer-btn-icon">${icon}</span>${text ? `<span>${text}</span>` : ''}`;
     btn.addEventListener('click', onClick);
     return btn;
+  }
+
+  /**
+   * Creates export dropdown menu
+   * @private
+   */
+  _createExportDropdown() {
+    const container = document.createElement('div');
+    container.className = 'export-dropdown-container';
+    container.id = 'docExportDropdownContainer';
+
+    const button = document.createElement('button');
+    button.className = 'doc-viewer-btn';
+    button.id = 'docExportDropdownBtn';
+    button.innerHTML = '<span class="doc-viewer-btn-icon">📥</span><span>Export</span><span class="dropdown-arrow">▼</span>';
+
+    const menu = document.createElement('div');
+    menu.className = 'export-dropdown-menu';
+    menu.id = 'docExportDropdownMenu';
+
+    const menuItems = [
+      { icon: '📄', text: 'PDF Document', action: () => this._exportToPDF() },
+      { icon: '🖼️', text: 'Current Page (PNG)', action: () => this._exportCurrentPageToPNG() },
+      { icon: '🎞️', text: 'All Pages (PNG)', action: () => this._exportAllPagesToPNG() },
+      { icon: '🖨️', text: 'Print View', action: () => this._openPrintView() }
+    ];
+
+    menuItems.forEach(item => {
+      const menuItem = document.createElement('div');
+      menuItem.className = 'export-dropdown-item';
+      menuItem.innerHTML = `<span class="export-item-icon">${item.icon}</span><span>${item.text}</span>`;
+      menuItem.addEventListener('click', () => {
+        item.action();
+        this._closeExportDropdown();
+      });
+      menu.appendChild(menuItem);
+    });
+
+    container.appendChild(button);
+    container.appendChild(menu);
+
+    // Toggle dropdown on button click
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._toggleExportDropdown();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('docExportDropdownContainer');
+      if (dropdown && !dropdown.contains(e.target)) {
+        this._closeExportDropdown();
+      }
+    });
+
+    return container;
+  }
+
+  /**
+   * Toggle export dropdown visibility
+   * @private
+   */
+  _toggleExportDropdown() {
+    const menu = document.getElementById('docExportDropdownMenu');
+    const button = document.getElementById('docExportDropdownBtn');
+
+    if (menu && button) {
+      const isOpen = menu.classList.contains('open');
+      if (isOpen) {
+        menu.classList.remove('open');
+        button.classList.remove('active');
+      } else {
+        menu.classList.add('open');
+        button.classList.add('active');
+      }
+    }
+  }
+
+  /**
+   * Close export dropdown
+   * @private
+   */
+  _closeExportDropdown() {
+    const menu = document.getElementById('docExportDropdownMenu');
+    const button = document.getElementById('docExportDropdownBtn');
+
+    if (menu && button) {
+      menu.classList.remove('open');
+      button.classList.remove('active');
+    }
+  }
+
+  /**
+   * Export to PDF
+   * @private
+   */
+  async _exportToPDF() {
+    try {
+      console.log('[ExecutiveSummary] Exporting to PDF');
+      await this.exportManager.exportToPDF();
+    } catch (error) {
+      console.error('[ExecutiveSummary] PDF export failed:', error);
+      alert('Failed to export to PDF. Please try again.');
+    }
+  }
+
+  /**
+   * Export current page to PNG
+   * @private
+   */
+  async _exportCurrentPageToPNG() {
+    try {
+      console.log('[ExecutiveSummary] Exporting current page to PNG');
+      await this.exportManager.exportCurrentPageToPNG();
+    } catch (error) {
+      console.error('[ExecutiveSummary] PNG export failed:', error);
+      alert('Failed to export to PNG. Please try again.');
+    }
+  }
+
+  /**
+   * Export all pages to PNG
+   * @private
+   */
+  async _exportAllPagesToPNG() {
+    try {
+      console.log('[ExecutiveSummary] Exporting all pages to PNG');
+      await this.exportManager.exportAllPagesToPNG();
+    } catch (error) {
+      console.error('[ExecutiveSummary] PNG export failed:', error);
+      alert('Failed to export all pages to PNG. Please try again.');
+    }
+  }
+
+  /**
+   * Open print view
+   * @private
+   */
+  _openPrintView() {
+    try {
+      console.log('[ExecutiveSummary] Opening print view');
+      this.exportManager.openPrintView();
+    } catch (error) {
+      console.error('[ExecutiveSummary] Print view failed:', error);
+      alert('Failed to open print view. Please try again.');
+    }
   }
 
   /**
@@ -789,14 +939,6 @@ export class ExecutiveSummary {
     if (overlay) {
       overlay.classList.toggle('visible', this.shortcutsVisible);
     }
-  }
-
-  /**
-   * Print document
-   * @private
-   */
-  _print() {
-    window.print();
   }
 
   /**
