@@ -1220,6 +1220,9 @@ SLIDE TYPES AVAILABLE:
 - "risks": Strategic risk assessment (3-5 items)
 - "insights": Expert conversation points / key insights (4-6 items)
 - "simple": General content slide
+- "bip-three-column": BIP three-column layout with eyebrow and geometric graphic
+- "bip-single-column": BIP single-column layout with large title
+- "bip-title-slide": BIP branded title slide with gradient background
 
 REQUIREMENTS:
 - First slide MUST be type "title"
@@ -1243,7 +1246,7 @@ export const PRESENTATION_SLIDES_OUTLINE_SCHEMA = {
         properties: {
           type: {
             type: "string",
-            enum: ["title", "narrative", "drivers", "dependencies", "risks", "insights", "simple"]
+            enum: ["title", "narrative", "drivers", "dependencies", "risks", "insights", "simple", "bip-three-column", "bip-single-column", "bip-title-slide"]
           },
           title: {
             type: "string",
@@ -1394,6 +1397,36 @@ REQUIRED FIELDS:
 - content: Array of text strings (bullet points or paragraphs)
 Example: { "type": "simple", "title": "Summary", "content": ["Key takeaway 1", "Key takeaway 2"] }
 
+BIP CUSTOM SLIDE TEMPLATES:
+
+TYPE: "bip-three-column" - BIP THREE-COLUMN LAYOUT
+Modern three-column layout with eyebrow, title, and geometric corner graphic.
+REQUIRED FIELDS:
+- eyebrow: Object with text property (uppercase label, max 100 chars)
+- title: Object with text property (main title, max 200 chars)
+- columns: Array of exactly 3 column objects, each with:
+  * text: Column content (max 1000 chars per column)
+OPTIONAL FIELDS:
+- showCornerGraphic: Boolean (default true) - shows decorative corner SVG
+Example: { "type": "bip-three-column", "eyebrow": {"text": "PROJECT OVERVIEW"}, "title": {"text": "Digital Transformation Initiative"}, "columns": [{"text": "First column content..."}, {"text": "Second column..."}, {"text": "Third column..."}], "showCornerGraphic": true }
+
+TYPE: "bip-single-column" - BIP SINGLE-COLUMN LAYOUT
+Large title with single wide text column, ideal for detailed content.
+REQUIRED FIELDS:
+- eyebrow: Object with text property (uppercase label, max 100 chars)
+- title: Object with text property (large title, supports line breaks with \n, max 200 chars)
+- bodyText: Object with text property (body content, max 2000 chars)
+Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."} }
+
+TYPE: "bip-title-slide" - BIP TITLE SLIDE
+Branded title slide with gradient background and footer.
+REQUIRED FIELDS:
+- title: Object with text property (main title, supports line breaks with \n, max 200 chars)
+OPTIONAL FIELDS:
+- footerLeft: Object with text property (left footer text, e.g., "Here to Dare.", max 100 chars)
+- footerRight: Object with text property (right footer text, e.g., "Month | Year", max 100 chars)
+Example: { "type": "bip-title-slide", "title": {"text": "Digital\nTransformation\nRoadmap"}, "footerLeft": {"text": "Here to Dare."}, "footerRight": {"text": "November | 2025"} }
+
 Your slide will be rendered in a professional template with appropriate styling.`;
 
 export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
@@ -1405,7 +1438,7 @@ export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
       properties: {
         type: {
           type: "string",
-          enum: ["title", "narrative", "drivers", "dependencies", "risks", "insights", "simple"]
+          enum: ["title", "narrative", "drivers", "dependencies", "risks", "insights", "simple", "bip-three-column", "bip-single-column", "bip-title-slide"]
         },
         title: {
           type: "string",
@@ -1501,6 +1534,60 @@ export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
               }
             }
           }
+        },
+        eyebrow: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              maxLength: 100
+            }
+          }
+        },
+        columns: {
+          type: "array",
+          minItems: 3,
+          maxItems: 3,
+          items: {
+            type: "object",
+            required: ["text"],
+            properties: {
+              text: {
+                type: "string",
+                maxLength: 1000
+              }
+            }
+          }
+        },
+        showCornerGraphic: {
+          type: "boolean"
+        },
+        bodyText: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              maxLength: 2000
+            }
+          }
+        },
+        footerLeft: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              maxLength: 100
+            }
+          }
+        },
+        footerRight: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              maxLength: 100
+            }
+          }
         }
       }
     }
@@ -1586,6 +1673,36 @@ REQUIRED FIELDS:
 - title: Slide title
 - content: Array of text strings or single text paragraph
 Example: { "type": "simple", "title": "Summary", "content": ["Key takeaway 1", "Key takeaway 2"] }
+
+BIP CUSTOM SLIDE TEMPLATES:
+
+TYPE: "bip-three-column" - BIP THREE-COLUMN LAYOUT
+Modern three-column layout with eyebrow, title, and geometric corner graphic.
+REQUIRED FIELDS:
+- eyebrow: Object with text property (uppercase label, max 100 chars)
+- title: Object with text property (main title, max 200 chars)
+- columns: Array of exactly 3 column objects, each with:
+  * text: Column content (max 1000 chars per column)
+OPTIONAL FIELDS:
+- showCornerGraphic: Boolean (default true) - shows decorative corner SVG
+Example: { "type": "bip-three-column", "eyebrow": {"text": "PROJECT OVERVIEW"}, "title": {"text": "Digital Transformation Initiative"}, "columns": [{"text": "First column content..."}, {"text": "Second column..."}, {"text": "Third column..."}], "showCornerGraphic": true }
+
+TYPE: "bip-single-column" - BIP SINGLE-COLUMN LAYOUT
+Large title with single wide text column, ideal for detailed content.
+REQUIRED FIELDS:
+- eyebrow: Object with text property (uppercase label, max 100 chars)
+- title: Object with text property (large title, supports line breaks with \n, max 200 chars)
+- bodyText: Object with text property (body content, max 2000 chars)
+Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."} }
+
+TYPE: "bip-title-slide" - BIP TITLE SLIDE
+Branded title slide with gradient background and footer.
+REQUIRED FIELDS:
+- title: Object with text property (main title, supports line breaks with \n, max 200 chars)
+OPTIONAL FIELDS:
+- footerLeft: Object with text property (left footer text, e.g., "Here to Dare.", max 100 chars)
+- footerRight: Object with text property (right footer text, e.g., "Month | Year", max 100 chars)
+Example: { "type": "bip-title-slide", "title": {"text": "Digital\nTransformation\nRoadmap"}, "footerLeft": {"text": "Here to Dare."}, "footerRight": {"text": "November | 2025"} }
 
 IMPORTANT DESIGN PRINCIPLES:
 - Keep text concise and scannable
