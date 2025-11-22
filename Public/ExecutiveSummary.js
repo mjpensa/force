@@ -1,984 +1,887 @@
 /**
- * ExecutiveSummary Module
- * Renders AI-generated executive intelligence briefing
- * Provides strategic insights, drivers, risks, and key talking points
+ * Modern Executive Summary Viewer Module
+ * 8.5x11 Document Format | Ultra Modern Design
+ * Features: Multi-page navigation, zoom controls, TOC, print/export
  */
 
 import { CONFIG } from './config.js';
 
 /**
  * ExecutiveSummary Class
- * Responsible for rendering and managing the executive summary component
+ * Manages the modern document viewer for executive summary reports
  */
 export class ExecutiveSummary {
   /**
    * Creates a new ExecutiveSummary instance
    * @param {Object} summaryData - The executive summary data from the API
-   * @param {string} footerSVG - The SVG content for the header/footer decoration
+   * @param {string} footerSVG - The SVG content for decorations (legacy, unused in modern viewer)
    */
   constructor(summaryData, footerSVG) {
     this.summaryData = summaryData;
     this.footerSVG = footerSVG;
-    this.isExpanded = true; // Default to expanded on load
+    this.currentPageIndex = 0;
     this.container = null;
+    this.zoomLevel = 1;
+    this.isSidebarVisible = true;
+    this.isFullscreen = false;
+    this.tocVisible = false;
+    this.shortcutsVisible = false;
+    this.viewMode = 'continuous'; // 'continuous' or 'single'
+
+    // Keyboard shortcuts binding
+    this.handleKeyPress = this.handleKeyPress.bind(this);
+
+    // Generate multi-page document (for now, placeholder pages)
+    this.pages = this._generatePages();
   }
 
   /**
-   * Renders the executive summary component
-   * @returns {HTMLElement} The rendered executive summary container
+   * Generates document pages from summary data
+   * @private
+   * @returns {Array} Array of page objects
+   */
+  _generatePages() {
+    // For now, create placeholder pages
+    // In the future, this will parse summaryData into pages
+    const pageCount = 3; // Default to 3 pages for demo
+    const pages = [];
+
+    for (let i = 0; i < pageCount; i++) {
+      pages.push({
+        pageNumber: i + 1,
+        title: `Executive Summary - Page ${i + 1}`,
+        content: null // Will be populated with actual content later
+      });
+    }
+
+    return pages;
+  }
+
+  /**
+   * Renders the modern document viewer
+   * @returns {HTMLElement} The rendered viewer container
    */
   render() {
     // Create main container
     this.container = document.createElement('div');
-    this.container.className = 'executive-summary-container';
-    this.container.id = 'executiveSummary';
+    this.container.className = 'executive-summary-viewer';
+    this.container.id = 'executiveSummaryViewer';
 
     // Check if summary data exists
     if (!this.summaryData) {
-      this.container.innerHTML = '<p class="summary-unavailable">Executive summary not available for this chart.</p>';
+      this.container.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #0a0e1a; color: #9ca3af;">
+          <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+            <p style="font-size: 1.25rem; font-weight: 500;">No executive summary available</p>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">Summary will appear here once generated</p>
+          </div>
+        </div>
+      `;
       return this.container;
     }
 
-    // Build header
-    const header = this._buildHeader();
-    this.container.appendChild(header);
+    // Build modern viewer structure
+    this._buildProgressBar();
+    this._buildTopBar();
 
-    // Build content
-    const content = this._buildContent();
-    this.container.appendChild(content);
+    const mainContent = this._buildMainContent();
+    this.container.appendChild(mainContent);
+
+    this._buildFloatingNav();
+    this._buildTOCOverlay();
+    this._buildShortcutsOverlay();
+
+    // Add keyboard event listeners
+    document.addEventListener('keydown', this.handleKeyPress);
 
     return this.container;
   }
 
   /**
-   * Builds the header section with title and toggle button
+   * Builds the progress bar
    * @private
-   * @returns {HTMLElement} The header element
    */
-  _buildHeader() {
+  _buildProgressBar() {
+    const progress = document.createElement('div');
+    progress.className = 'doc-viewer-progress';
+
+    const progressBar = document.createElement('div');
+    progressBar.className = 'doc-viewer-progress-bar';
+    progressBar.id = 'docProgressBar';
+    progressBar.style.width = this._calculateProgress();
+
+    progress.appendChild(progressBar);
+    this.container.appendChild(progress);
+  }
+
+  /**
+   * Calculates progress percentage
+   * @private
+   * @returns {string} Progress percentage
+   */
+  _calculateProgress() {
+    const total = this.pages.length;
+    const current = this.currentPageIndex + 1;
+    return `${(current / total) * 100}%`;
+  }
+
+  /**
+   * Builds the top bar with controls
+   * @private
+   */
+  _buildTopBar() {
+    const topbar = document.createElement('div');
+    topbar.className = 'doc-viewer-topbar';
+
+    // Left side
+    const leftSide = document.createElement('div');
+    leftSide.className = 'doc-viewer-topbar-left';
+
+    const title = document.createElement('div');
+    title.className = 'doc-viewer-title';
+    title.innerHTML = `<span class="doc-viewer-title-icon">📋</span> Executive Summary`;
+
+    const counter = document.createElement('div');
+    counter.className = 'doc-page-counter';
+    counter.id = 'docPageCounter';
+    counter.innerHTML = `
+      <span class="doc-page-counter-current">${this.currentPageIndex + 1}</span>
+      <span>/</span>
+      <span>${this.pages.length}</span>
+    `;
+
+    leftSide.appendChild(title);
+    leftSide.appendChild(counter);
+
+    // Center (zoom controls)
+    const centerSide = document.createElement('div');
+    centerSide.className = 'doc-viewer-topbar-center';
+
+    const zoomControls = this._buildZoomControls();
+    centerSide.appendChild(zoomControls);
+
+    // Right side
+    const rightSide = document.createElement('div');
+    rightSide.className = 'doc-viewer-topbar-right';
+
+    // Toggle pages button
+    const pagesBtn = this._createButton('icon-only', '☰', 'Toggle Pages', () => this._toggleSidebar());
+    pagesBtn.id = 'togglePagesBtn';
+    if (this.isSidebarVisible) pagesBtn.classList.add('active');
+
+    // Table of contents button
+    const tocBtn = this._createButton('', '📑', 'Contents', () => this._toggleTOC());
+    tocBtn.id = 'toggleTOCBtn';
+
+    // Print button
+    const printBtn = this._createButton('', '🖨', 'Print', () => this._print());
+
+    // Fullscreen button
+    const fullscreenBtn = this._createButton('', '⛶', 'Fullscreen', () => this._toggleFullscreen());
+    fullscreenBtn.id = 'toggleFullscreenBtn';
+
+    // Keyboard shortcuts button
+    const shortcutsBtn = this._createButton('icon-only', '?', 'Keyboard Shortcuts', () => this._toggleShortcuts());
+
+    rightSide.appendChild(pagesBtn);
+    rightSide.appendChild(tocBtn);
+    rightSide.appendChild(printBtn);
+    rightSide.appendChild(fullscreenBtn);
+    rightSide.appendChild(shortcutsBtn);
+
+    topbar.appendChild(leftSide);
+    topbar.appendChild(centerSide);
+    topbar.appendChild(rightSide);
+    this.container.appendChild(topbar);
+  }
+
+  /**
+   * Builds zoom controls
+   * @private
+   */
+  _buildZoomControls() {
+    const controls = document.createElement('div');
+    controls.className = 'doc-zoom-controls';
+
+    const zoomOut = document.createElement('button');
+    zoomOut.className = 'doc-zoom-btn';
+    zoomOut.textContent = '−';
+    zoomOut.setAttribute('aria-label', 'Zoom out');
+    zoomOut.addEventListener('click', () => this._zoomOut());
+
+    const zoomLevel = document.createElement('div');
+    zoomLevel.className = 'doc-zoom-level';
+    zoomLevel.id = 'docZoomLevel';
+    zoomLevel.textContent = '100%';
+
+    const zoomIn = document.createElement('button');
+    zoomIn.className = 'doc-zoom-btn';
+    zoomIn.textContent = '+';
+    zoomIn.setAttribute('aria-label', 'Zoom in');
+    zoomIn.addEventListener('click', () => this._zoomIn());
+
+    const zoomReset = document.createElement('button');
+    zoomReset.className = 'doc-zoom-btn';
+    zoomReset.textContent = '⊙';
+    zoomReset.setAttribute('aria-label', 'Reset zoom');
+    zoomReset.addEventListener('click', () => this._zoomReset());
+
+    controls.appendChild(zoomOut);
+    controls.appendChild(zoomLevel);
+    controls.appendChild(zoomIn);
+    controls.appendChild(zoomReset);
+
+    return controls;
+  }
+
+  /**
+   * Creates a control button
+   * @private
+   */
+  _createButton(additionalClass, icon, text, onClick) {
+    const btn = document.createElement('button');
+    btn.className = `doc-viewer-btn ${additionalClass}`;
+    btn.innerHTML = `<span class="doc-viewer-btn-icon">${icon}</span>${text ? `<span>${text}</span>` : ''}`;
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  /**
+   * Builds the main content area (sidebar + document stage)
+   * @private
+   * @returns {HTMLElement} Main content container
+   */
+  _buildMainContent() {
+    const main = document.createElement('div');
+    main.className = 'doc-viewer-main';
+
+    // Sidebar with page thumbnails
+    const sidebar = this._buildSidebar();
+    main.appendChild(sidebar);
+
+    // Document stage
+    const stage = this._buildStage();
+    main.appendChild(stage);
+
+    return main;
+  }
+
+  /**
+   * Builds the page thumbnail sidebar
+   * @private
+   * @returns {HTMLElement} Sidebar container
+   */
+  _buildSidebar() {
+    const sidebar = document.createElement('div');
+    sidebar.className = 'doc-viewer-sidebar';
+    sidebar.id = 'docViewerSidebar';
+    if (!this.isSidebarVisible) sidebar.classList.add('hidden');
+
     const header = document.createElement('div');
-    header.className = 'summary-header';
+    header.className = 'doc-sidebar-header';
+    header.innerHTML = '<div class="doc-sidebar-title">Pages</div>';
 
-    const title = document.createElement('h2');
-    title.className = 'summary-title';
-    // Use safe DOM methods instead of innerHTML
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '📊';
-    title.appendChild(icon);
-    title.appendChild(document.createTextNode(' Strategic Intelligence Brief'));
+    const thumbnailContainer = document.createElement('div');
+    thumbnailContainer.className = 'doc-page-thumbnails';
+    thumbnailContainer.id = 'docPageThumbnails';
 
-    const toggleBtn = document.createElement('button');
-    toggleBtn.className = 'expand-toggle';
-    toggleBtn.setAttribute('aria-label', 'Toggle summary');
-    toggleBtn.innerHTML = `<span class="chevron">${this.isExpanded ? '▼' : '▶'}</span>`;
-
-    // Make entire header clickable
-    header.addEventListener('click', () => this._toggleExpand());
-
-    header.appendChild(title);
-    header.appendChild(toggleBtn);
-
-    return header;
-  }
-
-  /**
-   * Builds the content section with all summary components
-   * @private
-   * @returns {HTMLElement} The content element
-   */
-  _buildContent() {
-    const content = document.createElement('div');
-    content.className = 'summary-content';
-    content.style.display = this.isExpanded ? 'block' : 'none';
-
-    // Strategic Narrative Card
-    if (this.summaryData.strategicNarrative) {
-      const narrativeCard = this._buildNarrativeCard();
-      content.appendChild(narrativeCard);
-    }
-
-    // EXECUTIVE-FIRST ENHANCEMENT: Key Metrics Dashboard
-    if (this.summaryData.keyMetricsDashboard) {
-      const metricsCard = this._buildKeyMetricsDashboard();
-      content.appendChild(metricsCard);
-    }
-
-    // EXECUTIVE-FIRST ENHANCEMENT: Top 3 Strategic Priorities
-    if (this.summaryData.strategicPriorities && this.summaryData.strategicPriorities.length > 0) {
-      const prioritiesCard = this._buildStrategicPriorities();
-      content.appendChild(prioritiesCard);
-    }
-
-    // Intelligence Grid
-    const intelligenceGrid = document.createElement('div');
-    intelligenceGrid.className = 'intelligence-grid';
-
-    // Drivers Section
-    if (this.summaryData.drivers && this.summaryData.drivers.length > 0) {
-      const driversCard = this._buildDriversCard();
-      intelligenceGrid.appendChild(driversCard);
-    }
-
-    // Dependencies Section
-    if (this.summaryData.dependencies && this.summaryData.dependencies.length > 0) {
-      const dependenciesCard = this._buildDependenciesCard();
-      intelligenceGrid.appendChild(dependenciesCard);
-    }
-
-    // Risks Section
-    if (this.summaryData.risks && this.summaryData.risks.length > 0) {
-      const risksCard = this._buildRisksCard();
-      intelligenceGrid.appendChild(risksCard);
-    }
-
-    content.appendChild(intelligenceGrid);
-
-    // Key Insights Section
-    if (this.summaryData.keyInsights && this.summaryData.keyInsights.length > 0) {
-      const insightsCard = this._buildInsightsCard();
-      content.appendChild(insightsCard);
-    }
-
-    // BANKING ENHANCEMENT: Competitive Intelligence Section
-    if (this.summaryData.competitiveIntelligence) {
-      const competitiveCard = this._buildCompetitiveIntelligenceCard();
-      content.appendChild(competitiveCard);
-    }
-
-    // BANKING ENHANCEMENT: Industry Benchmarks Section
-    if (this.summaryData.industryBenchmarks) {
-      const benchmarksCard = this._buildIndustryBenchmarksCard();
-      content.appendChild(benchmarksCard);
-    }
-
-    return content;
-  }
-
-  /**
-   * Builds the strategic narrative card
-   * @private
-   * @returns {HTMLElement} The narrative card element
-   */
-  _buildNarrativeCard() {
-    const card = document.createElement('div');
-    card.className = 'narrative-card elevated';
-
-    const badge = document.createElement('div');
-    badge.className = 'card-badge';
-    badge.textContent = 'EXECUTIVE OVERVIEW';
-
-    const pitch = document.createElement('p');
-    pitch.className = 'elevator-pitch';
-    pitch.textContent = this.summaryData.strategicNarrative.elevatorPitch;
-
-    const valueProposition = document.createElement('p');
-    valueProposition.className = 'value-proposition';
-    valueProposition.textContent = this.summaryData.strategicNarrative.valueProposition;
-
-    card.appendChild(badge);
-    card.appendChild(pitch);
-    card.appendChild(valueProposition);
-
-    // Add metadata if available
-    if (this.summaryData.metadata) {
-      const metricsRow = document.createElement('div');
-      metricsRow.className = 'value-metrics';
-
-      if (this.summaryData.metadata.confidenceLevel !== undefined) {
-        const confidenceMetric = document.createElement('span');
-        confidenceMetric.className = 'metric';
-        confidenceMetric.textContent = `Confidence: ${this.summaryData.metadata.confidenceLevel}%`;
-        metricsRow.appendChild(confidenceMetric);
-      }
-
-      if (this.summaryData.metadata.documentsCited !== undefined) {
-        const docsMetric = document.createElement('span');
-        docsMetric.className = 'metric';
-        docsMetric.textContent = `Sources: ${this.summaryData.metadata.documentsCited}`;
-        metricsRow.appendChild(docsMetric);
-      }
-
-      if (this.summaryData.metadata.analysisDepth) {
-        const depthMetric = document.createElement('span');
-        depthMetric.className = 'metric';
-        depthMetric.textContent = `Analysis: ${this.summaryData.metadata.analysisDepth}`;
-        metricsRow.appendChild(depthMetric);
-      }
-
-      card.appendChild(metricsRow);
-    }
-
-    return card;
-  }
-
-  /**
-   * Builds the drivers card
-   * @private
-   * @returns {HTMLElement} The drivers card element
-   */
-  _buildDriversCard() {
-    const card = document.createElement('div');
-    card.className = 'intel-card drivers';
-
-    const header = document.createElement('h3');
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '🚀';
-    header.appendChild(icon);
-    header.appendChild(document.createTextNode(' Key Drivers'));
-
-    const driversList = document.createElement('ul');
-    driversList.className = 'driver-list';
-
-    this.summaryData.drivers.forEach(driver => {
-      const driverItem = document.createElement('li');
-      driverItem.className = `driver-item priority-${driver.urgencyLevel}`;
-
-      const title = document.createElement('strong');
-      title.textContent = driver.title;
-
-      const description = document.createElement('p');
-      description.textContent = driver.description;
-
-      driverItem.appendChild(title);
-      driverItem.appendChild(description);
-
-      // Add metrics if available
-      if (driver.metrics && driver.metrics.length > 0) {
-        const metricsRow = document.createElement('div');
-        metricsRow.className = 'metrics-row';
-
-        driver.metrics.forEach(metric => {
-          const metricChip = document.createElement('span');
-          metricChip.className = 'metric-chip';
-          metricChip.textContent = metric;
-          metricsRow.appendChild(metricChip);
-        });
-
-        driverItem.appendChild(metricsRow);
-      }
-
-      driversList.appendChild(driverItem);
+    // Generate thumbnails for all pages
+    this.pages.forEach((page, index) => {
+      const thumbnail = this._createThumbnail(page, index);
+      thumbnailContainer.appendChild(thumbnail);
     });
 
-    card.appendChild(header);
-    card.appendChild(driversList);
+    sidebar.appendChild(header);
+    sidebar.appendChild(thumbnailContainer);
 
-    return card;
+    return sidebar;
   }
 
   /**
-   * Builds the dependencies card
-   * @private
-   * @returns {HTMLElement} The dependencies card element
-   */
-  _buildDependenciesCard() {
-    const card = document.createElement('div');
-    card.className = 'intel-card dependencies';
-
-    const header = document.createElement('h3');
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '🔗';
-    header.appendChild(icon);
-    header.appendChild(document.createTextNode(' Critical Dependencies'));
-
-    const dependencyTimeline = document.createElement('div');
-    dependencyTimeline.className = 'dependency-timeline';
-
-    this.summaryData.dependencies.forEach(dep => {
-      const depNode = document.createElement('div');
-      depNode.className = 'dependency-node';
-
-      const criticalityIndicator = document.createElement('div');
-      criticalityIndicator.className = `criticality-indicator level-${dep.criticality.toLowerCase()}`;
-
-      const name = document.createElement('h4');
-      name.textContent = dep.name;
-
-      depNode.appendChild(criticalityIndicator);
-      depNode.appendChild(name);
-
-      // Add impacted phases if available
-      if (dep.impactedPhases && dep.impactedPhases.length > 0) {
-        const phasesText = document.createElement('p');
-        phasesText.className = 'impacted-phases';
-        phasesText.textContent = `Impacts: ${dep.impactedPhases.join(', ')}`;
-        depNode.appendChild(phasesText);
-      }
-
-      // Add mitigation strategy if available
-      if (dep.mitigationStrategy) {
-        const mitigation = document.createElement('p');
-        mitigation.className = 'mitigation-strategy';
-        mitigation.textContent = `Mitigation: ${dep.mitigationStrategy}`;
-        depNode.appendChild(mitigation);
-      }
-
-      dependencyTimeline.appendChild(depNode);
-    });
-
-    card.appendChild(header);
-    card.appendChild(dependencyTimeline);
-
-    return card;
-  }
-
-  /**
-   * Builds the risks card
-   * @private
-   * @returns {HTMLElement} The risks card element
-   */
-  _buildRisksCard() {
-    const card = document.createElement('div');
-    card.className = 'intel-card risks';
-
-    const header = document.createElement('h3');
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '⚠️';
-    header.appendChild(icon);
-    header.appendChild(document.createTextNode(' Strategic Risks'));
-
-    const riskMatrix = document.createElement('div');
-    riskMatrix.className = 'risk-matrix';
-
-    // Group risks by probability and impact for positioning
-    const risksByCell = {};
-    this.summaryData.risks.forEach(risk => {
-      const key = `${risk.probability}-${risk.impact}`;
-      if (!risksByCell[key]) {
-        risksByCell[key] = [];
-      }
-      risksByCell[key].push(risk);
-    });
-
-    // Build matrix: 4 rows (header + 3 probability levels) x 4 columns (label + 3 impact levels)
-
-    // Row 1: Column headers
-    riskMatrix.appendChild(this._createMatrixLabel('')); // Empty top-left corner
-    riskMatrix.appendChild(this._createMatrixLabel('Low'));
-    riskMatrix.appendChild(this._createMatrixLabel('Medium'));
-    riskMatrix.appendChild(this._createMatrixLabel('High'));
-
-    // Row 2: High Probability
-    riskMatrix.appendChild(this._createMatrixLabel('High'));
-    riskMatrix.appendChild(this._createMatrixCell('high', 'low', risksByCell['high-low']));
-    riskMatrix.appendChild(this._createMatrixCell('high', 'medium', risksByCell['high-medium']));
-    riskMatrix.appendChild(this._createMatrixCell('high', 'high', risksByCell['high-high']));
-
-    // Row 3: Medium Probability
-    riskMatrix.appendChild(this._createMatrixLabel('Medium'));
-    riskMatrix.appendChild(this._createMatrixCell('medium', 'low', risksByCell['medium-low']));
-    riskMatrix.appendChild(this._createMatrixCell('medium', 'medium', risksByCell['medium-medium']));
-    riskMatrix.appendChild(this._createMatrixCell('medium', 'high', risksByCell['medium-high']));
-
-    // Row 4: Low Probability
-    riskMatrix.appendChild(this._createMatrixLabel('Low'));
-    riskMatrix.appendChild(this._createMatrixCell('low', 'low', risksByCell['low-low']));
-    riskMatrix.appendChild(this._createMatrixCell('low', 'medium', risksByCell['low-medium']));
-    riskMatrix.appendChild(this._createMatrixCell('low', 'high', risksByCell['low-high']));
-
-    card.appendChild(header);
-    card.appendChild(riskMatrix);
-
-    return card;
-  }
-
-  /**
-   * Creates a matrix label cell
-   * @private
-   * @param {string} text - The label text
-   * @returns {HTMLElement} The matrix label element
-   */
-  _createMatrixLabel(text) {
-    const label = document.createElement('div');
-    label.className = 'matrix-label';
-    label.textContent = text;
-    return label;
-  }
-
-  /**
-   * Creates a matrix cell with risks
-   * @private
-   * @param {string} probability - The probability level (low, medium, high)
-   * @param {string} impact - The impact level (low, medium, high)
-   * @param {Array} risks - Array of risk objects for this cell
-   * @returns {HTMLElement} The matrix cell element
-   */
-  _createMatrixCell(probability, impact, risks) {
-    const cell = document.createElement('div');
-    cell.className = `matrix-cell ${probability}-${impact}`;
-
-    if (risks && risks.length > 0) {
-      risks.forEach(risk => {
-        const riskItem = document.createElement('div');
-        riskItem.className = 'risk-item';
-
-        const description = document.createElement('p');
-        description.className = 'risk-description';
-        description.textContent = risk.description;
-
-        riskItem.appendChild(description);
-
-        // Add early indicators if available
-        if (risk.earlyIndicators && risk.earlyIndicators.length > 0) {
-          const details = document.createElement('details');
-          details.className = 'early-warnings';
-
-          const summary = document.createElement('summary');
-          summary.textContent = 'Early Indicators';
-
-          const indicatorsList = document.createElement('ul');
-          risk.earlyIndicators.forEach(indicator => {
-            const li = document.createElement('li');
-            li.textContent = indicator;
-            indicatorsList.appendChild(li);
-          });
-
-          details.appendChild(summary);
-          details.appendChild(indicatorsList);
-          riskItem.appendChild(details);
-        }
-
-        cell.appendChild(riskItem);
-      });
-    }
-
-    return cell;
-  }
-
-  /**
-   * Builds the key insights card
-   * @private
-   * @returns {HTMLElement} The insights card element
-   */
-  _buildInsightsCard() {
-    const card = document.createElement('div');
-    card.className = 'intel-card insights full-width';
-
-    const header = document.createElement('h3');
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '💡';
-    header.appendChild(icon);
-    header.appendChild(document.createTextNode(' Expert Conversation Points'));
-
-    const insightsCarousel = document.createElement('div');
-    insightsCarousel.className = 'insights-carousel';
-
-    this.summaryData.keyInsights.forEach(insight => {
-      const insightCard = document.createElement('div');
-      insightCard.className = 'insight-card';
-
-      const categoryTag = document.createElement('div');
-      categoryTag.className = 'category-tag';
-      categoryTag.textContent = insight.category;
-
-      const insightText = document.createElement('blockquote');
-      insightText.className = 'insight-text';
-      insightText.textContent = insight.insight;
-
-      insightCard.appendChild(categoryTag);
-      insightCard.appendChild(insightText);
-
-      // Add talking point if available
-      if (insight.talkingPoint) {
-        const talkingPoint = document.createElement('p');
-        talkingPoint.className = 'talking-point';
-        // Use safe DOM methods to prevent XSS
-        const strong = document.createElement('strong');
-        strong.textContent = 'Use this when discussing:';
-        talkingPoint.appendChild(strong);
-        talkingPoint.appendChild(document.createTextNode(' ' + insight.talkingPoint));
-        insightCard.appendChild(talkingPoint);
-      }
-
-      // Add supporting data if available
-      if (insight.supportingData) {
-        const supportingData = document.createElement('div');
-        supportingData.className = 'supporting-data';
-        supportingData.textContent = insight.supportingData;
-        insightCard.appendChild(supportingData);
-      }
-
-      insightsCarousel.appendChild(insightCard);
-    });
-
-    card.appendChild(header);
-    card.appendChild(insightsCarousel);
-
-    return card;
-  }
-
-  /**
-   * BANKING ENHANCEMENT: Builds the competitive intelligence card
-   * @private
-   * @returns {HTMLElement} The competitive intelligence card element
-   */
-  _buildCompetitiveIntelligenceCard() {
-    const card = document.createElement('div');
-    card.className = 'intel-card competitive full-width';
-
-    const header = document.createElement('h3');
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '🎯';
-    header.appendChild(icon);
-    header.appendChild(document.createTextNode(' Competitive & Market Intelligence'));
-
-    const content = document.createElement('div');
-    content.className = 'competitive-content';
-
-    const ci = this.summaryData.competitiveIntelligence;
-
-    // Market Timing
-    if (ci.marketTiming) {
-      const timingSection = document.createElement('div');
-      timingSection.className = 'competitive-section';
-
-      const timingLabel = document.createElement('strong');
-      timingLabel.textContent = 'Market Positioning:';
-
-      const timingText = document.createElement('p');
-      timingText.textContent = ci.marketTiming;
-
-      timingSection.appendChild(timingLabel);
-      timingSection.appendChild(timingText);
-      content.appendChild(timingSection);
-    }
-
-    // Competitor Moves
-    if (ci.competitorMoves && ci.competitorMoves.length > 0) {
-      const movesSection = document.createElement('div');
-      movesSection.className = 'competitive-section';
-
-      const movesLabel = document.createElement('strong');
-      movesLabel.textContent = 'Competitor Activity:';
-
-      const movesList = document.createElement('ul');
-      movesList.className = 'competitor-list';
-      ci.competitorMoves.forEach(move => {
-        const li = document.createElement('li');
-        li.textContent = move;
-        movesList.appendChild(li);
-      });
-
-      movesSection.appendChild(movesLabel);
-      movesSection.appendChild(movesList);
-      content.appendChild(movesSection);
-    }
-
-    // Competitive Advantage
-    if (ci.competitiveAdvantage) {
-      const advantageSection = document.createElement('div');
-      advantageSection.className = 'competitive-section advantage-highlight';
-
-      const advantageLabel = document.createElement('strong');
-      advantageLabel.textContent = '✨ Competitive Advantage:';
-
-      const advantageText = document.createElement('p');
-      advantageText.textContent = ci.competitiveAdvantage;
-
-      advantageSection.appendChild(advantageLabel);
-      advantageSection.appendChild(advantageText);
-      content.appendChild(advantageSection);
-    }
-
-    // Market Window
-    if (ci.marketWindow) {
-      const windowSection = document.createElement('div');
-      windowSection.className = 'competitive-section market-window';
-
-      const windowLabel = document.createElement('strong');
-      windowLabel.textContent = '⏰ Market Window:';
-
-      const windowText = document.createElement('p');
-      windowText.textContent = ci.marketWindow;
-
-      windowSection.appendChild(windowLabel);
-      windowSection.appendChild(windowText);
-      content.appendChild(windowSection);
-    }
-
-    card.appendChild(header);
-    card.appendChild(content);
-
-    return card;
-  }
-
-  /**
-   * BANKING ENHANCEMENT: Builds the industry benchmarks card
-   * @private
-   * @returns {HTMLElement} The industry benchmarks card element
-   */
-  _buildIndustryBenchmarksCard() {
-    const card = document.createElement('div');
-    card.className = 'intel-card benchmarks full-width';
-
-    const header = document.createElement('h3');
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '📊';
-    header.appendChild(icon);
-    header.appendChild(document.createTextNode(' Industry Benchmarks'));
-
-    const content = document.createElement('div');
-    content.className = 'benchmarks-content';
-
-    const ib = this.summaryData.industryBenchmarks;
-
-    // Time to Market Benchmark
-    if (ib.timeToMarket) {
-      const benchmarkItem = this._buildBenchmarkItem(
-        'Time to Market',
-        ib.timeToMarket.yourPlan,
-        ib.timeToMarket.industryAverage,
-        ib.timeToMarket.variance,
-        ib.timeToMarket.insight
-      );
-      content.appendChild(benchmarkItem);
-    }
-
-    // Investment Level Benchmark
-    if (ib.investmentLevel) {
-      const benchmarkItem = this._buildBenchmarkItem(
-        'Investment Level',
-        ib.investmentLevel.yourPlan,
-        ib.investmentLevel.industryMedian,
-        ib.investmentLevel.variance,
-        ib.investmentLevel.insight
-      );
-      content.appendChild(benchmarkItem);
-    }
-
-    // Risk Profile
-    if (ib.riskProfile) {
-      const riskItem = document.createElement('div');
-      riskItem.className = 'benchmark-item';
-
-      const riskLabel = document.createElement('div');
-      riskLabel.className = 'benchmark-label';
-      riskLabel.textContent = 'Risk Profile';
-
-      const riskComparison = document.createElement('div');
-      riskComparison.className = 'benchmark-value';
-      riskComparison.textContent = ib.riskProfile.yourPlan;
-
-      const riskInsight = document.createElement('div');
-      riskInsight.className = 'benchmark-insight';
-      riskInsight.textContent = ib.riskProfile.insight;
-
-      riskItem.appendChild(riskLabel);
-      riskItem.appendChild(riskComparison);
-      riskItem.appendChild(riskInsight);
-      content.appendChild(riskItem);
-    }
-
-    card.appendChild(header);
-    card.appendChild(content);
-
-    return card;
-  }
-
-  /**
-   * Helper method to build a single benchmark comparison item
+   * Creates a page thumbnail
    * @private
    */
-  _buildBenchmarkItem(label, yourPlan, industryValue, variance, insight) {
+  _createThumbnail(page, index) {
     const item = document.createElement('div');
-    item.className = 'benchmark-item';
+    item.className = 'doc-page-thumbnail';
+    item.setAttribute('data-page-index', index);
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('role', 'button');
+    item.setAttribute('aria-label', `Go to page ${index + 1}`);
 
-    const labelEl = document.createElement('div');
-    labelEl.className = 'benchmark-label';
-    labelEl.textContent = label;
-
-    const comparison = document.createElement('div');
-    comparison.className = 'benchmark-comparison';
-
-    const yourValue = document.createElement('span');
-    yourValue.className = 'your-value';
-    yourValue.textContent = `Your Plan: ${yourPlan}`;
-
-    const industryVal = document.createElement('span');
-    industryVal.className = 'industry-value';
-    industryVal.textContent = `Industry: ${industryValue}`;
-
-    const varianceEl = document.createElement('span');
-    varianceEl.className = variance && variance.includes('faster') || variance && variance.includes('less') || variance && variance.includes('lower') ? 'variance positive' : 'variance';
-    varianceEl.textContent = variance || '';
-
-    comparison.appendChild(yourValue);
-    comparison.appendChild(document.createTextNode(' vs '));
-    comparison.appendChild(industryVal);
-    if (variance) {
-      comparison.appendChild(document.createTextNode(' '));
-      comparison.appendChild(varianceEl);
+    if (index === this.currentPageIndex) {
+      item.classList.add('active');
     }
 
-    const insightEl = document.createElement('div');
-    insightEl.className = 'benchmark-insight';
-    insightEl.textContent = insight;
+    const preview = document.createElement('div');
+    preview.className = 'doc-page-preview';
+    preview.innerHTML = `
+      <div class="doc-page-number">Page ${index + 1}</div>
+      <div class="doc-page-placeholder">
+        <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📄</div>
+        <div style="font-size: 0.625rem;">Page ${index + 1}</div>
+      </div>
+    `;
 
-    item.appendChild(labelEl);
-    item.appendChild(comparison);
-    item.appendChild(insightEl);
+    item.appendChild(preview);
+
+    // Click handler
+    item.addEventListener('click', () => this._goToPage(index));
+    item.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this._goToPage(index);
+      }
+    });
 
     return item;
   }
 
   /**
-   * Builds the Key Metrics Dashboard (EXECUTIVE-FIRST ENHANCEMENT)
-   * Displays 6 high-level executive metrics in a 2x3 grid
+   * Builds the document stage area
    * @private
-   * @returns {HTMLElement} The key metrics dashboard element
+   * @returns {HTMLElement} Stage container
    */
-  _buildKeyMetricsDashboard() {
-    const card = document.createElement('div');
-    card.className = 'key-metrics-dashboard elevated';
+  _buildStage() {
+    const stage = document.createElement('div');
+    stage.className = 'doc-viewer-stage';
+    stage.id = 'docViewerStage';
+    if (this.viewMode === 'continuous') {
+      stage.classList.add('continuous-scroll');
+    } else {
+      stage.classList.add('single-page-view');
+    }
+
+    const pagesContainer = document.createElement('div');
+    pagesContainer.className = 'doc-pages-container';
+    pagesContainer.id = 'docPagesContainer';
+
+    // Render all pages (for continuous scroll) or just current page (for single page view)
+    this.pages.forEach((page, index) => {
+      const pageElement = this._buildPage(page, index);
+      pagesContainer.appendChild(pageElement);
+    });
+
+    stage.appendChild(pagesContainer);
+
+    return stage;
+  }
+
+  /**
+   * Builds a document page with 8.5x11 aspect ratio
+   * @private
+   */
+  _buildPage(page, index) {
+    const viewport = document.createElement('div');
+    viewport.className = 'doc-page-viewport';
+    viewport.setAttribute('data-page-index', index);
+
+    if (this.viewMode === 'single' && index === this.currentPageIndex) {
+      viewport.classList.add('active');
+    }
+
+    if (this.viewMode === 'single') {
+      viewport.classList.add('single-page');
+    }
+
+    const content = document.createElement('div');
+    content.className = 'doc-page-content';
+
+    // Blank page with placeholder
+    content.innerHTML = `
+      <div class="doc-page-content-placeholder">
+        <div class="doc-page-icon">📋</div>
+        <div class="doc-page-title">Executive Summary</div>
+        <div class="doc-page-subtitle">Page ${page.pageNumber} - Content will be loaded here</div>
+      </div>
+      <div class="doc-page-footer">Page ${page.pageNumber} of ${this.pages.length}</div>
+    `;
+
+    viewport.appendChild(content);
+
+    return viewport;
+  }
+
+  /**
+   * Builds floating page navigation
+   * @private
+   */
+  _buildFloatingNav() {
+    const nav = document.createElement('div');
+    nav.className = 'doc-page-nav';
+
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'doc-nav-btn';
+    prevBtn.innerHTML = '◀';
+    prevBtn.setAttribute('aria-label', 'Previous page');
+    prevBtn.addEventListener('click', () => this._previousPage());
+    prevBtn.id = 'prevPageBtn';
+    prevBtn.disabled = this.currentPageIndex === 0;
+
+    const separator1 = document.createElement('div');
+    separator1.className = 'doc-nav-separator';
+
+    const homeBtn = document.createElement('button');
+    homeBtn.className = 'doc-nav-btn';
+    homeBtn.innerHTML = '⇤';
+    homeBtn.setAttribute('aria-label', 'First page');
+    homeBtn.addEventListener('click', () => this._goToPage(0));
+
+    const endBtn = document.createElement('button');
+    endBtn.className = 'doc-nav-btn';
+    endBtn.innerHTML = '⇥';
+    endBtn.setAttribute('aria-label', 'Last page');
+    endBtn.addEventListener('click', () => this._goToPage(this.pages.length - 1));
+
+    const separator2 = document.createElement('div');
+    separator2.className = 'doc-nav-separator';
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'doc-nav-btn';
+    nextBtn.innerHTML = '▶';
+    nextBtn.setAttribute('aria-label', 'Next page');
+    nextBtn.addEventListener('click', () => this._nextPage());
+    nextBtn.id = 'nextPageBtn';
+    nextBtn.disabled = this.currentPageIndex === this.pages.length - 1;
+
+    nav.appendChild(prevBtn);
+    nav.appendChild(separator1);
+    nav.appendChild(homeBtn);
+    nav.appendChild(endBtn);
+    nav.appendChild(separator2);
+    nav.appendChild(nextBtn);
+
+    this.container.appendChild(nav);
+  }
+
+  /**
+   * Builds table of contents overlay
+   * @private
+   */
+  _buildTOCOverlay() {
+    const overlay = document.createElement('div');
+    overlay.className = 'doc-toc-overlay';
+    overlay.id = 'docTOCOverlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'doc-toc-modal';
 
     const header = document.createElement('div');
-    header.className = 'metrics-header';
+    header.className = 'doc-toc-header';
+    header.innerHTML = `
+      <h2 class="doc-toc-title">Table of Contents</h2>
+      <button class="doc-toc-close" aria-label="Close">×</button>
+    `;
 
-    const badge = document.createElement('div');
-    badge.className = 'card-badge badge-executive';
-    badge.textContent = 'KEY METRICS';
+    const closeBtn = header.querySelector('.doc-toc-close');
+    closeBtn.addEventListener('click', () => this._toggleTOC());
 
-    const title = document.createElement('h3');
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '📊';
-    title.appendChild(icon);
-    title.appendChild(document.createTextNode(' Executive Dashboard'));
-
-    header.appendChild(badge);
-    header.appendChild(title);
-    card.appendChild(header);
-
-    const grid = document.createElement('div');
-    grid.className = 'metrics-grid';
-
-    // Create the 6 metrics in order
-    const metrics = [
-      { label: 'Total Investment', value: this.summaryData.keyMetricsDashboard.totalInvestment, icon: '💰' },
-      { label: 'Time to Value', value: this.summaryData.keyMetricsDashboard.timeToValue, icon: '⏱️' },
-      { label: 'Compliance Risk', value: this.summaryData.keyMetricsDashboard.complianceRisk, icon: '🏛️' },
-      { label: 'ROI Projection', value: this.summaryData.keyMetricsDashboard.roiProjection, icon: '📈' },
-      { label: 'Critical Path', value: this.summaryData.keyMetricsDashboard.criticalPathStatus, icon: '🎯' },
-      { label: 'Vendor Lock-in', value: this.summaryData.keyMetricsDashboard.vendorLockIn, icon: '🔗' }
+    // Sample TOC items (will be populated from actual content later)
+    const tocItems = [
+      { title: 'Executive Summary', page: 1 },
+      { title: 'Strategic Analysis', page: 2 },
+      { title: 'Key Recommendations', page: 3 }
     ];
 
-    metrics.forEach(metric => {
-      const item = document.createElement('div');
-      item.className = 'metric-item';
+    const list = document.createElement('div');
+    list.className = 'doc-toc-list';
 
-      const metricIcon = document.createElement('div');
-      metricIcon.className = 'metric-icon';
-      metricIcon.textContent = metric.icon;
-
-      const metricContent = document.createElement('div');
-      metricContent.className = 'metric-content';
-
-      const metricLabel = document.createElement('div');
-      metricLabel.className = 'metric-label';
-      metricLabel.textContent = metric.label;
-
-      const metricValue = document.createElement('div');
-      metricValue.className = 'metric-value';
-      metricValue.textContent = metric.value;
-
-      metricContent.appendChild(metricLabel);
-      metricContent.appendChild(metricValue);
-
-      item.appendChild(metricIcon);
-      item.appendChild(metricContent);
-
-      grid.appendChild(item);
+    tocItems.forEach(item => {
+      const tocItem = document.createElement('div');
+      tocItem.className = 'doc-toc-item';
+      tocItem.innerHTML = `
+        <div class="doc-toc-item-title">${item.title}</div>
+        <div class="doc-toc-item-page">Page ${item.page}</div>
+      `;
+      tocItem.addEventListener('click', () => {
+        this._goToPage(item.page - 1);
+        this._toggleTOC();
+      });
+      list.appendChild(tocItem);
     });
 
-    card.appendChild(grid);
+    modal.appendChild(header);
+    modal.appendChild(list);
+    overlay.appendChild(modal);
 
-    return card;
+    // Click outside to close
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        this._toggleTOC();
+      }
+    });
+
+    this.container.appendChild(overlay);
   }
 
   /**
-   * Builds the Strategic Priorities section (EXECUTIVE-FIRST ENHANCEMENT)
-   * Displays the top 3 critical priorities for executive focus
+   * Builds keyboard shortcuts overlay
    * @private
-   * @returns {HTMLElement} The strategic priorities element
    */
-  _buildStrategicPriorities() {
-    const card = document.createElement('div');
-    card.className = 'strategic-priorities elevated';
+  _buildShortcutsOverlay() {
+    const overlay = document.createElement('div');
+    overlay.className = 'doc-shortcuts-overlay';
+    overlay.id = 'docShortcutsOverlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'doc-shortcuts-modal';
 
     const header = document.createElement('div');
-    header.className = 'priorities-header';
+    header.className = 'doc-shortcuts-header';
+    header.innerHTML = `
+      <h2 class="doc-shortcuts-title">Keyboard Shortcuts</h2>
+      <button class="doc-shortcuts-close" aria-label="Close">×</button>
+    `;
 
-    const badge = document.createElement('div');
-    badge.className = 'card-badge badge-priority';
-    badge.textContent = 'STRATEGIC FOCUS';
+    const closeBtn = header.querySelector('.doc-shortcuts-close');
+    closeBtn.addEventListener('click', () => this._toggleShortcuts());
 
-    const title = document.createElement('h3');
-    const icon = document.createElement('span');
-    icon.className = 'icon';
-    icon.textContent = '🎯';
-    title.appendChild(icon);
-    title.appendChild(document.createTextNode(' Top 3 Strategic Priorities'));
+    const shortcuts = [
+      { action: 'Next page', keys: ['→', 'PageDown'] },
+      { action: 'Previous page', keys: ['←', 'PageUp'] },
+      { action: 'First page', keys: ['Home'] },
+      { action: 'Last page', keys: ['End'] },
+      { action: 'Zoom in', keys: ['+', '='] },
+      { action: 'Zoom out', keys: ['−', '_'] },
+      { action: 'Reset zoom', keys: ['0'] },
+      { action: 'Toggle fullscreen', keys: ['F'] },
+      { action: 'Print document', keys: ['Ctrl+P'] },
+      { action: 'Table of contents', keys: ['C'] },
+      { action: 'Show shortcuts', keys: ['?'] },
+      { action: 'Close overlay', keys: ['Esc'] }
+    ];
 
-    header.appendChild(badge);
-    header.appendChild(title);
-    card.appendChild(header);
+    const list = document.createElement('div');
+    list.className = 'doc-shortcuts-list';
 
-    const prioritiesList = document.createElement('div');
-    prioritiesList.className = 'priorities-list';
+    shortcuts.forEach(shortcut => {
+      const item = document.createElement('div');
+      item.className = 'doc-shortcut-item';
 
-    this.summaryData.strategicPriorities.forEach((priority, index) => {
-      const priorityItem = document.createElement('div');
-      priorityItem.className = 'priority-item';
+      const action = document.createElement('div');
+      action.className = 'doc-shortcut-action';
+      action.textContent = shortcut.action;
 
-      const priorityNumber = document.createElement('div');
-      priorityNumber.className = 'priority-number';
-      priorityNumber.textContent = index + 1;
+      const keys = document.createElement('div');
+      keys.className = 'doc-shortcut-keys';
+      shortcut.keys.forEach(key => {
+        const keyEl = document.createElement('span');
+        keyEl.className = 'doc-shortcut-key';
+        keyEl.textContent = key;
+        keys.appendChild(keyEl);
+      });
 
-      const priorityContent = document.createElement('div');
-      priorityContent.className = 'priority-content';
-
-      const priorityTitle = document.createElement('h4');
-      priorityTitle.className = 'priority-title';
-      priorityTitle.textContent = priority.title;
-
-      const priorityDescription = document.createElement('p');
-      priorityDescription.className = 'priority-description';
-      priorityDescription.textContent = priority.description;
-
-      const priorityDetails = document.createElement('div');
-      priorityDetails.className = 'priority-details';
-
-      if (priority.bankingContext) {
-        const contextRow = document.createElement('div');
-        contextRow.className = 'priority-detail-row';
-
-        const contextLabel = document.createElement('span');
-        contextLabel.className = 'detail-label';
-        contextLabel.textContent = '🏦 Banking Context:';
-
-        const contextValue = document.createElement('span');
-        contextValue.className = 'detail-value';
-        contextValue.textContent = priority.bankingContext;
-
-        contextRow.appendChild(contextLabel);
-        contextRow.appendChild(contextValue);
-        priorityDetails.appendChild(contextRow);
-      }
-
-      if (priority.dependencies) {
-        const depsRow = document.createElement('div');
-        depsRow.className = 'priority-detail-row';
-
-        const depsLabel = document.createElement('span');
-        depsLabel.className = 'detail-label';
-        depsLabel.textContent = '🤝 Dependencies:';
-
-        const depsValue = document.createElement('span');
-        depsValue.className = 'detail-value';
-        depsValue.textContent = priority.dependencies;
-
-        depsRow.appendChild(depsLabel);
-        depsRow.appendChild(depsValue);
-        priorityDetails.appendChild(depsRow);
-      }
-
-      if (priority.deadline) {
-        const deadlineRow = document.createElement('div');
-        deadlineRow.className = 'priority-detail-row';
-
-        const deadlineLabel = document.createElement('span');
-        deadlineLabel.className = 'detail-label';
-        deadlineLabel.textContent = '⏰ Deadline:';
-
-        const deadlineValue = document.createElement('span');
-        deadlineValue.className = 'detail-value deadline-urgent';
-        deadlineValue.textContent = priority.deadline;
-
-        deadlineRow.appendChild(deadlineLabel);
-        deadlineRow.appendChild(deadlineValue);
-        priorityDetails.appendChild(deadlineRow);
-      }
-
-      priorityContent.appendChild(priorityTitle);
-      priorityContent.appendChild(priorityDescription);
-      priorityContent.appendChild(priorityDetails);
-
-      priorityItem.appendChild(priorityNumber);
-      priorityItem.appendChild(priorityContent);
-
-      prioritiesList.appendChild(priorityItem);
+      item.appendChild(action);
+      item.appendChild(keys);
+      list.appendChild(item);
     });
 
-    card.appendChild(prioritiesList);
+    modal.appendChild(header);
+    modal.appendChild(list);
+    overlay.appendChild(modal);
 
-    return card;
+    // Click outside to close
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        this._toggleShortcuts();
+      }
+    });
+
+    this.container.appendChild(overlay);
   }
 
   /**
-   * Toggles the expand/collapse state of the summary
+   * Navigation: Go to specific page
    * @private
    */
-  _toggleExpand() {
-    this.isExpanded = !this.isExpanded;
+  _goToPage(index) {
+    if (index < 0 || index >= this.pages.length) return;
 
-    const content = this.container.querySelector('.summary-content');
-    const chevron = this.container.querySelector('.chevron');
+    this.currentPageIndex = index;
+    this._updateViewer();
 
-    if (content) {
-      content.style.display = this.isExpanded ? 'block' : 'none';
+    // Scroll to page if in continuous mode
+    if (this.viewMode === 'continuous') {
+      const pageElement = document.querySelector(`[data-page-index="${index}"]`);
+      if (pageElement) {
+        pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
+  /**
+   * Navigation: Previous page
+   * @private
+   */
+  _previousPage() {
+    if (this.currentPageIndex > 0) {
+      this._goToPage(this.currentPageIndex - 1);
+    }
+  }
+
+  /**
+   * Navigation: Next page
+   * @private
+   */
+  _nextPage() {
+    if (this.currentPageIndex < this.pages.length - 1) {
+      this._goToPage(this.currentPageIndex + 1);
+    }
+  }
+
+  /**
+   * Updates the viewer UI after page/zoom change
+   * @private
+   */
+  _updateViewer() {
+    // Update counter
+    const counter = document.getElementById('docPageCounter');
+    if (counter) {
+      counter.innerHTML = `
+        <span class="doc-page-counter-current">${this.currentPageIndex + 1}</span>
+        <span>/</span>
+        <span>${this.pages.length}</span>
+      `;
     }
 
-    if (chevron) {
-      chevron.textContent = this.isExpanded ? '▼' : '▶';
+    // Update progress bar
+    const progressBar = document.getElementById('docProgressBar');
+    if (progressBar) {
+      progressBar.style.width = this._calculateProgress();
+    }
+
+    // Update thumbnails
+    const thumbnails = document.querySelectorAll('.doc-page-thumbnail');
+    thumbnails.forEach((thumb, index) => {
+      thumb.classList.toggle('active', index === this.currentPageIndex);
+    });
+
+    // Scroll active thumbnail into view
+    const activeThumbnail = document.querySelector('.doc-page-thumbnail.active');
+    if (activeThumbnail) {
+      activeThumbnail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Update navigation buttons
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    if (prevBtn) prevBtn.disabled = this.currentPageIndex === 0;
+    if (nextBtn) nextBtn.disabled = this.currentPageIndex === this.pages.length - 1;
+
+    // Update page visibility in single page mode
+    if (this.viewMode === 'single') {
+      const pages = document.querySelectorAll('.doc-page-viewport');
+      pages.forEach((page, index) => {
+        page.classList.toggle('active', index === this.currentPageIndex);
+      });
     }
   }
 
   /**
-   * Adds the header SVG decoration above the Executive Summary
+   * Zoom in
    * @private
    */
-  _addHeaderSVG() {
-    if (!this.footerSVG) return;
-
-    const encodedFooterSVG = encodeURIComponent(this.footerSVG.replace(/(\r\n|\n|\r)/gm, ''));
-
-    const headerSvgEl = document.createElement('div');
-    headerSvgEl.className = 'gantt-header-svg';
-
-    // Apply all styles inline
-    headerSvgEl.style.height = '30px';
-    headerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
-    headerSvgEl.style.backgroundRepeat = 'repeat-x';
-    headerSvgEl.style.backgroundSize = 'auto 30px';
-
-    this.container.appendChild(headerSvgEl);
+  _zoomIn() {
+    if (this.zoomLevel < 2) {
+      this.zoomLevel += 0.1;
+      this._applyZoom();
+    }
   }
 
   /**
-   * Adds the footer SVG decoration after the Executive Summary
+   * Zoom out
    * @private
    */
-  _addFooterSVG() {
-    if (!this.footerSVG) return;
+  _zoomOut() {
+    if (this.zoomLevel > 0.5) {
+      this.zoomLevel -= 0.1;
+      this._applyZoom();
+    }
+  }
 
-    const encodedFooterSVG = encodeURIComponent(this.footerSVG.replace(/(\r\n|\n|\r)/gm, ''));
+  /**
+   * Reset zoom
+   * @private
+   */
+  _zoomReset() {
+    this.zoomLevel = 1;
+    this._applyZoom();
+  }
 
-    const footerSvgEl = document.createElement('div');
-    footerSvgEl.className = 'gantt-footer-svg';
+  /**
+   * Apply zoom level
+   * @private
+   */
+  _applyZoom() {
+    const pages = document.querySelectorAll('.doc-page-viewport');
+    pages.forEach(page => {
+      page.style.setProperty('--doc-zoom-level', this.zoomLevel);
+    });
 
-    // Apply all styles inline
-    footerSvgEl.style.height = '30px';
-    footerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
-    footerSvgEl.style.backgroundRepeat = 'repeat-x';
-    footerSvgEl.style.backgroundSize = 'auto 30px';
+    const zoomDisplay = document.getElementById('docZoomLevel');
+    if (zoomDisplay) {
+      zoomDisplay.textContent = `${Math.round(this.zoomLevel * 100)}%`;
+    }
+  }
 
-    this.container.appendChild(footerSvgEl);
+  /**
+   * Toggle sidebar visibility
+   * @private
+   */
+  _toggleSidebar() {
+    this.isSidebarVisible = !this.isSidebarVisible;
+
+    const sidebar = document.getElementById('docViewerSidebar');
+    const toggleBtn = document.getElementById('togglePagesBtn');
+
+    if (sidebar) {
+      sidebar.classList.toggle('hidden', !this.isSidebarVisible);
+    }
+
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('active', this.isSidebarVisible);
+    }
+  }
+
+  /**
+   * Toggle table of contents
+   * @private
+   */
+  _toggleTOC() {
+    this.tocVisible = !this.tocVisible;
+
+    const overlay = document.getElementById('docTOCOverlay');
+    if (overlay) {
+      overlay.classList.toggle('visible', this.tocVisible);
+    }
+  }
+
+  /**
+   * Toggle fullscreen mode
+   * @private
+   */
+  _toggleFullscreen() {
+    this.isFullscreen = !this.isFullscreen;
+
+    const viewer = this.container;
+    const toggleBtn = document.getElementById('toggleFullscreenBtn');
+
+    if (viewer) {
+      viewer.classList.toggle('fullscreen', this.isFullscreen);
+
+      if (toggleBtn) {
+        const text = this.isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+        toggleBtn.innerHTML = `<span class="doc-viewer-btn-icon">⛶</span><span>${text}</span>`;
+        toggleBtn.classList.toggle('active', this.isFullscreen);
+      }
+    }
+  }
+
+  /**
+   * Toggle keyboard shortcuts overlay
+   * @private
+   */
+  _toggleShortcuts() {
+    this.shortcutsVisible = !this.shortcutsVisible;
+
+    const overlay = document.getElementById('docShortcutsOverlay');
+    if (overlay) {
+      overlay.classList.toggle('visible', this.shortcutsVisible);
+    }
+  }
+
+  /**
+   * Print document
+   * @private
+   */
+  _print() {
+    window.print();
+  }
+
+  /**
+   * Handle keyboard shortcuts
+   * @private
+   */
+  handleKeyPress(e) {
+    // Don't handle if overlays are visible (except Escape)
+    if ((this.shortcutsVisible || this.tocVisible) && e.key !== 'Escape') return;
+
+    // Don't handle if user is typing in an input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    switch(e.key) {
+      case 'ArrowRight':
+      case 'PageDown':
+        e.preventDefault();
+        this._nextPage();
+        break;
+      case 'ArrowLeft':
+      case 'PageUp':
+        e.preventDefault();
+        this._previousPage();
+        break;
+      case 'Home':
+        e.preventDefault();
+        this._goToPage(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        this._goToPage(this.pages.length - 1);
+        break;
+      case '+':
+      case '=':
+        e.preventDefault();
+        this._zoomIn();
+        break;
+      case '-':
+      case '_':
+        e.preventDefault();
+        this._zoomOut();
+        break;
+      case '0':
+        e.preventDefault();
+        this._zoomReset();
+        break;
+      case 'f':
+      case 'F':
+        if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          this._toggleFullscreen();
+        }
+        break;
+      case 'c':
+      case 'C':
+        e.preventDefault();
+        this._toggleTOC();
+        break;
+      case '?':
+        e.preventDefault();
+        this._toggleShortcuts();
+        break;
+      case 'p':
+        if (e.ctrlKey || e.metaKey) {
+          // Let browser handle Ctrl+P for print
+          return;
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        if (this.shortcutsVisible) {
+          this._toggleShortcuts();
+        } else if (this.tocVisible) {
+          this._toggleTOC();
+        } else if (this.isFullscreen) {
+          this._toggleFullscreen();
+        }
+        break;
+    }
+  }
+
+  /**
+   * Cleanup method to remove event listeners
+   */
+  destroy() {
+    document.removeEventListener('keydown', this.handleKeyPress);
   }
 }

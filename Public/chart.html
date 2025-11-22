@@ -41,6 +41,13 @@
       presentationLink.type = 'text/css';
       presentationLink.href = '/presentation-viewer.css?t=' + new Date().getTime();
       head.appendChild(presentationLink);
+
+      // Load modern executive summary viewer CSS
+      const executiveSummaryLink = document.createElement('link');
+      executiveSummaryLink.rel = 'stylesheet';
+      executiveSummaryLink.type = 'text/css';
+      executiveSummaryLink.href = '/executive-summary-viewer.css?t=' + new Date().getTime();
+      head.appendChild(executiveSummaryLink);
     </script>
 
 </head>
