@@ -6302,6 +6302,7 @@ body.dragging {
   justify-content: center;
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  opacity: 0;
 }
 
 .hamburger-button:hover {
@@ -6309,11 +6310,13 @@ body.dragging {
   border-color: rgba(255, 255, 255, 0.4);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  opacity: 1;
 }
 
 .hamburger-button.active {
   background: #da291c;
   border-color: rgba(255, 255, 255, 0.5);
+  opacity: 1;
 }
 
 .hamburger-icon {
