@@ -30,8 +30,15 @@ export class PresentationSlides {
   constructor(slidesData, footerSVG) {
     this.footerSVG = footerSVG;
 
-    // Detect format and migrate if needed
-    if (slidesData.metadata && slidesData.theme && Array.isArray(slidesData.slides)) {
+    // Handle null or undefined input
+    if (!slidesData) {
+      console.warn('[PresentationSlides] No presentation data provided, using empty presentation');
+      this.presentationData = {
+        metadata: { title: 'Presentation', author: '', slideCount: 0 },
+        theme: getDefaultTheme(),
+        slides: []
+      };
+    } else if (slidesData.metadata && slidesData.theme && Array.isArray(slidesData.slides)) {
       // New structured format - use as-is
       this.presentationData = slidesData;
     } else if (slidesData.slides && Array.isArray(slidesData.slides)) {
