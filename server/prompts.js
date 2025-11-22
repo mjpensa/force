@@ -1225,11 +1225,13 @@ SLIDE TYPES AVAILABLE:
 - "bip-title-slide": BIP branded title slide with gradient background
 
 REQUIREMENTS:
-- First slide MUST be type "title"
+- First slide MUST be type "bip-title-slide" (branded BIP opening slide)
+- Second and third slides SHOULD use "bip-three-column" or "bip-single-column" for key content
+- After the BIP slides, use standard slide types (narrative, drivers, dependencies, risks, insights, simple)
 - Include a mix of slide types that tell a complete story
 - Each slide must have a UNIQUE title
 - Titles should be clear and professional (under 150 characters)
-- Create 5-8 slides total
+- Create 5-8 slides total (prioritize BIP templates at the front)
 
 IMPORTANT: You are ONLY creating the outline. Slide titles and types only. Content will be generated in a separate step.`;
 
