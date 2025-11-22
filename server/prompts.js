@@ -16,45 +16,10 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - If found, use that range.
     - If NOT found, find the *earliest* and *latest* date in all the research to create the range.
 2.  **TIME INTERVAL:** Based on the *total duration* of that range, you MUST choose an interval:
-    - 0-3 months total: Use "Weeks" (e.g., ["W1 2026", "W2 2026"]), set intervalType to "weekly"
-    - 4-12 months total: Use "Months" (e.g., ["Jan 2026", "Feb 2026"]), set intervalType to "monthly"
-    - 1-3 years total: Use "Quarters" (e.g., ["Q1 2026", "Q2 2026"]), set intervalType to "quarterly"
-    - 3-5 years total: Use "Years" (e.g., ["2020", "2021", "2022"]), set intervalType to "yearly"
-    - 5+ years total: Use multi-year intervals (e.g., ["2020-2025", "2025-2030"]), set intervalType to "multi-year"
-2.5 **SUB-INTERVALS (CRITICAL MANDATORY FEATURE - CANNOT BE SKIPPED):** After determining the main interval, you MUST ALWAYS generate sub-intervals:
-
-    **CRITICAL VALIDATION RULES:**
-    - The subIntervals array MUST NEVER be empty []
-    - The subIntervals array MUST ALWAYS have length > 0
-    - BEFORE finishing your response, VERIFY: subIntervals.length = timeColumns.length × (sub-intervals per main interval)
-    - If this check fails, you MUST regenerate the subIntervals array correctly
-
-    a. **Determine Sub-Interval Type:** Based on the main intervalType and the specificity of dates in the research:
-       * intervalType "weekly" → subIntervalType MUST be "daily"
-         - Generate 5 business days per week (Mon-Fri only, NO Saturday/Sunday)
-         - Example: ["Mon", "Tue", "Wed", "Thu", "Fri"] for each week
-       * intervalType "monthly" → subIntervalType MUST be "weekly"
-         - Generate 4 weeks per month (W1, W2, W3, W4)
-         - Example: ["W1", "W2", "W3", "W4"] for each month
-       * intervalType "quarterly" → subIntervalType is "monthly" OR "weekly" (YOU DECIDE):
-         - If research mentions specific months/dates → use "monthly" (3 months per quarter)
-           Example: ["Jan", "Feb", "Mar"] for Q1, ["Apr", "May", "Jun"] for Q2, etc.
-         - If research only has quarter-level detail → use "weekly" (13 weeks per quarter)
-           Example: ["W1", "W2", ..., "W13"] for each quarter
-       * intervalType "yearly" → subIntervalType MUST be "quarterly"
-         - ALWAYS use "quarterly" (4 quarters per year)
-         - Example: ["Q1", "Q2", "Q3", "Q4"] for each year (DO NOT include year in label)
-       * intervalType "multi-year" → subIntervalType MUST be "yearly"
-         - Generate individual years for each multi-year period
-         - Example for "2020-2025": ["2020", "2021", "2022", "2023", "2024", "2025"]
-    b. **Generate subIntervals Array:** Create a flat array of ALL sub-interval labels across the entire time horizon
-       * The number of sub-intervals = (number of main intervals) × (sub-intervals per main interval)
-       * **CRITICAL LABELING RULE:** Sub-interval labels should be SHORT and NOT repeat the main interval identifier
-         - For yearly/quarterly: ["Q1", "Q2", "Q3", "Q4", "Q1", "Q2", "Q3", "Q4", ...] (one set per year)
-         - For quarterly/monthly: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", ...] (NOT "Jan 2026", just "Jan")
-         - For monthly/weekly: ["W1", "W2", "W3", "W4", "W1", "W2", ...] (one set per month)
-       * The main interval (top row) provides the context, so sub-intervals only need the granular detail
-    c. **CRITICAL:** The subIntervals array length MUST equal the product of timeColumns length and the number of sub-intervals per main interval
+    - 0-3 months total: Use "Weeks" (e.g., ["W1 2026", "W2 2026"])
+    - 4-12 months total: Use "Months" (e.g., ["Jan 2026", "Feb 2026"])
+    - 1-3 years total: Use "Quarters" (e.g., ["Q1 2026", "Q2 2026"])
+    - 3+ years total: You MUST use "Years" (e.g., ["2020", "2021", "2022"])
 3.  **CHART DATA:** Create the 'data' array.
     - First, identify all logical swimlanes. **ADVANCED GANTT - STAKEHOLDER SWIMLANES:** For banking/enterprise projects, PREFER organizing by stakeholder departments:
       * IT/Technology (technical implementation, infrastructure, systems)
@@ -64,23 +29,12 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - Add an object for each swimlane: \`{ "title": "Swimlane Name", "isSwimlane": true, "entity": "Swimlane Name" }\`
     - Immediately after each swimlane, add all tasks that belong to it: \`{ "title": "Task Name", "isSwimlane": false, "entity": "Swimlane Name", "bar": { ... } }\`
     - **DO NOT** create empty swimlanes.
-4.  **BAR LOGIC (UPDATED FOR SUB-INTERVALS):**
-    - **CRITICAL:** Tasks now use sub-interval indices (NOT main interval indices) for precise positioning
-    - 'startCol' is the 1-based index of the 'subIntervals' array where the task begins
-    - 'endCol' is the 1-based index of the 'subIntervals' array where the task ends, **PLUS ONE**
-    - **Examples:**
-      * If timeColumns = ["2020", "2021"] and subIntervals = ["Q1", "Q2", "Q3", "Q4", "Q1", "Q2", "Q3", "Q4"]:
-        - A task in "Q1 2020" → startCol: 1, endCol: 2 (Q1 is at index 1)
-        - A task spanning "Q2 2020" to "Q1 2021" → startCol: 2, endCol: 6 (Q2 2020 is index 2, Q1 2021 is index 5, endCol = 5 + 1)
-      * If timeColumns = ["Q1 2026", "Q2 2026"] and subIntervals = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]:
-        - A task in "Feb 2026" → find index 2 (Feb is second month)
-      * If a task date is vague (e.g., "2022"), map it to the first sub-interval of that year
-        - "2022" with quarterly sub-intervals → First "Q1" in the 2022 section of subIntervals
-    - If a date is unknown ("null"), the 'bar' object must be \`{ "startCol": null, "endCol": null, "color": "..." }\`
-    - **Mapping Strategy:** For each task date, determine which main interval it belongs to, then which sub-interval within that:
-      * "Q1 2020" with yearly/quarterly → Find "2020" in timeColumns (index 0), first sub-interval is at index 1
-      * "March 2020" with yearly/quarterly → Find "2020", March is in Q1, so index 1
-      * "2020" with yearly/quarterly → Find "2020", default to first sub-interval (Q1)
+4.  **BAR LOGIC:**
+    - 'startCol' is the 1-based index of the 'timeColumns' array where the task begins.
+    - 'endCol' is the 1-based index of the 'timeColumns' array where the task ends, **PLUS ONE**.
+    - A task in "2022" has \`startCol: 3, endCol: 4\` (if 2020 is col 1).
+    - If a date is "Q1 2024" and the interval is "Years", map it to the "2024" column index.
+    - If a date is unknown ("null"), the 'bar' object must be \`{ "startCol": null, "endCol": null, "color": "..." }\`.
 5.  **COLORS & LEGEND:** This is a two-step process to assign meaningful colors and create a clear legend.
     a.  **Step 1: Analyze for Cross-Swimlane Themes:** Examine ALL tasks from ALL swimlanes to identify logical thematic groupings that span across multiple swimlanes (e.g., "Product Launch", "Technical Implementation"). A valid theme must:
         - Appear in at least 2 different swimlanes
@@ -476,21 +430,6 @@ export const GANTT_CHART_SCHEMA = {
       type: "array",
       items: { type: "string" }
     },
-    intervalType: {
-      type: "string",
-      enum: ["weekly", "monthly", "quarterly", "yearly", "multi-year"],
-      description: "The main interval type used for timeColumns"
-    },
-    subIntervalType: {
-      type: "string",
-      enum: ["daily", "weekly", "monthly", "quarterly", "yearly"],
-      description: "The sub-interval type chosen based on main interval and research specificity"
-    },
-    subIntervals: {
-      type: "array",
-      items: { type: "string" },
-      description: "Array of sub-interval labels that appear below main intervals"
-    },
     data: {
       type: "array",
       items: {
@@ -532,7 +471,7 @@ export const GANTT_CHART_SCHEMA = {
       }
     }
   },
-  required: ["title", "timeColumns", "intervalType", "subIntervalType", "subIntervals", "data", "legend"]
+  required: ["title", "timeColumns", "data", "legend"]
 };
 
 /**
