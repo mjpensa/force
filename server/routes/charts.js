@@ -392,6 +392,42 @@ Extract key insights, conversation points, or strategic observations from the re
 
 Example: { "type": "insights", "title": "${slideOutline.title}", "insights": [{"category": "Market", "text": "Current market trends indicate a 5-year window of opportunity before saturation, with early movers capturing 60-70% market share."}, {"category": "Technology", "text": "Emerging AI capabilities will reduce operational costs by 40% within 24 months, creating significant competitive advantage for early adopters."}, ...] }`;
             break;
+          case 'bip-three-column':
+            slidePrompt += `For this BIP THREE-COLUMN LAYOUT slide, provide a JSON object with:
+- type: "bip-three-column"
+- title: "${slideOutline.title}"
+- eyebrow: Object with text property (uppercase label, max 100 chars, e.g., {"text": "PROJECT OVERVIEW"})
+- columns: Array of exactly 3 column objects, each with text property (max 1000 chars per column)
+- showCornerGraphic: Boolean (use true to show decorative corner graphic)
+
+This is a modern three-column layout with an eyebrow label and geometric corner decoration.
+Extract key content from research and organize into 3 balanced columns.
+
+Example: { "type": "bip-three-column", "title": "${slideOutline.title}", "eyebrow": {"text": "STRATEGIC PILLARS"}, "columns": [{"text": "First strategic area with supporting details..."}, {"text": "Second strategic area with key initiatives..."}, {"text": "Third strategic area with expected outcomes..."}], "showCornerGraphic": true }`;
+            break;
+          case 'bip-single-column':
+            slidePrompt += `For this BIP SINGLE-COLUMN LAYOUT slide, provide a JSON object with:
+- type: "bip-single-column"
+- title: "${slideOutline.title}"
+- eyebrow: Object with text property (uppercase label, max 100 chars, e.g., {"text": "STRATEGIC CONTEXT"})
+- bodyText: Object with text property (detailed content, max 2000 chars)
+
+This is a large title layout with a single wide text column, ideal for detailed explanations.
+The title supports line breaks using \\n for multi-line display.
+
+Example: { "type": "bip-single-column", "title": "${slideOutline.title}", "eyebrow": {"text": "MARKET OPPORTUNITY"}, "bodyText": {"text": "The current market landscape presents a significant opportunity for growth. Recent analysis indicates a 40% increase in demand over the next 18 months, driven by regulatory changes and technological advancement. Our strategic positioning allows us to capture this opportunity through targeted initiatives and partnerships."} }`;
+            break;
+          case 'bip-title-slide':
+            slidePrompt += `For this BIP TITLE SLIDE, provide a JSON object with:
+- type: "bip-title-slide"
+- title: "${slideOutline.title}"
+- footerLeft: Object with text property (optional, left footer text like "Here to Dare.", max 100 chars)
+- footerRight: Object with text property (optional, right footer text like "November | 2025", max 100 chars)
+
+This is a branded title slide with gradient background. Title supports line breaks using \\n.
+
+Example: { "type": "bip-title-slide", "title": "${slideOutline.title}", "footerLeft": {"text": "Here to Dare."}, "footerRight": {"text": "${new Date().toLocaleString('default', { month: 'long' })} | ${new Date().getFullYear()}"} }`;
+            break;
           default:
             slidePrompt += `For this SIMPLE/GENERAL CONTENT slide, provide a JSON object with:
 - type: "simple"
@@ -426,7 +462,15 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
 
         const slide = slideResponse.slide;
         if (slide) {
-          slides.push(slide);
+          // Transform slide data: wrap all fields (except type) into content object
+          // This ensures compatibility with WebRenderer which expects slide.content.*
+          const { type, title: slideTitle, ...rest } = slide;
+          const transformedSlide = {
+            type,
+            content: { ...rest }
+          };
+
+          slides.push(transformedSlide);
           console.log(`Job ${jobId}: ✓ Generated content for slide ${i + 1}: type="${slide.type}"`);
         } else {
           console.warn(`Job ${jobId}: ⚠️ Failed to generate content for slide ${i + 1}, skipping`);
