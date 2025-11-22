@@ -141,25 +141,6 @@ select:focus-visible {
   /* background-color: #28228; */ /* Removed this override */
 }
 
-/* 9a. Main Interval Headers (top row, spanning sub-intervals) */
-.gantt-header.gantt-main-interval {
-  font-size: 28px; /* Larger for main intervals */
-  font-weight: 700; /* Bolder for main intervals */
-  padding: 20px 10px; /* More padding for prominence */
-  background-color: #081829; /* Darker background for main intervals */
-  border-bottom: 2px solid #0D0D0D; /* Thicker border */
-}
-
-/* 9b. Sub-Interval Headers (bottom row, one column each) */
-.gantt-header.gantt-sub-interval {
-  font-size: 16px; /* Smaller for sub-intervals */
-  font-weight: 500; /* Lighter weight */
-  padding: 12px 8px; /* Less padding */
-  background-color: #0c2340; /* Original header color */
-  border-bottom: 1px solid #0D0D0D;
-  color: #CCCCCC; /* Slightly lighter text for visual hierarchy */
-}
-
 /* 10. Row Label (Swimlane or Task) */
 .gantt-row-label {
   padding: 0; /* Remove padding from parent - will be applied to children */
