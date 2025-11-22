@@ -9,9 +9,6 @@ import { CONFIG } from './config.js';
 // Cross-LLM Research Synthesis Feature
 import { ResearchSynthesizer } from './ResearchSynthesizer.js';
 
-// Semantic Chart Adapter
-import { BimodalDataAdapter } from './BimodalDataAdapter.js';
-
 // Define supported file types for frontend validation using centralized config
 const SUPPORTED_FILE_MIMES = CONFIG.FILES.SUPPORTED_MIMES;
 const SUPPORTED_FILE_EXTENSIONS = CONFIG.FILES.SUPPORTED_EXTENSIONS;
@@ -391,9 +388,7 @@ async function pollForJobCompletion(jobId, generateBtn) {
     attempts++;
 
     try {
-      // Use semantic endpoint if in semantic mode
-      const jobEndpoint = window.isSemanticMode ? `/api/semantic-job/${jobId}` : `/job/${jobId}`;
-      const response = await fetch(jobEndpoint);
+      const response = await fetch(`/job/${jobId}`);
 
       if (!response.ok) {
         // Handle non-JSON error responses gracefully
@@ -426,39 +421,6 @@ async function pollForJobCompletion(jobId, generateBtn) {
       // Check job status
       if (job.status === 'complete') {
         console.log('Job completed successfully');
-
-        // Handle semantic mode differently (returns chartId, not full data)
-        if (window.isSemanticMode && job.data?.chartId) {
-          console.log('Semantic mode: Fetching chart data with chartId:', job.data.chartId);
-
-          // Fetch the full semantic chart data
-          const chartResponse = await fetch(`/api/semantic-gantt/${job.data.chartId}`);
-          if (!chartResponse.ok) {
-            throw new Error(`Failed to fetch semantic chart: ${chartResponse.status}`);
-          }
-
-          const chartData = await chartResponse.json();
-          console.log('Semantic chart data received:', chartData);
-
-          // Convert BimodalGanttData to standard format using adapter
-          const bimodalData = chartData.ganttData;
-          console.log('🔬 Converting BimodalGanttData to standard format');
-          const standardData = BimodalDataAdapter.ensureStandardFormat(bimodalData);
-          console.log('✅ Conversion complete - timeColumns:', standardData.timeColumns?.length, 'data:', standardData.data?.length);
-
-          // CRITICAL: Add chartId and sessionId to standardData (they're not in BimodalGanttData)
-          standardData.chartId = chartData.chartId;
-          standardData.sessionId = chartData.metadata?.sessionId || null;
-
-          console.log('✅ Added chartId and sessionId to standardData:', {
-            chartId: standardData.chartId,
-            sessionId: standardData.sessionId
-          });
-
-          return standardData; // Return converted standard format with IDs
-        }
-
-        // Standard mode: data is directly in job.data
         console.log('Job data structure:', Object.keys(job.data || {}));
 
         // *** ENHANCED DEBUG: Log exact structure received from server ***
@@ -576,14 +538,7 @@ async function handleChartGenerate(event) {
       return; // Will re-enable button in finally block
     }
 
-    // 4. Check if semantic mode is enabled (before creating FormData)
-    const semanticModeToggle = document.getElementById('semantic-mode-toggle');
-    const isSemanticMode = semanticModeToggle && semanticModeToggle.checked;
-
-    // Store semantic mode flag for polling
-    window.isSemanticMode = isSemanticMode;
-
-    // 4.5. Get content selection preferences
+    // 4. Get content selection preferences
     const generateExecutiveSummaryToggle = document.getElementById('generate-executive-summary-toggle');
     const generatePresentationToggle = document.getElementById('generate-presentation-toggle');
 
@@ -602,11 +557,9 @@ async function handleChartGenerate(event) {
     formData.append('generateExecutiveSummary', generateExecutiveSummary ? 'true' : 'false');
     formData.append('generatePresentation', generatePresentation ? 'true' : 'false');
 
-    // Use correct field name based on mode
-    // Standard endpoint expects 'researchFiles', semantic expects 'files'
-    const fileFieldName = isSemanticMode ? 'files' : 'researchFiles';
+    // Append all files with the correct field name
     for (const file of validFiles) {
-      formData.append(fileFieldName, file);
+      formData.append('researchFiles', file);
     }
 
     // 5. Update UI to show loading
@@ -614,11 +567,8 @@ async function handleChartGenerate(event) {
     errorMessage.style.display = 'none';
     chartOutput.innerHTML = ''; // Clear old chart
 
-    // 6. Phase 3 Enhancement: Call appropriate endpoint based on mode
-    const endpoint = isSemanticMode ? '/api/generate-semantic-gantt' : '/generate-chart';
-    console.log(`Generating chart in ${isSemanticMode ? 'SEMANTIC' : 'STANDARD'} mode`);
-
-    const response = await fetch(endpoint, {
+    // 6. Call chart generation endpoint
+    const response = await fetch('/generate-chart', {
       method: 'POST',
       body: formData,
     });
@@ -665,61 +615,35 @@ async function handleChartGenerate(event) {
       throw new Error('Invalid chart data structure: Expected object, received ' + typeof ganttData);
     }
 
-    // Check if this is semantic/bimodal data
-    const isSemanticData = ganttData.tasks && Array.isArray(ganttData.tasks) &&
-                          (ganttData.generatedAt || ganttData.determinismSeed !== undefined);
+    // Validate standard Gantt chart structure
+    console.log('📊 Validating chart data structure');
 
-    if (isSemanticData) {
-      // Validate BimodalGanttData structure
-      console.log('🔬 Semantic chart data detected - validating BimodalGanttData structure');
+    if (!ganttData.timeColumns) {
+      console.error('Invalid data structure - missing timeColumns. Keys:', Object.keys(ganttData), 'timeColumns value:', ganttData.timeColumns);
+      throw new Error('Invalid chart data structure: Missing timeColumns field');
+    }
 
-      if (!Array.isArray(ganttData.tasks)) {
-        console.error('Invalid semantic data - tasks is not an array. Type:', typeof ganttData.tasks);
-        throw new Error('Invalid semantic chart data: tasks must be an array');
-      }
+    if (!Array.isArray(ganttData.timeColumns)) {
+      console.error('Invalid data structure - timeColumns is not an array. Type:', typeof ganttData.timeColumns, 'Value:', ganttData.timeColumns);
+      throw new Error('Invalid chart data structure: timeColumns is not an array (type: ' + typeof ganttData.timeColumns + ')');
+    }
 
-      if (!ganttData.dependencies || !Array.isArray(ganttData.dependencies)) {
-        console.error('Invalid semantic data - dependencies is not an array. Type:', typeof ganttData.dependencies);
-        throw new Error('Invalid semantic chart data: dependencies must be an array');
-      }
+    if (!ganttData.data) {
+      console.error('Invalid data structure - missing data. Keys:', Object.keys(ganttData), 'data value:', ganttData.data);
+      throw new Error('Invalid chart data structure: Missing data field');
+    }
 
-      if (ganttData.tasks.length === 0) {
-        console.warn("AI returned valid but empty semantic data.", ganttData);
-        throw new Error('The AI was unable to find any tasks in the provided documents. Please check your files or try a different prompt.');
-      }
+    if (!Array.isArray(ganttData.data)) {
+      console.error('Invalid data structure - data is not an array. Type:', typeof ganttData.data, 'Value:', ganttData.data);
+      throw new Error('Invalid chart data structure: data is not an array (type: ' + typeof ganttData.data + ')');
+    }
 
-      console.log('✓ Semantic data structure validation passed - tasks:', ganttData.tasks.length, 'dependencies:', ganttData.dependencies.length);
-    } else {
-      // Validate standard Gantt chart structure
-      console.log('📊 Standard chart data detected - validating standard Gantt structure');
+    console.log('✓ Data structure validation passed - timeColumns:', ganttData.timeColumns.length, 'data:', ganttData.data.length);
 
-      if (!ganttData.timeColumns) {
-        console.error('Invalid data structure - missing timeColumns. Keys:', Object.keys(ganttData), 'timeColumns value:', ganttData.timeColumns);
-        throw new Error('Invalid chart data structure: Missing timeColumns field');
-      }
-
-      if (!Array.isArray(ganttData.timeColumns)) {
-        console.error('Invalid data structure - timeColumns is not an array. Type:', typeof ganttData.timeColumns, 'Value:', ganttData.timeColumns);
-        throw new Error('Invalid chart data structure: timeColumns is not an array (type: ' + typeof ganttData.timeColumns + ')');
-      }
-
-      if (!ganttData.data) {
-        console.error('Invalid data structure - missing data. Keys:', Object.keys(ganttData), 'data value:', ganttData.data);
-        throw new Error('Invalid chart data structure: Missing data field');
-      }
-
-      if (!Array.isArray(ganttData.data)) {
-        console.error('Invalid data structure - data is not an array. Type:', typeof ganttData.data, 'Value:', ganttData.data);
-        throw new Error('Invalid chart data structure: data is not an array (type: ' + typeof ganttData.data + ')');
-      }
-
-      console.log('✓ Data structure validation passed - timeColumns:', ganttData.timeColumns.length, 'data:', ganttData.data.length);
-
-      // Check for empty data
-      if (ganttData.timeColumns.length === 0 || ganttData.data.length === 0) {
-        console.warn("AI returned valid but empty data.", ganttData);
-        throw new Error('The AI was unable to find any tasks or time columns in the provided documents. Please check your files or try a different prompt.');
-      }
+    // Check for empty data
+    if (ganttData.timeColumns.length === 0 || ganttData.data.length === 0) {
+      console.warn("AI returned valid but empty data.", ganttData);
+      throw new Error('The AI was unable to find any tasks or time columns in the provided documents. Please check your files or try a different prompt.');
     }
 
     // 9. Open in new tab

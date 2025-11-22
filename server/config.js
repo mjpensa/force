@@ -97,27 +97,6 @@ export const CONFIG = {
     CLAIM_ID_LENGTH: 16 // Length of generated claim IDs
   },
 
-  // Semantic Overlay Engine Configuration
-  SEMANTIC: {
-    ENABLE_DETERMINISTIC_MODE: process.env.ENABLE_SEMANTIC !== 'false',
-    DEFAULT_CONFIDENCE_THRESHOLD: parseFloat(process.env.CONFIDENCE_THRESHOLD || '0.7'),
-    ENABLE_BANKING_RULES: process.env.ENABLE_BANKING_RULES !== 'false',
-    CACHE_DETERMINISTIC_RESULTS: process.env.CACHE_SEMANTIC !== 'false',
-    MIN_ACCEPTABLE_CONFIDENCE: 0.5, // Below this, inferences are rejected
-    FACT_CONFIDENCE: 1.0, // Explicit facts always 100%
-    MAX_RESEARCH_CHARS: 1000000, // Maximum research content characters (1M chars ≈ 250k tokens, well within Gemini 2.5 Flash's 1M token limit)
-    // Gemini configuration for deterministic mode
-    GEMINI: {
-      MODEL: 'gemini-2.5-flash-preview-09-2025', // Must match API.GEMINI_MODEL
-      API_URL: 'https://generativelanguage.googleapis.com/v1beta',
-      TEMPERATURE: 0.0, // CRITICAL: Zero randomness
-      TOP_K: 1, // CRITICAL: Only most likely token
-      TOP_P: 0.0, // CRITICAL: No nucleus sampling
-      MAX_OUTPUT_TOKENS_FACTS: 65536, // Pass 1: Fact extraction (maximum for Gemini 2.5 Flash)
-      MAX_OUTPUT_TOKENS_INFERENCES: 65536 // Pass 2: Full structure (maximum for Gemini 2.5 Flash)
-    }
-  },
-
   // Timeout settings
   TIMEOUTS: {
     REQUEST_MS: 120000, // 2 minutes

@@ -12,7 +12,6 @@ import { safeGetElement, loadFooterSVG } from './Utils.js';
 import { GanttChart } from './GanttChart.js';
 import { TaskAnalyzer } from './TaskAnalyzer.js';
 import { ResearchSynthesizer } from './ResearchSynthesizer.js';
-import { BimodalDataAdapter } from './BimodalDataAdapter.js';
 
 // Global variable to store ganttData (including sessionId)
 let ganttData = null;
@@ -107,14 +106,7 @@ async function loadChartFromServer(chartId) {
         hasSlides: ganttData.presentationSlides?.slides?.length || 0
       });
 
-      // Check if this is bimodal/semantic data and convert if needed
-      if (BimodalDataAdapter.isBimodal(ganttData)) {
-        console.log('🔬 Semantic/Bimodal data detected - converting to standard format');
-        ganttData = BimodalDataAdapter.ensureStandardFormat(ganttData);
-        console.log('✅ Converted to standard format - timeColumns:', ganttData.timeColumns.length, 'data:', ganttData.data.length);
-      }
-
-      // Validate the loaded data structure (now guaranteed to be standard format)
+      // Validate the loaded data structure
       if (!ganttData || typeof ganttData !== 'object') {
         console.error('❌ Invalid chart data structure. Type:', typeof ganttData);
         throw new Error('Invalid chart data structure');
@@ -179,14 +171,7 @@ function loadChartFromSessionStorage() {
     if (stored) {
       ganttData = JSON.parse(stored);
 
-      // Check if this is bimodal/semantic data and convert if needed
-      if (BimodalDataAdapter.isBimodal(ganttData)) {
-        console.log('🔬 Semantic/Bimodal data detected in sessionStorage - converting to standard format');
-        ganttData = BimodalDataAdapter.ensureStandardFormat(ganttData);
-        console.log('✅ Converted to standard format - timeColumns:', ganttData.timeColumns.length, 'data:', ganttData.data.length);
-      }
-
-      // Validate structure (now guaranteed to be standard format)
+      // Validate structure
       if (!ganttData || typeof ganttData !== 'object') {
         console.error('Invalid gantt data structure from sessionStorage. Type:', typeof ganttData);
         throw new Error('Invalid gantt data structure');
