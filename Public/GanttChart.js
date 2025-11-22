@@ -1431,7 +1431,16 @@ export class GanttChart {
           console.warn('Error collecting styles:', e);
         }
 
-        const htmlString = clonedContainer.outerHTML;
+        // Serialize as XHTML (required for SVG foreignObject)
+        const serializer = new XMLSerializer();
+        let htmlString = serializer.serializeToString(clonedContainer);
+
+        // Fix common HTML to XHTML issues
+        htmlString = htmlString
+          .replace(/<br>/g, '<br/>')
+          .replace(/<hr>/g, '<hr/>')
+          .replace(/<input([^>]*)>/g, '<input$1/>')
+          .replace(/<img([^>]*)>/g, '<img$1/>');
 
         // Create SVG with embedded styles
         const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
