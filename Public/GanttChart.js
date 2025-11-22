@@ -1229,12 +1229,42 @@ export class GanttChart {
         // Use requestAnimationFrame to prevent UI blocking
         await new Promise(resolve => requestAnimationFrame(resolve));
 
+        // FIX: Apply explicit padding to label-content elements for html2canvas
+        // html2canvas doesn't properly handle flexbox align-items: center
+        const labelContents = chartContainer.querySelectorAll('.label-content');
+        const originalStyles = [];
+
+        labelContents.forEach((el, index) => {
+          // Store original style
+          originalStyles[index] = el.style.cssText;
+
+          // Get computed height and line-height to calculate centering
+          const computedStyle = window.getComputedStyle(el);
+          const fontSize = parseFloat(computedStyle.fontSize);
+          const lineHeight = parseFloat(computedStyle.lineHeight);
+          const paddingTop = parseFloat(computedStyle.paddingTop);
+          const paddingBottom = parseFloat(computedStyle.paddingBottom);
+
+          // Apply explicit padding that centers the text
+          // Ensure padding-top and padding-bottom are equal for perfect centering
+          const verticalPadding = Math.max(paddingTop, paddingBottom);
+          el.style.paddingTop = `${verticalPadding}px`;
+          el.style.paddingBottom = `${verticalPadding}px`;
+          el.style.display = 'block';
+          el.style.lineHeight = lineHeight ? `${lineHeight}px` : `${fontSize * 1.2}px`;
+        });
+
         const canvas = await html2canvas(chartContainer, {
           useCORS: true,
           logging: false,
           scale: 2, // Render at 2x resolution for quality
           allowTaint: false,
           backgroundColor: null
+        });
+
+        // Restore original styles
+        labelContents.forEach((el, index) => {
+          el.style.cssText = originalStyles[index];
         });
 
         // Create download link
