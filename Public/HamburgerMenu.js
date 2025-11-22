@@ -15,12 +15,17 @@ export class HamburgerMenu {
   /**
    * Creates a new HamburgerMenu instance
    * @param {Router} router - The router instance for navigation
+   * @param {Object} contentAvailability - Flags indicating which content is available
+   * @param {boolean} contentAvailability.hasExecutiveSummary - Whether executive summary was generated
+   * @param {boolean} contentAvailability.hasPresentationSlides - Whether presentation slides were generated
    */
-  constructor(router) {
+  constructor(router, contentAvailability = {}) {
     this.isOpen = false;
     this.menuElement = null;
     this.router = router;
     this.currentSection = 'roadmap'; // Track current section: 'roadmap', 'executive-summary', 'presentation', 'research-synthesis'
+    this.hasExecutiveSummary = contentAvailability.hasExecutiveSummary !== false; // Default to true for backward compatibility
+    this.hasPresentationSlides = contentAvailability.hasPresentationSlides !== false; // Default to true for backward compatibility
   }
 
   /**
@@ -47,6 +52,13 @@ export class HamburgerMenu {
     // Create navigation menu
     const navMenu = document.createElement('nav');
     navMenu.className = 'hamburger-nav';
+
+    // Build menu items conditionally based on content availability
+    const executiveSummaryDisabled = !this.hasExecutiveSummary ? 'disabled' : '';
+    const presentationDisabled = !this.hasPresentationSlides ? 'disabled' : '';
+    const executiveSummaryTitle = !this.hasExecutiveSummary ? ' title="Not generated"' : '';
+    const presentationTitle = !this.hasPresentationSlides ? ' title="Not generated"' : '';
+
     navMenu.innerHTML = `
       <ul class="hamburger-nav-list">
         <li>
@@ -56,15 +68,19 @@ export class HamburgerMenu {
           </a>
         </li>
         <li>
-          <a href="#executive-summary" class="hamburger-nav-item" data-section="executive-summary">
+          <a href="${this.hasExecutiveSummary ? '#executive-summary' : '#'}"
+             class="hamburger-nav-item ${executiveSummaryDisabled}"
+             data-section="executive-summary"${executiveSummaryTitle}>
             <span class="nav-icon">📋</span>
-            <span class="nav-text">Executive Summary</span>
+            <span class="nav-text">Executive Summary${!this.hasExecutiveSummary ? ' (Not Generated)' : ''}</span>
           </a>
         </li>
         <li>
-          <a href="#presentation" class="hamburger-nav-item" data-section="presentation">
+          <a href="${this.hasPresentationSlides ? '#presentation' : '#'}"
+             class="hamburger-nav-item ${presentationDisabled}"
+             data-section="presentation"${presentationTitle}>
             <span class="nav-icon">🎯</span>
-            <span class="nav-text">Presentation</span>
+            <span class="nav-text">Presentation${!this.hasPresentationSlides ? ' (Not Generated)' : ''}</span>
           </a>
         </li>
         <li>
@@ -104,6 +120,13 @@ export class HamburgerMenu {
     const navItems = navMenu.querySelectorAll('.hamburger-nav-item');
     navItems.forEach(item => {
       item.addEventListener('click', (e) => {
+        // Prevent navigation for disabled items
+        if (item.classList.contains('disabled')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+
         // Don't prevent default - let the hash link work
         this._closeMenu(hamburgerBtn, navMenu);
 

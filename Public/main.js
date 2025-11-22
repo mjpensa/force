@@ -583,8 +583,24 @@ async function handleChartGenerate(event) {
     // Store semantic mode flag for polling
     window.isSemanticMode = isSemanticMode;
 
+    // 4.5. Get content selection preferences
+    const generateExecutiveSummaryToggle = document.getElementById('generate-executive-summary-toggle');
+    const generatePresentationToggle = document.getElementById('generate-presentation-toggle');
+
+    const generateExecutiveSummary = generateExecutiveSummaryToggle && generateExecutiveSummaryToggle.checked;
+    const generatePresentation = generatePresentationToggle && generatePresentationToggle.checked;
+
+    console.log('Content generation preferences:', {
+      generateExecutiveSummary,
+      generatePresentation
+    });
+
     const formData = new FormData();
     formData.append('prompt', promptInput.value);
+
+    // Add content selection flags
+    formData.append('generateExecutiveSummary', generateExecutiveSummary ? 'true' : 'false');
+    formData.append('generatePresentation', generatePresentation ? 'true' : 'false');
 
     // Use correct field name based on mode
     // Standard endpoint expects 'researchFiles', semantic expects 'files'

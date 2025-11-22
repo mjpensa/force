@@ -314,8 +314,16 @@ export class GanttChart {
       this.router = new window.Router();
     }
 
-    // Create hamburger menu instance with router
-    this.hamburgerMenu = new HamburgerMenu(this.router);
+    // Determine content availability
+    const contentAvailability = {
+      hasExecutiveSummary: !!this.ganttData.executiveSummary,
+      hasPresentationSlides: !!(this.ganttData.presentationSlides && this.ganttData.presentationSlides.slides && this.ganttData.presentationSlides.slides.length > 0)
+    };
+
+    console.log('Content availability for hamburger menu:', contentAvailability);
+
+    // Create hamburger menu instance with router and content availability
+    this.hamburgerMenu = new HamburgerMenu(this.router, contentAvailability);
     const menuElement = this.hamburgerMenu.render();
 
     // Append directly to the document body so it stays fixed on screen

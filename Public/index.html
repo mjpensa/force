@@ -250,6 +250,59 @@
                     </div>
                 </section>
 
+                <!-- Content Selection Section -->
+                <section class="mt-10">
+                    <h2 class="text-3xl md:text-4xl font-semibold mb-6">
+                        Content to Generate
+                    </h2>
+                    <div class="bg-gray-800 rounded-lg p-6 border-2 border-gray-600">
+                        <p class="text-base md:text-lg text-gray-300 mb-4">
+                            Select which content you want to generate. Generating only what you need speeds up processing time.
+                        </p>
+                        <div class="space-y-4">
+                            <!-- Gantt Chart (always enabled) -->
+                            <div class="flex items-start gap-4">
+                                <input type="checkbox" id="generate-gantt-toggle" checked disabled class="mt-1 w-6 h-6 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2 cursor-not-allowed opacity-50">
+                                <div class="flex-1">
+                                    <label for="generate-gantt-toggle" class="text-lg md:text-xl font-semibold text-white flex items-center gap-2">
+                                        📊 Gantt Chart
+                                        <span class="text-xs bg-gray-600 text-gray-300 px-2 py-1 rounded font-normal">REQUIRED</span>
+                                    </label>
+                                    <p class="text-sm md:text-base text-gray-400 mt-1">
+                                        Interactive timeline with tasks, dependencies, and drag-to-edit functionality
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Executive Summary -->
+                            <div class="flex items-start gap-4">
+                                <input type="checkbox" id="generate-executive-summary-toggle" checked class="mt-1 w-6 h-6 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer">
+                                <div class="flex-1">
+                                    <label for="generate-executive-summary-toggle" class="text-lg md:text-xl font-semibold text-white cursor-pointer">
+                                        📋 Executive Summary
+                                    </label>
+                                    <p class="text-sm md:text-base text-gray-400 mt-1">
+                                        Strategic narrative, key drivers, critical dependencies, risk intelligence, and expert insights
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Presentation Slides -->
+                            <div class="flex items-start gap-4">
+                                <input type="checkbox" id="generate-presentation-toggle" checked class="mt-1 w-6 h-6 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer">
+                                <div class="flex-1">
+                                    <label for="generate-presentation-toggle" class="text-lg md:text-xl font-semibold text-white cursor-pointer">
+                                        📽️ Presentation Slides
+                                    </label>
+                                    <p class="text-sm md:text-base text-gray-400 mt-1">
+                                        Professional slide deck with title, narrative, drivers, dependencies, risks, and insights
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Form Actions (Button & Loader) -->
                 <div class="form-actions mt-12">
                     <div class="flex items-center gap-6">

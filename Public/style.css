@@ -5498,6 +5498,23 @@ body.dragging {
   padding-left: 24px;
 }
 
+/* Disabled menu items */
+.hamburger-nav-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: auto; /* Override to allow click events for preventDefault */
+}
+
+.hamburger-nav-item.disabled:hover {
+  background: transparent;
+  padding-left: 20px; /* Keep original padding */
+}
+
+.hamburger-nav-item.disabled .nav-text {
+  font-style: italic;
+  color: #888;
+}
+
 .hamburger-nav-list li:first-child .hamburger-nav-item {
   border-radius: 8px 8px 0 0;
 }
