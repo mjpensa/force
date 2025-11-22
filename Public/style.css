@@ -167,23 +167,22 @@ select:focus-visible {
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   white-space: nowrap; /* Prevent text wrapping - column will auto-expand */
   overflow: visible; /* Allow text to be fully visible */
-  display: flex;
-  /* REMOVED: align-items: center - causes html2canvas misalignment */
-  justify-content: space-between;
+  display: grid; /* Changed to grid for better html2canvas alignment support */
+  grid-template-columns: 1fr auto; /* Label content takes available space, actions auto-size */
+  align-items: center; /* Grid align-items may work better than flex in html2canvas */
   gap: 12px;
   min-height: 40px; /* Ensure minimum height for proper centering */
 }
 
 /* Phase 3: Label content wrapper */
 .gantt-row-label .label-content {
-  flex: 1;
+  /* Grid item - no flex properties needed */
   min-width: 0;
   transition: all 0.2s;
   border-radius: 4px;
   padding: 10px 12px;
   display: block;
   line-height: 1.2; /* Explicit line-height */
-  /* Vertical centering via padding (html2canvas compatible) */
 }
 
 /* Show outline on label hover when in edit mode (for both tasks and swimlanes) */
@@ -198,13 +197,12 @@ select:focus-visible {
 .row-actions {
   display: none; /* Hidden by default */
   gap: 6px;
-  /* REMOVED: align-items: center - use margin instead for html2canvas compatibility */
-  margin: auto 0; /* Vertically center in flex parent */
+  align-items: center; /* Grid item - should align with parent grid */
 }
 
 /* Show row actions on hover only when edit mode is enabled */
 .gantt-grid.edit-mode-enabled .gantt-row-label:hover .row-actions {
-  display: flex;
+  display: flex; /* Display as flex to layout buttons horizontally */
 }
 
 .row-action-btn {
