@@ -462,26 +462,6 @@ select:focus-visible {
   filter: brightness(1.1);
 }
 
-/* Critical Path View Toggle Button (ADVANCED GANTT ENHANCEMENT) */
-.critical-path-toggle-button {
-  font-family: 'Work Sans', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: #ffffff;
-  background-color: #6C757D; /* Gray for all tasks view */
-  border: none;
-  border-radius: 8px;
-  padding: 16px 48px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  transition: all 0.2s;
-}
-.critical-path-toggle-button:hover {
-  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
-  transform: translateY(-2px);
-  filter: brightness(1.1);
-}
-
 /* Edit Mode Toggle Button */
 .edit-mode-toggle-button {
   font-family: 'Work Sans', sans-serif;
