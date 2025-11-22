@@ -1399,22 +1399,29 @@ export class GanttChart {
 
         // Convert all images to base64 data URLs
         const images = clonedContainer.querySelectorAll('img');
-        for (const img of images) {
-          try {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const originalImg = chartContainer.querySelector(`img[src="${img.src}"]`);
+        const originalImages = chartContainer.querySelectorAll('img');
 
-            if (originalImg && originalImg.complete) {
+        for (let i = 0; i < images.length; i++) {
+          try {
+            const img = images[i];
+            const originalImg = originalImages[i];
+
+            if (originalImg && originalImg.complete && originalImg.naturalWidth > 0) {
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
               canvas.width = originalImg.naturalWidth;
               canvas.height = originalImg.naturalHeight;
               ctx.drawImage(originalImg, 0, 0);
               img.setAttribute('src', canvas.toDataURL('image/png'));
+            } else {
+              // Remove image if not loaded or invalid
+              console.warn('Image not loaded or invalid, removing:', originalImg?.src);
+              img.remove();
             }
           } catch (e) {
             console.warn('Could not convert image to base64:', e);
             // Remove image if conversion fails
-            img.remove();
+            images[i]?.remove();
           }
         }
 
@@ -1455,8 +1462,8 @@ export class GanttChart {
         htmlString = htmlString
           // Ensure self-closing tags are properly formatted
           .replace(/<(br|hr|img|input|meta|link)([^>]*?)>/gi, '<$1$2 />')
-          // Remove any xmlns attributes that might have been added
-          .replace(/\sxmlns="[^"]*"/g, '');
+          // Remove duplicate xmlns attributes from inner elements (keep on root)
+          .replace(/(<[^>]+?)\sxmlns="http:\/\/www\.w3\.org\/1999\/xhtml"([^>]*>)/g, '$1$2');
 
         // Create SVG with embedded styles
         const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
