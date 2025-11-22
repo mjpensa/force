@@ -12,6 +12,7 @@ import { CONFIG } from './config.js';
 import { WebRenderer } from './WebRenderer.js';
 import { getDefaultTheme, migrateOldSlideData } from './SlideDataModel.js';
 import { exportWithProgressDialog } from './PPTExporter.js';
+import { PresenterMode } from './PresenterMode.js';
 
 /**
  * PresentationSlides Class
@@ -54,6 +55,9 @@ export class PresentationSlides {
     this.isFullscreen = false;
     this.isSidebarVisible = true;
     this.shortcutsOverlayVisible = false;
+
+    // Presenter mode
+    this.presenterMode = new PresenterMode(this);
 
     // Keyboard shortcuts binding
     this.handleKeyPress = this.handleKeyPress.bind(this);
@@ -178,6 +182,10 @@ export class PresentationSlides {
     // Keyboard shortcuts button
     const shortcutsBtn = this._createButton('icon-only', '?', 'Keyboard Shortcuts', () => this._toggleShortcuts());
 
+    // Presenter Mode button
+    const presenterBtn = this._createButton('', '🎤', 'Presenter Mode', () => this._launchPresenterMode());
+    presenterBtn.id = 'presenterModeBtn';
+
     // Export to PowerPoint button
     const exportBtn = this._createButton('primary', '📥', 'Export to PowerPoint', () => this._exportToPowerPoint());
     exportBtn.id = 'exportPPTBtn';
@@ -186,6 +194,7 @@ export class PresentationSlides {
     rightSide.appendChild(gridBtn);
     rightSide.appendChild(fullscreenBtn);
     rightSide.appendChild(shortcutsBtn);
+    rightSide.appendChild(presenterBtn);
     rightSide.appendChild(exportBtn);
 
     topbar.appendChild(leftSide);
@@ -449,6 +458,7 @@ export class PresentationSlides {
       { action: 'Toggle grid view', keys: ['G'] },
       { action: 'Toggle fullscreen', keys: ['F'] },
       { action: 'Toggle thumbnails', keys: ['T'] },
+      { action: 'Presenter mode', keys: ['M'] },
       { action: 'Export to PowerPoint', keys: ['P'] },
       { action: 'Show shortcuts', keys: ['?'] },
       { action: 'Close overlay', keys: ['Esc'] }
@@ -770,6 +780,11 @@ export class PresentationSlides {
         e.preventDefault();
         this._exportToPowerPoint();
         break;
+      case 'm':
+      case 'M':
+        e.preventDefault();
+        this._launchPresenterMode();
+        break;
       case '?':
         e.preventDefault();
         this._toggleShortcuts();
@@ -784,6 +799,20 @@ export class PresentationSlides {
           this._toggleGridView();
         }
         break;
+    }
+  }
+
+  /**
+   * Launch presenter mode
+   * @private
+   */
+  _launchPresenterMode() {
+    try {
+      console.log('[PresentationSlides] Launching presenter mode');
+      this.presenterMode.launch();
+    } catch (error) {
+      console.error('[PresentationSlides] Failed to launch presenter mode:', error);
+      alert('Failed to launch presenter mode. Please check your pop-up settings and try again.');
     }
   }
 
@@ -829,5 +858,10 @@ export class PresentationSlides {
    */
   destroy() {
     document.removeEventListener('keydown', this.handleKeyPress);
+
+    // Cleanup presenter mode
+    if (this.presenterMode) {
+      this.presenterMode.cleanup();
+    }
   }
 }
