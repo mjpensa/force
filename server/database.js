@@ -749,11 +749,6 @@ export function getOverallAnalytics() {
 }
 
 /**
- * SEMANTIC CHART OPERATIONS
- */
-
-
-/**
  * Close database connection
  */
 export function closeDatabase() {

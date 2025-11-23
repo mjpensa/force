@@ -116,41 +116,6 @@ export const uploadMiddleware = multer({
 });
 
 /**
- * Configure multer for semantic routes
- * Accepts any fields (files and text) to support both 'files' and 'prompt' fields
- */
-export const semanticUploadMiddleware = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: CONFIG.FILES.MAX_SIZE_BYTES,
-    files: CONFIG.FILES.MAX_COUNT,
-    fieldSize: CONFIG.FILES.MAX_FIELD_SIZE_BYTES
-  },
-  fileFilter: (req, file, cb) => {
-    // Validate file types - check both MIME type and extension
-    const allowedMimes = CONFIG.FILES.ALLOWED_MIMES;
-    const fileExtension = getFileExtension(file.originalname);
-    const allowedExtensions = CONFIG.FILES.ALLOWED_EXTENSIONS;
-
-    // Check if MIME type is allowed
-    if (allowedMimes.includes(file.mimetype)) {
-      // For application/octet-stream, verify the extension
-      if (file.mimetype === 'application/octet-stream') {
-        if (allowedExtensions.includes(fileExtension)) {
-          cb(null, true);
-        } else {
-          cb(new Error(CONFIG.ERRORS.INVALID_FILE_EXTENSION(fileExtension)));
-        }
-      } else {
-        cb(null, true);
-      }
-    } else {
-      cb(new Error(CONFIG.ERRORS.INVALID_FILE_TYPE(file.mimetype)));
-    }
-  }
-}).any(); // .any() accepts any field names (both 'files' and 'prompt')
-
-/**
  * Error handling middleware for file upload errors
  */
 export function handleUploadErrors(error, req, res, next) {
