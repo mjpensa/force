@@ -2,6 +2,7 @@
  * Modern Executive Summary Document Reader
  * Clean, MS Word / Google Docs inspired interface
  * Features: Minimal toolbar, centered document, professional typography
+ * Displays narrative text only - no dashboards or structured data
  */
 
 import { CONFIG } from './config.js';
@@ -26,6 +27,7 @@ export class ExecutiveSummary {
     console.log('  Summary data exists:', !!summaryData);
     if (summaryData) {
       console.log('  Summary data keys:', Object.keys(summaryData));
+      console.log('  Summary content type:', typeof summaryData.content);
     }
   }
 
@@ -40,7 +42,7 @@ export class ExecutiveSummary {
     this.container.id = 'executiveSummary';
 
     // Check if summary data exists
-    if (!this.summaryData) {
+    if (!this.summaryData || !this.summaryData.content) {
       this.container.innerHTML = this._buildEmptyState();
       return this.container;
     }
@@ -218,7 +220,7 @@ export class ExecutiveSummary {
     const documentPage = document.createElement('div');
     documentPage.className = 'reader-document-page';
 
-    // Build document content
+    // Build document content from narrative text
     const content = this._buildDocumentContent();
     documentPage.innerHTML = content;
 
@@ -228,363 +230,48 @@ export class ExecutiveSummary {
   }
 
   /**
-   * Builds the complete document content
+   * Builds the document content from the narrative text
    * @private
    * @returns {string} Complete document HTML
    */
   _buildDocumentContent() {
-    let html = '';
+    // Get the content string from summaryData
+    const narrativeText = this.summaryData.content || '';
 
-    // Document title
-    html += '<h1 class="document-title">Executive Summary</h1>';
+    // Split by section headings and format
+    let formattedContent = narrativeText;
 
-    // Render all sections in order
-    const sections = [
-      'strategicNarrative',
-      'strategicPriorities',
-      'drivers',
-      'dependencies',
-      'risks',
-      'keyInsights',
-      'competitiveIntelligence',
-      'industryBenchmarks'
-    ];
+    // Convert markdown-style headings to HTML
+    // Handle **Section X: Title** format
+    formattedContent = formattedContent.replace(/\*\*Section (\d+): ([^*]+)\*\*/g,
+      '<h2 class="document-heading">Section $1: $2</h2>');
 
-    sections.forEach(sectionName => {
-      const sectionData = this.summaryData[sectionName];
-      if (!sectionData) return;
+    // Handle **Title** format (for any remaining bold headings)
+    formattedContent = formattedContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
-      switch (sectionName) {
-        case 'strategicNarrative':
-          html += this._renderStrategicNarrative(sectionData);
-          break;
-        case 'strategicPriorities':
-          html += this._renderStrategicPriorities(sectionData);
-          break;
-        case 'drivers':
-          html += this._renderDrivers(sectionData);
-          break;
-        case 'dependencies':
-          html += this._renderDependencies(sectionData);
-          break;
-        case 'risks':
-          html += this._renderRisks(sectionData);
-          break;
-        case 'keyInsights':
-          html += this._renderKeyInsights(sectionData);
-          break;
-        case 'competitiveIntelligence':
-          html += this._renderCompetitiveIntelligence(sectionData);
-          break;
-        case 'industryBenchmarks':
-          html += this._renderIndustryBenchmarks(sectionData);
-          break;
+    // Split by double newlines to create paragraphs
+    const paragraphs = formattedContent.split('\n\n').filter(p => p.trim());
+
+    // Build HTML
+    let html = '<h1 class="document-title">Executive Summary</h1>';
+    html += '<div class="document-narrative">';
+
+    paragraphs.forEach(para => {
+      const trimmed = para.trim();
+      if (!trimmed) return;
+
+      // If it's a heading (starts with <h2), add it directly
+      if (trimmed.startsWith('<h2')) {
+        html += trimmed;
+      } else {
+        // Otherwise, wrap in paragraph tag
+        html += `<p class="document-paragraph">${trimmed}</p>`;
       }
     });
 
+    html += '</div>';
+
     return html;
-  }
-
-  /**
-   * Renders Strategic Narrative section
-   * @private
-   */
-  _renderStrategicNarrative(data) {
-    return `
-      <div class="document-section">
-        <p class="document-paragraph">${data.elevatorPitch || ''}</p>
-        ${data.valueProposition ? `<p class="document-paragraph">${data.valueProposition}</p>` : ''}
-        ${data.callToAction ? `<p class="document-paragraph document-paragraph-emphasis">${data.callToAction}</p>` : ''}
-      </div>
-    `;
-  }
-
-  /**
-   * Renders Strategic Priorities section
-   * @private
-   */
-  _renderStrategicPriorities(data) {
-    if (!Array.isArray(data) || data.length === 0) return '';
-
-    return `
-      <div class="document-section">
-        <h2 class="document-heading">Strategic Priorities</h2>
-        ${data.map((priority, index) => `
-          <div class="document-list-item">
-            <div class="document-list-number">${index + 1}</div>
-            <div class="document-list-content">
-              <strong class="document-strong">${priority.title}.</strong>
-              <span class="document-text">${priority.description}</span>
-              ${priority.bankingContext ? `<span class="document-text"> ${priority.bankingContext}</span>` : ''}
-              ${priority.dependencies ? `<span class="document-text-muted"> Dependencies: ${priority.dependencies}.</span>` : ''}
-              ${priority.deadline ? `<span class="document-text-muted"> Deadline: ${priority.deadline}.</span>` : ''}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  /**
-   * Renders Strategic Drivers section
-   * @private
-   */
-  _renderDrivers(data) {
-    if (!Array.isArray(data) || data.length === 0) return '';
-
-    return `
-      <div class="document-section">
-        <h2 class="document-heading">Strategic Drivers</h2>
-        ${data.map((driver, index) => {
-          const metricsText = driver.metrics && driver.metrics.length > 0
-            ? ` <span class="document-metrics">Key metrics: ${driver.metrics.join(', ')}.</span>`
-            : '';
-          return `
-            <div class="document-list-item">
-              <div class="document-list-number">${index + 1}</div>
-              <div class="document-list-content">
-                <strong class="document-strong">${driver.title}.</strong>
-                <span class="document-text">${driver.description}</span>${metricsText}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  }
-
-  /**
-   * Renders Dependencies section
-   * @private
-   */
-  _renderDependencies(data) {
-    if (!Array.isArray(data) || data.length === 0) return '';
-
-    return `
-      <div class="document-section">
-        <h2 class="document-heading">Critical Dependencies</h2>
-        ${data.map(dep => {
-          const criticalityClass = (dep.criticality || '').toLowerCase();
-          const criticalityBadge = `<span class="dependency-badge dependency-badge-${criticalityClass}">${dep.criticality || 'Medium'}</span>`;
-          const phasesText = dep.impactedPhases && dep.impactedPhases.length > 0
-            ? ` <span class="document-text-muted">Impacts: ${dep.impactedPhases.join(', ')}.</span>`
-            : '';
-          const mitigationText = dep.mitigationStrategy
-            ? ` <span class="document-text">Mitigation: ${dep.mitigationStrategy}</span>`
-            : '';
-          return `
-            <div class="document-dependency-item">
-              <div class="document-dependency-header">
-                <strong class="document-strong">${dep.name}</strong>
-                ${criticalityBadge}
-              </div>
-              <div class="document-dependency-content">
-                ${phasesText}${mitigationText}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  }
-
-  /**
-   * Renders Risks section
-   * @private
-   */
-  _renderRisks(data) {
-    if (!Array.isArray(data) || data.length === 0) return '';
-
-    return `
-      <div class="document-section">
-        <h2 class="document-heading">Risk Intelligence</h2>
-        ${data.map(risk => {
-          const riskLevel = this._calculateRiskLevel(risk.probability, risk.impact);
-          const riskBadge = `<span class="risk-badge risk-badge-${riskLevel}">${riskLevel.toUpperCase()}</span>`;
-          const indicatorsText = risk.earlyIndicators && risk.earlyIndicators.length > 0
-            ? ` <span class="document-text-muted">Early indicators: ${risk.earlyIndicators.join(', ')}.</span>`
-            : '';
-          return `
-            <div class="document-risk-item">
-              <div class="document-risk-header">
-                <strong class="document-strong">${risk.category || 'General'} Risk</strong>
-                ${riskBadge}
-              </div>
-              <div class="document-risk-meta">
-                <span class="risk-meta-item">Probability: ${risk.probability || 'Medium'}</span>
-                <span class="risk-meta-separator">•</span>
-                <span class="risk-meta-item">Impact: ${risk.impact || 'Moderate'}</span>
-              </div>
-              <div class="document-risk-content">
-                <span class="document-text">${risk.description}</span>${indicatorsText}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  }
-
-  /**
-   * Calculate risk level from probability and impact
-   * @private
-   */
-  _calculateRiskLevel(probability, impact) {
-    const probLower = (probability || '').toLowerCase();
-    const impactLower = (impact || '').toLowerCase();
-
-    if ((probLower.includes('high') || probLower.includes('likely')) &&
-        (impactLower.includes('high') || impactLower.includes('severe'))) {
-      return 'critical';
-    } else if ((probLower.includes('high') || impactLower.includes('high')) ||
-               (probLower.includes('medium') && impactLower.includes('medium'))) {
-      return 'high';
-    } else if (probLower.includes('low') && impactLower.includes('low')) {
-      return 'low';
-    }
-    return 'medium';
-  }
-
-  /**
-   * Renders Key Insights section
-   * @private
-   */
-  _renderKeyInsights(data) {
-    if (!Array.isArray(data) || data.length === 0) return '';
-
-    return `
-      <div class="document-section">
-        <h2 class="document-heading">Key Strategic Insights</h2>
-        <div class="document-insights-grid">
-          ${data.map((insight, index) => `
-            <div class="document-insight-card">
-              <div class="insight-card-number">${index + 1}</div>
-              <div class="insight-card-content">
-                <p class="insight-card-text">${insight.insight}</p>
-                ${insight.supportingData ? `<p class="insight-card-data">${insight.supportingData}</p>` : ''}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Renders Competitive Intelligence section
-   * @private
-   */
-  _renderCompetitiveIntelligence(data) {
-    if (!data) return '';
-
-    const hasContent = data.marketTiming || data.competitorMoves ||
-                       data.competitiveAdvantage || data.marketWindow;
-
-    if (!hasContent) return '';
-
-    return `
-      <div class="document-section">
-        <h2 class="document-heading">Competitive Intelligence</h2>
-        <div class="document-competitive-grid">
-          ${data.marketTiming ? `
-            <div class="competitive-card">
-              <div class="competitive-card-label">Market Timing</div>
-              <div class="competitive-card-content">${data.marketTiming}</div>
-            </div>
-          ` : ''}
-          ${data.competitorMoves && data.competitorMoves.length > 0 ? `
-            <div class="competitive-card">
-              <div class="competitive-card-label">Competitor Moves</div>
-              <div class="competitive-card-content">${data.competitorMoves.join(' ')}</div>
-            </div>
-          ` : ''}
-          ${data.competitiveAdvantage ? `
-            <div class="competitive-card">
-              <div class="competitive-card-label">Competitive Advantage</div>
-              <div class="competitive-card-content">${data.competitiveAdvantage}</div>
-            </div>
-          ` : ''}
-          ${data.marketWindow ? `
-            <div class="competitive-card">
-              <div class="competitive-card-label">Market Window</div>
-              <div class="competitive-card-content">${data.marketWindow}</div>
-            </div>
-          ` : ''}
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Renders Industry Benchmarks section
-   * @private
-   */
-  _renderIndustryBenchmarks(data) {
-    if (!data) return '';
-
-    const hasContent = data.timeToMarket || data.investmentLevel || data.riskProfile;
-
-    if (!hasContent) return '';
-
-    return `
-      <div class="document-section">
-        <h2 class="document-heading">Industry Benchmarks</h2>
-        <div class="document-benchmarks">
-          ${data.timeToMarket ? `
-            <div class="benchmark-item">
-              <div class="benchmark-label">Time to Market</div>
-              <div class="benchmark-comparison">
-                <div class="benchmark-value">
-                  <span class="benchmark-label-small">Your Plan</span>
-                  <span class="benchmark-number">${data.timeToMarket.yourPlan}</span>
-                </div>
-                <div class="benchmark-vs">vs</div>
-                <div class="benchmark-value">
-                  <span class="benchmark-label-small">Industry Avg</span>
-                  <span class="benchmark-number">${data.timeToMarket.industryAverage}</span>
-                </div>
-              </div>
-              <div class="benchmark-variance">${data.timeToMarket.variance}</div>
-              <div class="benchmark-insight">${data.timeToMarket.insight}</div>
-            </div>
-          ` : ''}
-          ${data.investmentLevel ? `
-            <div class="benchmark-item">
-              <div class="benchmark-label">Investment Level</div>
-              <div class="benchmark-comparison">
-                <div class="benchmark-value">
-                  <span class="benchmark-label-small">Your Plan</span>
-                  <span class="benchmark-number">${data.investmentLevel.yourPlan}</span>
-                </div>
-                <div class="benchmark-vs">vs</div>
-                <div class="benchmark-value">
-                  <span class="benchmark-label-small">Industry Median</span>
-                  <span class="benchmark-number">${data.investmentLevel.industryMedian}</span>
-                </div>
-              </div>
-              <div class="benchmark-variance">${data.investmentLevel.variance}</div>
-              <div class="benchmark-insight">${data.investmentLevel.insight}</div>
-            </div>
-          ` : ''}
-          ${data.riskProfile ? `
-            <div class="benchmark-item">
-              <div class="benchmark-label">Risk Profile</div>
-              <div class="benchmark-single">
-                <div class="benchmark-value-full">
-                  <span class="benchmark-label-small">Your Plan</span>
-                  <span class="benchmark-text">${data.riskProfile.yourPlan}</span>
-                </div>
-                <div class="benchmark-value-full">
-                  <span class="benchmark-label-small">Industry Comparison</span>
-                  <span class="benchmark-text">${data.riskProfile.industryComparison}</span>
-                </div>
-              </div>
-              <div class="benchmark-insight">${data.riskProfile.insight}</div>
-            </div>
-          ` : ''}
-        </div>
-      </div>
-    `;
   }
 
   /**

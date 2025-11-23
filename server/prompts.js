@@ -966,562 +966,72 @@ export const TASK_ANALYSIS_SCHEMA = {
  * Version 2.3.0 - Combines analytical rigor with narrative drama
  * Transforms research into compelling strategic narratives that executives clear their calendars to read
  */
-export const EXECUTIVE_SUMMARY_GENERATION_PROMPT = `You are an expert strategic analyst creating executive intelligence that transforms research into compelling strategic narrative.
+export const EXECUTIVE_SUMMARY_GENERATION_PROMPT = `You are an expert strategic analyst creating a comprehensive written executive summary document.
 
-TONE & STYLE - "McKinsey Meets Hollywood":
-- Write with analytical rigor but narrative tension
-- Use dramatic metaphorical framing while maintaining data precision
-- Make dry material feel urgent and essential
-- Balance shocking statistics with actionable insights
-- Every section should feel like strategic revelation, not routine analysis
+Your task is to synthesize research materials into a cohesive, professional narrative document - NOT a dashboard, NOT structured data, but a traditional written report.
 
-LANGUAGE COMPOSITION (Critical Balance):
-- 60% Strategic business vocabulary (transformation, convergence, orchestrate, pivot)
-- 20% Technical precision (specific metrics, technologies, regulatory standards)
-- 15% Dramatic/theatrical language (exodus, inflection, tectonic shift, battlefield)
-- 5% Unexpected/memorable phrases (shadow rails, digital ferries, broken bridge)
+TONE & STYLE:
+- Professional and authoritative business writing
+- Clear, concise paragraphs that flow logically
+- Balance analytical depth with readability
+- Use specific data points and examples where available
+- Write as a continuous narrative, not bullet points or lists
 
-NARRATIVE TECHNIQUES TO EMPLOY:
-1. **Paradox Hook**: Open sections with tension ("While X believes Y, the reality is Z")
-2. **Shocking Specifics**: Never round numbers (use "260 million" not "millions")
-3. **Branded Concepts**: Name key phenomena memorably ("The Broken Bridge", "The European Mandate")
-4. **Quotable Moments**: Include sentences designed to be remembered and quoted
-5. **Comparative Scale**: Contextualize big numbers ("$3 trillion monthly—larger than France's GDP")
-6. **Velocity Metrics**: Show rate of change ("grew 2,727% in 18 months" not just current state)
-7. **Deadline Language**: Create urgency ("window closes Q3 2026", "18-month lead time")
-8. **Named Players**: Cite specific companies, not generic terms ("JPMorgan's Onyx" not "a major bank")
+DOCUMENT STRUCTURE:
 
-ANALYSIS FRAMEWORK (10 Required Sections):
+Write a comprehensive executive summary organized into clearly labeled sections. Each section should be written in full paragraphs with proper transitions between ideas.
 
----
+**Section 1: Executive Overview**
+Write 2-3 opening paragraphs that introduce the project/initiative and its strategic importance. This should establish:
+- What is being proposed or analyzed
+- Why it matters to the organization
+- The key opportunities or challenges at stake
 
-**1. STRATEGIC NARRATIVE (The Opening Hook)**
+Write naturally in full paragraphs, not as separate fields.
 
-   PURPOSE: Create immediate tension and establish central metaphor
+**Section 2: Key Findings and Analysis**
+Write 3-5 paragraphs discussing the main findings from your research. Include:
+- Important trends, patterns, or insights discovered
+- Relevant data points, statistics, or examples
+- Critical factors that will influence success
+- Any significant challenges or opportunities identified
 
-   STRUCTURE:
-   - Open with paradox: "While [conventional wisdom/expectation], the reality is [surprising contradiction]"
-   - Choose ONE central metaphor system to use throughout:
-     * Infrastructure (bridges, highways, rails, corridors)
-     * Military (fortress, battles, campaigns, fronts)
-     * Geological (tectonic shifts, fault lines, erosion)
-     * Biological (evolution, mutation, ecosystem, adaptation)
-   - State the transformation journey: "from [current state] to [future state]"
-   - End with existential stakes: what happens to laggards who don't act
-   - Length: 150-200 words
+**Section 3: Recommendations and Next Steps**
+Write 2-3 paragraphs outlining the recommended path forward. Address:
+- What actions should be taken
+- Why these actions are important
+- Any time-sensitive considerations
 
-   OUTPUT FORMAT:
-   - elevatorPitch: The opening paradox and central metaphor (150-200 words)
-   - valueProposition: What this transformation enables
-   - callToAction: What executives must decide NOW
-
-   EXAMPLE:
-   "While the technology now exists to move value globally as instantly as a text message,
-   a regulatory and infrastructure divide is splitting the cross-border payments market into
-   two distinct speeds. This isn't just a technology gap—it's a strategic bifurcation that
-   will separate market leaders from laggards by 2027."
+**Section 4: Conclusion**
+Write a brief closing paragraph (3-5 sentences) that summarizes the key takeaway and reinforces the strategic importance.
 
 ---
 
-**2. STRATEGIC DRIVERS ANALYSIS (The Forces of Change)**
+WRITING GUIDELINES:
+- Write in complete, well-structured paragraphs
+- Use professional business language
+- Include specific examples and data where available
+- Ensure smooth transitions between sections
+- Keep the total document between 500-800 words
+- Focus on insights and analysis, not just facts
+- If specific information isn't available in the research, acknowledge gaps rather than inventing data
+
+OUTPUT: Return your response as a single continuous narrative document with section headings.`;
 
-   PURPOSE: Identify 3-5 primary market forces with branded names and shocking statistics
-
-   STRUCTURE:
-   - Give each driver a BRANDED NAME using formula: "The [Region/Industry/Technology] [Action Word]"
-     Examples: "The European Mandate", "The APAC Leapfrog", "The Infrastructure Awakening"
-   - Lead EACH driver with its most shocking statistic (never rounded)
-   - Include specific metrics: growth rates, deadlines, dollar amounts
-   - Frame each with:
-     * Business impact (revenue, cost, market share)
-     * Urgency level (critical/high/medium)
-     * Velocity of change (growth %, adoption rate)
-   - Use transitions like: "This isn't just [X]—it's [Y]"
-
-   OUTPUT FORMAT (per driver):
-   - title: "The [Branded Name]" (e.g., "The European Mandate")
-   - description: Opening with shocking statistic, then business impact (2-3 sentences)
-   - urgencyLevel: "critical" | "high" | "medium"
-   - metrics: Array of specific data points ["2,727% growth", "Q3 2026 deadline"]
-   - sourceReferences: Array of citations ["ecb.europa.eu", "occ.gov"]
-
-   EXAMPLE:
-   "**The European Mandate**: EU MiCA regulation, effective Q3 2026, grew euro-denominated
-   stablecoin volume by 2,727% in just 18 months [ecb.europa.eu]. This isn't optional
-   compliance—it's a forced evolution creating an 18-month window before these capabilities
-   become table stakes."
-
----
-
-**3. CRITICAL PATH DEPENDENCIES (The Strategic Bottlenecks)**
-
-   PURPOSE: Extract 2-3 most critical cross-functional dependencies with dramatic framing
-
-   STRUCTURE:
-   - Frame as "The [X] Paradox" or "The [X] Challenge"
-   - Explain WHY each could become existential bottleneck (not just operational delay)
-   - Use theatrical language: "This isn't just [routine dependency]—it's [strategic vulnerability]"
-   - Provide specific examples with named companies or projects
-   - Assign criticality levels (High/Medium/Low) based on:
-     * Impact on final delivery (High = blocks completion)
-     * Number of downstream dependencies
-     * External party control (vendor, regulator)
-   - Include mitigation strategies or workarounds
-
-   OUTPUT FORMAT (per dependency):
-   - name: "The [Branded Name]" (e.g., "The Partnership Paradox")
-   - criticality: "High" | "Medium" | "Low"
-   - impactedPhases: Array of affected phases
-   - mitigationStrategy: Specific workaround or approach
-
-   EXAMPLE:
-   "**The Partnership Paradox**: Banks must simultaneously partner with and compete against
-   Big Tech payment providers. JPMorgan's integration with Apple Pay creates 23% faster
-   checkout [jpmorgan.com] but cedes customer relationship control—a High criticality
-   dependency with no clear resolution path."
-
----
-
-**4. RISK INTELLIGENCE (The Hazards Ahead)**
-
-   PURPOSE: Identify 2-3 enterprise-level risks with survival language
-
-   STRUCTURE:
-   - Focus on ENTERPRISE risks (not just project risks)
-   - Use appropriate survival framing: "adapt or cease to exist" / "transform or become irrelevant"
-   - For each risk provide:
-     * Category: strategic, operational, financial, compliance
-     * Probability assessment (high/medium/low)
-     * Impact assessment (severe/major/moderate/minor)
-     * Observable early warning indicators (specific metrics to monitor)
-   - Frame as strategic choices: "The choice isn't between A and B—it's between transformation and irrelevance"
-   - Balance alarm with pragmatism (show path forward)
-
-   OUTPUT FORMAT (per risk):
-   - category: "strategic" | "operational" | "financial" | "compliance"
-   - description: Risk with survival framing (2-3 sentences)
-   - probability: "high" | "medium" | "low"
-   - impact: "severe" | "major" | "moderate" | "minor"
-   - earlyIndicators: Array of observable metrics to monitor
-
-   EXAMPLE:
-   "**Regulatory Fragmentation Risk**: 193 countries now have conflicting crypto regulations
-   [bis.org]. Early warning: If 3+ major markets block stablecoin interoperability by Q2 2026,
-   global rollout becomes economically unviable. Leaders are hedging with modular,
-   region-specific architectures."
-
----
-
-**5. EXPERT CONVERSATION ENABLERS (Key Strategic Insights)**
-
-   PURPOSE: Extract 5-7 key facts formatted as quotable insights
-
-   STRUCTURE:
-   - Each insight should demonstrate deep domain understanding:
-     * Industry-specific terminology with business context
-     * Quantitative benchmarks or performance metrics with sources
-     * Regulatory/compliance considerations with deadlines
-     * Competitive landscape insights with named players
-     * Emerging trends or disruptions with velocity metrics
-   - Format each as "pull-quote ready" (complete thought, memorable phrasing)
-   - Use power phrases:
-     * "The future belongs not to [X], but to [Y]"
-     * "This marks the transition from [old paradigm] to [new paradigm]"
-     * "[Stakeholder]'s survival depends on [specific capability]"
-   - Aim for insights that sound like strategic revelation, not routine observation
-
-   OUTPUT FORMAT (per insight):
-   - category: Topic area (e.g., "Technology", "Regulatory", "Competitive")
-   - insight: The quotable statement (1-2 sentences)
-   - talkingPoint: How to use this in conversation (optional)
-   - supportingData: Key data points referenced
-
-   EXAMPLE:
-   "The future of cross-border payments belongs not to the fastest rails, but to the most
-   interoperable ones—Wells Fargo's Project Hercules interoperates with 47 settlement
-   networks [wellsfargo.com], while legacy SWIFT handles just 11."
-
----
-
-**6. KEY METRICS DASHBOARD (The Data Anchor)**
-
-   PURPOSE: Provide 6 executive-level metrics (keep current analytical style)
-
-   STRUCTURE (DO NOT CHANGE - This grounds narrative in hard data):
-   - Provide exactly 6 metrics in this order:
-     1. **Total Investment**: Estimated total cost (e.g., "$2.4M" or "15-20% cost reduction")
-     2. **Time to Value**: Timeline to ROI or completion (e.g., "9 months" or "Q3 2026")
-     3. **Compliance Risk**: Count of high-priority checkpoints (e.g., "3 High Priority" or "Low Risk")
-     4. **ROI Projection**: Projected return on investment (e.g., "340% in 18 months" or "TBD")
-     5. **Critical Path Status**: Current status (e.g., "On Track" or "At Risk - 2 delays")
-     6. **Vendor Lock-in**: Dependency risk level (e.g., "Medium Risk" or "Low - Multi-vendor")
-   - Use concise values (4-8 words maximum per metric)
-   - If specific data unavailable, use "TBD" or "Not Specified" (never make up numbers)
-   - This section intentionally uses data-driven tone (not theatrical)
-
-   OUTPUT FORMAT:
-   - totalInvestment: String (4-8 words)
-   - timeToValue: String (4-8 words)
-   - complianceRisk: String (4-8 words)
-   - roiProjection: String (4-8 words)
-   - criticalPathStatus: String (4-8 words)
-   - vendorLockIn: String (4-8 words)
-
----
-
-**7. TOP 3 STRATEGIC PRIORITIES (The Critical Decisions)**
-
-   PURPOSE: Identify 3 most critical priorities with urgency and specificity
-
-   STRUCTURE:
-   - Frame as "Strategic Imperatives for [Year]" or "The [Number] Critical Decisions"
-   - Use active, decisive language in titles (not passive descriptions)
-   - For each priority provide:
-     * **title**: Punchy, action-oriented (4-8 words) - e.g., "Secure Regulatory Pre-Approval by Q2 2026"
-     * **description**: Why this is existential (1-2 sentences with dramatic framing and urgency)
-     * **bankingContext**: Banking-specific considerations:
-       - Regulatory requirements (OCC, FDIC, Federal Reserve) with specific rules/deadlines
-       - Market timing (competitive windows, customer adoption curves)
-       - Risk considerations (compliance, reputation, operational)
-     * **dependencies**: Named external parties (specific vendors, partners, regulators - not generic)
-     * **deadline**: Specific date or quarter (e.g., "Q3 2026" or "March 15, 2026") - create urgency
-   - Order by criticality (most critical = highest consequence of delay)
-   - Include specific metrics or thresholds that define success
-   - Use ticking clock language: "window closes", "must complete before", "18-month lead time"
-
-   OUTPUT FORMAT (array of 3 priorities):
-   - title: Action-oriented name (4-8 words)
-   - description: Existential framing (1-2 sentences)
-   - bankingContext: Regulatory/market/risk considerations
-   - dependencies: Named external parties (vendors, partners, regulators)
-   - deadline: Specific date or quarter (or "TBD" if truly flexible)
-
-   EXAMPLE:
-   "**Secure OCC Pre-Approval for Stablecoin Settlement**
-   Description: Without Office of the Comptroller of Currency approval by Q2 2026, the entire
-   Q3 launch becomes legally impossible—this isn't a nice-to-have, it's a regulatory
-   gate that 73% of banks failed to navigate on time in 2024 [occ.gov].
-
-   Banking Context: OCC interpretive letter 1174 requires 90-day review period for novel
-   settlement mechanisms. Competitive window: JPMorgan secured approval in Q4 2025, creating
-   12-month first-mover advantage.
-
-   Dependencies: OCC Legal Division, Promontory Financial (compliance consultant),
-   settlement network providers (Visa, Mastercard)
-
-   Deadline: Q2 2026 (hard regulatory requirement)"
-
----
-
-**8. COMPETITIVE & MARKET INTELLIGENCE (The Battlefield Analysis)**
-
-   PURPOSE: Analyze competitive positioning with dramatic framing and peer pressure
-
-   STRUCTURE:
-   - Frame as "The Competitive Landscape" using battlefield/sports metaphors
-   - Analyze positioning across 4 dimensions:
-
-     * **Market Timing**:
-       - Are we: "First mover" / "Fast follower" / "Catching up" / "Lagging behind"
-       - Quantify advantage: "18-month lead" / "6-month gap to close"
-       - Include adoption data: "only 23% of banks have deployed"
-
-     * **Competitor Moves**:
-       - NAME specific competitors (JPMorgan, Wells Fargo, Bank of America, regional banks, fintechs)
-       - Cite their specific initiatives with launch dates and metrics
-       - Use peer pressure framing: "JPMorgan deployed Q1 2025 with 260M daily transactions"
-       - Show who's ahead, who's behind, who's disrupting
-
-     * **Competitive Advantage**:
-       - What unique positioning does this create?
-       - Quantify the edge: "18-month lead before table stakes" / "30% cost advantage"
-       - Use survival language: "differentiation vs. commodity"
-
-     * **Market Window**:
-       - How long before this becomes table stakes (expected) vs. differentiator?
-       - Create urgency: "Limited window closes Q3 2026"
-       - Reference adoption curves: "crosses 50% adoption threshold by 2027"
-
-   - Include win/lose/survive language appropriately
-   - Look for competitive mentions in research (if none, provide banking industry context)
-
-   OUTPUT FORMAT:
-   - marketTiming: String describing position with quantification
-   - competitorMoves: Array of strings (each naming specific competitor + initiative + metrics)
-   - competitiveAdvantage: String describing unique positioning with quantification
-   - marketWindow: String with deadline language and urgency
-
-   EXAMPLE:
-   "**Market Timing: Fast Follower Position**
-   JPMorgan deployed Onyx in Q1 2025 processing 260M daily transactions [jpmorgan.com],
-   while Wells Fargo's Project Hercules launched Q3 2025 with 47-network interoperability
-   [wellsfargo.com]. This initiative positions us 6 months behind leaders but 18 months
-   ahead of the 77% of banks who haven't started [federalreserve.gov]. The competitive
-   window closes Q4 2026—after that, this becomes table stakes, not differentiation."
-
----
-
-**9. INDUSTRY BENCHMARKS (The Competitive Scorecard)**
-
-   PURPOSE: Compare initiative to banking industry standards with variance analysis
-
-   STRUCTURE:
-   - Compare across 3 dimensions with variance percentages:
-
-     * **Time to Market**:
-       - Your plan: "[X] months"
-       - Industry average: "[Y] months for similar initiatives"
-       - Variance: "[Z]% faster/slower than industry average"
-       - Insight: "Faster timeline creates competitive advantage but increases execution risk"
-       - Source industry benchmarks: McKinsey, Gartner, Federal Reserve studies
-
-     * **Investment Level**:
-       - Your plan: "$[X]M total investment"
-       - Industry median: "$[Y]M for digital banking initiatives of this scale"
-       - Variance: "[Z]% above/below industry median"
-       - Insight: "Cost-competitive positioning / Premium investment justified by [X]"
-       - Typical banking IT project costs: $2-5M for digital initiatives
-
-     * **Risk Profile**:
-       - Your plan: "Medium risk (regulatory, technical, market)"
-       - Industry comparison: "Higher/Lower risk than typical projects because [X]"
-       - Insight: Qualitative assessment of risk-reward trade-off
-       - Reference: Historical failure rates, regulatory challenges
-
-   - Use comparative scale for context: "37% faster than 14-month industry average"
-   - End each dimension with actionable insight (so what?)
-   - Reference actual industry data when available in research
-   - If specific benchmarks unavailable, use general banking industry knowledge base:
-     * Typical bank IT project: 12-18 months
-     * Digital banking initiatives: $2-5M
-     * Enterprise transformation: 18-36 months
-
-   OUTPUT FORMAT:
-   - timeToMarket: { yourPlan, industryAverage, variance, insight }
-   - investmentLevel: { yourPlan, industryMedian, variance, insight }
-   - riskProfile: { yourPlan, industryComparison, insight }
-
-   EXAMPLE:
-   "**Time to Market: 37% Faster**
-   Your 9-month timeline vs. 14-month industry average [mckinsey.com] creates significant
-   competitive advantage. However, compressed schedules historically show 23% higher failure
-   rates in banking IT [gartner.com]—mitigate with phased rollout and regulatory pre-approval."
-
----
-
-**10. METADATA (Quality & Confidence Assessment)**
-
-   PURPOSE: Provide transparency on analysis quality and data limitations
-
-   STRUCTURE:
-   - confidenceLevel: 0-100 scale based on data quality and completeness
-     * 80-100: Comprehensive research with multiple sources, specific metrics
-     * 60-79: Good research but some data gaps
-     * 40-59: Limited research, many assumptions
-     * <40: Sparse research, low confidence in insights
-   - documentsCited: Count of unique research files analyzed
-   - lastUpdated: Current date (YYYY-MM-DD)
-   - analysisDepth: "comprehensive" | "standard" | "preliminary"
-
-   OUTPUT FORMAT:
-   - confidenceLevel: Number (0-100)
-   - documentsCited: Number
-   - lastUpdated: String (YYYY-MM-DD)
-   - analysisDepth: "comprehensive" | "standard" | "preliminary"
-
----
-
-**CRITICAL OUTPUT REQUIREMENTS:**
-
-Must Synthesize Across All Documents:
-- Look for patterns, contradictions, and convergent themes across files
-- Don't just summarize individual documents—find meta-insights
-- Identify what's consistently mentioned vs. unique to one source
-- Highlight contradictions or disagreements in research
-
-Data & Evidence Standards:
-- Include 15-20+ specific statistics (never round numbers: use "260 million" not "millions")
-- Name 10+ specific companies, initiatives, projects, or platforms
-- Use exact dollar amounts, percentages, and dates when available
-- If data unavailable, explicitly state "TBD" or "Not specified in research"
-- Infer inline citations from research context (e.g., if research mentions JPMorgan Onyx, cite [jpmorgan.com])
-
-Narrative Standards:
-- Create 3-5 branded concepts that readers will remember
-- Include 5+ sentences designed to be pull-quotes (in keyInsights section)
-- Choose ONE metaphorical system (infrastructure/military/geological/biological) and use consistently
-- Balance alarm/urgency with actionable next steps
-- Make every section feel essential to understanding the transformation
-
-Quality Test - Your Summary Succeeds If:
-✓ A CEO would clear their calendar to read it (compelling hook in strategic narrative)
-✓ A board would fund initiatives based on it (clear ROI + urgency in priorities)
-✓ A competitor would worry after reading it (reveals strategic advantages in competitive intel)
-✓ A journalist would quote from it (quotable insights in key insights section)
-✓ An analyst would cite it in research reports (credible data + specific metrics)
-✓ It sounds like strategic revelation, not routine analysis
-
-FINAL REMINDER: Every paragraph should answer "So what?" and "Why now?"
-The tone is: Analytically rigorous but narratively urgent. Think McKinsey report
-written by Michael Lewis—precise data wrapped in compelling story.`;
 
 /**
- * Executive Summary JSON Schema
+ * Executive Summary JSON Schema - Simplified for Narrative Documents
  */
 export const EXECUTIVE_SUMMARY_SCHEMA = {
   type: "object",
   properties: {
     executiveSummary: {
       type: "object",
-      required: ["drivers", "dependencies", "risks", "keyInsights", "strategicNarrative", "metadata", "keyMetricsDashboard", "strategicPriorities"],
+      required: ["content"],
       properties: {
-        // EXECUTIVE-FIRST ENHANCEMENT: Key Metrics Dashboard
-        keyMetricsDashboard: {
-          type: "object",
-          properties: {
-            totalInvestment: { type: "string" },
-            timeToValue: { type: "string" },
-            complianceRisk: { type: "string" },
-            roiProjection: { type: "string" },
-            criticalPathStatus: { type: "string" },
-            vendorLockIn: { type: "string" }
-          },
-          required: ["totalInvestment", "timeToValue", "complianceRisk", "roiProjection", "criticalPathStatus", "vendorLockIn"]
-        },
-
-        // EXECUTIVE-FIRST ENHANCEMENT: Top 3 Strategic Priorities
-        strategicPriorities: {
-          type: "array",
-          minItems: 3,
-          maxItems: 3,
-          items: {
-            type: "object",
-            properties: {
-              title: { type: "string" },
-              description: { type: "string" },
-              bankingContext: { type: "string" },
-              dependencies: { type: "string" },
-              deadline: { type: "string" }
-            },
-            required: ["title", "description", "bankingContext", "dependencies"]
-          }
-        },
-
-        drivers: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              title: { type: "string" },
-              description: { type: "string" },
-              urgencyLevel: { type: "string", enum: ["critical", "high", "medium"] },
-              metrics: { type: "array", items: { type: "string" } },
-              sourceReferences: { type: "array", items: { type: "string" } }
-            },
-            required: ["title", "description", "urgencyLevel"]
-          }
-        },
-        dependencies: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              criticality: { type: "string" },
-              impactedPhases: { type: "array", items: { type: "string" } },
-              mitigationStrategy: { type: "string" }
-            },
-            required: ["name", "criticality"]
-          }
-        },
-        risks: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              category: { type: "string", enum: ["strategic", "operational", "financial", "compliance"] },
-              description: { type: "string" },
-              probability: { type: "string", enum: ["high", "medium", "low"] },
-              impact: { type: "string", enum: ["severe", "major", "moderate", "minor"] },
-              earlyIndicators: { type: "array", items: { type: "string" } }
-            },
-            required: ["category", "description", "probability", "impact"]
-          }
-        },
-        keyInsights: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              category: { type: "string" },
-              insight: { type: "string" },
-              talkingPoint: { type: "string" },
-              supportingData: { type: "string" }
-            },
-            required: ["category", "insight"]
-          }
-        },
-        strategicNarrative: {
-          type: "object",
-          properties: {
-            elevatorPitch: { type: "string" },
-            valueProposition: { type: "string" },
-            callToAction: { type: "string" }
-          },
-          required: ["elevatorPitch", "valueProposition"]
-        },
-        metadata: {
-          type: "object",
-          properties: {
-            confidenceLevel: { type: "number", minimum: 0, maximum: 100 },
-            documentsCited: { type: "number" },
-            lastUpdated: { type: "string" },
-            analysisDepth: { type: "string", enum: ["comprehensive", "standard", "preliminary"] }
-          },
-          required: ["confidenceLevel", "documentsCited"]
-        },
-
-        // BANKING ENHANCEMENT: Competitive & Market Intelligence
-        competitiveIntelligence: {
-          type: "object",
-          properties: {
-            marketTiming: { type: "string" },
-            competitorMoves: { type: "array", items: { type: "string" } },
-            competitiveAdvantage: { type: "string" },
-            marketWindow: { type: "string" }
-          }
-        },
-
-        // BANKING ENHANCEMENT: Industry Benchmarks
-        industryBenchmarks: {
-          type: "object",
-          properties: {
-            timeToMarket: {
-              type: "object",
-              properties: {
-                yourPlan: { type: "string" },
-                industryAverage: { type: "string" },
-                variance: { type: "string" },
-                insight: { type: "string" }
-              }
-            },
-            investmentLevel: {
-              type: "object",
-              properties: {
-                yourPlan: { type: "string" },
-                industryMedian: { type: "string" },
-                variance: { type: "string" },
-                insight: { type: "string" }
-              }
-            },
-            riskProfile: {
-              type: "object",
-              properties: {
-                yourPlan: { type: "string" },
-                insight: { type: "string" }
-              }
-            }
-          }
+        content: {
+          type: "string",
+          description: "Complete narrative document with all sections as continuous text"
         }
       }
     }
@@ -1529,10 +1039,7 @@ export const EXECUTIVE_SUMMARY_SCHEMA = {
   required: ["executiveSummary"]
 };
 
-/**
- * Presentation Slides Generation - Phase 1: Outline
- * Generates slide types and titles only
- */
+
 export const PRESENTATION_SLIDES_OUTLINE_PROMPT = `You are an expert presentation designer creating a slide deck outline for executive audiences.
 
 Your task is to create an outline for a compelling narrative presentation with 5-8 slides based on the research provided.

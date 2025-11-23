@@ -309,6 +309,10 @@
   margin-bottom: var(--spacing-2xl);
 }
 
+.document-narrative {
+  margin-top: var(--spacing-lg);
+}
+
 .document-paragraph {
   font-size: 1rem;
   line-height: 1.75;
