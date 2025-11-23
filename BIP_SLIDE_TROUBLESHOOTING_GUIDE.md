@@ -1,8 +1,11 @@
 # BIP Slide Template Troubleshooting Guide
 **Session Date**: November 23, 2025
-**Session ID**: claude/slide-library-design-01APkczuUugU2rXPGZZDSuiz
-**Total Commits**: 6
-**Status**: In Progress
+**Session ID**: claude/slide-library-design-01APkczuUugU2rXPGZZDSuiz (original)
+**Continuation Session ID**: claude/compare-box-layouts-014ejaonbobQff1i9VC9FwU9 (current)
+**Total Commits**: 9 (6 original + 3 continuation)
+**Status**: Graphics Removed, Layout Positioning Analysis Complete
+
+> **NOTE (November 23, 2025)**: All corner graphics, stripe graphics, and visual decorations have been **REMOVED** from slide templates. References to `vertical-stripe.svg`, `horizontal-stripe.svg`, `showCornerGraphic` properties, and related graphic rendering code are now **OBSOLETE**. This document preserves historical troubleshooting context but graphics-related sections are no longer applicable to current implementation.
 
 ---
 
@@ -27,10 +30,10 @@
 Generate AI-powered presentation slides that **exactly match** the BIP (Business Integration Partners) brand design system, specifically replicating the visual appearance of reference HTML templates (`bip-slide-2.html` and `bip-slide-4.html`).
 
 ### Success Criteria
-1. **Visual Fidelity**: Generated slides are pixel-perfect matches to reference templates
+1. **Visual Fidelity**: Generated slides match the BIP brand design system layout and styling
 2. **Font Rendering**: Ultra-thin title fonts (Inter weight 200) display correctly
 3. **Layout Accuracy**: Grid layouts, spacing, and proportions match exactly
-4. **Graphics**: Corner graphics render with correct geometric patterns (navy/blue/red triangles)
+4. ~~**Graphics**: Corner graphics render with correct geometric patterns (navy/blue/red triangles)~~ **[REMOVED]**
 5. **Typography**: Letter-spacing, line-height, and text styling match reference designs
 6. **Consistency**: All three BIP slide types render consistently across browsers
 
@@ -53,7 +56,7 @@ Two comparison images uploaded to repository:
 
 ### High-Level Issues Observed
 1. Title font appeared **thick/heavy** instead of ultra-thin
-2. Corner graphic showed **solid red square** instead of geometric pattern
+2. ~~Corner graphic showed **solid red square** instead of geometric pattern~~ **[GRAPHICS REMOVED - NO LONGER APPLICABLE]**
 3. Title **letter-spacing** appeared tight instead of airy/open
 4. Overall **visual proportions** felt off compared to reference
 
@@ -96,7 +99,7 @@ User: *"Review the code E2E for additional bugs which may be causing issues with
   `;
   ```
 
-**Bug #2: Corner Graphic Positioning** (HIGH)
+**Bug #2: Corner Graphic Positioning** (HIGH) **[OBSOLETE - GRAPHICS REMOVED]**
 - **Location**: `Public/SlideTemplates.js` corner graphic styles
 - **Symptom**: Graphic appearing 3rem inset from actual corner
 - **Root Cause**: Positioned at `top: 0; right: 0` without accounting for parent padding
@@ -302,7 +305,7 @@ Retrieved comparison images from git history:
   ```
 - **Impact**: When SlideTemplates.js requests `font-family: 'Inter', sans-serif`, browser falls back to generic sans-serif (Arial/Helvetica), which looks much heavier at weight 200
 
-**Issue #2: SVG Path May Be Incorrect** (CRITICAL)
+**Issue #2: SVG Path May Be Incorrect** (CRITICAL) **[OBSOLETE - GRAPHICS REMOVED]**
 - **Discovery**: Corner graphic showing solid red square instead of geometric pattern
 - **Current code**: `<img src="/vertical-stripe.svg">`
 - **Hypothesis**: SVG file not loading (404 error), browser showing broken image placeholder
@@ -333,6 +336,8 @@ Systematic comparison of every visual element:
 - Missing features (footers, decorations)
 
 #### Complete Gap Inventory
+
+> **NOTE**: This gap inventory is **historical** and represents the initial analysis focusing on fonts, graphics, and styling. The definitive **layout positioning analysis** (text box positioning only) has been updated in the section [CURRENT STATE VS IDEAL STATE GAP ANALYSIS](#current-state-vs-ideal-state-gap-analysis) below.
 
 **GAP #1: Title Font Weight** ⚠️ CRITICAL
 - **Current**: Appears 400-500 (medium/regular)
@@ -366,7 +371,7 @@ Systematic comparison of every visual element:
 - **Reference**: bip-slide-4.html line 37 has implicit letter-spacing from font rendering
 - **Priority**: **P0**
 
-**GAP #4: Corner Graphic** ⚠️ CRITICAL
+**GAP #4: Corner Graphic** ⚠️ CRITICAL **[OBSOLETE - GRAPHICS REMOVED]**
 - **Current**: Solid red square
 - **Expected**: Complex geometric pattern (navy/blue/red triangles)
 - **Root Cause**: SVG file not loading correctly
@@ -375,7 +380,7 @@ Systematic comparison of every visual element:
   2. SVG file corrupted
   3. Browser blocking SVG load (CORS, CSP)
 - **Needs**: Browser console debugging, direct SVG file test
-- **Priority**: **P0**
+- **Priority**: ~~**P0**~~ **N/A - GRAPHICS REMOVED**
 
 **GAP #5: Footer Elements**
 - **Current**: Missing
@@ -392,12 +397,15 @@ Systematic comparison of every visual element:
 - **Implementation**: Would require AI to identify key terms or accept markup in content
 - **Priority**: **P2** (feature enhancement, not bug)
 
-**GAP #7: Overall Layout Proportions**
-- **Current**: Appears slightly compressed
-- **Expected**: Bold, dominant title on left
-- **Code Status**: Grid correctly set to `repeat(2, minmax(0, 1fr))` with `gap: 5rem`
-- **Root Cause**: Font issues affecting visual balance
-- **Priority**: **P1** (likely resolved when font issues fixed)
+**GAP #7: Overall Layout Proportions** [SUPERSEDED]
+> **This gap has been superseded by the detailed layout positioning analysis in [CURRENT STATE VS IDEAL STATE GAP ANALYSIS](#current-state-vs-ideal-state-gap-analysis)**. The actual root cause is **vertical and horizontal misalignment of text boxes**, not font issues. See updated analysis for details on:
+> - Body text positioned ~15-20% too high (not vertically centered with title)
+> - Body text positioned ~10% too far right (excessive horizontal gap)
+- ~~**Current**: Appears slightly compressed~~
+- ~~**Expected**: Bold, dominant title on left~~
+- ~~**Code Status**: Grid correctly set to `repeat(2, minmax(0, 1fr))` with `gap: 5rem`~~
+- ~~**Root Cause**: Font issues affecting visual balance~~
+- **Priority**: **P0** (repositioning required)
 
 **GAP #8: Eyebrow Styling**
 - **Current**: Appears correct
@@ -448,29 +456,55 @@ Systematic comparison of every visual element:
 | **Footer Elements** | ℹ️ Framework | Slide #, bip. logo - presentation viewer responsibility |
 | **Text Underlines** | ℹ️ Content | Red dotted on keywords - content-level feature |
 
-### Priority Summary - TEXT LAYOUT ONLY
+---
 
-**P0 Issues** (CRITICAL - Blocking text fidelity):
-1. ✅ **FIXED**: Title letter-spacing (changed from -0.02em to +0.05em in commit 4eaf686)
-2. ✅ **FIXED**: Title font-family (added explicit declaration in commit c02eb58)
-3. ✅ **REMOVED**: Corner graphics (removed in commit 587b1d7, not text-related)
+### Layout Positioning Analysis (Continuation Session)
 
-**P1 Issues** (HIGH - Needs Browser Testing):
-4. ⚠️ **UNKNOWN**: Title font weight rendering (code correct at 200, needs visual confirmation)
-   - May need browser DevTools to verify Inter font actually loading
-   - May need to try weight 100 (thinner) if 200 still appears heavy
-5. ⚠️ **VERIFY**: Letter-spacing width (0.05em may need adjustment to 0.075em or 0.1em)
-   - Reference shows VERY wide spacing
-   - Current 0.05em may still be too tight
-   - Needs visual comparison
+> **NOTE**: This analysis was added in continuation session `claude/compare-box-layouts-014ejaonbobQff1i9VC9FwU9` after typography fixes were completed. It focuses **solely on text box positioning and spatial relationships** between elements.
 
-**P2 Issues** (MEDIUM - Optional refinements):
-6. ℹ️ **OPTIONAL**: Title left border (2px line decoration from reference)
-7. ℹ️ **OPTIONAL**: Fine-tune letter-spacing if visual testing shows need
+#### **TEMPLATE LAYOUT (Correct - Reference)**
 
-**P3 Issues** (LOW - Framework/Content features):
-8. ℹ️ Footer elements (presentation viewer responsibility)
-9. ℹ️ Text underlines (content-level feature, not template)
+**Text Box Positioning**:
+1. **Header** ("LOREM IPSUM"): Top-left corner
+2. **Large Title** ("Lorem ipsum sit..."): Left side, occupies ~40% of slide width, positioned in upper-middle area
+3. **Body Paragraph 1**: Right side, starts at approximately the **same vertical midpoint** as the large title
+4. **Body Paragraph 2**: Directly below Paragraph 1, maintaining same horizontal alignment
+
+**Spatial Relationships**:
+- Title and body text are **vertically centered together** - they share a common vertical midpoint
+- Body text column positioned in the **right 50-60%** of the slide
+- Moderate horizontal gap between title and body text (~10-15% of slide width)
+
+#### **ERROR LAYOUT (Incorrect - System Output)**
+
+**Text Box Positioning**:
+1. **Header** ("PAYMENTS INFRASTRUCTURE..."): Top-left corner
+2. **Large Title** ("The Dawn of Real-Time..."): Left side, similar position to template
+3. **Body Paragraph 1**: Right side, starts **MUCH HIGHER** than template - near the top of the content area
+4. **Body Paragraphs 2 & 3**: Stacked below Paragraph 1
+
+**Spatial Relationships**:
+- Body text is **NOT vertically aligned** with the large title - it starts near the header level
+- Body text column is pushed **further right** (occupies only ~40% of slide width on right edge)
+- **Excessive horizontal gap** between title and body text (~30% of slide width)
+
+#### **KEY POSITIONING GAPS**
+
+| Element | Template Position | Error Position | Gap Description |
+|---------|------------------|----------------|-----------------|
+| **Body Text Vertical Start** | Middle of slide, aligned with title center | Near top of content area | **~15-20% too high** |
+| **Body Text Horizontal Position** | Starts at ~50% slide width | Starts at ~60% slide width | **~10% too far right** |
+| **Title-to-Body Gap** | Moderate (~10-15%) | Excessive (~30%) | **~15-20% too wide** |
+| **Vertical Centering** | Title and body share midpoint | Body floats above title | **No vertical alignment** |
+
+#### **SUMMARY**
+
+The template achieves visual balance by **vertically centering** the title and body text together as a cohesive unit. The error breaks this relationship by:
+
+1. Floating the body text **too high** (near header instead of centered with title)
+2. Pushing the body text **too far right** (excessive whitespace between title and body)
+
+These positioning errors destroy the intended two-column layout balance where the title and body text should form a harmonious, vertically-aligned composition
 
 ---
 
@@ -537,7 +571,7 @@ title.style.cssText = `
 
 ---
 
-#### 3. **SVG Loading Failure**
+#### 3. **SVG Loading Failure** **[OBSOLETE - GRAPHICS REMOVED]**
 
 **Problem**: Corner graphic showing solid red square instead of geometric pattern
 
@@ -711,7 +745,7 @@ const titleText = typeof slide.content.title === 'string'
 
 ---
 
-#### Fix 5: SVG Absolute Paths (Commit adbbb5e)
+#### Fix 5: SVG Absolute Paths (Commit adbbb5e) **[OBSOLETE - GRAPHICS REMOVED]**
 
 **Problem**: Relative path `vertical-stripe.svg` might resolve incorrectly
 
@@ -810,19 +844,80 @@ if (slide.content.showCornerGraphic !== false) {
 
 ---
 
-## REMAINING ISSUES - TEXT LAYOUT ONLY
+## REMAINING ISSUES
 
-**Last Updated**: After commit 4eaf686 (letter-spacing fix)
+**Last Updated**: November 23, 2025 (After continuation session layout analysis)
 
-### P0 Issues (CRITICAL)
-✅ **ALL P0 ISSUES RESOLVED**
-- Letter-spacing: FIXED (commit 4eaf686)
-- Font-family: FIXED (commit c02eb58)
-- Graphics: REMOVED (commit 587b1d7)
+### P0 Issues (CRITICAL - Layout Positioning) [NEW - Continuation Session]
 
-### P1 Issues (HIGH - Needs Browser Testing)
+> **NOTE**: These layout positioning issues were identified in continuation session `claude/compare-box-layouts-014ejaonbobQff1i9VC9FwU9` after typography fixes were completed.
 
-#### P1-1: Title Font Weight Rendering
+#### P0-1: Body Text Vertical Misalignment
+
+**Impact**: Body text boxes positioned too high on slide, breaking vertical alignment with title
+
+**Current State**: Body text starts near the top of the content area (near header level)
+
+**Expected State**: Body text should be vertically centered, with its midpoint aligned to the title's midpoint
+
+**Gap**: Body text is positioned ~15-20% too high
+
+**Fix Required**:
+```javascript
+// SlideTemplates.js - SINGLE-COLUMN body text container
+// Need to adjust vertical positioning/alignment of the right column
+// Options:
+// 1. Add align-items: center to grid container
+// 2. Add explicit top margin/padding to body column
+// 3. Use flexbox with align-items: center on body column
+```
+
+**Investigation Needed**:
+1. Locate body text container creation in SlideTemplates.js (single-column template)
+2. Check current CSS for vertical alignment properties
+3. Determine if grid or flexbox approach is being used
+4. Test alignment changes to vertically center body with title
+
+**Effort**: 15-30 minutes (investigation + fix)
+**Risk**: Medium (may require restructuring container CSS)
+**Priority**: **P0**
+
+---
+
+#### P0-2: Body Text Horizontal Overcorrection
+
+**Impact**: Body text column pushed too far right, creating excessive whitespace between title and body
+
+**Current State**: Body text starts at ~60% slide width
+
+**Expected State**: Body text should start at ~50% slide width
+
+**Gap**: Body text is positioned ~10% too far right, with ~30% gap instead of ~10-15% gap
+
+**Fix Required**:
+```javascript
+// SlideTemplates.js - SINGLE-COLUMN grid
+// Check grid-template-columns definition
+// May need to adjust column widths or gap property
+// Current: likely using 1fr 1fr (50/50 split)
+// May need: asymmetric split like 40% 60% or adjust gap
+```
+
+**Investigation Needed**:
+1. Check grid-template-columns value in single-column template
+2. Check gap property value
+3. Measure actual rendered widths in browser DevTools
+4. Adjust column ratios or gap to achieve ~50% start point
+
+**Effort**: 15-30 minutes (investigation + fix)
+**Risk**: Low to Medium (straightforward CSS adjustment)
+**Priority**: **P0**
+
+---
+
+### P1 Issues (HIGH - Typography & Visual Balance)
+
+#### P1-1: Title Font Weight Rendering [Original Session]
 
 **Impact**: Title may still appear heavier than reference ultra-thin appearance
 
@@ -848,10 +943,11 @@ font-weight: 100;  // Thin (vs 200 Extralight)
 
 **Effort**: 15-30 minutes (browser debugging)
 **Risk**: Low
+**Priority**: **P1**
 
 ---
 
-#### P1-2: Letter-Spacing Fine-Tuning
+#### P1-2: Letter-Spacing Fine-Tuning [Original Session]
 
 **Impact**: 0.05em may not be wide enough compared to reference
 
@@ -870,75 +966,25 @@ font-weight: 100;  // Thin (vs 200 Extralight)
 
 **Effort**: 5 minutes per test
 **Risk**: Very low
-  color: #1e293b;
-  line-height: 1.25;
-  margin: 0;
-  letter-spacing: -0.02em;
-`;
-```
-
-**If that fails, Fix Attempt #2** (Check computed styles):
-1. Open browser DevTools
-2. Inspect title element
-3. Check "Computed" tab for actual font-family and font-weight
-4. Look for overriding styles in "Styles" tab
-5. Check if Inter font is actually loading in "Network" tab
-
-**Effort**: 10-30 minutes (debugging)
-**Risk**: Medium (may require deeper investigation)
+**Priority**: **P1**
 
 ---
 
-#### P0-3: Corner Graphic Not Loading
+#### P1-3: Overall Composition Balance [Continuation Session]
 
-**Impact**: Wrong graphic entirely, major branding issue
+**Impact**: Combined effect of vertical and horizontal misalignment destroys intended layout harmony
 
-**Debug Steps**:
-1. Open presentation viewer in browser
-2. Open DevTools → Network tab
-3. Filter for "vertical-stripe.svg"
-4. Check if 404 error or successful load
-5. If 404: verify file location and server routing
-6. If 200 OK: check why SVG not displaying (try `<object>` or inline SVG instead of `<img>`)
+**Current State**: Title and body appear disconnected, with body floating in upper-right corner
 
-**Alternative Fix** (If SVG won't load as `<img>`):
-```javascript
-// Option 1: Use <object> tag
-graphic.innerHTML = `<object data="/vertical-stripe.svg" type="image/svg+xml" style="width: 150px; height: auto;"></object>`;
-
-// Option 2: Inline SVG (fetch and insert)
-const svgResponse = await fetch('/vertical-stripe.svg');
-const svgText = await svgResponse.text();
-graphic.innerHTML = svgText;
-```
-
-**Effort**: 15-45 minutes (debugging + fix)
-**Risk**: Medium (may need to change loading approach)
-
----
-
-### P1 Issues (HIGH - Affects Visual Quality)
-
-#### P1-1: Title Font Size Appears Smaller
-
-**Impact**: Title lacks visual dominance
-
-**Current Status**:
-- Code correctly sets `font-size: 3.75rem` (for single-column)
-- But error image shows title appearing smaller
-
-**Possible Causes**:
-1. Font-weight affecting perceived size (lighter fonts look smaller)
-2. Letter-spacing affecting width (tight spacing compresses)
-3. CSS transform or scale applied somewhere
-4. Different font-family rendering at different sizes
+**Expected State**: Title and body form cohesive, vertically-aligned two-column composition
 
 **Investigation**:
-- After fixing P0-1 (letter-spacing) and P0-2 (font-weight), re-evaluate
-- Likely will be resolved automatically
+- Re-test after fixing P0-1 (vertical alignment) and P0-2 (horizontal positioning)
+- Likely will be resolved automatically when primary positioning issues are fixed
 
-**Effort**: 5 minutes (re-test after P0 fixes)
+**Effort**: 5 minutes (visual re-evaluation after P0 fixes)
 **Risk**: Low
+**Priority**: **P1** (dependent on P0 fixes)
 
 ---
 
@@ -1069,7 +1115,7 @@ element.style.fontFamily = "'Inter', sans-serif";
 
 ---
 
-#### Pitfall #3: SVG Loading/Rendering
+#### Pitfall #3: SVG Loading/Rendering **[OBSOLETE - GRAPHICS REMOVED]**
 
 **Symptom**: SVG not displaying or showing placeholder
 
@@ -1181,9 +1227,9 @@ font-extralight  → font-weight: 200
 - `Public/WebRenderer.js` - Slide rendering orchestrator
 
 **Assets**:
-- `Public/vertical-stripe.svg` - Corner graphic (geometric pattern)
-- `Public/horizontal-stripe.svg` - Unused
-- `Public/bip_logo.png` - BIP logo
+- ~~`Public/vertical-stripe.svg` - Corner graphic (geometric pattern)~~ **[REMOVED - NOT USED]**
+- ~~`Public/horizontal-stripe.svg` - Unused~~ **[REMOVED - NOT USED]**
+- ~~`Public/bip_logo.png` - BIP logo~~ **[REMOVED - NOT USED]**
 
 ---
 
@@ -1314,27 +1360,32 @@ IMPACT:
 
 ## NEXT ACTIONS
 
-### Immediate (P0 Fixes)
-1. [ ] Implement letter-spacing on titles (both templates)
-2. [ ] Add explicit font-family to titles
-3. [ ] Debug corner graphic SVG loading
-4. [ ] Test all fixes in browser
-5. [ ] Commit and push
+### Immediate (P0 Fixes - LAYOUT POSITIONING)
+1. [ ] Fix body text vertical misalignment (P0-1) - Align body text midpoint with title midpoint
+2. [ ] Fix body text horizontal overcorrection (P0-2) - Adjust body text to start at ~50% slide width
+3. [ ] Test layout fixes in browser with DevTools measurements
+4. [ ] Commit and push layout positioning fixes
 
 ### Short-Term (P1 Fixes)
-6. [ ] Re-test font size after P0 fixes
-7. [ ] Browser compatibility testing
-8. [ ] Cross-slide-type regression testing
+5. [ ] Re-evaluate overall composition balance after P0 fixes
+6. [ ] Browser compatibility testing (Chrome, Firefox, Safari, Edge)
+7. [ ] Cross-slide-type regression testing (three-column, single-column, title)
 
 ### Long-Term (P2/P3 Features)
-9. [ ] Implement dotted underline feature (AI content processing)
-10. [ ] Coordinate footer rendering with PresentationSlides.js
+8. [ ] Implement dotted underline feature (AI content processing) - Optional enhancement
+9. [ ] Coordinate footer rendering with PresentationSlides.js - Framework feature
+
+### Completed in This Session
+- ✅ Graphics removal (corner graphics, stripes, SVG decorations)
+- ✅ Updated gap analysis to focus on layout positioning only
+- ✅ Removed all obsolete graphics references from prompts and schemas
+- ✅ Updated documentation to reflect graphics-free implementation
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: November 23, 2025
-**Status**: Ready for P0/P1 implementation
+**Document Version**: 2.0
+**Last Updated**: November 23, 2025 (Continuation Session)
+**Status**: Graphics Removed, Layout Positioning Analysis Complete, Ready for P0 Layout Fixes
 
 ---
 

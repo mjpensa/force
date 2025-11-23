@@ -398,7 +398,6 @@ Example: { "type": "insights", "title": "${slideOutline.title}", "insights": [{"
 - title: Object with text property (e.g., {"text": "${slideOutline.title}"})
 - eyebrow: Object with text property (uppercase label, max 100 chars, e.g., {"text": "PROJECT OVERVIEW"})
 - columns: Array of exactly 3 column objects, each with text property (max 1000 chars per column)
-- showCornerGraphic: Boolean (use true to show decorative corner graphic)
 
 CRITICAL REQUIREMENT - MUST EXTRACT FROM RESEARCH ABOVE:
 - DO NOT use placeholder text like "First strategic area..."
@@ -410,9 +409,9 @@ CRITICAL REQUIREMENT - MUST EXTRACT FROM RESEARCH ABOVE:
 - If research lacks specific details, synthesize meaningful content based on context
 - MANDATORY: You MUST include the "columns" array with exactly 3 column objects
 
-This is a modern three-column layout with an eyebrow label and geometric corner decoration.
+This is a modern three-column layout with an eyebrow label.
 
-Example: { "type": "bip-three-column", "title": {"text": "${slideOutline.title}"}, "eyebrow": {"text": "STRATEGIC PILLARS"}, "columns": [{"text": "Digital transformation initiative targeting $50M cost reduction through AI-powered automation of legacy systems. Implementation across 15 business units starting Q2 2025..."}, {"text": "Cloud migration strategy with AWS and Azure hybrid approach. 80% of workloads transitioning by end of 2026, enabling 40% infrastructure cost savings..."}, {"text": "Data modernization with centralized analytics platform. Real-time insights for 5,000+ users, predictive analytics reducing forecasting errors by 25%..."}], "showCornerGraphic": true }`;
+Example: { "type": "bip-three-column", "title": {"text": "${slideOutline.title}"}, "eyebrow": {"text": "STRATEGIC PILLARS"}, "columns": [{"text": "Digital transformation initiative targeting $50M cost reduction through AI-powered automation of legacy systems. Implementation across 15 business units starting Q2 2025..."}, {"text": "Cloud migration strategy with AWS and Azure hybrid approach. 80% of workloads transitioning by end of 2026, enabling 40% infrastructure cost savings..."}, {"text": "Data modernization with centralized analytics platform. Real-time insights for 5,000+ users, predictive analytics reducing forecasting errors by 25%..."}] }`;
             break;
           case 'bip-single-column':
             slidePrompt += `For this BIP SINGLE-COLUMN LAYOUT slide, provide a JSON object with:
