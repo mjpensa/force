@@ -709,7 +709,6 @@ router.post('/generate-chart', uploadMiddleware.array('researchFiles'), strictLi
 
   console.log(`Creating new job ${jobId} with ${req.files?.length || 0} files`);
   console.log(`Request body:`, {
-    generateExecutiveSummary: req.body.generateExecutiveSummary,
     generatePresentation: req.body.generatePresentation,
     prompt: req.body.prompt ? '(present)' : '(missing)'
   });

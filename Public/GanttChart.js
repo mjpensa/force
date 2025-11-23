@@ -1328,21 +1328,13 @@ export class GanttChart {
           }
           break;
 
-        case 's':
-          // S = Summary (navigate to executive summary view)
-          if (this.router) {
-            this.router.navigate('executive-summary');
-            console.log('⌨️ Keyboard shortcut: S (Summary)');
-          }
-          break;
-
         default:
           // No action for other keys
           break;
       }
     });
 
-    console.log('⌨️ Keyboard shortcuts enabled: E=Executive, D=Detail, T=Timeline, P=Presentation, S=Summary');
+    console.log('⌨️ Keyboard shortcuts enabled: E=Executive, D=Detail, T=Timeline, P=Presentation');
   }
 
 

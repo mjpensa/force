@@ -79,7 +79,6 @@ function createTables(db) {
       chartId TEXT UNIQUE NOT NULL,
       sessionId TEXT NOT NULL,
       ganttData TEXT NOT NULL,
-      executiveSummary TEXT,
       presentationSlides TEXT,
       createdAt INTEGER NOT NULL,
       expiresAt INTEGER NOT NULL,
@@ -247,15 +246,14 @@ export function saveChart(chartId, sessionId, ganttData, presentationSlides, exp
   const expiresAt = now + (expirationDays * 24 * 60 * 60 * 1000);
 
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO charts (chartId, sessionId, ganttData, executiveSummary, presentationSlides, createdAt, expiresAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO charts (chartId, sessionId, ganttData, presentationSlides, createdAt, expiresAt)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
     chartId,
     sessionId,
     JSON.stringify(ganttData),
-    null,  // executiveSummary no longer used
     JSON.stringify(presentationSlides),
     now,
     expiresAt
