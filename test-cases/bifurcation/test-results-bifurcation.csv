@@ -1,0 +1,11 @@
+Test Case,Industry,File Count,Word Count,Complexity,Generation Time (s),Opening Hook (1-5),Branded Concepts (1-5),Statistics Count,Company Names Count,Quotable Moments (1-5),Metaphor Consistency (1-5),Competitive Intel (1-5),Conclusion (1-5),Overall Score (1-5),Notes
+TC-01,Banking,1,500,Simple,,,,,,,,,,,
+TC-02,Banking,5,2500,Medium,,,,,,,,,,,
+TC-03,Banking,10,5000,Complex,,,,,,,,,,,
+TC-04,Healthcare,1,600,Simple,,,,,,,,,,,
+TC-05,Technology,3,1800,Medium,,,,,,,,,,,
+TC-06,Finance,1,400,Simple,,,,,,,,,,,
+TC-07,Banking,1 (PDF),1200,Medium,,,,,,,,,,,
+TC-08,Mixed,7,4000,High,,,,,,,,,,,
+TC-09,Banking,1,200,Low (sparse),,,,,,,,,,,
+TC-10,Banking,1,1000,Medium (contradictions),,,,,,,,,,,
