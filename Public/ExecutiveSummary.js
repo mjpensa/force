@@ -53,28 +53,22 @@ export class ExecutiveSummary {
       }];
     }
 
-    // Create pages with actual content sections
+    // Create single comprehensive written document
     const pages = [];
 
-    // Page 1: Strategic Narrative + Key Metrics Dashboard
     pages.push({
       pageNumber: 1,
-      title: 'Strategic Overview',
-      sections: ['strategicNarrative', 'keyMetricsDashboard', 'strategicPriorities']
-    });
-
-    // Page 2: Drivers + Dependencies
-    pages.push({
-      pageNumber: 2,
-      title: 'Strategic Drivers & Dependencies',
-      sections: ['drivers', 'dependencies']
-    });
-
-    // Page 3: Risks + Insights + Competitive Intel
-    pages.push({
-      pageNumber: 3,
-      title: 'Risk Intelligence & Competitive Landscape',
-      sections: ['risks', 'keyInsights', 'competitiveIntelligence', 'industryBenchmarks']
+      title: 'Executive Summary',
+      sections: [
+        'strategicNarrative',
+        'strategicPriorities',
+        'drivers',
+        'dependencies',
+        'risks',
+        'keyInsights',
+        'competitiveIntelligence',
+        'industryBenchmarks'
+      ]
     });
 
     return pages;
@@ -599,9 +593,6 @@ export class ExecutiveSummary {
         case 'strategicNarrative':
           html += this._renderStrategicNarrative(sectionData);
           break;
-        case 'keyMetricsDashboard':
-          html += this._renderKeyMetricsDashboard(sectionData);
-          break;
         case 'strategicPriorities':
           html += this._renderStrategicPriorities(sectionData);
           break;
@@ -1106,66 +1097,10 @@ export class ExecutiveSummary {
    */
   _renderStrategicNarrative(data) {
     return `
-      <section class="summary-section strategic-narrative">
-        <h2 class="section-title">Strategic Narrative</h2>
-        <div class="narrative-content">
-          <div class="elevator-pitch">
-            <h3>Executive Summary</h3>
-            <p>${data.elevatorPitch || ''}</p>
-          </div>
-          ${data.valueProposition ? `
-          <div class="value-proposition">
-            <h3>Value Proposition</h3>
-            <p>${data.valueProposition}</p>
-          </div>
-          ` : ''}
-          ${data.callToAction ? `
-          <div class="call-to-action">
-            <h3>Call to Action</h3>
-            <p>${data.callToAction}</p>
-          </div>
-          ` : ''}
-        </div>
-      </section>
-    `;
-  }
-
-  /**
-   * Renders Key Metrics Dashboard section
-   * @private
-   */
-  _renderKeyMetricsDashboard(data) {
-    if (!data) return '';
-
-    return `
-      <section class="summary-section metrics-dashboard">
-        <h2 class="section-title">Key Metrics Dashboard</h2>
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="metric-label">Total Investment</div>
-            <div class="metric-value">${data.totalInvestment || 'TBD'}</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-label">Time to Value</div>
-            <div class="metric-value">${data.timeToValue || 'TBD'}</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-label">Compliance Risk</div>
-            <div class="metric-value">${data.complianceRisk || 'TBD'}</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-label">ROI Projection</div>
-            <div class="metric-value">${data.roiProjection || 'TBD'}</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-label">Critical Path Status</div>
-            <div class="metric-value">${data.criticalPathStatus || 'TBD'}</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-label">Vendor Lock-In</div>
-            <div class="metric-value">${data.vendorLockIn || 'TBD'}</div>
-          </div>
-        </div>
+      <section class="doc-section">
+        <p class="doc-paragraph">${data.elevatorPitch || ''}</p>
+        ${data.valueProposition ? `<p class="doc-paragraph">${data.valueProposition}</p>` : ''}
+        ${data.callToAction ? `<p class="doc-paragraph"><strong>${data.callToAction}</strong></p>` : ''}
       </section>
     `;
   }
@@ -1178,22 +1113,11 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="summary-section strategic-priorities">
-        <h2 class="section-title">Top 3 Strategic Priorities</h2>
-        <div class="priorities-list">
-          ${data.map((priority, index) => `
-            <div class="priority-card">
-              <div class="priority-number">${index + 1}</div>
-              <div class="priority-content">
-                <h3>${priority.title}</h3>
-                <p class="priority-description">${priority.description}</p>
-                ${priority.bankingContext ? `<p class="priority-context"><strong>Banking Context:</strong> ${priority.bankingContext}</p>` : ''}
-                ${priority.dependencies ? `<p class="priority-dependencies"><strong>Dependencies:</strong> ${priority.dependencies}</p>` : ''}
-                ${priority.deadline ? `<p class="priority-deadline"><strong>Deadline:</strong> ${priority.deadline}</p>` : ''}
-              </div>
-            </div>
-          `).join('')}
-        </div>
+      <section class="doc-section">
+        <h2 class="doc-heading">Strategic Priorities</h2>
+        ${data.map((priority, index) => `
+          <p class="doc-paragraph"><strong>${index + 1}. ${priority.title}.</strong> ${priority.description} ${priority.bankingContext || ''} ${priority.dependencies ? `Dependencies include ${priority.dependencies}.` : ''} ${priority.deadline ? `Deadline: ${priority.deadline}.` : ''}</p>
+        `).join('')}
       </section>
     `;
   }
@@ -1206,27 +1130,14 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="summary-section drivers">
-        <h2 class="section-title">Strategic Drivers</h2>
-        <div class="drivers-list">
-          ${data.map(driver => `
-            <div class="driver-card urgency-${driver.urgencyLevel || 'medium'}">
-              <h3>${driver.title}</h3>
-              <p>${driver.description}</p>
-              <div class="driver-urgency">
-                <span class="urgency-badge">${driver.urgencyLevel?.toUpperCase() || 'MEDIUM'} URGENCY</span>
-              </div>
-              ${driver.metrics && driver.metrics.length > 0 ? `
-                <div class="driver-metrics">
-                  <strong>Key Metrics:</strong>
-                  <ul>
-                    ${driver.metrics.map(metric => `<li>${metric}</li>`).join('')}
-                  </ul>
-                </div>
-              ` : ''}
-            </div>
-          `).join('')}
-        </div>
+      <section class="doc-section">
+        <h2 class="doc-heading">Strategic Drivers</h2>
+        ${data.map(driver => {
+          const metricsText = driver.metrics && driver.metrics.length > 0
+            ? ` Key metrics include: ${driver.metrics.join('; ')}.`
+            : '';
+          return `<p class="doc-paragraph"><strong>${driver.title}.</strong> ${driver.description}${metricsText}</p>`;
+        }).join('')}
       </section>
     `;
   }
@@ -1239,24 +1150,17 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="summary-section dependencies">
-        <h2 class="section-title">Critical Dependencies</h2>
-        <div class="dependencies-list">
-          ${data.map(dep => `
-            <div class="dependency-card criticality-${dep.criticality?.toLowerCase() || 'medium'}">
-              <h3>${dep.name}</h3>
-              <div class="dependency-criticality">
-                <span class="criticality-badge">${dep.criticality || 'MEDIUM'} CRITICALITY</span>
-              </div>
-              ${dep.impactedPhases && dep.impactedPhases.length > 0 ? `
-                <p><strong>Impacted Phases:</strong> ${dep.impactedPhases.join(', ')}</p>
-              ` : ''}
-              ${dep.mitigationStrategy ? `
-                <p class="mitigation"><strong>Mitigation:</strong> ${dep.mitigationStrategy}</p>
-              ` : ''}
-            </div>
-          `).join('')}
-        </div>
+      <section class="doc-section">
+        <h2 class="doc-heading">Critical Dependencies</h2>
+        ${data.map(dep => {
+          const phasesText = dep.impactedPhases && dep.impactedPhases.length > 0
+            ? ` This dependency impacts the following phases: ${dep.impactedPhases.join(', ')}.`
+            : '';
+          const mitigationText = dep.mitigationStrategy
+            ? ` Mitigation strategy: ${dep.mitigationStrategy}`
+            : '';
+          return `<p class="doc-paragraph"><strong>${dep.name} (${dep.criticality || 'Medium'} Criticality).</strong>${phasesText}${mitigationText}</p>`;
+        }).join('')}
       </section>
     `;
   }
@@ -1269,30 +1173,14 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="summary-section risks">
-        <h2 class="section-title">Risk Intelligence</h2>
-        <div class="risks-list">
-          ${data.map(risk => `
-            <div class="risk-card risk-${risk.probability || 'medium'}">
-              <div class="risk-header">
-                <span class="risk-category">${risk.category?.toUpperCase() || 'GENERAL'}</span>
-                <span class="risk-impact impact-${risk.impact || 'moderate'}">${risk.impact?.toUpperCase() || 'MODERATE'} IMPACT</span>
-              </div>
-              <p class="risk-description">${risk.description}</p>
-              <div class="risk-probability">
-                <strong>Probability:</strong> ${risk.probability?.toUpperCase() || 'MEDIUM'}
-              </div>
-              ${risk.earlyIndicators && risk.earlyIndicators.length > 0 ? `
-                <div class="risk-indicators">
-                  <strong>Early Warning Indicators:</strong>
-                  <ul>
-                    ${risk.earlyIndicators.map(indicator => `<li>${indicator}</li>`).join('')}
-                  </ul>
-                </div>
-              ` : ''}
-            </div>
-          `).join('')}
-        </div>
+      <section class="doc-section">
+        <h2 class="doc-heading">Risk Intelligence</h2>
+        ${data.map(risk => {
+          const indicatorsText = risk.earlyIndicators && risk.earlyIndicators.length > 0
+            ? ` Early warning indicators include: ${risk.earlyIndicators.join('; ')}.`
+            : '';
+          return `<p class="doc-paragraph"><strong>${risk.category || 'General'} Risk (${risk.probability || 'Medium'} probability, ${risk.impact || 'Moderate'} impact).</strong> ${risk.description}${indicatorsText}</p>`;
+        }).join('')}
       </section>
     `;
   }
@@ -1305,22 +1193,12 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="summary-section key-insights">
-        <h2 class="section-title">Key Insights</h2>
-        <div class="insights-list">
-          ${data.map(insight => `
-            <div class="insight-card">
-              <div class="insight-category">${insight.category || 'General'}</div>
-              <p class="insight-text">${insight.insight}</p>
-              ${insight.talkingPoint ? `
-                <p class="talking-point"><strong>💡 Talking Point:</strong> ${insight.talkingPoint}</p>
-              ` : ''}
-              ${insight.supportingData ? `
-                <p class="supporting-data"><strong>📊 Data:</strong> ${insight.supportingData}</p>
-              ` : ''}
-            </div>
-          `).join('')}
-        </div>
+      <section class="doc-section">
+        <h2 class="doc-heading">Key Strategic Insights</h2>
+        ${data.map(insight => {
+          const supportingText = insight.supportingData ? ` ${insight.supportingData}` : '';
+          return `<p class="doc-paragraph"><em>${insight.insight}</em>${supportingText}</p>`;
+        }).join('')}
       </section>
     `;
   }
@@ -1332,39 +1210,21 @@ export class ExecutiveSummary {
   _renderCompetitiveIntelligence(data) {
     if (!data) return '';
 
-    return `
-      <section class="summary-section competitive-intel">
-        <h2 class="section-title">Competitive Intelligence</h2>
-        <div class="competitive-content">
-          ${data.marketTiming ? `
-            <div class="intel-block">
-              <h3>Market Timing</h3>
-              <p>${data.marketTiming}</p>
-            </div>
-          ` : ''}
-          ${data.competitorMoves && data.competitorMoves.length > 0 ? `
-            <div class="intel-block">
-              <h3>Competitor Moves</h3>
-              <ul>
-                ${data.competitorMoves.map(move => `<li>${move}</li>`).join('')}
-              </ul>
-            </div>
-          ` : ''}
-          ${data.competitiveAdvantage ? `
-            <div class="intel-block">
-              <h3>Competitive Advantage</h3>
-              <p>${data.competitiveAdvantage}</p>
-            </div>
-          ` : ''}
-          ${data.marketWindow ? `
-            <div class="intel-block market-window">
-              <h3>⏰ Market Window</h3>
-              <p>${data.marketWindow}</p>
-            </div>
-          ` : ''}
-        </div>
-      </section>
-    `;
+    let content = '';
+
+    if (data.marketTiming || data.competitorMoves || data.competitiveAdvantage || data.marketWindow) {
+      content = `
+        <section class="doc-section">
+          <h2 class="doc-heading">Competitive Intelligence</h2>
+          ${data.marketTiming ? `<p class="doc-paragraph"><strong>Market Timing.</strong> ${data.marketTiming}</p>` : ''}
+          ${data.competitorMoves && data.competitorMoves.length > 0 ? `<p class="doc-paragraph"><strong>Competitor Moves.</strong> ${data.competitorMoves.join(' ')}</p>` : ''}
+          ${data.competitiveAdvantage ? `<p class="doc-paragraph"><strong>Competitive Advantage.</strong> ${data.competitiveAdvantage}</p>` : ''}
+          ${data.marketWindow ? `<p class="doc-paragraph"><strong>Market Window.</strong> ${data.marketWindow}</p>` : ''}
+        </section>
+      `;
+    }
+
+    return content;
   }
 
   /**
@@ -1374,45 +1234,20 @@ export class ExecutiveSummary {
   _renderIndustryBenchmarks(data) {
     if (!data) return '';
 
-    return `
-      <section class="summary-section industry-benchmarks">
-        <h2 class="section-title">Industry Benchmarks</h2>
-        <div class="benchmarks-grid">
-          ${data.timeToMarket ? `
-            <div class="benchmark-card">
-              <h3>Time to Market</h3>
-              <div class="benchmark-comparison">
-                <div><strong>Your Plan:</strong> ${data.timeToMarket.yourPlan}</div>
-                <div><strong>Industry Average:</strong> ${data.timeToMarket.industryAverage}</div>
-                <div class="variance">${data.timeToMarket.variance}</div>
-              </div>
-              <p class="benchmark-insight">${data.timeToMarket.insight}</p>
-            </div>
-          ` : ''}
-          ${data.investmentLevel ? `
-            <div class="benchmark-card">
-              <h3>Investment Level</h3>
-              <div class="benchmark-comparison">
-                <div><strong>Your Plan:</strong> ${data.investmentLevel.yourPlan}</div>
-                <div><strong>Industry Median:</strong> ${data.investmentLevel.industryMedian}</div>
-                <div class="variance">${data.investmentLevel.variance}</div>
-              </div>
-              <p class="benchmark-insight">${data.investmentLevel.insight}</p>
-            </div>
-          ` : ''}
-          ${data.riskProfile ? `
-            <div class="benchmark-card">
-              <h3>Risk Profile</h3>
-              <div class="benchmark-comparison">
-                <div><strong>Your Plan:</strong> ${data.riskProfile.yourPlan}</div>
-                <div><strong>Industry Comparison:</strong> ${data.riskProfile.industryComparison}</div>
-              </div>
-              <p class="benchmark-insight">${data.riskProfile.insight}</p>
-            </div>
-          ` : ''}
-        </div>
-      </section>
-    `;
+    let content = '';
+
+    if (data.timeToMarket || data.investmentLevel || data.riskProfile) {
+      content = `
+        <section class="doc-section">
+          <h2 class="doc-heading">Industry Benchmarks</h2>
+          ${data.timeToMarket ? `<p class="doc-paragraph"><strong>Time to Market.</strong> Your plan: ${data.timeToMarket.yourPlan} vs. industry average: ${data.timeToMarket.industryAverage} (${data.timeToMarket.variance}). ${data.timeToMarket.insight}</p>` : ''}
+          ${data.investmentLevel ? `<p class="doc-paragraph"><strong>Investment Level.</strong> Your plan: ${data.investmentLevel.yourPlan} vs. industry median: ${data.investmentLevel.industryMedian} (${data.investmentLevel.variance}). ${data.investmentLevel.insight}</p>` : ''}
+          ${data.riskProfile ? `<p class="doc-paragraph"><strong>Risk Profile.</strong> Your plan: ${data.riskProfile.yourPlan}. Industry comparison: ${data.riskProfile.industryComparison}. ${data.riskProfile.insight}</p>` : ''}
+        </section>
+      `;
+    }
+
+    return content;
   }
 
   /**
