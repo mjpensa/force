@@ -7649,530 +7649,67 @@ body.dragging {
   }
 }
 
+
 /* ===================================================================
-   EXECUTIVE SUMMARY CONTENT STYLES (Bifurcation Style Enhancement)
+   EXECUTIVE SUMMARY CONTENT STYLES (Document-Based Prose Format)
    =================================================================== */
 
 .executive-summary-page {
-  padding: 2rem;
+  padding: 3rem 4rem;
+  max-width: 900px;
+  margin: 0 auto;
   color: #e2e8f0;
   font-family: 'Work Sans', sans-serif;
+  line-height: 1.8;
 }
 
 .page-title {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
   color: #fff;
   border-bottom: 2px solid #3b82f6;
-  padding-bottom: 0.5rem;
-}
-
-.summary-section {
-  margin-bottom: 2.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  padding: 1.5rem;
-  border-left: 4px solid #3b82f6;
-}
-
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1.25rem;
-  color: #60a5fa;
-}
-
-/* Strategic Narrative */
-.strategic-narrative .narrative-content h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-top: 1.5rem;
-  margin-bottom: 0.75rem;
-  color: #93c5fd;
-}
-
-.strategic-narrative .narrative-content p {
-  line-height: 1.8;
-  font-size: 1rem;
-  margin-bottom: 1rem;
-}
-
-.elevator-pitch p {
-  font-size: 1.1rem;
-  font-weight: 500;
-  line-height: 1.9;
-}
-
-/* Key Metrics Dashboard */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.metric-card {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 6px;
-  padding: 1.25rem;
+  padding-bottom: 1rem;
   text-align: center;
 }
 
-.metric-label {
-  font-size: 0.875rem;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.5rem;
+.doc-section {
+  margin-bottom: 3rem;
 }
 
-.metric-value {
-  font-size: 1.5rem;
-  font-weight: 700;
+.doc-heading {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  margin-top: 2.5rem;
   color: #60a5fa;
+  border-bottom: 1px solid rgba(96, 165, 250, 0.3);
+  padding-bottom: 0.5rem;
 }
 
-/* Strategic Priorities */
-.priorities-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.doc-paragraph {
+  font-size: 1.05rem;
+  line-height: 1.9;
+  margin-bottom: 1.25rem;
+  color: #e2e8f0;
+  text-align: justify;
 }
 
-.priority-card {
-  display: flex;
-  gap: 1.5rem;
-  background: rgba(34, 197, 94, 0.05);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  border-radius: 8px;
-  padding: 1.5rem;
-}
-
-.priority-number {
-  flex-shrink: 0;
-  width: 3rem;
-  height: 3rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(34, 197, 94, 0.2);
-  border-radius: 50%;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #22c55e;
-}
-
-.priority-content h3 {
-  font-size: 1.25rem;
-  margin-bottom: 0.75rem;
+.doc-paragraph strong {
   color: #fff;
-}
-
-.priority-description {
-  margin-bottom: 0.75rem;
-  line-height: 1.7;
-}
-
-.priority-context,
-.priority-dependencies,
-.priority-deadline {
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
-  color: #cbd5e1;
-}
-
-/* Drivers */
-.drivers-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.driver-card {
-  border-radius: 8px;
-  padding: 1.5rem;
-  border-left: 4px solid;
-}
-
-.driver-card.urgency-critical {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: #ef4444;
-}
-
-.driver-card.urgency-high {
-  background: rgba(249, 115, 22, 0.1);
-  border-color: #f97316;
-}
-
-.driver-card.urgency-medium {
-  background: rgba(234, 179, 8, 0.1);
-  border-color: #eab308;
-}
-
-.driver-card h3 {
-  font-size: 1.15rem;
-  margin-bottom: 0.75rem;
-  color: #fff;
-}
-
-.driver-urgency {
-  margin: 1rem 0;
-}
-
-.urgency-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
 }
 
-.urgency-critical .urgency-badge {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-}
-
-.urgency-high .urgency-badge {
-  background: rgba(249, 115, 22, 0.2);
-  color: #fdba74;
-}
-
-.urgency-medium .urgency-badge {
-  background: rgba(234, 179, 8, 0.2);
-  color: #fde047;
-}
-
-.driver-metrics ul {
-  list-style: none;
-  padding-left: 0;
-  margin-top: 0.5rem;
-}
-
-.driver-metrics li {
-  padding: 0.25rem 0;
-  padding-left: 1rem;
-  position: relative;
-}
-
-.driver-metrics li::before {
-  content: "→";
-  position: absolute;
-  left: 0;
-  color: #60a5fa;
-}
-
-/* Dependencies */
-.dependencies-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.dependency-card {
-  border-radius: 8px;
-  padding: 1.5rem;
-  border-left: 4px solid;
-}
-
-.dependency-card.criticality-high {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: #ef4444;
-}
-
-.dependency-card.criticality-medium {
-  background: rgba(234, 179, 8, 0.1);
-  border-color: #eab308;
-}
-
-.dependency-card.criticality-low {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: #3b82f6;
-}
-
-.dependency-card h3 {
-  font-size: 1.15rem;
-  margin-bottom: 0.75rem;
-  color: #fff;
-}
-
-.dependency-criticality {
-  margin: 1rem 0;
-}
-
-.criticality-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-
-.criticality-high .criticality-badge {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-}
-
-.criticality-medium .criticality-badge {
-  background: rgba(234, 179, 8, 0.2);
-  color: #fde047;
-}
-
-.criticality-low .criticality-badge {
-  background: rgba(59, 130, 246, 0.2);
+.doc-paragraph em {
+  font-style: italic;
   color: #93c5fd;
-}
-
-.mitigation {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: rgba(34, 197, 94, 0.05);
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-/* Risks */
-.risks-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
-}
-
-.risk-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.risk-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.risk-category {
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: rgba(147, 51, 234, 0.2);
-  color: #c084fc;
-}
-
-.risk-impact {
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.impact-severe {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-}
-
-.impact-major {
-  background: rgba(249, 115, 22, 0.2);
-  color: #fdba74;
-}
-
-.impact-moderate {
-  background: rgba(234, 179, 8, 0.2);
-  color: #fde047;
-}
-
-.impact-minor {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
-}
-
-.risk-description {
-  margin-bottom: 1rem;
-  line-height: 1.7;
-}
-
-.risk-probability {
-  margin: 1rem 0;
-  font-size: 0.9rem;
-  color: #cbd5e1;
-}
-
-.risk-indicators ul {
-  list-style: none;
-  padding-left: 0;
-  margin-top: 0.5rem;
-}
-
-.risk-indicators li {
-  padding: 0.25rem 0;
-  padding-left: 1.5rem;
-  position: relative;
-  font-size: 0.9rem;
-}
-
-.risk-indicators li::before {
-  content: "⚠";
-  position: absolute;
-  left: 0;
-  color: #fbbf24;
-}
-
-/* Key Insights */
-.insights-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.insight-card {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
-  border-radius: 8px;
-  padding: 1.5rem;
-  border: 1px solid rgba(147, 51, 234, 0.2);
-}
-
-.insight-category {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #c084fc;
-  margin-bottom: 0.75rem;
-  font-weight: 600;
-}
-
-.insight-text {
-  font-size: 1rem;
-  line-height: 1.7;
-  margin-bottom: 1rem;
-  color: #fff;
-}
-
-.talking-point,
-.supporting-data {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-.talking-point {
-  border-left: 3px solid #fbbf24;
-}
-
-.supporting-data {
-  border-left: 3px solid #3b82f6;
-}
-
-/* Competitive Intelligence */
-.competitive-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.intel-block {
-  background: rgba(34, 197, 94, 0.05);
-  border-left: 4px solid #22c55e;
-  padding: 1.25rem;
-  border-radius: 6px;
-}
-
-.intel-block h3 {
   font-size: 1.1rem;
-  color: #4ade80;
-  margin-bottom: 0.75rem;
-}
-
-.intel-block p,
-.intel-block ul {
-  line-height: 1.7;
-}
-
-.intel-block ul {
-  list-style: none;
-  padding-left: 0;
-}
-
-.intel-block li {
-  padding: 0.5rem 0;
-  padding-left: 1.5rem;
-  position: relative;
-}
-
-.intel-block li::before {
-  content: "▸";
-  position: absolute;
-  left: 0;
-  color: #4ade80;
-}
-
-.market-window {
-  background: rgba(234, 179, 8, 0.1);
-  border-left-color: #eab308;
-}
-
-.market-window h3 {
-  color: #facc15;
-}
-
-/* Industry Benchmarks */
-.benchmarks-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.benchmark-card {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: 8px;
-  padding: 1.5rem;
-}
-
-.benchmark-card h3 {
-  font-size: 1.15rem;
-  color: #34d399;
-  margin-bottom: 1rem;
-}
-
-.benchmark-comparison {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-}
-
-.benchmark-comparison > div {
-  padding: 0.25rem 0;
-}
-
-.variance {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  color: #4ade80;
-  font-weight: 600;
-}
-
-.benchmark-insight {
-  font-size: 0.9rem;
-  line-height: 1.7;
-  color: #cbd5e1;
 }
 
 /* Doc Page Footer */
 .doc-page-footer {
-  margin-top: 3rem;
-  padding-top: 1rem;
+  margin-top: 4rem;
+  padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   text-align: center;
   color: #6b7280;
