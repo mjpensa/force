@@ -1,12 +1,13 @@
 /**
- * BIP Slide Templates - COMPLETE REWRITE
- * Direct 1:1 translation of original HTML templates to JavaScript
+ * BIP Slide Templates - Tailwind Class Implementation
+ * Uses Tailwind utility classes to match reference templates exactly
+ * Reference: bip-slide-2.html (three-column), bip-slide-4.html (single-column)
  */
 
 export const CUSTOM_SLIDE_TYPES = {
   /**
    * BIP Three-Column Layout (bip-slide-2.html)
-   * Exact replica of original HTML structure
+   * Exact replica using Tailwind classes
    */
   'bip-three-column': {
     schema: {
@@ -26,40 +27,30 @@ export const CUSTOM_SLIDE_TYPES = {
     render: (slide, theme, slideNumber) => {
       // <body class="bg-white p-12">
       // NOTE: Presentation viewer .slide-content already adds 3rem padding
+      // So we use p-0 to avoid double padding
       const body = document.createElement('div');
+      body.className = 'bg-white';
       body.style.cssText = `
-        background-color: #ffffff;
-        padding: 0;
         font-family: 'Inter', sans-serif;
         width: 100%;
         height: 100%;
         box-sizing: border-box;
-        position: relative;
+        padding: 0;
       `;
 
       // <div class="max-w-7xl mx-auto">
       const container = document.createElement('div');
-      container.style.cssText = `
-        max-width: 80rem;
-        margin-left: auto;
-        margin-right: auto;
-      `;
+      container.className = 'max-w-7xl mx-auto';
 
       // Header: <div class="mb-8">
       const header = document.createElement('div');
-      header.style.cssText = `margin-bottom: 2rem;`;
+      header.className = 'mb-8';
 
       // Eyebrow: <h2 class="text-red-600 font-bold text-sm tracking-wider mb-6">
       if (slide.content.eyebrow?.text) {
         const eyebrow = document.createElement('h2');
+        eyebrow.className = 'text-red-600 font-bold text-sm tracking-wider mb-6';
         eyebrow.textContent = slide.content.eyebrow.text;
-        eyebrow.style.cssText = `
-          color: #DC2626;
-          font-weight: 700;
-          font-size: 0.875rem;
-          letter-spacing: 0.05em;
-          margin-bottom: 1.5rem;
-        `;
         header.appendChild(eyebrow);
       }
 
@@ -69,20 +60,18 @@ export const CUSTOM_SLIDE_TYPES = {
         : slide.content.title?.text;
       if (titleText) {
         const title = document.createElement('h1');
+        title.className = 'text-5xl font-extralight text-slate-800 leading-tight';
+        // Add explicit font-family and letter-spacing (not in Tailwind defaults)
+        title.style.fontFamily = "'Inter', sans-serif";
+        title.style.letterSpacing = '0.05em';
+        title.style.margin = '0';
+
+        // Handle line breaks
         const lines = titleText.split(/\\n|\n/);
         lines.forEach((line, idx) => {
           if (idx > 0) title.appendChild(document.createElement('br'));
           title.appendChild(document.createTextNode(line));
         });
-        title.style.cssText = `
-          font-family: 'Inter', sans-serif;
-          font-size: 3rem;
-          font-weight: 200;
-          color: #1e293b;
-          line-height: 1.25;
-          letter-spacing: 0.05em;
-          margin: 0;
-        `;
         header.appendChild(title);
       }
 
@@ -90,22 +79,13 @@ export const CUSTOM_SLIDE_TYPES = {
 
       // Three columns: <div class="grid grid-cols-3 gap-10 mt-16">
       const grid = document.createElement('div');
-      grid.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 2.5rem;
-        margin-top: 4rem;
-      `;
+      grid.className = 'grid grid-cols-3 gap-10 mt-16';
 
       // Column divs: <div class="text-slate-700 text-sm leading-relaxed">
       const columns = slide.content.columns || [];
       columns.slice(0, 3).forEach((col) => {
         const columnDiv = document.createElement('div');
-        columnDiv.style.cssText = `
-          color: #475569;
-          font-size: 0.875rem;
-          line-height: 1.625;
-        `;
+        columnDiv.className = 'text-slate-700 text-sm leading-relaxed';
 
         // Paragraphs: <p class="mb-4">
         const paragraphs = (col.text || '').split(/\n\n+/);
@@ -113,7 +93,10 @@ export const CUSTOM_SLIDE_TYPES = {
           if (para.trim()) {
             const p = document.createElement('p');
             p.textContent = para.trim();
-            p.style.cssText = idx < paragraphs.length - 1 ? 'margin-bottom: 1rem;' : 'margin: 0;';
+            // Last paragraph has no margin
+            if (idx < paragraphs.length - 1) {
+              p.className = 'mb-4';
+            }
             columnDiv.appendChild(p);
           }
         });
@@ -130,7 +113,7 @@ export const CUSTOM_SLIDE_TYPES = {
 
   /**
    * BIP Single-Column Layout (bip-slide-4.html)
-   * Exact replica of original HTML structure
+   * Exact replica using Tailwind classes
    */
   'bip-single-column': {
     schema: {
@@ -151,39 +134,28 @@ export const CUSTOM_SLIDE_TYPES = {
       // <body class="bg-white p-12">
       // NOTE: Presentation viewer .slide-content already adds 3rem padding
       const body = document.createElement('div');
+      body.className = 'bg-white';
       body.style.cssText = `
-        background-color: #ffffff;
-        padding: 0;
         font-family: 'Inter', sans-serif;
         width: 100%;
         height: 100%;
         box-sizing: border-box;
-        position: relative;
+        padding: 0;
       `;
 
       // <div class="max-w-7xl mx-auto">
       const container = document.createElement('div');
-      container.style.cssText = `
-        max-width: 80rem;
-        margin-left: auto;
-        margin-right: auto;
-      `;
+      container.className = 'max-w-7xl mx-auto';
 
       // Header with eyebrow ONLY: <div class="mb-8">
       const header = document.createElement('div');
-      header.style.cssText = `margin-bottom: 2rem;`;
+      header.className = 'mb-8';
 
       // Eyebrow: <h2 class="text-red-600 font-bold text-sm tracking-wider mb-6">
       if (slide.content.eyebrow?.text) {
         const eyebrow = document.createElement('h2');
+        eyebrow.className = 'text-red-600 font-bold text-sm tracking-wider mb-6';
         eyebrow.textContent = slide.content.eyebrow.text;
-        eyebrow.style.cssText = `
-          color: #DC2626;
-          font-weight: 700;
-          font-size: 0.875rem;
-          letter-spacing: 0.05em;
-          margin-bottom: 1.5rem;
-        `;
         header.appendChild(eyebrow);
       }
 
@@ -191,11 +163,7 @@ export const CUSTOM_SLIDE_TYPES = {
 
       // Two-column grid: <div class="grid grid-cols-2 gap-20">
       const grid = document.createElement('div');
-      grid.style.cssText = `
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 5rem;
-      `;
+      grid.className = 'grid grid-cols-2 gap-20';
 
       // Left column - Title ONLY: <div><h1 class="text-6xl font-extralight text-slate-800 leading-tight">
       const leftCol = document.createElement('div');
@@ -204,41 +172,33 @@ export const CUSTOM_SLIDE_TYPES = {
         : slide.content.title?.text;
       if (titleText) {
         const title = document.createElement('h1');
+        title.className = 'text-6xl font-extralight text-slate-800 leading-tight';
+        // Add explicit font-family and letter-spacing (not in Tailwind defaults)
+        title.style.fontFamily = "'Inter', sans-serif";
+        title.style.letterSpacing = '0.05em';
+        title.style.margin = '0';
+
+        // Handle line breaks
         const lines = titleText.split(/\\n|\n/);
         lines.forEach((line, idx) => {
           if (idx > 0) title.appendChild(document.createElement('br'));
           title.appendChild(document.createTextNode(line));
         });
-        title.style.cssText = `
-          font-family: 'Inter', sans-serif;
-          font-size: 3.75rem;
-          font-weight: 200;
-          color: #1e293b;
-          line-height: 1.25;
-          letter-spacing: 0.05em;
-          margin: 0;
-        `;
         leftCol.appendChild(title);
       }
       grid.appendChild(leftCol);
 
       // Right column - Body text: <div class="space-y-8 text-slate-700 text-base leading-relaxed">
       const rightCol = document.createElement('div');
-      rightCol.style.cssText = `
-        color: #475569;
-        font-size: 1rem;
-        line-height: 1.625;
-      `;
+      rightCol.className = 'space-y-8 text-slate-700 text-base leading-relaxed';
 
-      // Paragraphs with space-y-8 (2rem gap)
+      // Paragraphs with space-y-8 (Tailwind handles spacing via :not(:first-child))
       if (slide.content.bodyText?.text) {
         const paragraphs = slide.content.bodyText.text.split(/\n\n+/);
-        paragraphs.forEach((para, idx) => {
+        paragraphs.forEach((para) => {
           if (para.trim()) {
             const p = document.createElement('p');
             p.textContent = para.trim();
-            // space-y-8 means margin-top: 2rem on all but first child
-            p.style.cssText = idx > 0 ? 'margin-top: 2rem;' : 'margin: 0;';
             rightCol.appendChild(p);
           }
         });
