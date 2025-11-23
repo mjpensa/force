@@ -476,6 +476,7 @@ export const GANTT_CHART_SCHEMA = {
 
 /**
  * Task Analysis JSON Schema
+ * Simplified to avoid Gemini API "too many states" error
  */
 export const TASK_ANALYSIS_SCHEMA = {
   type: "object",
@@ -483,7 +484,7 @@ export const TASK_ANALYSIS_SCHEMA = {
     taskName: { type: "string" },
     startDate: { type: "string" },
     endDate: { type: "string" },
-    status: { type: "string", enum: ["completed", "in-progress", "not-started", "n/a"] },
+    status: { type: "string" },
     facts: {
       type: "array",
       items: {
@@ -491,7 +492,7 @@ export const TASK_ANALYSIS_SCHEMA = {
         properties: {
           fact: { type: "string" },
           source: { type: "string" },
-          url: { type: "string" } // Can be a URL string or null
+          url: { type: "string" }
         }
       }
     },
@@ -502,16 +503,14 @@ export const TASK_ANALYSIS_SCHEMA = {
         properties: {
           assumption: { type: "string" },
           source: { type: "string" },
-          url: { type: "string" } // Can be a URL string or null
+          url: { type: "string" }
         }
       }
     },
-    rationale: { type: "string" }, // For 'in-progress' or 'not-started'
-    summary: { type: "string" }, // For 'completed'
+    rationale: { type: "string" },
+    summary: { type: "string" },
 
-    // PHASE 1 ENHANCEMENTS
-
-    // Scheduling Context - Explains why task starts when it does
+    // PHASE 1 ENHANCEMENTS - Simplified
     schedulingContext: {
       type: "object",
       properties: {
@@ -523,7 +522,6 @@ export const TASK_ANALYSIS_SCHEMA = {
       }
     },
 
-    // Timeline Scenarios - Best/worst/expected case estimates
     timelineScenarios: {
       type: "object",
       properties: {
@@ -531,7 +529,7 @@ export const TASK_ANALYSIS_SCHEMA = {
           type: "object",
           properties: {
             date: { type: "string" },
-            confidence: { type: "string", enum: ["high", "medium", "low"] }
+            confidence: { type: "string" }
           }
         },
         bestCase: {
@@ -552,22 +550,20 @@ export const TASK_ANALYSIS_SCHEMA = {
       }
     },
 
-    // Structured Risk Analysis
     risks: {
       type: "array",
       items: {
         type: "object",
         properties: {
           name: { type: "string" },
-          severity: { type: "string", enum: ["high", "medium", "low"] },
-          likelihood: { type: "string", enum: ["probable", "possible", "unlikely"] },
+          severity: { type: "string" },
+          likelihood: { type: "string" },
           impact: { type: "string" },
           mitigation: { type: "string" }
         }
       }
     },
 
-    // Impact Analysis - Consequences of delays
     impact: {
       type: "object",
       properties: {
@@ -578,9 +574,7 @@ export const TASK_ANALYSIS_SCHEMA = {
       }
     },
 
-    // PHASE 2 ENHANCEMENTS
-
-    // Progress Indicators - For in-progress tasks only
+    // PHASE 2 ENHANCEMENTS - Simplified
     progress: {
       type: "object",
       properties: {
@@ -596,12 +590,11 @@ export const TASK_ANALYSIS_SCHEMA = {
             }
           }
         },
-        velocity: { type: "string", enum: ["on-track", "behind", "ahead"] },
+        velocity: { type: "string" },
         activeBlockers: { type: "array", items: { type: "string" } }
       }
     },
 
-    // Motivators & Accelerators - Factors that can speed up completion
     accelerators: {
       type: "object",
       properties: {
@@ -612,349 +605,57 @@ export const TASK_ANALYSIS_SCHEMA = {
       }
     },
 
-    // PHASE 3 ENHANCEMENTS
-
-    // Confidence Assessment - Data quality and certainty indicators
+    // PHASE 3 ENHANCEMENTS - Simplified
     confidence: {
       type: "object",
       properties: {
-        level: { type: "string", enum: ["high", "medium", "low"] },
-        dataQuality: { type: "string", enum: ["complete", "partial", "limited"] },
+        level: { type: "string" },
+        dataQuality: { type: "string" },
         assumptionCount: { type: "number" },
         rationale: { type: "string" }
       }
     },
 
-    // BANKING ENHANCEMENT - Financial Impact Analysis
+    // BANKING ENHANCEMENTS - Simplified to reduce complexity
     financialImpact: {
       type: "object",
       properties: {
-        costs: {
-          type: "object",
-          properties: {
-            laborCosts: { type: "string" },
-            technologyCosts: { type: "string" },
-            vendorCosts: { type: "string" },
-            totalCost: { type: "string" }
-          }
-        },
-        benefits: {
-          type: "object",
-          properties: {
-            revenueIncrease: { type: "string" },
-            costSavings: { type: "string" },
-            riskReduction: { type: "string" },
-            totalAnnualBenefit: { type: "string" }
-          }
-        },
-        roiMetrics: {
-          type: "object",
-          properties: {
-            paybackPeriod: { type: "string" },
-            firstYearROI: { type: "string" },
-            threeYearNPV: { type: "string" },
-            confidenceLevel: { type: "string", enum: ["high", "medium", "low"] }
-          }
-        }
+        totalCost: { type: "string" },
+        totalAnnualBenefit: { type: "string" },
+        paybackPeriod: { type: "string" },
+        firstYearROI: { type: "string" },
+        confidenceLevel: { type: "string" }
       }
     },
 
-    // BANKING ENHANCEMENT - Stakeholder & Change Management Analysis
     stakeholderImpact: {
       type: "object",
       properties: {
-        // Customer Experience Impact
-        customerExperience: {
-          type: "object",
-          properties: {
-            currentState: { type: "string" },
-            futureState: { type: "string" },
-            primaryBenefits: { type: "array", items: { type: "string" } },
-            potentialConcerns: { type: "array", items: { type: "string" } },
-            communicationStrategy: { type: "string" }
-          }
-        },
-
-        // Internal Stakeholders
-        internalStakeholders: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              group: { type: "string" },
-              size: { type: "string" },
-              currentRole: { type: "string" },
-              futureRole: { type: "string" },
-              impactLevel: { type: "string", enum: ["high", "medium", "low"] },
-              concerns: { type: "array", items: { type: "string" } },
-              trainingNeeds: { type: "string" },
-              championOpportunity: { type: "boolean" }
-            }
-          }
-        },
-
-        // Executive Alignment
-        executiveAlignment: {
-          type: "object",
-          properties: {
-            sponsor: { type: "string" },
-            supporters: { type: "array", items: { type: "string" } },
-            neutrals: { type: "array", items: { type: "string" } },
-            resistors: { type: "array", items: { type: "string" } },
-            alignmentStrategy: { type: "string" }
-          }
-        },
-
-        // Change Readiness Assessment
-        changeReadiness: {
-          type: "object",
-          properties: {
-            overallScore: { type: "string", enum: ["high", "medium", "low"] },
-            culturalFit: { type: "string" },
-            historicalChange: { type: "string" },
-            leadershipCommitment: { type: "string" },
-            resourceAvailability: { type: "string" }
-          }
-        },
-
-        // Resistance Risks
-        resistanceRisks: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              risk: { type: "string" },
-              probability: { type: "string", enum: ["high", "medium", "low"] },
-              impact: { type: "string" },
-              mitigation: { type: "string" },
-              earlyWarningSignal: { type: "string" }
-            }
-          }
-        }
+        customerImpact: { type: "string" },
+        employeeImpact: { type: "string" },
+        executiveSponsor: { type: "string" },
+        changeReadinessScore: { type: "string" },
+        resistanceRisks: { type: "array", items: { type: "string" } }
       }
     },
 
-    // BANKING ENHANCEMENT - Data Migration & Analytics Strategy
     dataMigrationStrategy: {
       type: "object",
       properties: {
-        // Migration Complexity Assessment
-        migrationComplexity: {
-          type: "object",
-          properties: {
-            complexityLevel: { type: "string", enum: ["low", "medium", "high", "critical"] },
-            volumeEstimate: { type: "string" },
-            systemsInvolved: { type: "array", items: { type: "string" } },
-            estimatedDuration: { type: "string" },
-            technicalChallenges: { type: "array", items: { type: "string" } }
-          }
-        },
-
-        // Data Quality Analysis
-        dataQuality: {
-          type: "object",
-          properties: {
-            currentQualityScore: { type: "number" },
-            qualityIssues: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  issue: { type: "string" },
-                  severity: { type: "string", enum: ["critical", "high", "medium", "low"] },
-                  remediation: { type: "string" }
-                }
-              }
-            },
-            cleansingStrategy: { type: "string" },
-            validationRules: { type: "array", items: { type: "string" } }
-          }
-        },
-
-        // Analytics Roadmap (Maturity Progression)
-        analyticsRoadmap: {
-          type: "object",
-          properties: {
-            currentMaturity: { type: "string", enum: ["descriptive", "diagnostic", "predictive", "prescriptive"] },
-            targetMaturity: { type: "string", enum: ["descriptive", "diagnostic", "predictive", "prescriptive"] },
-            phases: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  phase: { type: "string" },
-                  capabilities: { type: "array", items: { type: "string" } },
-                  timeline: { type: "string" },
-                  prerequisites: { type: "array", items: { type: "string" } }
-                }
-              }
-            }
-          }
-        },
-
-        // Data Governance Framework
-        dataGovernance: {
-          type: "object",
-          properties: {
-            ownershipModel: { type: "string" },
-            dataClassification: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  dataType: { type: "string" },
-                  classification: { type: "string", enum: ["public", "internal", "confidential", "restricted"] },
-                  handlingRequirements: { type: "string" }
-                }
-              }
-            },
-            retentionPolicies: { type: "array", items: { type: "string" } },
-            qualityMetrics: { type: "array", items: { type: "string" } },
-            auditRequirements: { type: "string" }
-          }
-        },
-
-        // Privacy & Security Controls
-        privacySecurity: {
-          type: "object",
-          properties: {
-            complianceRequirements: { type: "array", items: { type: "string" } },
-            encryptionStrategy: { type: "string" },
-            accessControls: { type: "string" },
-            dataLineage: { type: "string" },
-            incidentResponse: { type: "string" }
-          }
-        }
+        complexityLevel: { type: "string" },
+        volumeEstimate: { type: "string" },
+        estimatedDuration: { type: "string" },
+        keyRisks: { type: "array", items: { type: "string" } }
       }
     },
 
-    // BANKING ENHANCEMENT - Success Metrics & KPI Framework
     successMetrics: {
       type: "object",
       properties: {
-        // North Star Metric - The single most important success indicator
-        northStarMetric: {
-          type: "object",
-          properties: {
-            metric: { type: "string" },
-            definition: { type: "string" },
-            targetValue: { type: "string" },
-            currentBaseline: { type: "string" },
-            measurementFrequency: { type: "string", enum: ["daily", "weekly", "monthly", "quarterly"] },
-            rationale: { type: "string" }
-          }
-        },
-
-        // Business Outcome Metrics (categorized)
-        businessMetrics: {
-          type: "object",
-          properties: {
-            // Revenue Impact
-            revenueMetrics: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  target: { type: "string" },
-                  baseline: { type: "string" },
-                  timeframe: { type: "string" },
-                  trackingMethod: { type: "string" }
-                }
-              }
-            },
-
-            // Cost Reduction
-            costMetrics: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  target: { type: "string" },
-                  baseline: { type: "string" },
-                  timeframe: { type: "string" },
-                  trackingMethod: { type: "string" }
-                }
-              }
-            },
-
-            // Customer Experience
-            experienceMetrics: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  target: { type: "string" },
-                  baseline: { type: "string" },
-                  timeframe: { type: "string" },
-                  trackingMethod: { type: "string" }
-                }
-              }
-            },
-
-            // Risk Mitigation
-            riskMetrics: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  target: { type: "string" },
-                  baseline: { type: "string" },
-                  timeframe: { type: "string" },
-                  trackingMethod: { type: "string" }
-                }
-              }
-            }
-          }
-        },
-
-        // Leading Indicators (Early Warning System)
-        leadingIndicators: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              indicator: { type: "string" },
-              predictedOutcome: { type: "string" },
-              thresholdAlert: { type: "string" },
-              monitoringFrequency: { type: "string", enum: ["daily", "weekly", "monthly"] },
-              actionTrigger: { type: "string" }
-            }
-          }
-        },
-
-        // KPI Dashboard Configuration
-        kpiDashboard: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              kpi: { type: "string" },
-              category: { type: "string", enum: ["revenue", "cost", "experience", "risk", "operational"] },
-              currentValue: { type: "string" },
-              targetValue: { type: "string" },
-              trend: { type: "string", enum: ["improving", "declining", "stable", "new"] },
-              statusIndicator: { type: "string", enum: ["green", "yellow", "red"] },
-              owner: { type: "string" },
-              reviewCadence: { type: "string", enum: ["weekly", "monthly", "quarterly"] }
-            }
-          }
-        },
-
-        // Continuous Improvement Tracking
-        continuousImprovement: {
-          type: "object",
-          properties: {
-            reviewCycle: { type: "string" },
-            improvementTargets: { type: "array", items: { type: "string" } },
-            optimizationOpportunities: { type: "array", items: { type: "string" } },
-            benchmarkComparison: { type: "string" },
-            iterationPlan: { type: "string" }
-          }
-        }
+        northStarMetric: { type: "string" },
+        targetValue: { type: "string" },
+        currentBaseline: { type: "string" },
+        keyKPIs: { type: "array", items: { type: "string" } }
       }
     }
   },
