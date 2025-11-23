@@ -472,6 +472,11 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
 
           slides.push(transformedSlide);
           console.log(`Job ${jobId}: ✓ Generated content for slide ${i + 1}: type="${slide.type}"`);
+          console.log(`Job ${jobId}:   Content fields: ${Object.keys(rest).join(', ')}`);
+          // Debug: Log actual content for BIP slides
+          if (type.startsWith('bip-')) {
+            console.log(`Job ${jobId}:   [DEBUG] BIP slide data:`, JSON.stringify(transformedSlide, null, 2));
+          }
         } else {
           console.warn(`Job ${jobId}: ⚠️ Failed to generate content for slide ${i + 1}, skipping`);
         }
