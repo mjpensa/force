@@ -87,8 +87,8 @@ export class ExecutiveSummary {
   }
 
   /**
-   * Renders the modern document viewer
-   * @returns {HTMLElement} The rendered viewer container
+   * Renders a simple scrollable document (like Word/Google Docs)
+   * @returns {HTMLElement} The rendered document container
    */
   render() {
     // Create main container
@@ -110,21 +110,74 @@ export class ExecutiveSummary {
       return this.container;
     }
 
-    // Build modern viewer structure
-    this._buildProgressBar();
-    this._buildTopBar();
-
-    const mainContent = this._buildMainContent();
-    this.container.appendChild(mainContent);
-
-    this._buildFloatingNav();
-    this._buildTOCOverlay();
-    this._buildShortcutsOverlay();
-
-    // Add keyboard event listeners
-    document.addEventListener('keydown', this.handleKeyPress);
+    // Build simple document content (no complex viewer UI)
+    console.log('📝 Building simple document content');
+    const documentHTML = this._buildSimpleDocument();
+    this.container.innerHTML = documentHTML;
 
     return this.container;
+  }
+
+  /**
+   * Builds a simple scrollable document with all content
+   * @private
+   * @returns {string} Complete document HTML
+   */
+  _buildSimpleDocument() {
+    let html = '<div class="executive-summary-page">';
+
+    // Title
+    html += '<h1 class="page-title">Executive Summary</h1>';
+
+    // Render all sections in order
+    const sections = [
+      'strategicNarrative',
+      'strategicPriorities',
+      'drivers',
+      'dependencies',
+      'risks',
+      'keyInsights',
+      'competitiveIntelligence',
+      'industryBenchmarks'
+    ];
+
+    sections.forEach(sectionName => {
+      const sectionData = this.summaryData[sectionName];
+      console.log(`  Section "${sectionName}":`, sectionData ? 'EXISTS' : 'MISSING');
+
+      if (!sectionData) return;
+
+      switch (sectionName) {
+        case 'strategicNarrative':
+          html += this._renderStrategicNarrative(sectionData);
+          break;
+        case 'strategicPriorities':
+          html += this._renderStrategicPriorities(sectionData);
+          break;
+        case 'drivers':
+          html += this._renderDrivers(sectionData);
+          break;
+        case 'dependencies':
+          html += this._renderDependencies(sectionData);
+          break;
+        case 'risks':
+          html += this._renderRisks(sectionData);
+          break;
+        case 'keyInsights':
+          html += this._renderKeyInsights(sectionData);
+          break;
+        case 'competitiveIntelligence':
+          html += this._renderCompetitiveIntelligence(sectionData);
+          break;
+        case 'industryBenchmarks':
+          html += this._renderIndustryBenchmarks(sectionData);
+          break;
+      }
+    });
+
+    html += '</div>';
+
+    return html;
   }
 
   /**

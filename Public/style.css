@@ -7651,66 +7651,68 @@ body.dragging {
 
 
 /* ===================================================================
-   EXECUTIVE SUMMARY CONTENT STYLES (Document-Based Prose Format)
+   EXECUTIVE SUMMARY - Simple Document Style (Word/Google Docs)
    =================================================================== */
 
 .executive-summary-viewer {
-  background: #ffffff;
+  background: #f3f4f6;
   min-height: 100vh;
   width: 100%;
+  overflow-y: auto;
+  padding: 2rem 1rem;
 }
 
 .executive-summary-page {
-  padding: 3rem 4rem;
-  max-width: 900px;
+  max-width: 8.5in;
   margin: 0 auto;
-  color: #1f2937;
-  font-family: 'Work Sans', sans-serif;
-  line-height: 1.8;
+  padding: 1in;
   background: #ffffff;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  color: #000000;
+  font-family: 'Calibri', 'Arial', sans-serif;
+  line-height: 1.5;
+  font-size: 11pt;
 }
 
 .page-title {
-  font-size: 2.5rem;
+  font-size: 20pt;
   font-weight: 700;
-  margin-bottom: 2.5rem;
-  color: #0f172a;
-  border-bottom: 2px solid #3b82f6;
-  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  margin-top: 0;
+  color: #000000;
   text-align: center;
 }
 
 .doc-section {
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
 }
 
 .doc-heading {
-  font-size: 1.75rem;
-  font-weight: 600;
-  margin-bottom: 1.25rem;
-  margin-top: 2.5rem;
+  font-size: 14pt;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  margin-top: 1.5rem;
   color: #1e40af;
-  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
-  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #1e40af;
+  padding-bottom: 0.25rem;
 }
 
 .doc-paragraph {
-  font-size: 1.05rem;
-  line-height: 1.9;
-  margin-bottom: 1.25rem;
-  color: #1f2937;
-  text-align: justify;
+  font-size: 11pt;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+  color: #000000;
+  text-align: left;
 }
 
 .doc-paragraph strong {
   color: #000000;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .doc-paragraph em {
   font-style: italic;
-  color: #1d4ed8;
-  font-size: 1.1rem;
+  color: #1e40af;
 }
 
 /* Doc Page Footer */
