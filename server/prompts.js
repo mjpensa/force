@@ -1453,10 +1453,6 @@ export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
             }
           ]
         },
-        subtitle: {
-          type: "string",
-          maxLength: 300
-        },
         content: {
           type: "array",
           items: {
