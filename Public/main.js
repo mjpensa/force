@@ -538,20 +538,8 @@ async function handleChartGenerate(event) {
       return; // Will re-enable button in finally block
     }
 
-    // 4. Get content selection preferences
-    const generateExecutiveSummaryToggle = document.getElementById('generate-executive-summary-toggle');
-
-    const generateExecutiveSummary = generateExecutiveSummaryToggle && generateExecutiveSummaryToggle.checked;
-
-    console.log('Content generation preferences:', {
-      generateExecutiveSummary
-    });
-
     const formData = new FormData();
     formData.append('prompt', promptInput.value);
-
-    // Add content selection flags
-    formData.append('generateExecutiveSummary', generateExecutiveSummary ? 'true' : 'false');
 
     // Append all files with the correct field name
     for (const file of validFiles) {
