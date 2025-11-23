@@ -25,9 +25,11 @@ export const CUSTOM_SLIDE_TYPES = {
     },
 
     render: (slide, theme, slideNumber) => {
+      console.log('[BIP Three-Column] Using template population approach v2');
+
       // Create container using EXACT template structure from bip-slide-2.html
       const template = `
-        <div style="font-family: 'Inter', sans-serif; width: 100%; height: 100%; background: white;">
+        <div style="font-family: 'Inter', sans-serif; width: 100%; height: 100%; background: white;" data-template-version="v2">
           <div class="max-w-7xl mx-auto">
             <!-- Header -->
             <div class="mb-8">
@@ -132,9 +134,11 @@ export const CUSTOM_SLIDE_TYPES = {
     },
 
     render: (slide, theme, slideNumber) => {
+      console.log('[BIP Single-Column] Using template population approach v2');
+
       // Create container using EXACT template structure from bip-slide-4.html
       const template = `
-        <div style="font-family: 'Inter', sans-serif; width: 100%; height: 100%; background: white;">
+        <div style="font-family: 'Inter', sans-serif; width: 100%; height: 100%; background: white;" data-template-version="v2">
           <div class="max-w-7xl mx-auto">
             <!-- Header -->
             <div class="mb-8">
