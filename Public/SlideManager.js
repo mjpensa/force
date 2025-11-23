@@ -225,22 +225,33 @@ export class SlideManager {
 
   /**
    * Get slide title for display
+   * Handles both string and object formats for title fields (BIP slides compatibility)
    * @private
    */
   getSlideTitle(slide) {
     if (!slide || !slide.content) return 'Untitled Slide';
 
     // Try different title fields based on slide type
-    if (slide.content.title && slide.content.title.text) {
-      return slide.content.title.text;
+    // Handle both string and object formats (e.g., "Title" vs { text: "Title" })
+    if (slide.content.title) {
+      const titleText = typeof slide.content.title === 'string'
+        ? slide.content.title
+        : slide.content.title?.text;
+      if (titleText) return titleText;
     }
 
-    if (slide.content.sectionTitle && slide.content.sectionTitle.text) {
-      return slide.content.sectionTitle.text;
+    if (slide.content.sectionTitle) {
+      const sectionText = typeof slide.content.sectionTitle === 'string'
+        ? slide.content.sectionTitle
+        : slide.content.sectionTitle?.text;
+      if (sectionText) return sectionText;
     }
 
-    if (slide.content.quote && slide.content.quote.text) {
-      return slide.content.quote.text.substring(0, 50) + '...';
+    if (slide.content.quote) {
+      const quoteText = typeof slide.content.quote === 'string'
+        ? slide.content.quote
+        : slide.content.quote?.text;
+      if (quoteText) return quoteText.substring(0, 50) + '...';
     }
 
     return `${slide.type.charAt(0).toUpperCase() + slide.type.slice(1)} Slide`;
