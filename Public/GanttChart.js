@@ -495,19 +495,6 @@ export class GanttChart {
       barEl.setAttribute('data-color', bar.color || 'default');
       barEl.style.gridColumn = `${bar.startCol} / ${bar.endCol}`;
 
-      // ADVANCED GANTT: Add critical path styling
-      // REMOVED: Critical path styling with pulsing outline
-      // if (row.isCriticalPath) {
-      //   barEl.classList.add('critical-path');
-      //   barEl.setAttribute('data-critical-path', 'true');
-      // }
-
-      // ADVANCED GANTT: Add milestone marker based on task type
-      // REMOVED: Milestone markers (icons on bars)
-      // if (row.taskType) {
-      //   this._addMilestoneMarker(barEl, row.taskType, row.title);
-      // }
-
       barAreaEl.appendChild(barEl);
     }
 
@@ -726,48 +713,6 @@ export class GanttChart {
     barAreaEl.addEventListener('mouseleave', () => {
       barAreaEl.classList.remove('row-hover');
     });
-  }
-
-  /**
-   * ADVANCED GANTT: Adds milestone marker icon based on task type
-   * @param {HTMLElement} barEl - The bar element to add the marker to
-   * @param {string} taskType - The type of task (milestone, decision, task)
-   * @param {string} title - The task title for tooltip
-   * @private
-   */
-  _addMilestoneMarker(barEl, taskType, title) {
-    // Only add markers for strategic task types (not regular tasks)
-    if (taskType === 'task') return;
-
-    const marker = document.createElement('span');
-    marker.className = `milestone-marker ${taskType}-marker`;
-
-    // Set icon and tooltip based on task type
-    switch (taskType) {
-      case 'milestone':
-        marker.textContent = '💰';
-        marker.title = `Milestone: ${title}`;
-        break;
-      case 'decision':
-        marker.textContent = '★';
-        marker.title = `Decision Point: ${title}`;
-        break;
-      default:
-        return; // Unknown type, don't add marker
-    }
-
-    // Position marker at end of bar (right side)
-    marker.style.position = 'absolute';
-    marker.style.right = '4px';
-    marker.style.top = '50%';
-    marker.style.transform = 'translateY(-50%)';
-    marker.style.zIndex = '10';
-    marker.style.fontSize = '16px';
-    marker.style.lineHeight = '1';
-    marker.style.cursor = 'help';
-
-    barEl.style.position = 'relative'; // Ensure bar is positioned for absolute child
-    barEl.appendChild(marker);
   }
 
   /**
@@ -1034,8 +979,7 @@ export class GanttChart {
         // FEATURE #9: Track PNG export
         trackEvent('export_png', {
           taskCount: this.ganttData.data.length,
-          exportTime: duration,
-          isExecutiveView: this.isExecutiveView
+          exportTime: duration
         });
 
         // Update button state
@@ -1188,8 +1132,7 @@ export class GanttChart {
         // Track SVG export
         trackEvent('export_svg', {
           taskCount: this.ganttData.data.length,
-          exportTime: duration,
-          isExecutiveView: this.isExecutiveView
+          exportTime: duration
         });
 
         // Update button state
