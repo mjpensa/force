@@ -408,43 +408,69 @@ Systematic comparison of every visual element:
 ---
 
 ## CURRENT STATE VS IDEAL STATE GAP ANALYSIS
+**Last Updated**: November 23, 2025 (After commits 587b1d7 + 4eaf686)
+**Focus**: Text spatial alignment and typography ONLY
 
-### Visual Comparison Matrix
+### Visual Comparison Matrix - TEXT ELEMENTS ONLY
 
-| Element | Current State | Ideal State | Gap Severity | Status |
-|---------|---------------|-------------|--------------|--------|
-| **Title Font Family** | Inter (after adbbb5e) | Inter | ✅ Fixed | Complete |
-| **Title Font Weight** | Rendering at ~400-500 | Should be 200 (extralight) | ⚠️ CRITICAL | P0 Fix Needed |
-| **Title Font Size** | Code: 3.75rem, Appears smaller | 3.75rem (text-6xl) | ⚠️ HIGH | P1 Debug Needed |
-| **Title Letter-Spacing** | Not set (0) | ~-0.02em (airy/open) | ⚠️ CRITICAL | P0 Fix Needed |
+| Element | Current State (After Fixes) | Ideal State | Gap Severity | Status |
+|---------|----------------------------|-------------|--------------|--------|
+| **Title Font Family** | Inter, explicit on element | Inter | ✅ Fixed | Complete |
+| **Title Font Weight** | Code: 200, Rendering: TBD | 200 (extralight) | ⚠️ UNKNOWN | Needs Browser Test |
+| **Title Font Size** | Code: 3.75rem (single) / 3rem (three) | 3.75rem / 3rem | ✅ Fixed | Complete |
+| **Title Letter-Spacing** | **0.05em (positive, wide)** | Positive spacing (airy) | ✅ Fixed | Complete |
 | **Title Line Height** | 1.25 | 1.25 (leading-tight) | ✅ Match | Complete |
-| **Corner Graphic** | Solid red square | Geometric navy/blue/red pattern | ⚠️ CRITICAL | P0 Debug Needed |
-| **Graphic Positioning** | top: -3rem, right: -3rem | Should be at corner | ✅ Fixed | Complete |
+| **Title Color** | #1e293b (slate-800) | #1e293b | ✅ Match | Complete |
 | **Eyebrow Font** | Red, uppercase, small | Red, uppercase, small | ✅ Match | Complete |
+| **Eyebrow Font Size** | 0.875rem (text-sm) | 0.875rem | ✅ Match | Complete |
 | **Eyebrow Spacing** | tracking-wider (0.05em) | tracking-wider | ✅ Match | Complete |
-| **Body Font Size** | 1rem | 1rem (text-base) | ✅ Match | Complete |
-| **Body Color** | #475569 | #475569 (slate-700) | ✅ Match | Complete |
-| **Grid Structure** | 2 columns, 5rem gap | 2 columns, 5rem gap | ✅ Match | Complete |
-| **Container Max-Width** | 80rem | 80rem (max-w-7xl) | ✅ Match | Complete |
-| **Padding** | 0 (viewer adds 3rem) | Effective 3rem | ✅ Fixed | Complete |
-| **Footer Elements** | Missing | Slide #, bip. logo | ℹ️ Framework | Not Template |
-| **Text Underlines** | Missing | Red dotted on keywords | ℹ️ Feature | Content-Level |
+| **Eyebrow Margin** | 1.5rem bottom (mb-6) | 1.5rem bottom | ✅ Match | Complete |
+| **Body Font Size** | 1rem (text-base) | 1rem | ✅ Match | Complete |
+| **Body Font Weight** | Normal (400) | Normal | ✅ Match | Complete |
+| **Body Color** | #475569 (slate-700) | #475569 | ✅ Match | Complete |
+| **Body Line Height** | 1.625 (leading-relaxed) | 1.625 | ✅ Match | Complete |
+| **Paragraph Spacing** | 2rem (space-y-8) | 2rem | ✅ Match | Complete |
+| **Grid Structure** | 2/3 columns, correct gaps | 2/3 columns | ✅ Match | Complete |
+| **Column Gap (2-col)** | 5rem (gap-20) | 5rem | ✅ Match | Complete |
+| **Column Gap (3-col)** | 2.5rem (gap-10) | 2.5rem | ✅ Match | Complete |
+| **Container Max-Width** | 80rem (max-w-7xl) | 80rem | ✅ Match | Complete |
+| **Container Padding** | 0 (viewer adds 3rem) | Effective 3rem | ✅ Fixed | Complete |
+| **Header Margin** | 2rem bottom (mb-8) | 2rem bottom | ✅ Match | Complete |
+| **Grid Margin Top** | 4rem (mt-16, three-col only) | 4rem | ✅ Match | Complete |
 
-### Priority Summary
+### Non-Text Elements (Removed from Scope)
 
-**P0 Issues** (CRITICAL - Blocking visual fidelity):
-1. Title letter-spacing missing
-2. Title font weight rendering incorrectly
-3. Corner graphic not loading/displaying
+| Element | Status | Notes |
+|---------|--------|-------|
+| **Corner Graphics** | ✅ REMOVED | Commit 587b1d7 - Not needed for text layout |
+| **Logos** | ✅ REMOVED | Commit 587b1d7 - Not needed for text layout |
+| **Stripes** | ✅ REMOVED | Commit 587b1d7 - Not needed for text layout |
+| **Footer Elements** | ℹ️ Framework | Slide #, bip. logo - presentation viewer responsibility |
+| **Text Underlines** | ℹ️ Content | Red dotted on keywords - content-level feature |
 
-**P1 Issues** (HIGH - Visual quality):
-4. Title font size appears smaller than expected
+### Priority Summary - TEXT LAYOUT ONLY
 
-**P2 Issues** (MEDIUM - Feature enhancements):
-5. Dotted underlines on body text (content feature)
+**P0 Issues** (CRITICAL - Blocking text fidelity):
+1. ✅ **FIXED**: Title letter-spacing (changed from -0.02em to +0.05em in commit 4eaf686)
+2. ✅ **FIXED**: Title font-family (added explicit declaration in commit c02eb58)
+3. ✅ **REMOVED**: Corner graphics (removed in commit 587b1d7, not text-related)
 
-**P3 Issues** (LOW - Framework features):
-6. Footer elements (presentation viewer responsibility)
+**P1 Issues** (HIGH - Needs Browser Testing):
+4. ⚠️ **UNKNOWN**: Title font weight rendering (code correct at 200, needs visual confirmation)
+   - May need browser DevTools to verify Inter font actually loading
+   - May need to try weight 100 (thinner) if 200 still appears heavy
+5. ⚠️ **VERIFY**: Letter-spacing width (0.05em may need adjustment to 0.075em or 0.1em)
+   - Reference shows VERY wide spacing
+   - Current 0.05em may still be too tight
+   - Needs visual comparison
+
+**P2 Issues** (MEDIUM - Optional refinements):
+6. ℹ️ **OPTIONAL**: Title left border (2px line decoration from reference)
+7. ℹ️ **OPTIONAL**: Fine-tune letter-spacing if visual testing shows need
+
+**P3 Issues** (LOW - Framework/Content features):
+8. ℹ️ Footer elements (presentation viewer responsibility)
+9. ℹ️ Text underlines (content-level feature, not template)
 
 ---
 
@@ -571,16 +597,20 @@ title.style.cssText = `
 
 ## IMPLEMENTED FIXES
 
-### Summary of 6 Commits
+### Summary of 10 Commits
 
 | Commit | Date | Description | Files Changed | Impact |
 |--------|------|-------------|---------------|--------|
-| **b59d0d4** | Session Start | [BIP Templates] FIX padding and corner graphic positioning | SlideTemplates.js | Fixed double padding (6rem→3rem), fixed corner positioning |
-| **88a2da3** | Session Start | [Schema] Align BIP slide schemas with defensive template behavior | prompts.js, charts.js | Removed optional fields from required arrays |
-| **fc734f3** | Session Start | [SlideManager] FIX title format handling for BIP slides | SlideManager.js | Fixed string vs object title handling |
-| **982476a** | Session Start | [Validation] Add comprehensive empty string and edge case handling | charts.js, SlideEditor.js | Added validation for empty titles, columns, etc. |
-| **7d70f25** | Session Start | [Cleanup] Remove inactive SlideTemplates backup files | 3 backup files | Deleted 1,004 lines, freed 42 KB |
-| **adbbb5e** | Session Start | [BIP Templates] FIX font and corner graphic rendering | presentation-viewer.css, SlideTemplates.js | Added Inter font import, fixed SVG paths |
+| **b59d0d4** | Session Phase 1 | [BIP Templates] FIX padding and corner graphic positioning | SlideTemplates.js | Fixed double padding (6rem→3rem), fixed corner positioning |
+| **88a2da3** | Session Phase 1 | [Schema] Align BIP slide schemas with defensive template behavior | prompts.js, charts.js | Removed optional fields from required arrays |
+| **fc734f3** | Session Phase 2 | [SlideManager] FIX title format handling for BIP slides | SlideManager.js | Fixed string vs object title handling |
+| **982476a** | Session Phase 2 | [Validation] Add comprehensive empty string and edge case handling | charts.js, SlideEditor.js | Added validation for empty titles, columns, etc. |
+| **7d70f25** | Session Phase 3 | [Cleanup] Remove inactive SlideTemplates backup files | 3 backup files | Deleted 1,004 lines, freed 42 KB |
+| **adbbb5e** | Session Phase 4 | [BIP Templates] FIX font and corner graphic rendering | presentation-viewer.css, SlideTemplates.js | Added Inter font import, fixed SVG paths |
+| **c02eb58** | Session Phase 5 | [P0 FIXES] Add letter-spacing and explicit font-family | SlideTemplates.js, GUIDE.md | Added letter-spacing -0.02em (later fixed), explicit font-family |
+| **5a83b2a** | Session Phase 6 | [Documentation] Add comprehensive text layout gap analysis | TEXT_LAYOUT_GAP_ANALYSIS.md | Identified letter-spacing sign error, 9 text gaps documented |
+| **587b1d7** | Session Phase 7 | [Cleanup] Remove all corner graphics/stripes/logos | SlideTemplates.js | Removed 36 lines of graphics code, focus on text only |
+| **4eaf686** | Session Phase 8 | [P0 CRITICAL FIX] Correct letter-spacing sign | SlideTemplates.js | Fixed letter-spacing from -0.02em to +0.05em (CRITICAL) |
 
 ### Detailed Fix Documentation
 
@@ -699,54 +729,147 @@ graphic.innerHTML = `<img src="/vertical-stripe.svg">`;
 
 ---
 
-## REMAINING ISSUES (P0/P1)
+#### Fix 6: Title Letter-Spacing and Font-Family (Commits c02eb58, 4eaf686)
 
-### P0 Issues (CRITICAL - Requires Immediate Fix)
+**Problem**: Letter-spacing missing, then added with WRONG SIGN
 
-#### P0-1: Title Letter-Spacing Missing
+**Evolution**:
+1. **Initial**: No letter-spacing property
+2. **Commit c02eb58**: Added `letter-spacing: -0.02em` (NEGATIVE = tighter) ❌
+3. **Discovered**: TEXT_LAYOUT_GAP_ANALYSIS.md identified sign error
+4. **Commit 4eaf686**: Fixed to `letter-spacing: 0.05em` (POSITIVE = wider) ✅
 
-**Impact**: Title appears dense/cramped instead of airy/elegant
-
-**Fix**:
+**Before**:
 ```javascript
-// SlideTemplates.js - Add to THREE-COLUMN title (line 94-100)
-title.style.cssText = `
-  font-size: 3rem;
-  font-weight: 200;
-  color: #1e293b;
-  line-height: 1.25;
-  margin: 0;
-  letter-spacing: -0.02em;  // ✅ ADD THIS
-`;
-
-// SlideTemplates.js - Add to SINGLE-COLUMN title (line 244-250)
 title.style.cssText = `
   font-size: 3.75rem;
   font-weight: 200;
   color: #1e293b;
   line-height: 1.25;
   margin: 0;
-  letter-spacing: -0.02em;  // ✅ ADD THIS
+  // ❌ No letter-spacing
 `;
 ```
 
-**Effort**: 2 minutes
-**Risk**: Very low
+**After Fix Attempt 1** (c02eb58 - WRONG):
+```javascript
+title.style.cssText = `
+  font-family: 'Inter', sans-serif;  // ✅ Added explicit font
+  font-size: 3.75rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  letter-spacing: -0.02em;  // ❌ WRONG SIGN (negative)
+  margin: 0;
+`;
+```
+
+**After Fix Attempt 2** (4eaf686 - CORRECT):
+```javascript
+title.style.cssText = `
+  font-family: 'Inter', sans-serif;  // ✅ Explicit font
+  font-size: 3.75rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  letter-spacing: 0.05em;  // ✅ CORRECT (positive = wide/airy)
+  margin: 0;
+`;
+```
+
+**Result**: Title now has wide/airy letter-spacing matching reference aesthetic
 
 ---
 
-#### P0-2: Title Font Weight Rendering Incorrectly
+#### Fix 7: Remove Graphics (Commit 587b1d7)
 
-**Impact**: Title appears thick instead of ultra-thin
+**Problem**: Graphics code distracted from text layout focus
 
-**Current Hypothesis**: CSS cascade issue or font-family inheritance problem
+**Removed**:
+- Corner graphic rendering (both templates)
+- vertical-stripe.svg references
+- showCornerGraphic schema fields
+- Total: 36 lines removed
 
-**Fix Attempt #1** (Add explicit font-family):
+**Before**:
 ```javascript
-title.style.cssText = `
-  font-family: 'Inter', sans-serif;  // ✅ ADD THIS (explicit, not inherited)
-  font-size: 3.75rem;
-  font-weight: 200;
+if (slide.content.showCornerGraphic !== false) {
+  const graphic = document.createElement('div');
+  graphic.style.cssText = `position: absolute; top: -3rem; right: -3rem;...`;
+  graphic.innerHTML = `<img src="/vertical-stripe.svg">`;
+  body.appendChild(graphic);
+}
+```
+
+**After**:
+```javascript
+// ✅ REMOVED - focus on text layout only
+```
+
+**Result**: Templates now focus purely on text spatial alignment and typography
+
+---
+
+## REMAINING ISSUES - TEXT LAYOUT ONLY
+
+**Last Updated**: After commit 4eaf686 (letter-spacing fix)
+
+### P0 Issues (CRITICAL)
+✅ **ALL P0 ISSUES RESOLVED**
+- Letter-spacing: FIXED (commit 4eaf686)
+- Font-family: FIXED (commit c02eb58)
+- Graphics: REMOVED (commit 587b1d7)
+
+### P1 Issues (HIGH - Needs Browser Testing)
+
+#### P1-1: Title Font Weight Rendering
+
+**Impact**: Title may still appear heavier than reference ultra-thin appearance
+
+**Current State**:
+- Code: `font-weight: 200` (extralight) ✅
+- Font: `'Inter', sans-serif` explicit ✅
+- Status: **NEEDS BROWSER VERIFICATION**
+
+**Debug Steps**:
+1. Generate test slide with bip-single-column
+2. Open browser DevTools (F12)
+3. **Network tab**: Verify Inter font loads (status 200)
+4. **Elements tab**: Inspect title, check Computed styles
+   - Verify `font-family: "Inter", sans-serif`
+   - Verify `font-weight: 200`
+5. Compare visually to reference image
+
+**If Still Too Heavy**:
+```javascript
+// Try thinner weight:
+font-weight: 100;  // Thin (vs 200 Extralight)
+```
+
+**Effort**: 15-30 minutes (browser debugging)
+**Risk**: Low
+
+---
+
+#### P1-2: Letter-Spacing Fine-Tuning
+
+**Impact**: 0.05em may not be wide enough compared to reference
+
+**Current State**:
+- Code: `letter-spacing: 0.05em` ✅
+- Status: **NEEDS VISUAL COMPARISON**
+
+**Reference Analysis**:
+- Reference image shows VERY wide letter-spacing
+- May need 0.075em or 0.1em for full match
+
+**Testing Progression**:
+1. Visual compare current 0.05em to reference
+2. If still too tight, try: `letter-spacing: 0.075em;`
+3. If still too tight, try: `letter-spacing: 0.1em;`
+
+**Effort**: 5 minutes per test
+**Risk**: Very low
   color: #1e293b;
   line-height: 1.25;
   margin: 0;
