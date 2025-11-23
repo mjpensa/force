@@ -6,6 +6,9 @@
 /* Import Work Sans Font */
 @import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700;800&display=swap');
 
+/* Import Inter Font (for BIP slide templates) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700&display=swap');
+
 /* Root Variables */
 :root {
   /* Colors */
