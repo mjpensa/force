@@ -500,6 +500,82 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
             content: { ...rest }  // Includes title and all other fields
           };
 
+          // POST-PROCESSING VALIDATION: Ensure required content fields are present
+          // This compensates for Gemini's limited schema enforcement (no if/then, no anyOf+required)
+          let validationWarnings = [];
+
+          if (type === 'bip-three-column') {
+            // Required: columns array with 3 elements
+            if (!transformedSlide.content.columns || !Array.isArray(transformedSlide.content.columns)) {
+              validationWarnings.push('Missing columns array');
+              transformedSlide.content.columns = [
+                { text: 'Content not provided by AI. This column should contain detailed research findings, data points, and strategic insights. Please regenerate with more specific research materials.' },
+                { text: 'Content not provided by AI. This column should contain detailed research findings, data points, and strategic insights. Please regenerate with more specific research materials.' },
+                { text: 'Content not provided by AI. This column should contain detailed research findings, data points, and strategic insights. Please regenerate with more specific research materials.' }
+              ];
+            } else if (transformedSlide.content.columns.length !== 3) {
+              validationWarnings.push(`Expected 3 columns, got ${transformedSlide.content.columns.length}`);
+              // Pad or trim to exactly 3
+              while (transformedSlide.content.columns.length < 3) {
+                transformedSlide.content.columns.push({
+                  text: 'Additional content area. Please regenerate with more research details.'
+                });
+              }
+              transformedSlide.content.columns = transformedSlide.content.columns.slice(0, 3);
+            }
+            // Recommended: eyebrow (must be object with text property)
+            if (!transformedSlide.content.eyebrow) {
+              validationWarnings.push('Missing eyebrow field');
+              transformedSlide.content.eyebrow = { text: 'KEY THEMES' };
+            } else if (typeof transformedSlide.content.eyebrow === 'string') {
+              // Normalize string to object format
+              transformedSlide.content.eyebrow = { text: transformedSlide.content.eyebrow };
+            }
+          } else if (type === 'bip-single-column') {
+            // Required: bodyText (must be object with text property)
+            if (!transformedSlide.content.bodyText || !transformedSlide.content.bodyText.text || transformedSlide.content.bodyText.text.trim().length === 0) {
+              validationWarnings.push('Missing bodyText field');
+              transformedSlide.content.bodyText = {
+                text: 'This slide should contain detailed narrative content based on the research provided. The AI did not generate sufficient content. Please regenerate the presentation with more specific research materials or adjust the slide outline.'
+              };
+            } else if (typeof transformedSlide.content.bodyText === 'string') {
+              // Normalize string to object format
+              transformedSlide.content.bodyText = { text: transformedSlide.content.bodyText };
+            }
+            // Recommended: eyebrow (must be object with text property)
+            if (!transformedSlide.content.eyebrow) {
+              validationWarnings.push('Missing eyebrow field');
+              transformedSlide.content.eyebrow = { text: 'OVERVIEW' };
+            } else if (typeof transformedSlide.content.eyebrow === 'string') {
+              // Normalize string to object format
+              transformedSlide.content.eyebrow = { text: transformedSlide.content.eyebrow };
+            }
+          } else if (type === 'bip-title-slide') {
+            // Required: footerLeft, footerRight
+            if (!transformedSlide.content.footerLeft) {
+              validationWarnings.push('Missing footerLeft field');
+              transformedSlide.content.footerLeft = { text: 'Here to Dare.' };
+            } else if (typeof transformedSlide.content.footerLeft === 'string') {
+              transformedSlide.content.footerLeft = { text: transformedSlide.content.footerLeft };
+            }
+
+            if (!transformedSlide.content.footerRight) {
+              validationWarnings.push('Missing footerRight field');
+              const now = new Date();
+              transformedSlide.content.footerRight = {
+                text: `${now.toLocaleString('default', { month: 'long' })} | ${now.getFullYear()}`
+              };
+            } else if (typeof transformedSlide.content.footerRight === 'string') {
+              transformedSlide.content.footerRight = { text: transformedSlide.content.footerRight };
+            }
+          }
+
+          // Log validation warnings
+          if (validationWarnings.length > 0) {
+            console.warn(`Job ${jobId}:   ⚠️ VALIDATION WARNINGS for slide ${i + 1}:`, validationWarnings.join(', '));
+            console.warn(`Job ${jobId}:   ⚠️ Added default content to ensure slide renders properly`);
+          }
+
           slides.push(transformedSlide);
           console.log(`Job ${jobId}: ✓ Generated content for slide ${i + 1}: type="${slide.type}"`);
           console.log(`Job ${jobId}:   Content fields: ${Object.keys(rest).join(', ')}`);
