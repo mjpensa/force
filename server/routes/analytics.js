@@ -29,7 +29,6 @@ router.post('/track-event', apiLimiter, (req, res) => {
     const allowedEventTypes = [
       'export_png',
       'export_pptx',
-      'feature_executive_view',
       'feature_critical_path',
       'feature_edit_mode',
       'feature_theme_toggle',

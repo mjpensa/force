@@ -2083,7 +2083,7 @@ export function logPerformanceMetrics(context = '') {
 
 /**
  * Tracks an analytics event by sending it to the backend
- * @param {string} eventType - Type of event (export_png, feature_executive_view, etc.)
+ * @param {string} eventType - Type of event (export_png, feature_critical_path, etc.)
  * @param {Object} eventData - Additional event data
  * @param {string|null} chartId - Optional chart ID
  * @param {string|null} sessionId - Optional session ID

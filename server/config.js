@@ -62,8 +62,6 @@ export const CONFIG = {
     MAX_OUTPUT_TOKENS_ANALYSIS: 65536,
     MAX_OUTPUT_TOKENS_QA: 8192,
     THINKING_BUDGET_ANALYSIS: 24576, // Maximum thinking tokens for task analysis (complex reasoning)
-    THINKING_BUDGET_RESEARCH: 24576, // Maximum thinking tokens for research synthesis
-    THINKING_BUDGET_EXECUTIVE: 16384, // Thinking tokens for executive summaries
     TEMPERATURE_STRUCTURED: 0,
     TEMPERATURE_QA: 0.1,
     TOP_P: 1,
@@ -80,21 +78,9 @@ export const CONFIG = {
       'text/plain',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/octet-stream', // Some browsers send .md files with this
-      'application/pdf' // PDF support for research synthesis
+      'application/pdf'
     ],
     ALLOWED_EXTENSIONS: ['md', 'txt', 'docx', 'pdf']
-  },
-
-  // Research Synthesis Feature Configuration
-  RESEARCH_SYNTHESIS: {
-    LLM_PROVIDERS: ['GEMINI', 'GPT', 'CLAUDE', 'GROK', 'OTHER'],
-    MAX_FILES_PER_PROVIDER: 10,
-    MAX_CLAIMS_PER_FILE: 500,
-    CONFIDENCE_THRESHOLD: 0.7,
-    CITATION_REGEX: /\[(\d+)\]/g,
-    MAX_PDF_PAGES: 100, // Limit PDF processing to 100 pages
-    PDF_TIMEOUT_MS: 30000, // 30 seconds timeout for PDF parsing
-    CLAIM_ID_LENGTH: 16 // Length of generated claim IDs
   },
 
   // Timeout settings
@@ -181,7 +167,6 @@ Object.freeze(CONFIG);
 Object.freeze(CONFIG.SERVER);
 Object.freeze(CONFIG.API);
 Object.freeze(CONFIG.FILES);
-Object.freeze(CONFIG.RESEARCH_SYNTHESIS);
 Object.freeze(CONFIG.TIMEOUTS);
 Object.freeze(CONFIG.RATE_LIMIT);
 Object.freeze(CONFIG.STORAGE);
