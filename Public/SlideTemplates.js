@@ -61,7 +61,7 @@ export const CUSTOM_SLIDE_TYPES = {
         margin: 0 auto;
         background-color: #ffffff;
         overflow: hidden;
-        font-family: 'Work Sans', sans-serif;
+        font-family: 'Inter', sans-serif;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
@@ -109,8 +109,8 @@ export const CUSTOM_SLIDE_TYPES = {
           font-size: clamp(10px, 0.8vw, 14px);
           letter-spacing: 0.16em;
           text-transform: uppercase;
-          color: ${theme?.colors?.primary || '#d02010'};
-          font-weight: 600;
+          color: ${theme?.colors?.primary || '#DC2626'};
+          font-weight: 700;
           margin-bottom: 1%;
         `;
         contentWrapper.appendChild(eyebrow);
@@ -125,10 +125,10 @@ export const CUSTOM_SLIDE_TYPES = {
         title.textContent = titleText;
         title.style.cssText = `
           width: 18.7%;
-          font-size: clamp(20px, 3vw, 44px);
-          line-height: 1;
-          color: #002040;
-          font-weight: 300;
+          font-size: clamp(20px, 3vw, 48px);
+          line-height: 1.2;
+          color: #1e293b;
+          font-weight: 200;
           letter-spacing: -0.02em;
           margin-bottom: 8%;
         `;
@@ -150,8 +150,8 @@ export const CUSTOM_SLIDE_TYPES = {
         const columnDiv = document.createElement('div');
         columnDiv.style.cssText = `
           font-size: clamp(10px, 0.85vw, 14px);
-          line-height: 1.5;
-          color: #333333;
+          line-height: 1.6;
+          color: #475569;
           text-align: justify;
           letter-spacing: -0.01em;
         `;
@@ -215,7 +215,7 @@ export const CUSTOM_SLIDE_TYPES = {
         margin: 0 auto;
         background-color: white;
         overflow: hidden;
-        font-family: 'Work Sans', sans-serif;
+        font-family: 'Inter', sans-serif;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
@@ -246,11 +246,11 @@ export const CUSTOM_SLIDE_TYPES = {
         const eyebrow = document.createElement('div');
         eyebrow.textContent = slide.content.eyebrow.text;
         eyebrow.style.cssText = `
-          font-weight: 600;
-          font-size: clamp(10px, 1vw, 16px);
+          font-weight: 700;
+          font-size: clamp(10px, 1vw, 14px);
           text-transform: uppercase;
           letter-spacing: 0.16em;
-          color: ${theme?.colors?.primary || '#d02010'};
+          color: ${theme?.colors?.primary || '#DC2626'};
           line-height: 1;
           margin-bottom: 2%;
         `;
@@ -271,11 +271,11 @@ export const CUSTOM_SLIDE_TYPES = {
         });
 
         title.style.cssText = `
-          font-weight: 100;
+          font-weight: 200;
           font-size: clamp(32px, 6.5vw, 96px);
           line-height: 0.9;
           letter-spacing: -0.02em;
-          color: #002040;
+          color: #1e293b;
           margin: 0;
         `;
         leftColumn.appendChild(title);
@@ -297,10 +297,10 @@ export const CUSTOM_SLIDE_TYPES = {
         const bodyColumn = document.createElement('div');
         bodyColumn.style.cssText = `
           font-weight: 400;
-          font-size: clamp(10px, 1vw, 16px);
-          line-height: 1.5;
+          font-size: clamp(10px, 1vw, 14px);
+          line-height: 1.6;
           letter-spacing: -0.01em;
-          color: #333333;
+          color: #475569;
           text-align: justify;
         `;
 
@@ -364,7 +364,7 @@ export const CUSTOM_SLIDE_TYPES = {
         align-items: center;
         justify-content: center;
         overflow: hidden;
-        font-family: 'Work Sans', sans-serif;
+        font-family: 'Inter', sans-serif;
         box-sizing: border-box;
       `;
 
@@ -399,7 +399,7 @@ export const CUSTOM_SLIDE_TYPES = {
 
         title.style.cssText = `
           font-size: clamp(40px, 8.1vw, 120px);
-          font-weight: 100;
+          font-weight: 200;
           line-height: 1.1;
           letter-spacing: -0.02em;
           color: #ffffff;

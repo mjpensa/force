@@ -1594,7 +1594,17 @@ export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
             }
           }
         }
-      }
+      },
+      anyOf: [
+        { required: ["content"] },
+        { required: ["drivers"] },
+        { required: ["dependencies"] },
+        { required: ["risks"] },
+        { required: ["insights"] },
+        { required: ["columns"] },
+        { required: ["bodyText"] },
+        { required: ["footerLeft", "footerRight"] }
+      ]
     }
   },
   required: ["slide"]
