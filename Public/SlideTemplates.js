@@ -50,7 +50,7 @@ export const CUSTOM_SLIDE_TYPES = {
           height: 150px;
           overflow: hidden;
         `;
-        graphic.innerHTML = `<img src="vertical-stripe.svg" alt="" style="width: 150px; height: auto;">`;
+        graphic.innerHTML = `<img src="/vertical-stripe.svg" alt="" style="width: 150px; height: auto;">`;
         body.appendChild(graphic);
       }
 
@@ -189,7 +189,7 @@ export const CUSTOM_SLIDE_TYPES = {
           height: 150px;
           overflow: hidden;
         `;
-        graphic.innerHTML = `<img src="vertical-stripe.svg" alt="" style="width: 150px; height: auto;">`;
+        graphic.innerHTML = `<img src="/vertical-stripe.svg" alt="" style="width: 150px; height: auto;">`;
         body.appendChild(graphic);
       }
 
