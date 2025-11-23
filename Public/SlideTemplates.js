@@ -12,8 +12,7 @@ export const CUSTOM_SLIDE_TYPES = {
     schema: {
       eyebrow: { type: 'object', properties: { text: { type: 'string' } } },
       title: { type: 'string|object' },
-      columns: { type: 'array', minItems: 3, maxItems: 3 },
-      showCornerGraphic: { type: 'boolean' }
+      columns: { type: 'array', minItems: 3, maxItems: 3 }
     },
 
     validate: (slide) => {
@@ -37,22 +36,6 @@ export const CUSTOM_SLIDE_TYPES = {
         box-sizing: border-box;
         position: relative;
       `;
-
-      // Corner graphic: <div class="fixed top-0 right-0" style="width: 150px; height: 150px;">
-      // NOTE: Offset by -3rem to account for .slide-content padding
-      if (slide.content.showCornerGraphic !== false) {
-        const graphic = document.createElement('div');
-        graphic.style.cssText = `
-          position: absolute;
-          top: -3rem;
-          right: -3rem;
-          width: 150px;
-          height: 150px;
-          overflow: hidden;
-        `;
-        graphic.innerHTML = `<img src="/vertical-stripe.svg" alt="" style="width: 150px; height: auto;">`;
-        body.appendChild(graphic);
-      }
 
       // <div class="max-w-7xl mx-auto">
       const container = document.createElement('div');
@@ -153,8 +136,7 @@ export const CUSTOM_SLIDE_TYPES = {
     schema: {
       eyebrow: { type: 'object', properties: { text: { type: 'string' } } },
       title: { type: 'string|object' },
-      bodyText: { type: 'object', properties: { text: { type: 'string' } } },
-      showCornerGraphic: { type: 'boolean' }
+      bodyText: { type: 'object', properties: { text: { type: 'string' } } }
     },
 
     validate: (slide) => {
@@ -178,22 +160,6 @@ export const CUSTOM_SLIDE_TYPES = {
         box-sizing: border-box;
         position: relative;
       `;
-
-      // Corner graphic
-      // NOTE: Offset by -3rem to account for .slide-content padding
-      if (slide.content.showCornerGraphic !== false) {
-        const graphic = document.createElement('div');
-        graphic.style.cssText = `
-          position: absolute;
-          top: -3rem;
-          right: -3rem;
-          width: 150px;
-          height: 150px;
-          overflow: hidden;
-        `;
-        graphic.innerHTML = `<img src="/vertical-stripe.svg" alt="" style="width: 150px; height: auto;">`;
-        body.appendChild(graphic);
-      }
 
       // <div class="max-w-7xl mx-auto">
       const container = document.createElement('div');
