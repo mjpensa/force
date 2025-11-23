@@ -6,9 +6,6 @@
 // Phase 2 Enhancement: Import centralized configuration
 import { CONFIG } from './config.js';
 
-// Cross-LLM Research Synthesis Feature
-import { ResearchSynthesizer } from './ResearchSynthesizer.js';
-
 // Define supported file types for frontend validation using centralized config
 const SUPPORTED_FILE_MIMES = CONFIG.FILES.SUPPORTED_MIMES;
 const SUPPORTED_FILE_EXTENSIONS = CONFIG.FILES.SUPPORTED_EXTENSIONS;
@@ -317,43 +314,6 @@ document.addEventListener("DOMContentLoaded", () => {
         dropzoneLabel.classList.add('border-custom-outline');
     }
   });
-
-  // =========================================================================
-  // CROSS-LLM RESEARCH SYNTHESIS INITIALIZATION
-  // =========================================================================
-
-  // Initialize Research Synthesizer component
-  const researchSynthesizer = new ResearchSynthesizer('research-synthesis-container');
-
-  // Make it globally accessible for inline event handlers
-  window.researchSynthesizer = researchSynthesizer;
-
-  // Toggle button for showing/hiding research synthesis tool
-  const toggleResearchBtn = document.getElementById('toggle-research-synthesis');
-  const researchSection = document.getElementById('research-synthesis-section');
-  const toggleText = document.getElementById('toggle-research-text');
-
-  if (toggleResearchBtn && researchSection) {
-    toggleResearchBtn.addEventListener('click', () => {
-      const isHidden = researchSection.classList.contains('hidden');
-
-      if (isHidden) {
-        // Show research synthesis
-        researchSection.classList.remove('hidden');
-        toggleText.textContent = 'Hide Research Synthesis';
-
-        // Render the component
-        researchSynthesizer.render();
-
-        // Scroll to the section
-        researchSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        // Hide research synthesis
-        researchSection.classList.add('hidden');
-        toggleText.textContent = 'Cross-LLM Research Synthesis';
-      }
-    });
-  }
 
 });
 
