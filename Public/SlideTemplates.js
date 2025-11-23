@@ -709,6 +709,451 @@ export const CUSTOM_SLIDE_TYPES = {
 
       return container;
     }
+  },
+
+  /**
+   * Narrative Slide (Elevator Pitch)
+   * 2-3 paragraph strategic narrative
+   */
+  'narrative': {
+    name: 'Strategic Narrative',
+    description: 'Elevator pitch with 2-3 paragraphs',
+
+    schema: {
+      title: { text: 'Strategic Narrative' },
+      content: ['Paragraph 1', 'Paragraph 2', 'Paragraph 3']
+    },
+
+    validate: (content) => {
+      const errors = [];
+      if (!content.title) errors.push('Missing title');
+      if (!content.content || !Array.isArray(content.content)) {
+        errors.push('Missing or invalid content array');
+      }
+      return errors;
+    },
+
+    render: (slide, theme, slideNumber) => {
+      const container = document.createElement('div');
+      container.className = 'slide-container narrative-slide';
+      container.style.cssText = `
+        padding: 60px 80px;
+        background: #ffffff;
+        font-family: 'Work Sans', sans-serif;
+        min-height: 600px;
+      `;
+
+      if (slide.content.title) {
+        const title = document.createElement('h1');
+        title.textContent = slide.content.title;
+        title.style.cssText = `
+          font-size: 2.5rem;
+          font-weight: 300;
+          color: #1e293b;
+          margin: 0 0 40px 0;
+        `;
+        container.appendChild(title);
+      }
+
+      if (slide.content.content && Array.isArray(slide.content.content)) {
+        slide.content.content.forEach(para => {
+          const p = document.createElement('p');
+          p.textContent = para;
+          p.style.cssText = `
+            font-size: 1.25rem;
+            line-height: 1.8;
+            color: #475569;
+            margin: 0 0 24px 0;
+          `;
+          container.appendChild(p);
+        });
+      }
+
+      return container;
+    }
+  },
+
+  /**
+   * Key Drivers Slide
+   * Numbered list of strategic drivers
+   */
+  'drivers': {
+    name: 'Key Drivers',
+    description: 'Numbered list of strategic drivers with descriptions',
+
+    schema: {
+      title: { text: 'Key Strategic Drivers' },
+      drivers: [{ title: 'Driver 1', description: 'Description' }]
+    },
+
+    validate: (content) => {
+      const errors = [];
+      if (!content.title) errors.push('Missing title');
+      if (!content.drivers || !Array.isArray(content.drivers)) {
+        errors.push('Missing or invalid drivers array');
+      }
+      return errors;
+    },
+
+    render: (slide, theme, slideNumber) => {
+      const container = document.createElement('div');
+      container.className = 'slide-container drivers-slide';
+      container.style.cssText = `
+        padding: 60px 80px;
+        background: #ffffff;
+        font-family: 'Work Sans', sans-serif;
+      `;
+
+      if (slide.content.title) {
+        const title = document.createElement('h1');
+        title.textContent = slide.content.title;
+        title.style.cssText = `
+          font-size: 2.5rem;
+          font-weight: 300;
+          color: #1e293b;
+          margin: 0 0 40px 0;
+        `;
+        container.appendChild(title);
+      }
+
+      if (slide.content.drivers && Array.isArray(slide.content.drivers)) {
+        slide.content.drivers.forEach((driver, idx) => {
+          const driverDiv = document.createElement('div');
+          driverDiv.style.cssText = `
+            display: flex;
+            gap: 20px;
+            margin-bottom: 32px;
+            padding: 20px;
+            background: #f8fafc;
+            border-left: 4px solid #10b981;
+            border-radius: 4px;
+          `;
+
+          const number = document.createElement('div');
+          number.textContent = (idx + 1).toString();
+          number.style.cssText = `
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #10b981;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+          `;
+          driverDiv.appendChild(number);
+
+          const content = document.createElement('div');
+          content.style.cssText = 'flex: 1;';
+
+          const driverTitle = document.createElement('h3');
+          driverTitle.textContent = driver.title;
+          driverTitle.style.cssText = `
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0 0 8px 0;
+          `;
+          content.appendChild(driverTitle);
+
+          const description = document.createElement('p');
+          description.textContent = driver.description;
+          description.style.cssText = `
+            font-size: 1.125rem;
+            color: #475569;
+            margin: 0;
+            line-height: 1.6;
+          `;
+          content.appendChild(description);
+
+          driverDiv.appendChild(content);
+          container.appendChild(driverDiv);
+        });
+      }
+
+      return container;
+    }
+  },
+
+  /**
+   * Dependencies Slide
+   * Critical dependencies with criticality levels
+   */
+  'dependencies': {
+    name: 'Critical Dependencies',
+    description: 'Dependencies with criticality indicators',
+
+    schema: {
+      title: { text: 'Critical Dependencies' },
+      dependencies: [{ name: 'Dependency', criticality: 'Critical', criticalityLevel: 'high', impact: 'Impact description' }]
+    },
+
+    validate: (content) => {
+      const errors = [];
+      if (!content.title) errors.push('Missing title');
+      if (!content.dependencies || !Array.isArray(content.dependencies)) {
+        errors.push('Missing or invalid dependencies array');
+      }
+      return errors;
+    },
+
+    render: (slide, theme, slideNumber) => {
+      const container = document.createElement('div');
+      container.className = 'slide-container dependencies-slide';
+      container.style.cssText = `
+        padding: 60px 80px;
+        background: #ffffff;
+        font-family: 'Work Sans', sans-serif;
+      `;
+
+      if (slide.content.title) {
+        const title = document.createElement('h1');
+        title.textContent = slide.content.title;
+        title.style.cssText = `
+          font-size: 2.5rem;
+          font-weight: 300;
+          color: #1e293b;
+          margin: 0 0 40px 0;
+        `;
+        container.appendChild(title);
+      }
+
+      if (slide.content.dependencies && Array.isArray(slide.content.dependencies)) {
+        slide.content.dependencies.forEach(dep => {
+          const depDiv = document.createElement('div');
+          depDiv.style.cssText = `
+            margin-bottom: 24px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 2px solid ${dep.criticalityLevel === 'high' ? '#ef4444' : dep.criticalityLevel === 'medium' ? '#f59e0b' : '#10b981'};
+          `;
+
+          const header = document.createElement('div');
+          header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;';
+
+          const name = document.createElement('h3');
+          name.textContent = dep.name;
+          name.style.cssText = `
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0;
+          `;
+          header.appendChild(name);
+
+          const badge = document.createElement('span');
+          badge.textContent = dep.criticality || dep.criticalityLevel;
+          badge.style.cssText = `
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: white;
+            background: ${dep.criticalityLevel === 'high' ? '#ef4444' : dep.criticalityLevel === 'medium' ? '#f59e0b' : '#10b981'};
+          `;
+          header.appendChild(badge);
+
+          depDiv.appendChild(header);
+
+          if (dep.impact) {
+            const impact = document.createElement('p');
+            impact.textContent = dep.impact;
+            impact.style.cssText = `
+              font-size: 1.125rem;
+              color: #475569;
+              margin: 0;
+              line-height: 1.6;
+            `;
+            depDiv.appendChild(impact);
+          }
+
+          container.appendChild(depDiv);
+        });
+      }
+
+      return container;
+    }
+  },
+
+  /**
+   * Risks Slide
+   * 3x3 matrix visualization
+   */
+  'risks': {
+    name: 'Strategic Risk Matrix',
+    description: '3x3 risk matrix with probability vs impact',
+
+    schema: {
+      title: { text: 'Strategic Risk Matrix' },
+      risks: [{ description: 'Risk', probability: 'high', impact: 'high' }]
+    },
+
+    validate: (content) => {
+      const errors = [];
+      if (!content.title) errors.push('Missing title');
+      if (!content.risks || !Array.isArray(content.risks)) {
+        errors.push('Missing or invalid risks array');
+      }
+      return errors;
+    },
+
+    render: (slide, theme, slideNumber) => {
+      const container = document.createElement('div');
+      container.className = 'slide-container risks-slide';
+      container.style.cssText = `
+        padding: 60px 80px;
+        background: #ffffff;
+        font-family: 'Work Sans', sans-serif;
+      `;
+
+      if (slide.content.title) {
+        const title = document.createElement('h1');
+        title.textContent = slide.content.title;
+        title.style.cssText = `
+          font-size: 2.5rem;
+          font-weight: 300;
+          color: #1e293b;
+          margin: 0 0 40px 0;
+        `;
+        container.appendChild(title);
+      }
+
+      // Simple list version (matrix visualization would be complex)
+      if (slide.content.risks && Array.isArray(slide.content.risks)) {
+        slide.content.risks.forEach(risk => {
+          const riskDiv = document.createElement('div');
+          const severity = (risk.probability === 'high' && risk.impact === 'high') ? 'high' :
+                          (risk.probability === 'low' && risk.impact === 'low') ? 'low' : 'medium';
+
+          riskDiv.style.cssText = `
+            margin-bottom: 20px;
+            padding: 16px;
+            background: ${severity === 'high' ? '#fee2e2' : severity === 'low' ? '#dcfce7' : '#fef3c7'};
+            border-left: 4px solid ${severity === 'high' ? '#ef4444' : severity === 'low' ? '#10b981' : '#f59e0b'};
+            border-radius: 4px;
+          `;
+
+          const desc = document.createElement('p');
+          desc.textContent = risk.description;
+          desc.style.cssText = `
+            font-size: 1.125rem;
+            color: #1e293b;
+            margin: 0 0 8px 0;
+            font-weight: 500;
+          `;
+          riskDiv.appendChild(desc);
+
+          const meta = document.createElement('div');
+          meta.textContent = `Probability: ${risk.probability} | Impact: ${risk.impact}`;
+          meta.style.cssText = `
+            font-size: 0.875rem;
+            color: #64748b;
+            margin: 0;
+          `;
+          riskDiv.appendChild(meta);
+
+          container.appendChild(riskDiv);
+        });
+      }
+
+      return container;
+    }
+  },
+
+  /**
+   * Insights Slide
+   * Card grid of expert insights
+   */
+  'insights': {
+    name: 'Expert Insights',
+    description: 'Grid of categorized insights',
+
+    schema: {
+      title: { text: 'Expert Conversation Points' },
+      insights: [{ category: 'Technology', text: 'Insight text' }]
+    },
+
+    validate: (content) => {
+      const errors = [];
+      if (!content.title) errors.push('Missing title');
+      if (!content.insights || !Array.isArray(content.insights)) {
+        errors.push('Missing or invalid insights array');
+      }
+      return errors;
+    },
+
+    render: (slide, theme, slideNumber) => {
+      const container = document.createElement('div');
+      container.className = 'slide-container insights-slide';
+      container.style.cssText = `
+        padding: 60px 80px;
+        background: #ffffff;
+        font-family: 'Work Sans', sans-serif;
+      `;
+
+      if (slide.content.title) {
+        const title = document.createElement('h1');
+        title.textContent = slide.content.title;
+        title.style.cssText = `
+          font-size: 2.5rem;
+          font-weight: 300;
+          color: #1e293b;
+          margin: 0 0 40px 0;
+        `;
+        container.appendChild(title);
+      }
+
+      if (slide.content.insights && Array.isArray(slide.content.insights)) {
+        const grid = document.createElement('div');
+        grid.style.cssText = `
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 20px;
+        `;
+
+        slide.content.insights.forEach(insight => {
+          const card = document.createElement('div');
+          card.style.cssText = `
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-top: 4px solid #3b82f6;
+          `;
+
+          const category = document.createElement('div');
+          category.textContent = insight.category;
+          category.style.cssText = `
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #3b82f6;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+          `;
+          card.appendChild(category);
+
+          const text = document.createElement('p');
+          text.textContent = insight.text;
+          text.style.cssText = `
+            font-size: 1.125rem;
+            color: #475569;
+            margin: 0;
+            line-height: 1.6;
+          `;
+          card.appendChild(text);
+
+          grid.appendChild(card);
+        });
+
+        container.appendChild(grid);
+      }
+
+      return container;
+    }
   }
 };
 
