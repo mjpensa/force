@@ -45,18 +45,37 @@ export class ExecutiveSummary {
    * @returns {Array} Array of page objects
    */
   _generatePages() {
-    // For now, create placeholder pages
-    // In the future, this will parse summaryData into pages
-    const pageCount = 3; // Default to 3 pages for demo
+    if (!this.summaryData) {
+      return [{
+        pageNumber: 1,
+        title: 'Executive Summary',
+        content: null
+      }];
+    }
+
+    // Create pages with actual content sections
     const pages = [];
 
-    for (let i = 0; i < pageCount; i++) {
-      pages.push({
-        pageNumber: i + 1,
-        title: `Executive Summary - Page ${i + 1}`,
-        content: null // Will be populated with actual content later
-      });
-    }
+    // Page 1: Strategic Narrative + Key Metrics Dashboard
+    pages.push({
+      pageNumber: 1,
+      title: 'Strategic Overview',
+      sections: ['strategicNarrative', 'keyMetricsDashboard', 'strategicPriorities']
+    });
+
+    // Page 2: Drivers + Dependencies
+    pages.push({
+      pageNumber: 2,
+      title: 'Strategic Drivers & Dependencies',
+      sections: ['drivers', 'dependencies']
+    });
+
+    // Page 3: Risks + Insights + Competitive Intel
+    pages.push({
+      pageNumber: 3,
+      title: 'Risk Intelligence & Competitive Landscape',
+      sections: ['risks', 'keyInsights', 'competitiveIntelligence', 'industryBenchmarks']
+    });
 
     return pages;
   }
@@ -538,19 +557,80 @@ export class ExecutiveSummary {
     const content = document.createElement('div');
     content.className = 'doc-page-content';
 
-    // Blank page with placeholder
-    content.innerHTML = `
-      <div class="doc-page-content-placeholder">
-        <div class="doc-page-icon">📋</div>
-        <div class="doc-page-title">Executive Summary</div>
-        <div class="doc-page-subtitle">Page ${page.pageNumber} - Content will be loaded here</div>
-      </div>
-      <div class="doc-page-footer">Page ${page.pageNumber} of ${this.pages.length}</div>
-    `;
+    // Render actual content if available
+    if (this.summaryData && page.sections) {
+      const contentHTML = this._renderPageContent(page);
+      content.innerHTML = contentHTML;
+    } else {
+      // Fallback to placeholder
+      content.innerHTML = `
+        <div class="doc-page-content-placeholder">
+          <div class="doc-page-icon">📋</div>
+          <div class="doc-page-title">Executive Summary</div>
+          <div class="doc-page-subtitle">No content available</div>
+        </div>
+        <div class="doc-page-footer">Page ${page.pageNumber} of ${this.pages.length}</div>
+      `;
+    }
 
     viewport.appendChild(content);
 
     return viewport;
+  }
+
+  /**
+   * Renders the content for a specific page
+   * @private
+   * @param {Object} page - Page object with sections array
+   * @returns {string} HTML content for the page
+   */
+  _renderPageContent(page) {
+    let html = '<div class="executive-summary-page">';
+
+    // Page title
+    html += `<h1 class="page-title">${page.title}</h1>`;
+
+    // Render each section
+    page.sections.forEach(sectionName => {
+      const sectionData = this.summaryData[sectionName];
+      if (!sectionData) return;
+
+      switch (sectionName) {
+        case 'strategicNarrative':
+          html += this._renderStrategicNarrative(sectionData);
+          break;
+        case 'keyMetricsDashboard':
+          html += this._renderKeyMetricsDashboard(sectionData);
+          break;
+        case 'strategicPriorities':
+          html += this._renderStrategicPriorities(sectionData);
+          break;
+        case 'drivers':
+          html += this._renderDrivers(sectionData);
+          break;
+        case 'dependencies':
+          html += this._renderDependencies(sectionData);
+          break;
+        case 'risks':
+          html += this._renderRisks(sectionData);
+          break;
+        case 'keyInsights':
+          html += this._renderKeyInsights(sectionData);
+          break;
+        case 'competitiveIntelligence':
+          html += this._renderCompetitiveIntelligence(sectionData);
+          break;
+        case 'industryBenchmarks':
+          html += this._renderIndustryBenchmarks(sectionData);
+          break;
+      }
+    });
+
+    // Page footer
+    html += `<div class="doc-page-footer">Page ${page.pageNumber} of ${this.pages.length}</div>`;
+    html += '</div>';
+
+    return html;
   }
 
   /**
@@ -1018,6 +1098,321 @@ export class ExecutiveSummary {
         }
         break;
     }
+  }
+
+  /**
+   * Renders Strategic Narrative section
+   * @private
+   */
+  _renderStrategicNarrative(data) {
+    return `
+      <section class="summary-section strategic-narrative">
+        <h2 class="section-title">Strategic Narrative</h2>
+        <div class="narrative-content">
+          <div class="elevator-pitch">
+            <h3>Executive Summary</h3>
+            <p>${data.elevatorPitch || ''}</p>
+          </div>
+          ${data.valueProposition ? `
+          <div class="value-proposition">
+            <h3>Value Proposition</h3>
+            <p>${data.valueProposition}</p>
+          </div>
+          ` : ''}
+          ${data.callToAction ? `
+          <div class="call-to-action">
+            <h3>Call to Action</h3>
+            <p>${data.callToAction}</p>
+          </div>
+          ` : ''}
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders Key Metrics Dashboard section
+   * @private
+   */
+  _renderKeyMetricsDashboard(data) {
+    if (!data) return '';
+
+    return `
+      <section class="summary-section metrics-dashboard">
+        <h2 class="section-title">Key Metrics Dashboard</h2>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Total Investment</div>
+            <div class="metric-value">${data.totalInvestment || 'TBD'}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Time to Value</div>
+            <div class="metric-value">${data.timeToValue || 'TBD'}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Compliance Risk</div>
+            <div class="metric-value">${data.complianceRisk || 'TBD'}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">ROI Projection</div>
+            <div class="metric-value">${data.roiProjection || 'TBD'}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Critical Path Status</div>
+            <div class="metric-value">${data.criticalPathStatus || 'TBD'}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Vendor Lock-In</div>
+            <div class="metric-value">${data.vendorLockIn || 'TBD'}</div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders Strategic Priorities section
+   * @private
+   */
+  _renderStrategicPriorities(data) {
+    if (!Array.isArray(data) || data.length === 0) return '';
+
+    return `
+      <section class="summary-section strategic-priorities">
+        <h2 class="section-title">Top 3 Strategic Priorities</h2>
+        <div class="priorities-list">
+          ${data.map((priority, index) => `
+            <div class="priority-card">
+              <div class="priority-number">${index + 1}</div>
+              <div class="priority-content">
+                <h3>${priority.title}</h3>
+                <p class="priority-description">${priority.description}</p>
+                ${priority.bankingContext ? `<p class="priority-context"><strong>Banking Context:</strong> ${priority.bankingContext}</p>` : ''}
+                ${priority.dependencies ? `<p class="priority-dependencies"><strong>Dependencies:</strong> ${priority.dependencies}</p>` : ''}
+                ${priority.deadline ? `<p class="priority-deadline"><strong>Deadline:</strong> ${priority.deadline}</p>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders Strategic Drivers section
+   * @private
+   */
+  _renderDrivers(data) {
+    if (!Array.isArray(data) || data.length === 0) return '';
+
+    return `
+      <section class="summary-section drivers">
+        <h2 class="section-title">Strategic Drivers</h2>
+        <div class="drivers-list">
+          ${data.map(driver => `
+            <div class="driver-card urgency-${driver.urgencyLevel || 'medium'}">
+              <h3>${driver.title}</h3>
+              <p>${driver.description}</p>
+              <div class="driver-urgency">
+                <span class="urgency-badge">${driver.urgencyLevel?.toUpperCase() || 'MEDIUM'} URGENCY</span>
+              </div>
+              ${driver.metrics && driver.metrics.length > 0 ? `
+                <div class="driver-metrics">
+                  <strong>Key Metrics:</strong>
+                  <ul>
+                    ${driver.metrics.map(metric => `<li>${metric}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders Dependencies section
+   * @private
+   */
+  _renderDependencies(data) {
+    if (!Array.isArray(data) || data.length === 0) return '';
+
+    return `
+      <section class="summary-section dependencies">
+        <h2 class="section-title">Critical Dependencies</h2>
+        <div class="dependencies-list">
+          ${data.map(dep => `
+            <div class="dependency-card criticality-${dep.criticality?.toLowerCase() || 'medium'}">
+              <h3>${dep.name}</h3>
+              <div class="dependency-criticality">
+                <span class="criticality-badge">${dep.criticality || 'MEDIUM'} CRITICALITY</span>
+              </div>
+              ${dep.impactedPhases && dep.impactedPhases.length > 0 ? `
+                <p><strong>Impacted Phases:</strong> ${dep.impactedPhases.join(', ')}</p>
+              ` : ''}
+              ${dep.mitigationStrategy ? `
+                <p class="mitigation"><strong>Mitigation:</strong> ${dep.mitigationStrategy}</p>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders Risks section
+   * @private
+   */
+  _renderRisks(data) {
+    if (!Array.isArray(data) || data.length === 0) return '';
+
+    return `
+      <section class="summary-section risks">
+        <h2 class="section-title">Risk Intelligence</h2>
+        <div class="risks-list">
+          ${data.map(risk => `
+            <div class="risk-card risk-${risk.probability || 'medium'}">
+              <div class="risk-header">
+                <span class="risk-category">${risk.category?.toUpperCase() || 'GENERAL'}</span>
+                <span class="risk-impact impact-${risk.impact || 'moderate'}">${risk.impact?.toUpperCase() || 'MODERATE'} IMPACT</span>
+              </div>
+              <p class="risk-description">${risk.description}</p>
+              <div class="risk-probability">
+                <strong>Probability:</strong> ${risk.probability?.toUpperCase() || 'MEDIUM'}
+              </div>
+              ${risk.earlyIndicators && risk.earlyIndicators.length > 0 ? `
+                <div class="risk-indicators">
+                  <strong>Early Warning Indicators:</strong>
+                  <ul>
+                    ${risk.earlyIndicators.map(indicator => `<li>${indicator}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders Key Insights section
+   * @private
+   */
+  _renderKeyInsights(data) {
+    if (!Array.isArray(data) || data.length === 0) return '';
+
+    return `
+      <section class="summary-section key-insights">
+        <h2 class="section-title">Key Insights</h2>
+        <div class="insights-list">
+          ${data.map(insight => `
+            <div class="insight-card">
+              <div class="insight-category">${insight.category || 'General'}</div>
+              <p class="insight-text">${insight.insight}</p>
+              ${insight.talkingPoint ? `
+                <p class="talking-point"><strong>💡 Talking Point:</strong> ${insight.talkingPoint}</p>
+              ` : ''}
+              ${insight.supportingData ? `
+                <p class="supporting-data"><strong>📊 Data:</strong> ${insight.supportingData}</p>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders Competitive Intelligence section
+   * @private
+   */
+  _renderCompetitiveIntelligence(data) {
+    if (!data) return '';
+
+    return `
+      <section class="summary-section competitive-intel">
+        <h2 class="section-title">Competitive Intelligence</h2>
+        <div class="competitive-content">
+          ${data.marketTiming ? `
+            <div class="intel-block">
+              <h3>Market Timing</h3>
+              <p>${data.marketTiming}</p>
+            </div>
+          ` : ''}
+          ${data.competitorMoves && data.competitorMoves.length > 0 ? `
+            <div class="intel-block">
+              <h3>Competitor Moves</h3>
+              <ul>
+                ${data.competitorMoves.map(move => `<li>${move}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+          ${data.competitiveAdvantage ? `
+            <div class="intel-block">
+              <h3>Competitive Advantage</h3>
+              <p>${data.competitiveAdvantage}</p>
+            </div>
+          ` : ''}
+          ${data.marketWindow ? `
+            <div class="intel-block market-window">
+              <h3>⏰ Market Window</h3>
+              <p>${data.marketWindow}</p>
+            </div>
+          ` : ''}
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders Industry Benchmarks section
+   * @private
+   */
+  _renderIndustryBenchmarks(data) {
+    if (!data) return '';
+
+    return `
+      <section class="summary-section industry-benchmarks">
+        <h2 class="section-title">Industry Benchmarks</h2>
+        <div class="benchmarks-grid">
+          ${data.timeToMarket ? `
+            <div class="benchmark-card">
+              <h3>Time to Market</h3>
+              <div class="benchmark-comparison">
+                <div><strong>Your Plan:</strong> ${data.timeToMarket.yourPlan}</div>
+                <div><strong>Industry Average:</strong> ${data.timeToMarket.industryAverage}</div>
+                <div class="variance">${data.timeToMarket.variance}</div>
+              </div>
+              <p class="benchmark-insight">${data.timeToMarket.insight}</p>
+            </div>
+          ` : ''}
+          ${data.investmentLevel ? `
+            <div class="benchmark-card">
+              <h3>Investment Level</h3>
+              <div class="benchmark-comparison">
+                <div><strong>Your Plan:</strong> ${data.investmentLevel.yourPlan}</div>
+                <div><strong>Industry Median:</strong> ${data.investmentLevel.industryMedian}</div>
+                <div class="variance">${data.investmentLevel.variance}</div>
+              </div>
+              <p class="benchmark-insight">${data.investmentLevel.insight}</p>
+            </div>
+          ` : ''}
+          ${data.riskProfile ? `
+            <div class="benchmark-card">
+              <h3>Risk Profile</h3>
+              <div class="benchmark-comparison">
+                <div><strong>Your Plan:</strong> ${data.riskProfile.yourPlan}</div>
+                <div><strong>Industry Comparison:</strong> ${data.riskProfile.industryComparison}</div>
+              </div>
+              <p class="benchmark-insight">${data.riskProfile.insight}</p>
+            </div>
+          ` : ''}
+        </div>
+      </section>
+    `;
   }
 
   /**
