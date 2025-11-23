@@ -29,8 +29,8 @@
 
   <script type="module">
     try {
-      // Import the custom templates
-      const { CUSTOM_SLIDE_TYPES } = await import('./SlideTemplates.js');
+      // Import the custom templates (relative path from tests/manual/)
+      const { CUSTOM_SLIDE_TYPES } = await import('../../Public/SlideTemplates.js');
       
       console.log('Available templates:', Object.keys(CUSTOM_SLIDE_TYPES));
       
