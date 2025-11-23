@@ -536,6 +536,13 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
               }
               transformedSlide.content.columns = transformedSlide.content.columns.slice(0, 3);
             }
+            // Validate column content (check for empty text)
+            transformedSlide.content.columns.forEach((col, idx) => {
+              if (!col.text || col.text.trim().length === 0) {
+                validationWarnings.push(`Column ${idx + 1} has empty text`);
+                col.text = `Content not provided for column ${idx + 1}. Please provide detailed research findings and strategic insights.`;
+              }
+            });
             // Recommended: eyebrow (must be object with text property)
             if (!transformedSlide.content.eyebrow) {
               validationWarnings.push('Missing eyebrow field');
@@ -543,6 +550,10 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
             } else if (typeof transformedSlide.content.eyebrow === 'string') {
               // Normalize string to object format
               transformedSlide.content.eyebrow = { text: transformedSlide.content.eyebrow };
+            } else if (transformedSlide.content.eyebrow.text?.trim().length === 0) {
+              // Check for empty string in object
+              validationWarnings.push('Eyebrow has empty text');
+              transformedSlide.content.eyebrow = { text: 'KEY THEMES' };
             }
           } else if (type === 'bip-single-column') {
             // Required: bodyText (must be object with text property)
@@ -562,6 +573,10 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
             } else if (typeof transformedSlide.content.eyebrow === 'string') {
               // Normalize string to object format
               transformedSlide.content.eyebrow = { text: transformedSlide.content.eyebrow };
+            } else if (transformedSlide.content.eyebrow.text?.trim().length === 0) {
+              // Check for empty string in object
+              validationWarnings.push('Eyebrow has empty text');
+              transformedSlide.content.eyebrow = { text: 'OVERVIEW' };
             }
           } else if (type === 'bip-title-slide') {
             // Required: footerLeft, footerRight
@@ -570,6 +585,10 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
               transformedSlide.content.footerLeft = { text: 'Here to Dare.' };
             } else if (typeof transformedSlide.content.footerLeft === 'string') {
               transformedSlide.content.footerLeft = { text: transformedSlide.content.footerLeft };
+            } else if (transformedSlide.content.footerLeft.text?.trim().length === 0) {
+              // Check for empty string in object
+              validationWarnings.push('FooterLeft has empty text');
+              transformedSlide.content.footerLeft = { text: 'Here to Dare.' };
             }
 
             if (!transformedSlide.content.footerRight) {
@@ -580,6 +599,33 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
               };
             } else if (typeof transformedSlide.content.footerRight === 'string') {
               transformedSlide.content.footerRight = { text: transformedSlide.content.footerRight };
+            } else if (transformedSlide.content.footerRight.text?.trim().length === 0) {
+              // Check for empty string in object
+              validationWarnings.push('FooterRight has empty text');
+              const now = new Date();
+              transformedSlide.content.footerRight = {
+                text: `${now.toLocaleString('default', { month: 'long' })} | ${now.getFullYear()}`
+              };
+            }
+          }
+
+          // UNIVERSAL BIP SLIDE VALIDATION: Check title field (required for all BIP slides)
+          if (type.startsWith('bip-')) {
+            if (!transformedSlide.content.title) {
+              validationWarnings.push('Missing title field');
+              transformedSlide.content.title = { text: 'Untitled Slide' };
+            } else if (typeof transformedSlide.content.title === 'string') {
+              // Title as string is valid, but check for empty
+              if (transformedSlide.content.title.trim().length === 0) {
+                validationWarnings.push('Title is empty string');
+                transformedSlide.content.title = 'Untitled Slide';
+              }
+            } else if (typeof transformedSlide.content.title === 'object') {
+              // Title as object - check for empty text property
+              if (!transformedSlide.content.title.text || transformedSlide.content.title.text.trim().length === 0) {
+                validationWarnings.push('Title object has empty text');
+                transformedSlide.content.title = { text: 'Untitled Slide' };
+              }
             }
           }
 

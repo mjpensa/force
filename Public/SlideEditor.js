@@ -197,11 +197,21 @@ export class SlideEditor {
     // Determine which field to update based on element class
     if (element.classList.contains('slide-title')) {
       if (slide.content.title) {
-        slide.content.title.text = newContent;
+        // Handle both string and object formats (BIP slides compatibility)
+        if (typeof slide.content.title === 'string') {
+          slide.content.title = newContent;
+        } else {
+          slide.content.title.text = newContent;
+        }
       }
     } else if (element.classList.contains('slide-subtitle')) {
       if (slide.content.subtitle) {
-        slide.content.subtitle.text = newContent;
+        // Handle both string and object formats
+        if (typeof slide.content.subtitle === 'string') {
+          slide.content.subtitle = newContent;
+        } else {
+          slide.content.subtitle.text = newContent;
+        }
       }
     } else if (element.classList.contains('bullet-item')) {
       // Find bullet index
@@ -220,11 +230,21 @@ export class SlideEditor {
       }
     } else if (element.classList.contains('section-title')) {
       if (slide.content.sectionTitle) {
-        slide.content.sectionTitle.text = newContent;
+        // Handle both string and object formats
+        if (typeof slide.content.sectionTitle === 'string') {
+          slide.content.sectionTitle = newContent;
+        } else {
+          slide.content.sectionTitle.text = newContent;
+        }
       }
     } else if (element.classList.contains('section-description')) {
       if (slide.content.description) {
-        slide.content.description.text = newContent;
+        // Handle both string and object formats
+        if (typeof slide.content.description === 'string') {
+          slide.content.description = newContent;
+        } else {
+          slide.content.description.text = newContent;
+        }
       }
     } else if (element.classList.contains('image-caption')) {
       if (slide.content.image) {
