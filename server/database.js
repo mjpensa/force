@@ -119,7 +119,6 @@ function createTables(db) {
       charts_generated INTEGER DEFAULT 0,
       charts_failed INTEGER DEFAULT 0,
       exports_png INTEGER DEFAULT 0,
-      exports_pptx INTEGER DEFAULT 0,
       task_analyses INTEGER DEFAULT 0,
       url_shares INTEGER DEFAULT 0,
       feature_usage TEXT,
@@ -251,8 +250,8 @@ function updateDailySummary(eventType, eventData) {
   if (!summary) {
     // Create new summary for today
     db.prepare(`
-      INSERT INTO analytics_summary (date, charts_generated, charts_failed, exports_png, exports_pptx, task_analyses, url_shares, feature_usage, avg_generation_time, total_tasks, updatedAt)
-      VALUES (?, 0, 0, 0, 0, 0, 0, '{}', 0, 0, ?)
+      INSERT INTO analytics_summary (date, charts_generated, charts_failed, exports_png, task_analyses, url_shares, feature_usage, avg_generation_time, total_tasks, updatedAt)
+      VALUES (?, 0, 0, 0, 0, 0, '{}', 0, 0, ?)
     `).run(today, now);
 
     summary = db.prepare('SELECT * FROM analytics_summary WHERE date = ?').get(today);
@@ -281,10 +280,6 @@ function updateDailySummary(eventType, eventData) {
 
     case 'export_png':
       updates.exports_png = (summary.exports_png || 0) + 1;
-      break;
-
-    case 'export_pptx':
-      updates.exports_pptx = (summary.exports_pptx || 0) + 1;
       break;
 
     case 'task_analysis':
@@ -350,7 +345,6 @@ export function getAnalyticsSummary(startDate, endDate) {
     charts_generated: row.charts_generated,
     charts_failed: row.charts_failed,
     exports_png: row.exports_png,
-    exports_pptx: row.exports_pptx,
     task_analyses: row.task_analyses,
     url_shares: row.url_shares,
     feature_usage: JSON.parse(row.feature_usage || '{}'),
@@ -418,7 +412,6 @@ export function getOverallAnalytics() {
       SUM(charts_generated) as total_generated,
       SUM(charts_failed) as total_failed,
       SUM(exports_png) as total_png,
-      SUM(exports_pptx) as total_pptx,
       SUM(task_analyses) as total_analyses,
       SUM(url_shares) as total_shares,
       AVG(avg_generation_time) as avg_time,
@@ -456,7 +449,6 @@ export function getOverallAnalytics() {
     chartsGenerated: aggregated.total_generated || 0,
     chartsFailed: aggregated.total_failed || 0,
     exportsPng: aggregated.total_png || 0,
-    exportsPptx: aggregated.total_pptx || 0,
     taskAnalyses: aggregated.total_analyses || 0,
     urlShares: aggregated.total_shares || 0,
     avgGenerationTime: Math.round(aggregated.avg_time || 0),
