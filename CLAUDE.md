@@ -216,9 +216,6 @@ analytics.html (usage dashboard) [NEW v2.2.0]
 │   ├── Router.js               # Hash routing (281 lines)
 │   ├── HamburgerMenu.js        # Navigation (191 lines)
 │   ├── config.js               # Client config (135 lines)
-│   ├── bip_logo.png
-│   ├── horizontal-stripe.svg
-│   ├── vertical-stripe.svg
 │   └── bip-slide-*.html        # 13 slide templates
 │
 ├── __tests__/                   # Jest test files (primary)

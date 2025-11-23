@@ -1727,15 +1727,14 @@ Example: { "type": "simple", "title": "Summary", "content": ["Key takeaway 1", "
 BIP CUSTOM SLIDE TEMPLATES:
 
 TYPE: "bip-three-column" - BIP THREE-COLUMN LAYOUT
-Modern three-column layout with eyebrow, title, and geometric corner graphic.
+Modern three-column layout with eyebrow and title.
 REQUIRED FIELDS:
 - title: Object with text property (main title, max 200 chars)
 - columns: Array of exactly 3 column objects, each with:
   * text: Column content (max 1000 chars per column)
 RECOMMENDED FIELDS:
 - eyebrow: Object with text property (uppercase label, max 100 chars) - defaults to "KEY THEMES" if not provided
-- showCornerGraphic: Boolean (default true) - shows decorative corner SVG
-Example: { "type": "bip-three-column", "eyebrow": {"text": "PROJECT OVERVIEW"}, "title": {"text": "Digital Transformation Initiative"}, "columns": [{"text": "First column content..."}, {"text": "Second column..."}, {"text": "Third column..."}], "showCornerGraphic": true }
+Example: { "type": "bip-three-column", "eyebrow": {"text": "PROJECT OVERVIEW"}, "title": {"text": "Digital Transformation Initiative"}, "columns": [{"text": "First column content..."}, {"text": "Second column..."}, {"text": "Third column..."}] }
 
 TYPE: "bip-single-column" - BIP SINGLE-COLUMN LAYOUT
 Large title with single wide text column, ideal for detailed content.
@@ -1744,8 +1743,7 @@ REQUIRED FIELDS:
 - bodyText: Object with text property (body content, max 2000 chars)
 RECOMMENDED FIELDS:
 - eyebrow: Object with text property (uppercase label, max 100 chars) - defaults to "OVERVIEW" if not provided
-- showCornerGraphic: Boolean (default true) - shows decorative corner SVG
-Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."}, "showCornerGraphic": true }
+Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."} }
 
 TYPE: "bip-title-slide" - BIP TITLE SLIDE
 Branded title slide with gradient background and footer.
@@ -1967,9 +1965,6 @@ export const BIP_THREE_COLUMN_SCHEMA = {
               text: { type: "string", maxLength: 1000 }
             }
           }
-        },
-        showCornerGraphic: {
-          type: "boolean"
         }
       }
     }
@@ -2010,9 +2005,6 @@ export const BIP_SINGLE_COLUMN_SCHEMA = {
           properties: {
             text: { type: "string", maxLength: 2000 }
           }
-        },
-        showCornerGraphic: {
-          type: "boolean"
         }
       }
     }
@@ -2142,15 +2134,14 @@ Example: { "type": "simple", "title": "Summary", "content": ["Key takeaway 1", "
 BIP CUSTOM SLIDE TEMPLATES:
 
 TYPE: "bip-three-column" - BIP THREE-COLUMN LAYOUT
-Modern three-column layout with eyebrow, title, and geometric corner graphic.
+Modern three-column layout with eyebrow and title.
 REQUIRED FIELDS:
 - title: Object with text property (main title, max 200 chars)
 - columns: Array of exactly 3 column objects, each with:
   * text: Column content (max 1000 chars per column)
 RECOMMENDED FIELDS:
 - eyebrow: Object with text property (uppercase label, max 100 chars) - defaults to "KEY THEMES" if not provided
-- showCornerGraphic: Boolean (default true) - shows decorative corner SVG
-Example: { "type": "bip-three-column", "eyebrow": {"text": "PROJECT OVERVIEW"}, "title": {"text": "Digital Transformation Initiative"}, "columns": [{"text": "First column content..."}, {"text": "Second column..."}, {"text": "Third column..."}], "showCornerGraphic": true }
+Example: { "type": "bip-three-column", "eyebrow": {"text": "PROJECT OVERVIEW"}, "title": {"text": "Digital Transformation Initiative"}, "columns": [{"text": "First column content..."}, {"text": "Second column..."}, {"text": "Third column..."}] }
 
 TYPE: "bip-single-column" - BIP SINGLE-COLUMN LAYOUT
 Large title with single wide text column, ideal for detailed content.
@@ -2159,8 +2150,7 @@ REQUIRED FIELDS:
 - bodyText: Object with text property (body content, max 2000 chars)
 RECOMMENDED FIELDS:
 - eyebrow: Object with text property (uppercase label, max 100 chars) - defaults to "OVERVIEW" if not provided
-- showCornerGraphic: Boolean (default true) - shows decorative corner SVG
-Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."}, "showCornerGraphic": true }
+Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."} }
 
 TYPE: "bip-title-slide" - BIP TITLE SLIDE
 Branded title slide with gradient background and footer.

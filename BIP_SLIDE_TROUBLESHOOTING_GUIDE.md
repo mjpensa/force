@@ -4,6 +4,8 @@
 **Total Commits**: 6
 **Status**: In Progress
 
+> **NOTE (November 23, 2025)**: All corner graphics, stripe graphics, and visual decorations have been **REMOVED** from slide templates. References to `vertical-stripe.svg`, `horizontal-stripe.svg`, `showCornerGraphic` properties, and related graphic rendering code are now **OBSOLETE**. This document preserves historical troubleshooting context but graphics-related sections are no longer applicable to current implementation.
+
 ---
 
 ## TABLE OF CONTENTS
@@ -27,10 +29,10 @@
 Generate AI-powered presentation slides that **exactly match** the BIP (Business Integration Partners) brand design system, specifically replicating the visual appearance of reference HTML templates (`bip-slide-2.html` and `bip-slide-4.html`).
 
 ### Success Criteria
-1. **Visual Fidelity**: Generated slides are pixel-perfect matches to reference templates
+1. **Visual Fidelity**: Generated slides match the BIP brand design system layout and styling
 2. **Font Rendering**: Ultra-thin title fonts (Inter weight 200) display correctly
 3. **Layout Accuracy**: Grid layouts, spacing, and proportions match exactly
-4. **Graphics**: Corner graphics render with correct geometric patterns (navy/blue/red triangles)
+4. ~~**Graphics**: Corner graphics render with correct geometric patterns (navy/blue/red triangles)~~ **[REMOVED]**
 5. **Typography**: Letter-spacing, line-height, and text styling match reference designs
 6. **Consistency**: All three BIP slide types render consistently across browsers
 
@@ -53,7 +55,7 @@ Two comparison images uploaded to repository:
 
 ### High-Level Issues Observed
 1. Title font appeared **thick/heavy** instead of ultra-thin
-2. Corner graphic showed **solid red square** instead of geometric pattern
+2. ~~Corner graphic showed **solid red square** instead of geometric pattern~~ **[GRAPHICS REMOVED - NO LONGER APPLICABLE]**
 3. Title **letter-spacing** appeared tight instead of airy/open
 4. Overall **visual proportions** felt off compared to reference
 
@@ -96,7 +98,7 @@ User: *"Review the code E2E for additional bugs which may be causing issues with
   `;
   ```
 
-**Bug #2: Corner Graphic Positioning** (HIGH)
+**Bug #2: Corner Graphic Positioning** (HIGH) **[OBSOLETE - GRAPHICS REMOVED]**
 - **Location**: `Public/SlideTemplates.js` corner graphic styles
 - **Symptom**: Graphic appearing 3rem inset from actual corner
 - **Root Cause**: Positioned at `top: 0; right: 0` without accounting for parent padding
@@ -302,7 +304,7 @@ Retrieved comparison images from git history:
   ```
 - **Impact**: When SlideTemplates.js requests `font-family: 'Inter', sans-serif`, browser falls back to generic sans-serif (Arial/Helvetica), which looks much heavier at weight 200
 
-**Issue #2: SVG Path May Be Incorrect** (CRITICAL)
+**Issue #2: SVG Path May Be Incorrect** (CRITICAL) **[OBSOLETE - GRAPHICS REMOVED]**
 - **Discovery**: Corner graphic showing solid red square instead of geometric pattern
 - **Current code**: `<img src="/vertical-stripe.svg">`
 - **Hypothesis**: SVG file not loading (404 error), browser showing broken image placeholder
@@ -368,7 +370,7 @@ Systematic comparison of every visual element:
 - **Reference**: bip-slide-4.html line 37 has implicit letter-spacing from font rendering
 - **Priority**: **P0**
 
-**GAP #4: Corner Graphic** ⚠️ CRITICAL
+**GAP #4: Corner Graphic** ⚠️ CRITICAL **[OBSOLETE - GRAPHICS REMOVED]**
 - **Current**: Solid red square
 - **Expected**: Complex geometric pattern (navy/blue/red triangles)
 - **Root Cause**: SVG file not loading correctly
@@ -377,7 +379,7 @@ Systematic comparison of every visual element:
   2. SVG file corrupted
   3. Browser blocking SVG load (CORS, CSP)
 - **Needs**: Browser console debugging, direct SVG file test
-- **Priority**: **P0**
+- **Priority**: ~~**P0**~~ **N/A - GRAPHICS REMOVED**
 
 **GAP #5: Footer Elements**
 - **Current**: Missing
@@ -553,7 +555,7 @@ title.style.cssText = `
 
 ---
 
-#### 3. **SVG Loading Failure**
+#### 3. **SVG Loading Failure** **[OBSOLETE - GRAPHICS REMOVED]**
 
 **Problem**: Corner graphic showing solid red square instead of geometric pattern
 
@@ -723,7 +725,7 @@ const titleText = typeof slide.content.title === 'string'
 
 ---
 
-#### Fix 5: SVG Absolute Paths (Commit adbbb5e)
+#### Fix 5: SVG Absolute Paths (Commit adbbb5e) **[OBSOLETE - GRAPHICS REMOVED]**
 
 **Problem**: Relative path `vertical-stripe.svg` might resolve incorrectly
 
@@ -957,7 +959,7 @@ element.style.fontFamily = "'Inter', sans-serif";
 
 ---
 
-#### Pitfall #3: SVG Loading/Rendering
+#### Pitfall #3: SVG Loading/Rendering **[OBSOLETE - GRAPHICS REMOVED]**
 
 **Symptom**: SVG not displaying or showing placeholder
 
@@ -1069,9 +1071,9 @@ font-extralight  → font-weight: 200
 - `Public/WebRenderer.js` - Slide rendering orchestrator
 
 **Assets**:
-- `Public/vertical-stripe.svg` - Corner graphic (geometric pattern)
-- `Public/horizontal-stripe.svg` - Unused
-- `Public/bip_logo.png` - BIP logo
+- ~~`Public/vertical-stripe.svg` - Corner graphic (geometric pattern)~~ **[REMOVED - NOT USED]**
+- ~~`Public/horizontal-stripe.svg` - Unused~~ **[REMOVED - NOT USED]**
+- ~~`Public/bip_logo.png` - BIP logo~~ **[REMOVED - NOT USED]**
 
 ---
 
