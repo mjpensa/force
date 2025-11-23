@@ -24,12 +24,6 @@
       referrerpolicy="no-referrer"
     ></script>
 
-    <!-- 3.5. Load Chart.js for Research Synthesis visualizations -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
-      crossorigin="anonymous"
-    ></script>
-
     <!-- 4. Load the original chart styles (must be loaded AFTER Tailwind for overrides) -->
     <link rel="stylesheet" href="/style.css" />
 
@@ -271,18 +265,6 @@
             <div id="chart-output" class="w-full">
                 <!-- This is where main.js will build the chart -->
             </div>
-
-            <!-- Toggle Button for Research Synthesis -->
-            <button id="toggle-research-synthesis"
-                    class="fixed bottom-8 right-8 bg-custom-button hover:bg-custom-button-hover text-white px-6 py-3 rounded-lg shadow-lg transition-all flex items-center gap-2 z-50">
-                <span>🔬</span>
-                <span id="toggle-research-text">Cross-LLM Research Synthesis</span>
-            </button>
-
-            <!-- Research Synthesis Section (hidden by default) -->
-            <section id="research-synthesis-section" class="hidden mt-12">
-                <div id="research-synthesis-container"></div>
-            </section>
 
         </main>
     </div>

@@ -11,7 +11,6 @@ import { CONFIG } from './config.js';
 import { safeGetElement, loadFooterSVG } from './Utils.js';
 import { GanttChart } from './GanttChart.js';
 import { TaskAnalyzer } from './TaskAnalyzer.js';
-import { ResearchSynthesizer } from './ResearchSynthesizer.js';
 
 // Global variable to store ganttData (including sessionId)
 let ganttData = null;
@@ -20,9 +19,6 @@ let errorDisplayed = false; // Track if an error message has already been shown
 
 // Create TaskAnalyzer instance (shared across all task clicks)
 const taskAnalyzer = new TaskAnalyzer();
-
-// ResearchSynthesizer instance (will be created after loading ganttData with sessionId)
-let researchSynthesizer = null;
 
 // Router instance (will be initialized after chart is rendered)
 let router = null;
@@ -46,14 +42,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // If we have chart data, render it
   if (ganttData) {
-    // Create ResearchSynthesizer with sessionId from ganttData
-    const sessionId = ganttData.sessionId || null;
-    console.log('📊 Creating ResearchSynthesizer with sessionId:', sessionId);
-    researchSynthesizer = new ResearchSynthesizer('researchSynthesis', sessionId);
-
-    // Make researchSynthesizer globally accessible for inline event handlers
-    window.researchSynthesizer = researchSynthesizer;
-
     // Load SVG graphics before rendering
     footerSVG = await loadFooterSVG();
     renderChart();
@@ -207,8 +195,7 @@ function renderChart() {
     container,
     ganttData,
     footerSVG,
-    handleTaskClick,
-    researchSynthesizer
+    handleTaskClick
   );
   chart.render();
 }

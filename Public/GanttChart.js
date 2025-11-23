@@ -26,14 +26,12 @@ export class GanttChart {
    * @param {Object} ganttData - The chart configuration and data
    * @param {string} footerSVG - The SVG content for the footer decoration
    * @param {Function} onTaskClick - Callback function when a task is clicked
-   * @param {Object} researchSynthesizer - The ResearchSynthesizer instance for research analysis
    */
-  constructor(container, ganttData, footerSVG, onTaskClick, researchSynthesizer = null) {
+  constructor(container, ganttData, footerSVG, onTaskClick) {
     this.container = container;
     this.ganttData = ganttData;
     this.footerSVG = footerSVG;
     this.onTaskClick = onTaskClick;
-    this.researchSynthesizer = researchSynthesizer; // Research synthesis component
     this.chartWrapper = null;
     this.gridElement = null;
     this.draggableGantt = null; // Phase 5: Drag-to-edit functionality
