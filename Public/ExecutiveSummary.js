@@ -27,6 +27,18 @@ export class ExecutiveSummary {
     this.isFullscreen = false;
     this.tocVisible = false;
     this.shortcutsVisible = false;
+
+    // Debug logging
+    console.log('📋 ExecutiveSummary constructor called');
+    console.log('  Summary data exists:', !!summaryData);
+    if (summaryData) {
+      console.log('  Summary data keys:', Object.keys(summaryData));
+      console.log('  strategicNarrative exists:', !!summaryData.strategicNarrative);
+      console.log('  drivers exists:', !!summaryData.drivers);
+      console.log('  dependencies exists:', !!summaryData.dependencies);
+      console.log('  risks exists:', !!summaryData.risks);
+      console.log('  keyInsights exists:', !!summaryData.keyInsights);
+    }
     this.viewMode = 'continuous'; // 'continuous' or 'single'
 
     // Keyboard shortcuts binding
@@ -579,6 +591,9 @@ export class ExecutiveSummary {
    * @returns {string} HTML content for the page
    */
   _renderPageContent(page) {
+    console.log('📝 Rendering page content for:', page.title);
+    console.log('  Sections to render:', page.sections);
+
     let html = '<div class="executive-summary-page">';
 
     // Page title
@@ -587,6 +602,7 @@ export class ExecutiveSummary {
     // Render each section
     page.sections.forEach(sectionName => {
       const sectionData = this.summaryData[sectionName];
+      console.log(`  Section "${sectionName}":`, sectionData ? 'EXISTS' : 'MISSING');
       if (!sectionData) return;
 
       switch (sectionName) {
