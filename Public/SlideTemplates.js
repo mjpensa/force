@@ -117,9 +117,12 @@ export const CUSTOM_SLIDE_TYPES = {
       }
 
       // Main title (left column, narrow)
-      if (slide.content.title?.text) {
+      const titleText = typeof slide.content.title === 'string'
+        ? slide.content.title
+        : slide.content.title?.text;
+      if (titleText) {
         const title = document.createElement('div');
-        title.textContent = slide.content.title.text;
+        title.textContent = titleText;
         title.style.cssText = `
           width: 18.7%;
           font-size: clamp(20px, 3vw, 44px);
@@ -255,10 +258,13 @@ export const CUSTOM_SLIDE_TYPES = {
       }
 
       // Main Title (large, thin font)
-      if (slide.content.title?.text) {
+      const titleText = typeof slide.content.title === 'string'
+        ? slide.content.title
+        : slide.content.title?.text;
+      if (titleText) {
         const title = document.createElement('h1');
         // Preserve line breaks in title
-        const titleLines = slide.content.title.text.split('\n');
+        const titleLines = titleText.split('\n');
         titleLines.forEach((line, idx) => {
           if (idx > 0) title.appendChild(document.createElement('br'));
           title.appendChild(document.createTextNode(line));
@@ -376,11 +382,14 @@ export const CUSTOM_SLIDE_TYPES = {
       `;
 
       // Title
-      if (slide.content.title?.text) {
+      const titleText = typeof slide.content.title === 'string'
+        ? slide.content.title
+        : slide.content.title?.text;
+      if (titleText) {
         const title = document.createElement('h1');
 
         // Split title into lines
-        const titleLines = slide.content.title.text.split('\n');
+        const titleLines = titleText.split('\n');
         titleLines.forEach((line, idx) => {
           const span = document.createElement('span');
           span.textContent = line;

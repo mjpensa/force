@@ -1443,8 +1443,15 @@ export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
           enum: ["title", "narrative", "drivers", "dependencies", "risks", "insights", "simple", "bip-three-column", "bip-single-column", "bip-title-slide"]
         },
         title: {
-          type: "string",
-          maxLength: 200
+          oneOf: [
+            { type: "string", maxLength: 200 },
+            {
+              type: "object",
+              properties: {
+                text: { type: "string", maxLength: 200 }
+              }
+            }
+          ]
         },
         subtitle: {
           type: "string",
