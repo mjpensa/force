@@ -1,13 +1,13 @@
 /**
- * BIP Slide Templates - Tailwind Class Implementation
- * Uses Tailwind utility classes to match reference templates exactly
- * Reference: bip-slide-2.html (three-column), bip-slide-4.html (single-column)
+ * BIP Slide Templates - Template Population Approach
+ * Uses actual HTML template structure from bip-slide-2.html and bip-slide-4.html
+ * Populates templates with dynamic content instead of building from scratch
  */
 
 export const CUSTOM_SLIDE_TYPES = {
   /**
    * BIP Three-Column Layout (bip-slide-2.html)
-   * Exact replica using Tailwind classes
+   * Template population approach - uses exact HTML structure
    */
   'bip-three-column': {
     schema: {
@@ -25,95 +25,96 @@ export const CUSTOM_SLIDE_TYPES = {
     },
 
     render: (slide, theme, slideNumber) => {
-      // <body class="bg-white p-12">
-      // NOTE: Presentation viewer .slide-content already adds 3rem padding
-      // So we use p-0 to avoid double padding
-      const body = document.createElement('div');
-      body.className = 'bg-white';
-      body.style.cssText = `
-        font-family: 'Inter', sans-serif;
-        width: 100%;
-        height: 100%;
-        box-sizing: border-box;
-        padding: 0;
+      // Create container using EXACT template structure from bip-slide-2.html
+      const template = `
+        <div style="font-family: 'Inter', sans-serif; width: 100%; height: 100%; background: white;">
+          <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="mb-8">
+              <h2 class="text-red-600 font-bold text-sm tracking-wider mb-6" data-placeholder="eyebrow">EYEBROW</h2>
+              <h1 class="text-5xl font-extralight text-slate-800 leading-tight" data-placeholder="title">
+                Title
+              </h1>
+            </div>
+
+            <!-- Three Column Layout -->
+            <div class="grid grid-cols-3 gap-10 mt-16">
+              <!-- Column 1 -->
+              <div class="text-slate-700 text-sm leading-relaxed" data-placeholder="column1">
+                <p>Column 1</p>
+              </div>
+
+              <!-- Column 2 -->
+              <div class="text-slate-700 text-sm leading-relaxed" data-placeholder="column2">
+                <p>Column 2</p>
+              </div>
+
+              <!-- Column 3 -->
+              <div class="text-slate-700 text-sm leading-relaxed" data-placeholder="column3">
+                <p>Column 3</p>
+              </div>
+            </div>
+          </div>
+        </div>
       `;
 
-      // <div class="max-w-7xl mx-auto">
-      const container = document.createElement('div');
-      container.className = 'max-w-7xl mx-auto';
+      // Parse template as DOM
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(template, 'text/html');
+      const container = doc.body.firstElementChild;
 
-      // Header: <div class="mb-8">
-      const header = document.createElement('div');
-      header.className = 'mb-8';
-
-      // Eyebrow: <h2 class="text-red-600 font-bold text-sm tracking-wider mb-6">
+      // Populate eyebrow
+      const eyebrow = container.querySelector('[data-placeholder="eyebrow"]');
       if (slide.content.eyebrow?.text) {
-        const eyebrow = document.createElement('h2');
-        eyebrow.className = 'text-red-600 font-bold text-sm tracking-wider mb-6';
         eyebrow.textContent = slide.content.eyebrow.text;
-        header.appendChild(eyebrow);
+      } else {
+        eyebrow.style.display = 'none';
       }
 
-      // Title: <h1 class="text-5xl font-extralight text-slate-800 leading-tight">
+      // Populate title
       const titleText = typeof slide.content.title === 'string'
         ? slide.content.title
-        : slide.content.title?.text;
-      if (titleText) {
-        const title = document.createElement('h1');
-        title.className = 'text-5xl font-extralight text-slate-800 leading-tight';
-        // Add explicit font-family and letter-spacing (not in Tailwind defaults)
-        title.style.fontFamily = "'Inter', sans-serif";
-        title.style.letterSpacing = '0.05em';
-        title.style.margin = '0';
-
-        // Handle line breaks
-        const lines = titleText.split(/\\n|\n/);
-        lines.forEach((line, idx) => {
-          if (idx > 0) title.appendChild(document.createElement('br'));
-          title.appendChild(document.createTextNode(line));
-        });
-        header.appendChild(title);
-      }
-
-      container.appendChild(header);
-
-      // Three columns: <div class="grid grid-cols-3 gap-10 mt-16">
-      const grid = document.createElement('div');
-      grid.className = 'grid grid-cols-3 gap-10 mt-16';
-
-      // Column divs: <div class="text-slate-700 text-sm leading-relaxed">
-      const columns = slide.content.columns || [];
-      columns.slice(0, 3).forEach((col) => {
-        const columnDiv = document.createElement('div');
-        columnDiv.className = 'text-slate-700 text-sm leading-relaxed';
-
-        // Paragraphs: <p class="mb-4">
-        const paragraphs = (col.text || '').split(/\n\n+/);
-        paragraphs.forEach((para, idx) => {
-          if (para.trim()) {
-            const p = document.createElement('p');
-            p.textContent = para.trim();
-            // Last paragraph has no margin
-            if (idx < paragraphs.length - 1) {
-              p.className = 'mb-4';
-            }
-            columnDiv.appendChild(p);
-          }
-        });
-
-        grid.appendChild(columnDiv);
+        : slide.content.title?.text || 'Title';
+      const title = container.querySelector('[data-placeholder="title"]');
+      title.innerHTML = ''; // Clear placeholder
+      const lines = titleText.split(/\\n|\n/);
+      lines.forEach((line, idx) => {
+        if (idx > 0) title.appendChild(document.createElement('br'));
+        title.appendChild(document.createTextNode(line));
       });
 
-      container.appendChild(grid);
-      body.appendChild(container);
+      // Populate columns
+      const columns = slide.content.columns || [];
+      for (let i = 0; i < 3; i++) {
+        const columnDiv = container.querySelector(`[data-placeholder="column${i + 1}"]`);
+        columnDiv.innerHTML = ''; // Clear placeholder
 
-      return body;
+        if (columns[i]?.text) {
+          const paragraphs = columns[i].text.split(/\n\n+/);
+          paragraphs.forEach((para, idx) => {
+            if (para.trim()) {
+              const p = document.createElement('p');
+              p.textContent = para.trim();
+              if (idx < paragraphs.length - 1) {
+                p.className = 'mb-4';
+              }
+              columnDiv.appendChild(p);
+            }
+          });
+        } else {
+          const p = document.createElement('p');
+          p.textContent = 'Column ' + (i + 1);
+          columnDiv.appendChild(p);
+        }
+      }
+
+      return container;
     }
   },
 
   /**
    * BIP Single-Column Layout (bip-slide-4.html)
-   * Exact replica using Tailwind classes
+   * Template population approach - uses exact HTML structure
    */
   'bip-single-column': {
     schema: {
@@ -131,90 +132,80 @@ export const CUSTOM_SLIDE_TYPES = {
     },
 
     render: (slide, theme, slideNumber) => {
-      // <body class="bg-white p-12">
-      // NOTE: Presentation viewer .slide-content already adds 3rem padding
-      const body = document.createElement('div');
-      body.className = 'bg-white';
-      body.style.cssText = `
-        font-family: 'Inter', sans-serif;
-        width: 100%;
-        height: 100%;
-        box-sizing: border-box;
-        padding: 0;
+      // Create container using EXACT template structure from bip-slide-4.html
+      const template = `
+        <div style="font-family: 'Inter', sans-serif; width: 100%; height: 100%; background: white;">
+          <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="mb-8">
+              <h2 class="text-red-600 font-bold text-sm tracking-wider mb-6" data-placeholder="eyebrow">EYEBROW</h2>
+            </div>
+
+            <!-- Content Grid -->
+            <div class="grid grid-cols-2 gap-20">
+              <!-- Left Column - Title -->
+              <div>
+                <h1 class="text-6xl font-extralight text-slate-800 leading-tight" data-placeholder="title">
+                  Title
+                </h1>
+              </div>
+
+              <!-- Right Column - Body Text -->
+              <div class="space-y-8 text-slate-700 text-base leading-relaxed" data-placeholder="body">
+                <p>Body text</p>
+              </div>
+            </div>
+          </div>
+        </div>
       `;
 
-      // <div class="max-w-7xl mx-auto">
-      const container = document.createElement('div');
-      container.className = 'max-w-7xl mx-auto';
+      // Parse template as DOM
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(template, 'text/html');
+      const container = doc.body.firstElementChild;
 
-      // Header with eyebrow ONLY: <div class="mb-8">
-      const header = document.createElement('div');
-      header.className = 'mb-8';
-
-      // Eyebrow: <h2 class="text-red-600 font-bold text-sm tracking-wider mb-6">
+      // Populate eyebrow
+      const eyebrow = container.querySelector('[data-placeholder="eyebrow"]');
       if (slide.content.eyebrow?.text) {
-        const eyebrow = document.createElement('h2');
-        eyebrow.className = 'text-red-600 font-bold text-sm tracking-wider mb-6';
         eyebrow.textContent = slide.content.eyebrow.text;
-        header.appendChild(eyebrow);
+      } else {
+        eyebrow.style.display = 'none';
       }
 
-      container.appendChild(header);
-
-      // Two-column grid: <div class="grid grid-cols-2 gap-20">
-      const grid = document.createElement('div');
-      grid.className = 'grid grid-cols-2 gap-20';
-
-      // Left column - Title ONLY: <div><h1 class="text-6xl font-extralight text-slate-800 leading-tight">
-      const leftCol = document.createElement('div');
+      // Populate title
       const titleText = typeof slide.content.title === 'string'
         ? slide.content.title
-        : slide.content.title?.text;
-      if (titleText) {
-        const title = document.createElement('h1');
-        title.className = 'text-6xl font-extralight text-slate-800 leading-tight';
-        // Add explicit font-family and letter-spacing (not in Tailwind defaults)
-        title.style.fontFamily = "'Inter', sans-serif";
-        title.style.letterSpacing = '0.05em';
-        title.style.margin = '0';
+        : slide.content.title?.text || 'Title';
+      const title = container.querySelector('[data-placeholder="title"]');
+      title.innerHTML = ''; // Clear placeholder
+      const lines = titleText.split(/\\n|\n/);
+      lines.forEach((line, idx) => {
+        if (idx > 0) title.appendChild(document.createElement('br'));
+        title.appendChild(document.createTextNode(line));
+      });
 
-        // Handle line breaks
-        const lines = titleText.split(/\\n|\n/);
-        lines.forEach((line, idx) => {
-          if (idx > 0) title.appendChild(document.createElement('br'));
-          title.appendChild(document.createTextNode(line));
-        });
-        leftCol.appendChild(title);
-      }
-      grid.appendChild(leftCol);
+      // Populate body text
+      const bodyDiv = container.querySelector('[data-placeholder="body"]');
+      bodyDiv.innerHTML = ''; // Clear placeholder
 
-      // Right column - Body text: <div class="space-y-8 text-slate-700 text-base leading-relaxed">
-      const rightCol = document.createElement('div');
-      rightCol.className = 'space-y-8 text-slate-700 text-base leading-relaxed';
-
-      // Paragraphs with space-y-8 (Tailwind handles spacing via :not(:first-child))
       if (slide.content.bodyText?.text) {
         const paragraphs = slide.content.bodyText.text.split(/\n\n+/);
         paragraphs.forEach((para) => {
           if (para.trim()) {
             const p = document.createElement('p');
             p.textContent = para.trim();
-            rightCol.appendChild(p);
+            bodyDiv.appendChild(p);
           }
         });
       }
-      grid.appendChild(rightCol);
 
-      container.appendChild(grid);
-      body.appendChild(container);
-
-      return body;
+      return container;
     }
   },
 
   /**
    * BIP Title Slide (gradient background)
-   * Simple branded title slide - NOT from HTML templates
+   * Kept as-is (not from HTML templates)
    */
   'bip-title-slide': {
     schema: {
