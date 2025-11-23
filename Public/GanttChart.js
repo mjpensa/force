@@ -11,7 +11,6 @@ import { DraggableGantt } from './DraggableGantt.js';
 import { ResizableGantt } from './ResizableGantt.js';
 import { ContextMenu } from './ContextMenu.js';
 import { ExecutiveSummary } from './ExecutiveSummary.js';
-import { PresentationSlides } from './PresentationSlides.js';
 import { HamburgerMenu } from './HamburgerMenu.js';
 
 // Import Router (loaded as global from Router.js)
@@ -46,7 +45,6 @@ export class GanttChart {
     this.legendElement = null; // Reference to the legend element for edit mode
     this.hamburgerMenu = null; // Hamburger menu for section navigation
     this.executiveSummary = null; // Reference to ExecutiveSummary component
-    this.presentationSlides = null; // Reference to PresentationSlides component
     this.router = null; // Router for navigation between sections
   }
 
@@ -90,17 +88,7 @@ export class GanttChart {
     // Add Executive Summary - Always create component, it will handle missing data gracefully
     this._addExecutiveSummary();
 
-    // Add Presentation Slides - Always create component, it will handle missing data gracefully
-    console.log('🎭 Presentation Slides Data Check:', {
-      exists: !!this.ganttData.presentationSlides,
-      hasSlides: this.ganttData.presentationSlides?.slides?.length || 0,
-      data: this.ganttData.presentationSlides ? 'Present' : 'Missing'
-    });
-
-    console.log('✓ Rendering presentation slides component...');
-    this._addPresentationSlides();
-
-    // Add footer stripe after Executive Summary and Presentation Slides
+    // Add footer stripe after Executive Summary
     this._addFooterSVG();
 
     // Add export and edit mode toggle buttons
@@ -247,16 +235,6 @@ export class GanttChart {
   }
 
   /**
-   * Adds the presentation slides component to the chart
-   * @private
-   */
-  _addPresentationSlides() {
-    this.presentationSlides = new PresentationSlides(this.ganttData.presentationSlides, this.footerSVG);
-    const slidesElement = this.presentationSlides.render();
-    this.chartWrapper.appendChild(slidesElement);
-  }
-
-  /**
    * Adds the hamburger menu for navigation
    * @private
    */
@@ -274,8 +252,7 @@ export class GanttChart {
 
     // Determine content availability
     const contentAvailability = {
-      hasExecutiveSummary: !!this.ganttData.executiveSummary,
-      hasPresentationSlides: !!(this.ganttData.presentationSlides && this.ganttData.presentationSlides.slides && this.ganttData.presentationSlides.slides.length > 0)
+      hasExecutiveSummary: !!this.ganttData.executiveSummary
     };
 
     console.log('Content availability for hamburger menu:', contentAvailability);
@@ -289,7 +266,7 @@ export class GanttChart {
 
     // Initialize the router with component references
     if (this.router) {
-      this.router.init(this, this.executiveSummary, this.presentationSlides, this.researchSynthesizer);
+      this.router.init(this, this.executiveSummary);
     }
   }
 
@@ -1309,7 +1286,7 @@ export class GanttChart {
 
   /**
    * ADVANCED GANTT: Adds keyboard shortcuts for quick navigation
-   * E = Executive View, T = Timeline (Roadmap), D = Detail View, P = Presentation
+   * T = Timeline (Roadmap), S = Summary (Executive Summary)
    * @private
    */
   _addKeyboardShortcuts() {
@@ -1336,14 +1313,6 @@ export class GanttChart {
           }
           break;
 
-        case 'p':
-          // P = Presentation (navigate to presentation view)
-          if (this.router) {
-            this.router.navigate('presentation');
-            console.log('⌨️ Keyboard shortcut: P (Presentation)');
-          }
-          break;
-
         case 's':
           // S = Summary (navigate to executive summary view)
           if (this.router) {
@@ -1358,7 +1327,7 @@ export class GanttChart {
       }
     });
 
-    console.log('⌨️ Keyboard shortcuts enabled: E=Executive, D=Detail, T=Timeline, P=Presentation, S=Summary');
+    console.log('⌨️ Keyboard shortcuts enabled: T=Timeline, S=Summary');
   }
 
 

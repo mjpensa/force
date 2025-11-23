@@ -1,9 +1,8 @@
 /**
  * HamburgerMenu Module
- * Provides navigation between the three main sections of the presentation:
+ * Provides navigation between the two main sections:
  * 1. Roadmap (Gantt Chart)
  * 2. Executive Summary
- * 3. Presentation Slides
  * Each section is displayed in a separate full-screen view
  */
 
@@ -17,15 +16,13 @@ export class HamburgerMenu {
    * @param {Router} router - The router instance for navigation
    * @param {Object} contentAvailability - Flags indicating which content is available
    * @param {boolean} contentAvailability.hasExecutiveSummary - Whether executive summary was generated
-   * @param {boolean} contentAvailability.hasPresentationSlides - Whether presentation slides were generated
    */
   constructor(router, contentAvailability = {}) {
     this.isOpen = false;
     this.menuElement = null;
     this.router = router;
-    this.currentSection = 'roadmap'; // Track current section: 'roadmap', 'executive-summary', 'presentation'
+    this.currentSection = 'roadmap'; // Track current section: 'roadmap', 'executive-summary'
     this.hasExecutiveSummary = contentAvailability.hasExecutiveSummary !== false; // Default to true for backward compatibility
-    this.hasPresentationSlides = contentAvailability.hasPresentationSlides !== false; // Default to true for backward compatibility
   }
 
   /**
@@ -55,9 +52,7 @@ export class HamburgerMenu {
 
     // Build menu items conditionally based on content availability
     const executiveSummaryDisabled = !this.hasExecutiveSummary ? 'disabled' : '';
-    const presentationDisabled = !this.hasPresentationSlides ? 'disabled' : '';
     const executiveSummaryTitle = !this.hasExecutiveSummary ? ' title="Not generated"' : '';
-    const presentationTitle = !this.hasPresentationSlides ? ' title="Not generated"' : '';
 
     navMenu.innerHTML = `
       <ul class="hamburger-nav-list">
@@ -73,14 +68,6 @@ export class HamburgerMenu {
              data-section="executive-summary"${executiveSummaryTitle}>
             <span class="nav-icon">📋</span>
             <span class="nav-text">Executive Summary${!this.hasExecutiveSummary ? ' (Not Generated)' : ''}</span>
-          </a>
-        </li>
-        <li>
-          <a href="${this.hasPresentationSlides ? '#presentation' : '#'}"
-             class="hamburger-nav-item ${presentationDisabled}"
-             data-section="presentation"${presentationTitle}>
-            <span class="nav-icon">🎯</span>
-            <span class="nav-text">Presentation${!this.hasPresentationSlides ? ' (Not Generated)' : ''}</span>
           </a>
         </li>
       </ul>
@@ -179,7 +166,7 @@ export class HamburgerMenu {
 
   /**
    * Updates the active menu item based on the current route
-   * @param {string} section - The section to mark as active ('roadmap', 'executive-summary', or 'presentation')
+   * @param {string} section - The section to mark as active ('roadmap' or 'executive-summary')
    */
   updateActiveItem(section) {
     this.currentSection = section;

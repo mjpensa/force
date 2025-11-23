@@ -80,7 +80,6 @@ function createTables(db) {
       sessionId TEXT NOT NULL,
       ganttData TEXT NOT NULL,
       executiveSummary TEXT,
-      presentationSlides TEXT,
       createdAt INTEGER NOT NULL,
       expiresAt INTEGER NOT NULL,
       FOREIGN KEY (sessionId) REFERENCES sessions(sessionId)
@@ -238,18 +237,17 @@ export function getSession(sessionId) {
  * @param {string} sessionId - Associated session ID
  * @param {object} ganttData - Gantt chart data
  * @param {object} executiveSummary - Executive summary data
- * @param {object} presentationSlides - Presentation slides data
  * @param {number} expirationDays - Days until expiration (default: 30)
  * @returns {object} Saved chart metadata
  */
-export function saveChart(chartId, sessionId, ganttData, executiveSummary, presentationSlides, expirationDays = DEFAULT_EXPIRATION_DAYS) {
+export function saveChart(chartId, sessionId, ganttData, executiveSummary, expirationDays = DEFAULT_EXPIRATION_DAYS) {
   const db = getDatabase();
   const now = Date.now();
   const expiresAt = now + (expirationDays * 24 * 60 * 60 * 1000);
 
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO charts (chartId, sessionId, ganttData, executiveSummary, presentationSlides, createdAt, expiresAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO charts (chartId, sessionId, ganttData, executiveSummary, createdAt, expiresAt)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
@@ -257,7 +255,6 @@ export function saveChart(chartId, sessionId, ganttData, executiveSummary, prese
     sessionId,
     JSON.stringify(ganttData),
     JSON.stringify(executiveSummary),
-    JSON.stringify(presentationSlides),
     now,
     expiresAt
   );
@@ -289,7 +286,6 @@ export function getChart(chartId) {
     sessionId: row.sessionId,
     ganttData: JSON.parse(row.ganttData),
     executiveSummary: JSON.parse(row.executiveSummary),
-    presentationSlides: JSON.parse(row.presentationSlides),
     createdAt: new Date(row.createdAt)
   };
 }

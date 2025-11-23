@@ -99,12 +99,6 @@ async function loadChartFromServer(chartId) {
       ganttData = await response.json();
       console.log('✓ Chart data received from server');
       console.log('📊 Data keys:', Object.keys(ganttData || {}));
-      console.log('🎭 Presentation Slides in response:', {
-        exists: !!ganttData.presentationSlides,
-        isNull: ganttData.presentationSlides === null,
-        isUndefined: ganttData.presentationSlides === undefined,
-        hasSlides: ganttData.presentationSlides?.slides?.length || 0
-      });
 
       // Validate the loaded data structure
       if (!ganttData || typeof ganttData !== 'object') {
