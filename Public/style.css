@@ -73,7 +73,7 @@ select:focus-visible {
   border-radius: 8px;
   background-color: #0c2340; /* Chart Background */
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to allow executive summary scrolling */
   margin-top: 24px;
   font-family: 'Work Sans', sans-serif; /* CHANGED */
   position: relative; /* Added for vertical SVG border */
@@ -5473,11 +5473,6 @@ body.dragging {
   margin-top: 24px !important;
 }
 
-/* Allow scrolling when executive summary is visible */
-#gantt-chart-container:has(.executive-summary-viewer) {
-  overflow: visible !important;
-}
-
 /* Section Activation Animation */
 .section-activated {
   animation: sectionActivate 0.8s ease;
@@ -7633,8 +7628,11 @@ body.dragging {
   background: #f3f4f6;
   min-height: 100vh;
   width: 100%;
+  height: auto;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 2rem 1rem;
+  position: relative;
 }
 
 .executive-summary-page {
