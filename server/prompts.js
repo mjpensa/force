@@ -1404,21 +1404,21 @@ BIP CUSTOM SLIDE TEMPLATES:
 TYPE: "bip-three-column" - BIP THREE-COLUMN LAYOUT
 Modern three-column layout with eyebrow, title, and geometric corner graphic.
 REQUIRED FIELDS:
-- eyebrow: Object with text property (uppercase label, max 100 chars)
 - title: Object with text property (main title, max 200 chars)
 - columns: Array of exactly 3 column objects, each with:
   * text: Column content (max 1000 chars per column)
-OPTIONAL FIELDS:
+RECOMMENDED FIELDS:
+- eyebrow: Object with text property (uppercase label, max 100 chars) - defaults to "KEY THEMES" if not provided
 - showCornerGraphic: Boolean (default true) - shows decorative corner SVG
 Example: { "type": "bip-three-column", "eyebrow": {"text": "PROJECT OVERVIEW"}, "title": {"text": "Digital Transformation Initiative"}, "columns": [{"text": "First column content..."}, {"text": "Second column..."}, {"text": "Third column..."}], "showCornerGraphic": true }
 
 TYPE: "bip-single-column" - BIP SINGLE-COLUMN LAYOUT
 Large title with single wide text column, ideal for detailed content.
 REQUIRED FIELDS:
-- eyebrow: Object with text property (uppercase label, max 100 chars)
 - title: Object with text property (large title, supports line breaks with \n, max 200 chars)
 - bodyText: Object with text property (body content, max 2000 chars)
-OPTIONAL FIELDS:
+RECOMMENDED FIELDS:
+- eyebrow: Object with text property (uppercase label, max 100 chars) - defaults to "OVERVIEW" if not provided
 - showCornerGraphic: Boolean (default true) - shows decorative corner SVG
 Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."}, "showCornerGraphic": true }
 
@@ -1426,9 +1426,9 @@ TYPE: "bip-title-slide" - BIP TITLE SLIDE
 Branded title slide with gradient background and footer.
 REQUIRED FIELDS:
 - title: Object with text property (main title, supports line breaks with \n, max 200 chars)
-OPTIONAL FIELDS:
-- footerLeft: Object with text property (left footer text, e.g., "Here to Dare.", max 100 chars)
-- footerRight: Object with text property (right footer text, e.g., "Month | Year", max 100 chars)
+RECOMMENDED FIELDS:
+- footerLeft: Object with text property (left footer text, max 100 chars) - defaults to "Here to Dare." if not provided
+- footerRight: Object with text property (right footer text, max 100 chars) - defaults to current month/year if not provided
 Example: { "type": "bip-title-slide", "title": {"text": "Digital\nTransformation\nRoadmap"}, "footerLeft": {"text": "Here to Dare."}, "footerRight": {"text": "November | 2025"} }
 
 Your slide will be rendered in a professional template with appropriate styling.`;
@@ -1602,13 +1602,13 @@ export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
   required: ["slide"]
 };
 
-// BIP-specific schemas that REQUIRE content fields (workaround for Gemini's lack of conditional schema support)
+// BIP-specific schemas (aligned with defensive template behavior and post-processing)
 export const BIP_THREE_COLUMN_SCHEMA = {
   type: "object",
   properties: {
     slide: {
       type: "object",
-      required: ["type", "title", "eyebrow", "columns"],  // FORCE columns to be required
+      required: ["type", "title", "columns"],  // eyebrow recommended but not required (has default)
       properties: {
         type: {
           type: "string",
@@ -1657,7 +1657,7 @@ export const BIP_SINGLE_COLUMN_SCHEMA = {
   properties: {
     slide: {
       type: "object",
-      required: ["type", "title", "eyebrow", "bodyText"],  // FORCE bodyText to be required
+      required: ["type", "title", "bodyText"],  // eyebrow recommended but not required (has default)
       properties: {
         type: {
           type: "string",
@@ -1700,7 +1700,7 @@ export const BIP_TITLE_SLIDE_SCHEMA = {
   properties: {
     slide: {
       type: "object",
-      required: ["type", "title", "footerLeft", "footerRight"],  // FORCE footer fields to be required
+      required: ["type", "title"],  // footers recommended but not required (have defaults)
       properties: {
         type: {
           type: "string",
@@ -1819,21 +1819,21 @@ BIP CUSTOM SLIDE TEMPLATES:
 TYPE: "bip-three-column" - BIP THREE-COLUMN LAYOUT
 Modern three-column layout with eyebrow, title, and geometric corner graphic.
 REQUIRED FIELDS:
-- eyebrow: Object with text property (uppercase label, max 100 chars)
 - title: Object with text property (main title, max 200 chars)
 - columns: Array of exactly 3 column objects, each with:
   * text: Column content (max 1000 chars per column)
-OPTIONAL FIELDS:
+RECOMMENDED FIELDS:
+- eyebrow: Object with text property (uppercase label, max 100 chars) - defaults to "KEY THEMES" if not provided
 - showCornerGraphic: Boolean (default true) - shows decorative corner SVG
 Example: { "type": "bip-three-column", "eyebrow": {"text": "PROJECT OVERVIEW"}, "title": {"text": "Digital Transformation Initiative"}, "columns": [{"text": "First column content..."}, {"text": "Second column..."}, {"text": "Third column..."}], "showCornerGraphic": true }
 
 TYPE: "bip-single-column" - BIP SINGLE-COLUMN LAYOUT
 Large title with single wide text column, ideal for detailed content.
 REQUIRED FIELDS:
-- eyebrow: Object with text property (uppercase label, max 100 chars)
 - title: Object with text property (large title, supports line breaks with \n, max 200 chars)
 - bodyText: Object with text property (body content, max 2000 chars)
-OPTIONAL FIELDS:
+RECOMMENDED FIELDS:
+- eyebrow: Object with text property (uppercase label, max 100 chars) - defaults to "OVERVIEW" if not provided
 - showCornerGraphic: Boolean (default true) - shows decorative corner SVG
 Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."}, "showCornerGraphic": true }
 
@@ -1841,9 +1841,9 @@ TYPE: "bip-title-slide" - BIP TITLE SLIDE
 Branded title slide with gradient background and footer.
 REQUIRED FIELDS:
 - title: Object with text property (main title, supports line breaks with \n, max 200 chars)
-OPTIONAL FIELDS:
-- footerLeft: Object with text property (left footer text, e.g., "Here to Dare.", max 100 chars)
-- footerRight: Object with text property (right footer text, e.g., "Month | Year", max 100 chars)
+RECOMMENDED FIELDS:
+- footerLeft: Object with text property (left footer text, max 100 chars) - defaults to "Here to Dare." if not provided
+- footerRight: Object with text property (right footer text, max 100 chars) - defaults to current month/year if not provided
 Example: { "type": "bip-title-slide", "title": {"text": "Digital\nTransformation\nRoadmap"}, "footerLeft": {"text": "Here to Dare."}, "footerRight": {"text": "November | 2025"} }
 
 IMPORTANT DESIGN PRINCIPLES:

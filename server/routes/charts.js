@@ -465,17 +465,17 @@ Each item should be concise and actionable (1-3 sentences).
 Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key takeaway about project scope and objectives", "Important milestone or deliverable to highlight", "Critical success factor or requirement", ...] }`;
         }
 
-        // Select appropriate schema based on slide type (BIP slides have stricter requirements)
+        // Select appropriate schema based on slide type (BIP slides have specific requirements)
         let selectedSchema = PRESENTATION_SLIDE_CONTENT_SCHEMA;
         if (slideOutline.type === 'bip-three-column') {
           selectedSchema = BIP_THREE_COLUMN_SCHEMA;
-          console.log(`Job ${jobId}:   Using BIP_THREE_COLUMN_SCHEMA (requires columns, eyebrow)`);
+          console.log(`Job ${jobId}:   Using BIP_THREE_COLUMN_SCHEMA (requires columns; recommends eyebrow)`);
         } else if (slideOutline.type === 'bip-single-column') {
           selectedSchema = BIP_SINGLE_COLUMN_SCHEMA;
-          console.log(`Job ${jobId}:   Using BIP_SINGLE_COLUMN_SCHEMA (requires bodyText, eyebrow)`);
+          console.log(`Job ${jobId}:   Using BIP_SINGLE_COLUMN_SCHEMA (requires bodyText; recommends eyebrow)`);
         } else if (slideOutline.type === 'bip-title-slide') {
           selectedSchema = BIP_TITLE_SLIDE_SCHEMA;
-          console.log(`Job ${jobId}:   Using BIP_TITLE_SLIDE_SCHEMA (requires footerLeft, footerRight)`);
+          console.log(`Job ${jobId}:   Using BIP_TITLE_SLIDE_SCHEMA (requires title; recommends footers)`);
         }
 
         const slidePayload = {
