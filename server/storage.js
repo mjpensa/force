@@ -195,42 +195,6 @@ export function getChart(chartId) {
 }
 
 /**
- * Updates chart data by ID
- * @param {string} chartId - The chart ID
- * @param {Object} updatedData - The updated chart data
- * @returns {boolean} True if successful, false if chart not found
- */
-export function updateChart(chartId, updatedData) {
-  const existing = chartStore.get(chartId);
-
-  if (!existing) {
-    console.warn(`Attempted to update non-existent chart: ${chartId}`);
-    return false;
-  }
-
-  // Check if expired
-  if (Date.now() > existing.expiresAt) {
-    chartStore.delete(chartId);
-    return false;
-  }
-
-  // Extract components from updated data
-  const gantt = updatedData.ganttData || updatedData;
-
-  chartStore.set(chartId, {
-    data: {
-      ...gantt
-    },
-    sessionId: existing.sessionId,
-    createdAt: existing.createdAt,
-    expiresAt: existing.expiresAt
-  });
-
-  console.log(`✅ Chart ${chartId} updated successfully in memory`);
-  return true;
-}
-
-/**
  * JOB MANAGEMENT
  */
 
@@ -310,37 +274,3 @@ export function failJob(jobId, errorMessage) {
   });
 }
 
-/**
- * Gets charts by session ID
- * @param {string} sessionId - The session ID
- * @returns {Array} Array of chart metadata
- */
-export function getChartsBySession(sessionId) {
-  const charts = [];
-
-  for (const [chartId, chart] of chartStore.entries()) {
-    if (chart.sessionId === sessionId && Date.now() <= chart.expiresAt) {
-      charts.push({
-        chartId,
-        createdAt: chart.createdAt,
-        expiresAt: chart.expiresAt
-      });
-    }
-  }
-
-  return charts;
-}
-
-/**
- * Gets in-memory storage statistics
- * @returns {Object} Storage statistics
- */
-export function getStorageStats() {
-  return {
-    sessions: sessionStore.size,
-    charts: chartStore.size,
-    jobs: jobStore.size,
-    type: 'in-memory',
-    persistent: false
-  };
-}

@@ -77,25 +77,6 @@ export function isValidJobId(jobId) {
 }
 
 /**
- * Validates session ID format
- * @param {string} sessionId - The session ID to validate
- * @returns {boolean} True if valid, false otherwise
- */
-export function isValidSessionId(sessionId) {
-  return CONFIG.SECURITY.PATTERNS.SESSION_ID.test(sessionId);
-}
-
-/**
- * Validates file extension
- * @param {string} filename - The filename to check
- * @returns {boolean} True if extension is allowed, false otherwise
- */
-export function isValidFileExtension(filename) {
-  const extension = filename.toLowerCase().split('.').pop();
-  return CONFIG.FILES.ALLOWED_EXTENSIONS.includes(extension);
-}
-
-/**
  * Extracts file extension from filename
  * @param {string} filename - The filename
  * @returns {string} The file extension (lowercase)
