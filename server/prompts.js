@@ -1743,7 +1743,9 @@ REQUIRED FIELDS:
 - eyebrow: Object with text property (uppercase label, max 100 chars)
 - title: Object with text property (large title, supports line breaks with \n, max 200 chars)
 - bodyText: Object with text property (body content, max 2000 chars)
-Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."} }
+OPTIONAL FIELDS:
+- showCornerGraphic: Boolean (default true) - shows decorative corner SVG
+Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."}, "showCornerGraphic": true }
 
 TYPE: "bip-title-slide" - BIP TITLE SLIDE
 Branded title slide with gradient background and footer.
@@ -2156,7 +2158,9 @@ REQUIRED FIELDS:
 - eyebrow: Object with text property (uppercase label, max 100 chars)
 - title: Object with text property (large title, supports line breaks with \n, max 200 chars)
 - bodyText: Object with text property (body content, max 2000 chars)
-Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."} }
+OPTIONAL FIELDS:
+- showCornerGraphic: Boolean (default true) - shows decorative corner SVG
+Example: { "type": "bip-single-column", "eyebrow": {"text": "STRATEGIC CONTEXT"}, "title": {"text": "Market\nOpportunity\nAnalysis"}, "bodyText": {"text": "The market landscape presents..."}, "showCornerGraphic": true }
 
 TYPE: "bip-title-slide" - BIP TITLE SLIDE
 Branded title slide with gradient background and footer.
