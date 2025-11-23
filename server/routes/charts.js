@@ -400,10 +400,17 @@ Example: { "type": "insights", "title": "${slideOutline.title}", "insights": [{"
 - columns: Array of exactly 3 column objects, each with text property (max 1000 chars per column)
 - showCornerGraphic: Boolean (use true to show decorative corner graphic)
 
-This is a modern three-column layout with an eyebrow label and geometric corner decoration.
-Extract key content from research and organize into 3 balanced columns.
+CRITICAL REQUIREMENT - MUST EXTRACT FROM RESEARCH ABOVE:
+- DO NOT use placeholder text like "First strategic area..."
+- EXTRACT SPECIFIC details, data points, metrics, and facts from the research
+- Fill eyebrow with a concise theme from the research (e.g., "STRATEGIC GOALS", "KEY INITIATIVES")
+- Fill each column with 200-400 words of ACTUAL research content with specific details
+- Use real numbers, dates, names, and insights from the research provided
+- If research lacks specific details, synthesize meaningful content based on context
 
-Example: { "type": "bip-three-column", "title": {"text": "${slideOutline.title}"}, "eyebrow": {"text": "STRATEGIC PILLARS"}, "columns": [{"text": "First strategic area with supporting details..."}, {"text": "Second strategic area with key initiatives..."}, {"text": "Third strategic area with expected outcomes..."}], "showCornerGraphic": true }`;
+This is a modern three-column layout with an eyebrow label and geometric corner decoration.
+
+Example: { "type": "bip-three-column", "title": {"text": "${slideOutline.title}"}, "eyebrow": {"text": "STRATEGIC PILLARS"}, "columns": [{"text": "Digital transformation initiative targeting $50M cost reduction through AI-powered automation of legacy systems. Implementation across 15 business units starting Q2 2025..."}, {"text": "Cloud migration strategy with AWS and Azure hybrid approach. 80% of workloads transitioning by end of 2026, enabling 40% infrastructure cost savings..."}, {"text": "Data modernization with centralized analytics platform. Real-time insights for 5,000+ users, predictive analytics reducing forecasting errors by 25%..."}], "showCornerGraphic": true }`;
             break;
           case 'bip-single-column':
             slidePrompt += `For this BIP SINGLE-COLUMN LAYOUT slide, provide a JSON object with:
@@ -412,10 +419,18 @@ Example: { "type": "bip-three-column", "title": {"text": "${slideOutline.title}"
 - eyebrow: Object with text property (uppercase label, max 100 chars, e.g., {"text": "STRATEGIC CONTEXT"})
 - bodyText: Object with text property (detailed content, max 2000 chars)
 
+CRITICAL REQUIREMENT - MUST EXTRACT FROM RESEARCH ABOVE:
+- DO NOT use generic placeholder text
+- EXTRACT SPECIFIC narrative, context, and detailed information from the research
+- Fill eyebrow with a concise category from research
+- Fill bodyText with 300-500 words of ACTUAL research-based content
+- Include specific metrics, timelines, stakeholders, and strategic details
+- Use real data points from the research provided above
+
 This is a large title layout with a single wide text column, ideal for detailed explanations.
 The title supports line breaks using \\n for multi-line display.
 
-Example: { "type": "bip-single-column", "title": {"text": "${slideOutline.title}"}, "eyebrow": {"text": "MARKET OPPORTUNITY"}, "bodyText": {"text": "The current market landscape presents a significant opportunity for growth. Recent analysis indicates a 40% increase in demand over the next 18 months, driven by regulatory changes and technological advancement. Our strategic positioning allows us to capture this opportunity through targeted initiatives and partnerships."} }`;
+Example: { "type": "bip-single-column", "title": {"text": "${slideOutline.title}"}, "eyebrow": {"text": "MARKET OPPORTUNITY"}, "bodyText": {"text": "The current market landscape presents a significant opportunity for growth driven by three converging factors. First, regulatory changes in the EU and APAC regions are creating demand for compliance automation solutions, with an estimated $12B market by 2027. Second, technological advancement in AI and machine learning has reduced implementation costs by 60% since 2023, making enterprise adoption economically viable. Third, competitive analysis shows that early movers in this space have captured 70% market share within 18 months. Our strategic positioning with existing relationships across 15 Fortune 500 clients allows us to capture this opportunity through targeted initiatives including the Q2 2025 product launch, partnerships with three major cloud providers, and expansion into 8 new vertical markets by end of 2026."} }`;
             break;
           case 'bip-title-slide':
             slidePrompt += `For this BIP TITLE SLIDE, provide a JSON object with:
@@ -424,9 +439,16 @@ Example: { "type": "bip-single-column", "title": {"text": "${slideOutline.title}
 - footerLeft: Object with text property (optional, left footer text like "Here to Dare.", max 100 chars)
 - footerRight: Object with text property (optional, right footer text like "November | 2025", max 100 chars)
 
+CRITICAL REQUIREMENT:
+- Title MUST be populated with the actual presentation title from research or "${slideOutline.title}"
+- DO NOT leave title empty
+- Use line breaks (\\n) to format multi-line titles for visual impact
+- FooterLeft should be "Here to Dare." or company tagline
+- FooterRight should be current month and year
+
 This is a branded title slide with gradient background. Title supports line breaks using \\n.
 
-Example: { "type": "bip-title-slide", "title": {"text": "${slideOutline.title}"}, "footerLeft": {"text": "Here to Dare."}, "footerRight": {"text": "${new Date().toLocaleString('default', { month: 'long' })} | ${new Date().getFullYear()}"} }`;
+Example: { "type": "bip-title-slide", "title": {"text": "${slideOutline.title.replace(/ /g, '\\n')}"}, "footerLeft": {"text": "Here to Dare."}, "footerRight": {"text": "${new Date().toLocaleString('default', { month: 'long' })} | ${new Date().getFullYear()}"} }`;
             break;
           default:
             slidePrompt += `For this SIMPLE/GENERAL CONTENT slide, provide a JSON object with:
@@ -460,12 +482,16 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
           }
         );
 
+        // DEBUG: Log raw AI response
+        console.log(`Job ${jobId}:   [RAW AI RESPONSE]`, JSON.stringify(slideResponse, null, 2));
+
         const slide = slideResponse.slide;
         if (slide) {
           // Transform slide data: wrap all fields (except type) into content object
           // This ensures compatibility with WebRenderer which expects slide.content.*
           const { type, ...rest } = slide;
           const transformedSlide = {
+            id: `slide-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
             type,
             content: { ...rest }  // Includes title and all other fields
           };
