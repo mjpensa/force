@@ -168,7 +168,7 @@ async function uploadAndGenerate(testCase) {
     }
 
     const fileContent = fs.readFileSync(filePath);
-    form.append('files', fileContent, filename);
+    form.append('researchFiles', fileContent, filename);
   }
 
   try {
@@ -181,14 +181,13 @@ async function uploadAndGenerate(testCase) {
       }
     );
 
-    if (response.data.jobId && response.data.sessionId) {
+    if (response.data.jobId) {
       log(`Job created: ${response.data.jobId}`, 'SUCCESS');
       return {
-        jobId: response.data.jobId,
-        sessionId: response.data.sessionId
+        jobId: response.data.jobId
       };
     } else {
-      throw new Error('Invalid response: missing jobId or sessionId');
+      throw new Error('Invalid response: missing jobId');
     }
   } catch (error) {
     throw new Error(`Upload failed: ${error.message}`);
@@ -206,11 +205,11 @@ async function pollJobStatus(jobId) {
         { timeout: 10000 }
       );
 
-      const { status, progress, chartId, error } = response.data;
+      const { status, progress, data, error } = response.data;
 
-      if (status === 'complete' && chartId) {
-        log(`Job completed: ${chartId}`, 'SUCCESS');
-        return { success: true, chartId };
+      if (status === 'complete' && data) {
+        log(`Job completed successfully`, 'SUCCESS');
+        return { success: true, data };
       } else if (status === 'error') {
         return { success: false, error: error || 'Unknown error' };
       } else {
@@ -227,22 +226,6 @@ async function pollJobStatus(jobId) {
   }
 
   return { success: false, error: 'Timeout waiting for job completion' };
-}
-
-// Fetch generated chart data
-async function fetchChartData(chartId) {
-  log(`Fetching chart data: ${chartId}...`, 'PROGRESS');
-
-  try {
-    const response = await axios.get(
-      `${CONFIG.API_BASE_URL}/chart/${chartId}`,
-      { timeout: 10000 }
-    );
-
-    return response.data;
-  } catch (error) {
-    throw new Error(`Failed to fetch chart data: ${error.message}`);
-  }
 }
 
 // Save output to file
@@ -275,9 +258,8 @@ async function executeTestCase(testCase) {
     log(`${'='.repeat(80)}`, 'INFO');
 
     // Step 1: Upload and generate
-    const { jobId, sessionId } = await uploadAndGenerate(testCase);
+    const { jobId } = await uploadAndGenerate(testCase);
     result.jobId = jobId;
-    result.sessionId = sessionId;
 
     // Step 2: Poll for completion
     const pollResult = await pollJobStatus(jobId);
@@ -288,16 +270,13 @@ async function executeTestCase(testCase) {
       return result;
     }
 
-    result.chartId = pollResult.chartId;
     result.generationTime = Math.round((Date.now() - startTime) / 1000);
+    const chartData = pollResult.data;
 
-    // Step 3: Fetch chart data
-    const chartData = await fetchChartData(pollResult.chartId);
-
-    // Step 4: Save output
+    // Step 3: Save output
     saveOutput(testCase.id, chartData);
 
-    // Step 5: Validate executive summary exists
+    // Step 4: Validate executive summary exists
     if (chartData.executiveSummary) {
       result.success = true;
       result.hasSummary = true;
