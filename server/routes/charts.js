@@ -478,8 +478,44 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
       }
 
       if (slides.length > 0) {
-        presentationSlides = { slides };
-        console.log(`Job ${jobId}: ✓ Successfully generated ${slides.length} slides with content`);
+        // Create presentation in new structured format to avoid migration
+        presentationSlides = {
+          metadata: {
+            title: 'Presentation',
+            author: '',
+            slideCount: slides.length
+          },
+          theme: {
+            colors: {
+              primary: '#3b82f6',
+              secondary: '#8b5cf6',
+              accent: '#10b981',
+              text: '#1e293b',
+              textSecondary: '#64748b',
+              background: '#ffffff',
+              surface: '#f8fafc'
+            },
+            fonts: {
+              title: { family: 'Work Sans', size: 44, weight: 700, color: '#1e293b' },
+              subtitle: { family: 'Work Sans', size: 28, weight: 400, color: '#64748b' },
+              body: { family: 'Work Sans', size: 20, weight: 400, color: '#1e293b' },
+              caption: { family: 'Work Sans', size: 16, weight: 400, color: '#64748b' }
+            },
+            spacing: {
+              slideMargin: 0.5,
+              titleTop: 0.75,
+              contentTop: 1.5,
+              bulletIndent: 0.5,
+              lineSpacing: 1.5
+            },
+            branding: {
+              logo: { show: false, url: '', position: 'top-right', width: 1.5 },
+              footer: { show: false, text: '', fontSize: 14 }
+            }
+          },
+          slides: slides
+        };
+        console.log(`Job ${jobId}: ✓ Successfully generated ${slides.length} slides with content in new format`);
       } else {
         console.error(`Job ${jobId}: ❌ No slides generated successfully`);
         presentationSlides = null;

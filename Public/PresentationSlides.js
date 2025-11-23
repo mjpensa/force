@@ -30,6 +30,17 @@ export class PresentationSlides {
   constructor(slidesData, footerSVG) {
     this.footerSVG = footerSVG;
 
+    // DEBUG: Log incoming data structure
+    console.log('[PresentationSlides] Received slidesData:', {
+      hasData: !!slidesData,
+      hasMetadata: !!slidesData?.metadata,
+      hasTheme: !!slidesData?.theme,
+      hasSlides: !!slidesData?.slides,
+      slidesIsArray: Array.isArray(slidesData?.slides),
+      slideCount: slidesData?.slides?.length || 0,
+      keys: slidesData ? Object.keys(slidesData) : []
+    });
+
     // Handle null or undefined input
     if (!slidesData) {
       console.warn('[PresentationSlides] No presentation data provided, using empty presentation');
@@ -40,10 +51,11 @@ export class PresentationSlides {
       };
     } else if (slidesData.metadata && slidesData.theme && Array.isArray(slidesData.slides)) {
       // New structured format - use as-is
+      console.log('[PresentationSlides] ✅ Using NEW structured format (no migration needed)');
       this.presentationData = slidesData;
     } else if (slidesData.slides && Array.isArray(slidesData.slides)) {
       // Old format with slides array - migrate
-      console.log('[PresentationSlides] Migrating old slide format to new structure');
+      console.log('[PresentationSlides] ⚠️ Migrating old slide format to new structure');
       this.presentationData = migrateOldSlideData(slidesData);
     } else {
       // Unknown format - create empty presentation
