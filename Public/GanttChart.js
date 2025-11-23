@@ -811,7 +811,7 @@ export class GanttChart {
   }
 
   /**
-   * Adds the footer SVG decoration after the Executive Summary
+   * Adds the footer SVG decoration
    * @private
    */
   _addFooterSVG() {
@@ -1267,7 +1267,7 @@ export class GanttChart {
 
   /**
    * ADVANCED GANTT: Adds keyboard shortcuts for quick navigation
-   * T = Timeline (Roadmap), S = Summary (Executive Summary)
+   * T = Timeline (Roadmap)
    * @private
    */
   _addKeyboardShortcuts() {
