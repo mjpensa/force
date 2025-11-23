@@ -26,10 +26,11 @@ export const CUSTOM_SLIDE_TYPES = {
 
     render: (slide, theme, slideNumber) => {
       // <body class="bg-white p-12">
+      // NOTE: Presentation viewer .slide-content already adds 3rem padding
       const body = document.createElement('div');
       body.style.cssText = `
         background-color: #ffffff;
-        padding: 3rem;
+        padding: 0;
         font-family: 'Inter', sans-serif;
         width: 100%;
         height: 100%;
@@ -38,12 +39,13 @@ export const CUSTOM_SLIDE_TYPES = {
       `;
 
       // Corner graphic: <div class="fixed top-0 right-0" style="width: 150px; height: 150px;">
+      // NOTE: Offset by -3rem to account for .slide-content padding
       if (slide.content.showCornerGraphic !== false) {
         const graphic = document.createElement('div');
         graphic.style.cssText = `
           position: absolute;
-          top: 0;
-          right: 0;
+          top: -3rem;
+          right: -3rem;
           width: 150px;
           height: 150px;
           overflow: hidden;
@@ -163,10 +165,11 @@ export const CUSTOM_SLIDE_TYPES = {
 
     render: (slide, theme, slideNumber) => {
       // <body class="bg-white p-12">
+      // NOTE: Presentation viewer .slide-content already adds 3rem padding
       const body = document.createElement('div');
       body.style.cssText = `
         background-color: #ffffff;
-        padding: 3rem;
+        padding: 0;
         font-family: 'Inter', sans-serif;
         width: 100%;
         height: 100%;
@@ -175,12 +178,13 @@ export const CUSTOM_SLIDE_TYPES = {
       `;
 
       // Corner graphic
+      // NOTE: Offset by -3rem to account for .slide-content padding
       if (slide.content.showCornerGraphic !== false) {
         const graphic = document.createElement('div');
         graphic.style.cssText = `
           position: absolute;
-          top: 0;
-          right: 0;
+          top: -3rem;
+          right: -3rem;
           width: 150px;
           height: 150px;
           overflow: hidden;
