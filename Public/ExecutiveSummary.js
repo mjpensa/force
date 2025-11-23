@@ -1,133 +1,242 @@
 /**
- * Modern Executive Summary Viewer Module
- * 8.5x11 Document Format | Ultra Modern Design
- * Features: Multi-page navigation, zoom controls, TOC, print/export
+ * Modern Executive Summary Document Reader
+ * Clean, MS Word / Google Docs inspired interface
+ * Features: Minimal toolbar, centered document, professional typography
  */
 
 import { CONFIG } from './config.js';
-import { ExportManagerDocument } from './ExportManagerDocument.js';
 
 /**
  * ExecutiveSummary Class
- * Manages the modern document viewer for executive summary reports
+ * Manages the modern document reader for executive summary reports
  */
 export class ExecutiveSummary {
   /**
    * Creates a new ExecutiveSummary instance
    * @param {Object} summaryData - The executive summary data from the API
-   * @param {string} footerSVG - The SVG content for decorations (legacy, unused in modern viewer)
+   * @param {string} footerSVG - The SVG content for decorations (unused in modern reader)
    */
   constructor(summaryData, footerSVG) {
     this.summaryData = summaryData;
     this.footerSVG = footerSVG;
-    this.currentPageIndex = 0;
     this.container = null;
-    this.zoomLevel = 1;
-    this.isSidebarVisible = true;
-    this.isFullscreen = false;
-    this.tocVisible = false;
-    this.shortcutsVisible = false;
 
     // Debug logging
     console.log('📋 ExecutiveSummary constructor called');
     console.log('  Summary data exists:', !!summaryData);
     if (summaryData) {
       console.log('  Summary data keys:', Object.keys(summaryData));
-      console.log('  strategicNarrative exists:', !!summaryData.strategicNarrative);
-      console.log('  drivers exists:', !!summaryData.drivers);
-      console.log('  dependencies exists:', !!summaryData.dependencies);
-      console.log('  risks exists:', !!summaryData.risks);
-      console.log('  keyInsights exists:', !!summaryData.keyInsights);
     }
-    this.viewMode = 'continuous'; // 'continuous' or 'single'
-
-    // Keyboard shortcuts binding
-    this.handleKeyPress = this.handleKeyPress.bind(this);
-
-    // Export manager
-    this.exportManager = new ExportManagerDocument(this);
-
-    // Generate multi-page document (for now, placeholder pages)
-    this.pages = this._generatePages();
   }
 
   /**
-   * Generates document pages from summary data
-   * @private
-   * @returns {Array} Array of page objects
-   */
-  _generatePages() {
-    if (!this.summaryData) {
-      return [{
-        pageNumber: 1,
-        title: 'Executive Summary',
-        content: null
-      }];
-    }
-
-    // Create single comprehensive written document
-    const pages = [];
-
-    pages.push({
-      pageNumber: 1,
-      title: 'Executive Summary',
-      sections: [
-        'strategicNarrative',
-        'strategicPriorities',
-        'drivers',
-        'dependencies',
-        'risks',
-        'keyInsights',
-        'competitiveIntelligence',
-        'industryBenchmarks'
-      ]
-    });
-
-    return pages;
-  }
-
-  /**
-   * Renders a simple scrollable document (like Word/Google Docs)
+   * Renders a clean document reader (like Word/Google Docs)
    * @returns {HTMLElement} The rendered document container
    */
   render() {
     // Create main container
     this.container = document.createElement('div');
-    this.container.className = 'executive-summary-viewer';
+    this.container.className = 'executive-summary-reader';
     this.container.id = 'executiveSummary';
 
     // Check if summary data exists
     if (!this.summaryData) {
-      this.container.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #ffffff; color: #6b7280;">
-          <div style="text-align: center;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
-            <p style="font-size: 1.25rem; font-weight: 500; color: #1f2937;">No executive summary available</p>
-            <p style="font-size: 0.875rem; margin-top: 0.5rem;">Summary will appear here once generated</p>
-          </div>
-        </div>
-      `;
+      this.container.innerHTML = this._buildEmptyState();
       return this.container;
     }
 
-    // Build simple document content (no complex viewer UI)
-    console.log('📝 Building simple document content');
-    const documentHTML = this._buildSimpleDocument();
-    this.container.innerHTML = documentHTML;
+    // Build toolbar
+    const toolbar = this._buildToolbar();
+    this.container.appendChild(toolbar);
+
+    // Build document content
+    const documentContainer = this._buildDocumentContainer();
+    this.container.appendChild(documentContainer);
 
     return this.container;
   }
 
   /**
-   * Builds a simple scrollable document with all content
+   * Builds empty state when no data is available
+   * @private
+   * @returns {string} HTML for empty state
+   */
+  _buildEmptyState() {
+    return `
+      <div class="reader-empty-state">
+        <div class="empty-state-icon">📄</div>
+        <h2 class="empty-state-title">No executive summary available</h2>
+        <p class="empty-state-text">Summary will appear here once generated</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Builds the minimal toolbar (like Google Docs)
+   * @private
+   * @returns {HTMLElement} Toolbar element
+   */
+  _buildToolbar() {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'reader-toolbar';
+
+    // Left side - Document title
+    const leftSide = document.createElement('div');
+    leftSide.className = 'toolbar-left';
+    leftSide.innerHTML = `
+      <div class="toolbar-title">
+        <span class="toolbar-icon">📋</span>
+        <span class="toolbar-text">Executive Summary</span>
+      </div>
+    `;
+
+    // Right side - Actions
+    const rightSide = document.createElement('div');
+    rightSide.className = 'toolbar-right';
+
+    // Print button
+    const printBtn = this._createToolbarButton('🖨️', 'Print', () => this._print());
+
+    // Export dropdown
+    const exportDropdown = this._createExportDropdown();
+
+    rightSide.appendChild(exportDropdown);
+    rightSide.appendChild(printBtn);
+
+    toolbar.appendChild(leftSide);
+    toolbar.appendChild(rightSide);
+
+    return toolbar;
+  }
+
+  /**
+   * Creates a toolbar button
+   * @private
+   */
+  _createToolbarButton(icon, text, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'toolbar-btn';
+    btn.innerHTML = `<span class="toolbar-btn-icon">${icon}</span><span class="toolbar-btn-text">${text}</span>`;
+    btn.setAttribute('aria-label', text);
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  /**
+   * Creates export dropdown menu
+   * @private
+   */
+  _createExportDropdown() {
+    const container = document.createElement('div');
+    container.className = 'export-dropdown';
+
+    const button = document.createElement('button');
+    button.className = 'toolbar-btn';
+    button.innerHTML = `
+      <span class="toolbar-btn-icon">📥</span>
+      <span class="toolbar-btn-text">Export</span>
+      <span class="dropdown-arrow">▼</span>
+    `;
+    button.setAttribute('aria-label', 'Export document');
+    button.setAttribute('aria-haspopup', 'true');
+    button.setAttribute('aria-expanded', 'false');
+
+    const menu = document.createElement('div');
+    menu.className = 'export-dropdown-menu';
+
+    const menuItems = [
+      { icon: '📄', text: 'Export as PDF', action: () => this._exportToPDF() },
+      { icon: '🖼️', text: 'Export as PNG', action: () => this._exportToPNG() }
+    ];
+
+    menuItems.forEach(item => {
+      const menuItem = document.createElement('button');
+      menuItem.className = 'export-dropdown-item';
+      menuItem.innerHTML = `<span class="export-item-icon">${item.icon}</span><span>${item.text}</span>`;
+      menuItem.addEventListener('click', () => {
+        item.action();
+        this._closeDropdown(container);
+      });
+      menu.appendChild(menuItem);
+    });
+
+    container.appendChild(button);
+    container.appendChild(menu);
+
+    // Toggle dropdown
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = container.classList.contains('open');
+
+      // Close all other dropdowns
+      document.querySelectorAll('.export-dropdown.open').forEach(dropdown => {
+        if (dropdown !== container) {
+          dropdown.classList.remove('open');
+        }
+      });
+
+      if (isOpen) {
+        container.classList.remove('open');
+        button.setAttribute('aria-expanded', 'false');
+      } else {
+        container.classList.add('open');
+        button.setAttribute('aria-expanded', 'true');
+      }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!container.contains(e.target)) {
+        this._closeDropdown(container);
+      }
+    });
+
+    return container;
+  }
+
+  /**
+   * Close dropdown menu
+   * @private
+   */
+  _closeDropdown(container) {
+    container.classList.remove('open');
+    const button = container.querySelector('.toolbar-btn');
+    if (button) {
+      button.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  /**
+   * Builds the document container with centered content
+   * @private
+   * @returns {HTMLElement} Document container
+   */
+  _buildDocumentContainer() {
+    const container = document.createElement('div');
+    container.className = 'reader-document-container';
+
+    const documentPage = document.createElement('div');
+    documentPage.className = 'reader-document-page';
+
+    // Build document content
+    const content = this._buildDocumentContent();
+    documentPage.innerHTML = content;
+
+    container.appendChild(documentPage);
+
+    return container;
+  }
+
+  /**
+   * Builds the complete document content
    * @private
    * @returns {string} Complete document HTML
    */
-  _buildSimpleDocument() {
-    let html = '<div class="executive-summary-page">';
+  _buildDocumentContent() {
+    let html = '';
 
-    // Title
-    html += '<h1 class="page-title">Executive Summary</h1>';
+    // Document title
+    html += '<h1 class="document-title">Executive Summary</h1>';
 
     // Render all sections in order
     const sections = [
@@ -143,8 +252,6 @@ export class ExecutiveSummary {
 
     sections.forEach(sectionName => {
       const sectionData = this.summaryData[sectionName];
-      console.log(`  Section "${sectionName}":`, sectionData ? 'EXISTS' : 'MISSING');
-
       if (!sectionData) return;
 
       switch (sectionName) {
@@ -175,989 +282,7 @@ export class ExecutiveSummary {
       }
     });
 
-    html += '</div>';
-
     return html;
-  }
-
-  /**
-   * Builds the progress bar
-   * @private
-   */
-  _buildProgressBar() {
-    const progress = document.createElement('div');
-    progress.className = 'doc-viewer-progress';
-
-    const progressBar = document.createElement('div');
-    progressBar.className = 'doc-viewer-progress-bar';
-    progressBar.id = 'docProgressBar';
-    progressBar.style.width = this._calculateProgress();
-
-    progress.appendChild(progressBar);
-    this.container.appendChild(progress);
-  }
-
-  /**
-   * Calculates progress percentage
-   * @private
-   * @returns {string} Progress percentage
-   */
-  _calculateProgress() {
-    const total = this.pages.length;
-    const current = this.currentPageIndex + 1;
-    return `${(current / total) * 100}%`;
-  }
-
-  /**
-   * Builds the top bar with controls
-   * @private
-   */
-  _buildTopBar() {
-    const topbar = document.createElement('div');
-    topbar.className = 'doc-viewer-topbar';
-
-    // Left side
-    const leftSide = document.createElement('div');
-    leftSide.className = 'doc-viewer-topbar-left';
-
-    const title = document.createElement('div');
-    title.className = 'doc-viewer-title';
-    title.innerHTML = `<span class="doc-viewer-title-icon">📋</span> Executive Summary`;
-
-    const counter = document.createElement('div');
-    counter.className = 'doc-page-counter';
-    counter.id = 'docPageCounter';
-    counter.innerHTML = `
-      <span class="doc-page-counter-current">${this.currentPageIndex + 1}</span>
-      <span>/</span>
-      <span>${this.pages.length}</span>
-    `;
-
-    leftSide.appendChild(title);
-    leftSide.appendChild(counter);
-
-    // Center (zoom controls)
-    const centerSide = document.createElement('div');
-    centerSide.className = 'doc-viewer-topbar-center';
-
-    const zoomControls = this._buildZoomControls();
-    centerSide.appendChild(zoomControls);
-
-    // Right side
-    const rightSide = document.createElement('div');
-    rightSide.className = 'doc-viewer-topbar-right';
-
-    // Toggle pages button
-    const pagesBtn = this._createButton('icon-only', '☰', 'Toggle Pages', () => this._toggleSidebar());
-    pagesBtn.id = 'togglePagesBtn';
-    if (this.isSidebarVisible) pagesBtn.classList.add('active');
-
-    // Table of contents button
-    const tocBtn = this._createButton('', '📑', 'Contents', () => this._toggleTOC());
-    tocBtn.id = 'toggleTOCBtn';
-
-    // Export dropdown
-    const exportDropdown = this._createExportDropdown();
-
-    // Fullscreen button
-    const fullscreenBtn = this._createButton('', '⛶', 'Fullscreen', () => this._toggleFullscreen());
-    fullscreenBtn.id = 'toggleFullscreenBtn';
-
-    // Keyboard shortcuts button
-    const shortcutsBtn = this._createButton('icon-only', '?', 'Keyboard Shortcuts', () => this._toggleShortcuts());
-
-    rightSide.appendChild(pagesBtn);
-    rightSide.appendChild(tocBtn);
-    rightSide.appendChild(exportDropdown);
-    rightSide.appendChild(fullscreenBtn);
-    rightSide.appendChild(shortcutsBtn);
-
-    topbar.appendChild(leftSide);
-    topbar.appendChild(centerSide);
-    topbar.appendChild(rightSide);
-    this.container.appendChild(topbar);
-  }
-
-  /**
-   * Builds zoom controls
-   * @private
-   */
-  _buildZoomControls() {
-    const controls = document.createElement('div');
-    controls.className = 'doc-zoom-controls';
-
-    const zoomOut = document.createElement('button');
-    zoomOut.className = 'doc-zoom-btn';
-    zoomOut.textContent = '−';
-    zoomOut.setAttribute('aria-label', 'Zoom out');
-    zoomOut.addEventListener('click', () => this._zoomOut());
-
-    const zoomLevel = document.createElement('div');
-    zoomLevel.className = 'doc-zoom-level';
-    zoomLevel.id = 'docZoomLevel';
-    zoomLevel.textContent = '100%';
-
-    const zoomIn = document.createElement('button');
-    zoomIn.className = 'doc-zoom-btn';
-    zoomIn.textContent = '+';
-    zoomIn.setAttribute('aria-label', 'Zoom in');
-    zoomIn.addEventListener('click', () => this._zoomIn());
-
-    const zoomReset = document.createElement('button');
-    zoomReset.className = 'doc-zoom-btn';
-    zoomReset.textContent = '⊙';
-    zoomReset.setAttribute('aria-label', 'Reset zoom');
-    zoomReset.addEventListener('click', () => this._zoomReset());
-
-    controls.appendChild(zoomOut);
-    controls.appendChild(zoomLevel);
-    controls.appendChild(zoomIn);
-    controls.appendChild(zoomReset);
-
-    return controls;
-  }
-
-  /**
-   * Creates a control button
-   * @private
-   */
-  _createButton(additionalClass, icon, text, onClick) {
-    const btn = document.createElement('button');
-    btn.className = `doc-viewer-btn ${additionalClass}`;
-    btn.innerHTML = `<span class="doc-viewer-btn-icon">${icon}</span>${text ? `<span>${text}</span>` : ''}`;
-    btn.addEventListener('click', onClick);
-    return btn;
-  }
-
-  /**
-   * Creates export dropdown menu
-   * @private
-   */
-  _createExportDropdown() {
-    const container = document.createElement('div');
-    container.className = 'export-dropdown-container';
-    container.id = 'docExportDropdownContainer';
-
-    const button = document.createElement('button');
-    button.className = 'doc-viewer-btn';
-    button.id = 'docExportDropdownBtn';
-    button.innerHTML = '<span class="doc-viewer-btn-icon">📥</span><span>Export</span><span class="dropdown-arrow">▼</span>';
-
-    const menu = document.createElement('div');
-    menu.className = 'export-dropdown-menu';
-    menu.id = 'docExportDropdownMenu';
-
-    const menuItems = [
-      { icon: '📄', text: 'PDF Document', action: () => this._exportToPDF() },
-      { icon: '🖼️', text: 'Current Page (PNG)', action: () => this._exportCurrentPageToPNG() },
-      { icon: '🎞️', text: 'All Pages (PNG)', action: () => this._exportAllPagesToPNG() },
-      { icon: '🖨️', text: 'Print View', action: () => this._openPrintView() }
-    ];
-
-    menuItems.forEach(item => {
-      const menuItem = document.createElement('div');
-      menuItem.className = 'export-dropdown-item';
-      menuItem.innerHTML = `<span class="export-item-icon">${item.icon}</span><span>${item.text}</span>`;
-      menuItem.addEventListener('click', () => {
-        item.action();
-        this._closeExportDropdown();
-      });
-      menu.appendChild(menuItem);
-    });
-
-    container.appendChild(button);
-    container.appendChild(menu);
-
-    // Toggle dropdown on button click
-    button.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this._toggleExportDropdown();
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-      const dropdown = document.getElementById('docExportDropdownContainer');
-      if (dropdown && !dropdown.contains(e.target)) {
-        this._closeExportDropdown();
-      }
-    });
-
-    return container;
-  }
-
-  /**
-   * Toggle export dropdown visibility
-   * @private
-   */
-  _toggleExportDropdown() {
-    const menu = document.getElementById('docExportDropdownMenu');
-    const button = document.getElementById('docExportDropdownBtn');
-
-    if (menu && button) {
-      const isOpen = menu.classList.contains('open');
-      if (isOpen) {
-        menu.classList.remove('open');
-        button.classList.remove('active');
-      } else {
-        menu.classList.add('open');
-        button.classList.add('active');
-      }
-    }
-  }
-
-  /**
-   * Close export dropdown
-   * @private
-   */
-  _closeExportDropdown() {
-    const menu = document.getElementById('docExportDropdownMenu');
-    const button = document.getElementById('docExportDropdownBtn');
-
-    if (menu && button) {
-      menu.classList.remove('open');
-      button.classList.remove('active');
-    }
-  }
-
-  /**
-   * Export to PDF
-   * @private
-   */
-  async _exportToPDF() {
-    try {
-      console.log('[ExecutiveSummary] Exporting to PDF');
-      await this.exportManager.exportToPDF();
-    } catch (error) {
-      console.error('[ExecutiveSummary] PDF export failed:', error);
-      alert('Failed to export to PDF. Please try again.');
-    }
-  }
-
-  /**
-   * Export current page to PNG
-   * @private
-   */
-  async _exportCurrentPageToPNG() {
-    try {
-      console.log('[ExecutiveSummary] Exporting current page to PNG');
-      await this.exportManager.exportCurrentPageToPNG();
-    } catch (error) {
-      console.error('[ExecutiveSummary] PNG export failed:', error);
-      alert('Failed to export to PNG. Please try again.');
-    }
-  }
-
-  /**
-   * Export all pages to PNG
-   * @private
-   */
-  async _exportAllPagesToPNG() {
-    try {
-      console.log('[ExecutiveSummary] Exporting all pages to PNG');
-      await this.exportManager.exportAllPagesToPNG();
-    } catch (error) {
-      console.error('[ExecutiveSummary] PNG export failed:', error);
-      alert('Failed to export all pages to PNG. Please try again.');
-    }
-  }
-
-  /**
-   * Open print view
-   * @private
-   */
-  _openPrintView() {
-    try {
-      console.log('[ExecutiveSummary] Opening print view');
-      this.exportManager.openPrintView();
-    } catch (error) {
-      console.error('[ExecutiveSummary] Print view failed:', error);
-      alert('Failed to open print view. Please try again.');
-    }
-  }
-
-  /**
-   * Builds the main content area (sidebar + document stage)
-   * @private
-   * @returns {HTMLElement} Main content container
-   */
-  _buildMainContent() {
-    const main = document.createElement('div');
-    main.className = 'doc-viewer-main';
-
-    // Sidebar with page thumbnails
-    const sidebar = this._buildSidebar();
-    main.appendChild(sidebar);
-
-    // Document stage
-    const stage = this._buildStage();
-    main.appendChild(stage);
-
-    return main;
-  }
-
-  /**
-   * Builds the page thumbnail sidebar
-   * @private
-   * @returns {HTMLElement} Sidebar container
-   */
-  _buildSidebar() {
-    const sidebar = document.createElement('div');
-    sidebar.className = 'doc-viewer-sidebar';
-    sidebar.id = 'docViewerSidebar';
-    if (!this.isSidebarVisible) sidebar.classList.add('hidden');
-
-    const header = document.createElement('div');
-    header.className = 'doc-sidebar-header';
-    header.innerHTML = '<div class="doc-sidebar-title">Pages</div>';
-
-    const thumbnailContainer = document.createElement('div');
-    thumbnailContainer.className = 'doc-page-thumbnails';
-    thumbnailContainer.id = 'docPageThumbnails';
-
-    // Generate thumbnails for all pages
-    this.pages.forEach((page, index) => {
-      const thumbnail = this._createThumbnail(page, index);
-      thumbnailContainer.appendChild(thumbnail);
-    });
-
-    sidebar.appendChild(header);
-    sidebar.appendChild(thumbnailContainer);
-
-    return sidebar;
-  }
-
-  /**
-   * Creates a page thumbnail
-   * @private
-   */
-  _createThumbnail(page, index) {
-    const item = document.createElement('div');
-    item.className = 'doc-page-thumbnail';
-    item.setAttribute('data-page-index', index);
-    item.setAttribute('tabindex', '0');
-    item.setAttribute('role', 'button');
-    item.setAttribute('aria-label', `Go to page ${index + 1}`);
-
-    if (index === this.currentPageIndex) {
-      item.classList.add('active');
-    }
-
-    const preview = document.createElement('div');
-    preview.className = 'doc-page-preview';
-    preview.innerHTML = `
-      <div class="doc-page-number">Page ${index + 1}</div>
-      <div class="doc-page-placeholder">
-        <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">📄</div>
-        <div style="font-size: 0.625rem;">Page ${index + 1}</div>
-      </div>
-    `;
-
-    item.appendChild(preview);
-
-    // Click handler
-    item.addEventListener('click', () => this._goToPage(index));
-    item.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        this._goToPage(index);
-      }
-    });
-
-    return item;
-  }
-
-  /**
-   * Builds the document stage area
-   * @private
-   * @returns {HTMLElement} Stage container
-   */
-  _buildStage() {
-    const stage = document.createElement('div');
-    stage.className = 'doc-viewer-stage';
-    stage.id = 'docViewerStage';
-    if (this.viewMode === 'continuous') {
-      stage.classList.add('continuous-scroll');
-    } else {
-      stage.classList.add('single-page-view');
-    }
-
-    const pagesContainer = document.createElement('div');
-    pagesContainer.className = 'doc-pages-container';
-    pagesContainer.id = 'docPagesContainer';
-
-    // Render all pages (for continuous scroll) or just current page (for single page view)
-    this.pages.forEach((page, index) => {
-      const pageElement = this._buildPage(page, index);
-      pagesContainer.appendChild(pageElement);
-    });
-
-    stage.appendChild(pagesContainer);
-
-    return stage;
-  }
-
-  /**
-   * Builds a document page with 8.5x11 aspect ratio
-   * @private
-   */
-  _buildPage(page, index) {
-    const viewport = document.createElement('div');
-    viewport.className = 'doc-page-viewport';
-    viewport.setAttribute('data-page-index', index);
-
-    if (this.viewMode === 'single' && index === this.currentPageIndex) {
-      viewport.classList.add('active');
-    }
-
-    if (this.viewMode === 'single') {
-      viewport.classList.add('single-page');
-    }
-
-    const content = document.createElement('div');
-    content.className = 'doc-page-content';
-
-    // Render actual content if available
-    if (this.summaryData && page.sections) {
-      const contentHTML = this._renderPageContent(page);
-      content.innerHTML = contentHTML;
-    } else {
-      // Fallback to placeholder
-      content.innerHTML = `
-        <div class="doc-page-content-placeholder">
-          <div class="doc-page-icon">📋</div>
-          <div class="doc-page-title">Executive Summary</div>
-          <div class="doc-page-subtitle">No content available</div>
-        </div>
-        <div class="doc-page-footer">Page ${page.pageNumber} of ${this.pages.length}</div>
-      `;
-    }
-
-    viewport.appendChild(content);
-
-    return viewport;
-  }
-
-  /**
-   * Renders the content for a specific page
-   * @private
-   * @param {Object} page - Page object with sections array
-   * @returns {string} HTML content for the page
-   */
-  _renderPageContent(page) {
-    console.log('📝 Rendering page content for:', page.title);
-    console.log('  Sections to render:', page.sections);
-
-    let html = '<div class="executive-summary-page">';
-
-    // Page title
-    html += `<h1 class="page-title">${page.title}</h1>`;
-
-    // Render each section
-    page.sections.forEach(sectionName => {
-      const sectionData = this.summaryData[sectionName];
-      console.log(`  Section "${sectionName}":`, sectionData ? 'EXISTS' : 'MISSING');
-      if (!sectionData) return;
-
-      switch (sectionName) {
-        case 'strategicNarrative':
-          html += this._renderStrategicNarrative(sectionData);
-          break;
-        case 'strategicPriorities':
-          html += this._renderStrategicPriorities(sectionData);
-          break;
-        case 'drivers':
-          html += this._renderDrivers(sectionData);
-          break;
-        case 'dependencies':
-          html += this._renderDependencies(sectionData);
-          break;
-        case 'risks':
-          html += this._renderRisks(sectionData);
-          break;
-        case 'keyInsights':
-          html += this._renderKeyInsights(sectionData);
-          break;
-        case 'competitiveIntelligence':
-          html += this._renderCompetitiveIntelligence(sectionData);
-          break;
-        case 'industryBenchmarks':
-          html += this._renderIndustryBenchmarks(sectionData);
-          break;
-      }
-    });
-
-    // Page footer
-    html += `<div class="doc-page-footer">Page ${page.pageNumber} of ${this.pages.length}</div>`;
-    html += '</div>';
-
-    return html;
-  }
-
-  /**
-   * Builds floating page navigation
-   * @private
-   */
-  _buildFloatingNav() {
-    const nav = document.createElement('div');
-    nav.className = 'doc-page-nav';
-
-    const prevBtn = document.createElement('button');
-    prevBtn.className = 'doc-nav-btn';
-    prevBtn.innerHTML = '◀';
-    prevBtn.setAttribute('aria-label', 'Previous page');
-    prevBtn.addEventListener('click', () => this._previousPage());
-    prevBtn.id = 'prevPageBtn';
-    prevBtn.disabled = this.currentPageIndex === 0;
-
-    const separator1 = document.createElement('div');
-    separator1.className = 'doc-nav-separator';
-
-    const homeBtn = document.createElement('button');
-    homeBtn.className = 'doc-nav-btn';
-    homeBtn.innerHTML = '⇤';
-    homeBtn.setAttribute('aria-label', 'First page');
-    homeBtn.addEventListener('click', () => this._goToPage(0));
-
-    const endBtn = document.createElement('button');
-    endBtn.className = 'doc-nav-btn';
-    endBtn.innerHTML = '⇥';
-    endBtn.setAttribute('aria-label', 'Last page');
-    endBtn.addEventListener('click', () => this._goToPage(this.pages.length - 1));
-
-    const separator2 = document.createElement('div');
-    separator2.className = 'doc-nav-separator';
-
-    const nextBtn = document.createElement('button');
-    nextBtn.className = 'doc-nav-btn';
-    nextBtn.innerHTML = '▶';
-    nextBtn.setAttribute('aria-label', 'Next page');
-    nextBtn.addEventListener('click', () => this._nextPage());
-    nextBtn.id = 'nextPageBtn';
-    nextBtn.disabled = this.currentPageIndex === this.pages.length - 1;
-
-    nav.appendChild(prevBtn);
-    nav.appendChild(separator1);
-    nav.appendChild(homeBtn);
-    nav.appendChild(endBtn);
-    nav.appendChild(separator2);
-    nav.appendChild(nextBtn);
-
-    this.container.appendChild(nav);
-  }
-
-  /**
-   * Builds table of contents overlay
-   * @private
-   */
-  _buildTOCOverlay() {
-    const overlay = document.createElement('div');
-    overlay.className = 'doc-toc-overlay';
-    overlay.id = 'docTOCOverlay';
-
-    const modal = document.createElement('div');
-    modal.className = 'doc-toc-modal';
-
-    const header = document.createElement('div');
-    header.className = 'doc-toc-header';
-    header.innerHTML = `
-      <h2 class="doc-toc-title">Table of Contents</h2>
-      <button class="doc-toc-close" aria-label="Close">×</button>
-    `;
-
-    const closeBtn = header.querySelector('.doc-toc-close');
-    closeBtn.addEventListener('click', () => this._toggleTOC());
-
-    // Sample TOC items (will be populated from actual content later)
-    const tocItems = [
-      { title: 'Executive Summary', page: 1 },
-      { title: 'Strategic Analysis', page: 2 },
-      { title: 'Key Recommendations', page: 3 }
-    ];
-
-    const list = document.createElement('div');
-    list.className = 'doc-toc-list';
-
-    tocItems.forEach(item => {
-      const tocItem = document.createElement('div');
-      tocItem.className = 'doc-toc-item';
-      tocItem.innerHTML = `
-        <div class="doc-toc-item-title">${item.title}</div>
-        <div class="doc-toc-item-page">Page ${item.page}</div>
-      `;
-      tocItem.addEventListener('click', () => {
-        this._goToPage(item.page - 1);
-        this._toggleTOC();
-      });
-      list.appendChild(tocItem);
-    });
-
-    modal.appendChild(header);
-    modal.appendChild(list);
-    overlay.appendChild(modal);
-
-    // Click outside to close
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        this._toggleTOC();
-      }
-    });
-
-    this.container.appendChild(overlay);
-  }
-
-  /**
-   * Builds keyboard shortcuts overlay
-   * @private
-   */
-  _buildShortcutsOverlay() {
-    const overlay = document.createElement('div');
-    overlay.className = 'doc-shortcuts-overlay';
-    overlay.id = 'docShortcutsOverlay';
-
-    const modal = document.createElement('div');
-    modal.className = 'doc-shortcuts-modal';
-
-    const header = document.createElement('div');
-    header.className = 'doc-shortcuts-header';
-    header.innerHTML = `
-      <h2 class="doc-shortcuts-title">Keyboard Shortcuts</h2>
-      <button class="doc-shortcuts-close" aria-label="Close">×</button>
-    `;
-
-    const closeBtn = header.querySelector('.doc-shortcuts-close');
-    closeBtn.addEventListener('click', () => this._toggleShortcuts());
-
-    const shortcuts = [
-      { action: 'Next page', keys: ['→', 'PageDown'] },
-      { action: 'Previous page', keys: ['←', 'PageUp'] },
-      { action: 'First page', keys: ['Home'] },
-      { action: 'Last page', keys: ['End'] },
-      { action: 'Zoom in', keys: ['+', '='] },
-      { action: 'Zoom out', keys: ['−', '_'] },
-      { action: 'Reset zoom', keys: ['0'] },
-      { action: 'Toggle fullscreen', keys: ['F'] },
-      { action: 'Print document', keys: ['Ctrl+P'] },
-      { action: 'Table of contents', keys: ['C'] },
-      { action: 'Show shortcuts', keys: ['?'] },
-      { action: 'Close overlay', keys: ['Esc'] }
-    ];
-
-    const list = document.createElement('div');
-    list.className = 'doc-shortcuts-list';
-
-    shortcuts.forEach(shortcut => {
-      const item = document.createElement('div');
-      item.className = 'doc-shortcut-item';
-
-      const action = document.createElement('div');
-      action.className = 'doc-shortcut-action';
-      action.textContent = shortcut.action;
-
-      const keys = document.createElement('div');
-      keys.className = 'doc-shortcut-keys';
-      shortcut.keys.forEach(key => {
-        const keyEl = document.createElement('span');
-        keyEl.className = 'doc-shortcut-key';
-        keyEl.textContent = key;
-        keys.appendChild(keyEl);
-      });
-
-      item.appendChild(action);
-      item.appendChild(keys);
-      list.appendChild(item);
-    });
-
-    modal.appendChild(header);
-    modal.appendChild(list);
-    overlay.appendChild(modal);
-
-    // Click outside to close
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        this._toggleShortcuts();
-      }
-    });
-
-    this.container.appendChild(overlay);
-  }
-
-  /**
-   * Navigation: Go to specific page
-   * @private
-   */
-  _goToPage(index) {
-    if (index < 0 || index >= this.pages.length) return;
-
-    this.currentPageIndex = index;
-    this._updateViewer();
-
-    // Scroll to page if in continuous mode
-    if (this.viewMode === 'continuous') {
-      const pageElement = document.querySelector(`[data-page-index="${index}"]`);
-      if (pageElement) {
-        pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-  }
-
-  /**
-   * Navigation: Previous page
-   * @private
-   */
-  _previousPage() {
-    if (this.currentPageIndex > 0) {
-      this._goToPage(this.currentPageIndex - 1);
-    }
-  }
-
-  /**
-   * Navigation: Next page
-   * @private
-   */
-  _nextPage() {
-    if (this.currentPageIndex < this.pages.length - 1) {
-      this._goToPage(this.currentPageIndex + 1);
-    }
-  }
-
-  /**
-   * Updates the viewer UI after page/zoom change
-   * @private
-   */
-  _updateViewer() {
-    // Update counter
-    const counter = document.getElementById('docPageCounter');
-    if (counter) {
-      counter.innerHTML = `
-        <span class="doc-page-counter-current">${this.currentPageIndex + 1}</span>
-        <span>/</span>
-        <span>${this.pages.length}</span>
-      `;
-    }
-
-    // Update progress bar
-    const progressBar = document.getElementById('docProgressBar');
-    if (progressBar) {
-      progressBar.style.width = this._calculateProgress();
-    }
-
-    // Update thumbnails
-    const thumbnails = document.querySelectorAll('.doc-page-thumbnail');
-    thumbnails.forEach((thumb, index) => {
-      thumb.classList.toggle('active', index === this.currentPageIndex);
-    });
-
-    // Scroll active thumbnail into view
-    const activeThumbnail = document.querySelector('.doc-page-thumbnail.active');
-    if (activeThumbnail) {
-      activeThumbnail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    // Update navigation buttons
-    const prevBtn = document.getElementById('prevPageBtn');
-    const nextBtn = document.getElementById('nextPageBtn');
-    if (prevBtn) prevBtn.disabled = this.currentPageIndex === 0;
-    if (nextBtn) nextBtn.disabled = this.currentPageIndex === this.pages.length - 1;
-
-    // Update page visibility in single page mode
-    if (this.viewMode === 'single') {
-      const pages = document.querySelectorAll('.doc-page-viewport');
-      pages.forEach((page, index) => {
-        page.classList.toggle('active', index === this.currentPageIndex);
-      });
-    }
-  }
-
-  /**
-   * Zoom in
-   * @private
-   */
-  _zoomIn() {
-    if (this.zoomLevel < 2) {
-      this.zoomLevel += 0.1;
-      this._applyZoom();
-    }
-  }
-
-  /**
-   * Zoom out
-   * @private
-   */
-  _zoomOut() {
-    if (this.zoomLevel > 0.5) {
-      this.zoomLevel -= 0.1;
-      this._applyZoom();
-    }
-  }
-
-  /**
-   * Reset zoom
-   * @private
-   */
-  _zoomReset() {
-    this.zoomLevel = 1;
-    this._applyZoom();
-  }
-
-  /**
-   * Apply zoom level
-   * @private
-   */
-  _applyZoom() {
-    const pages = document.querySelectorAll('.doc-page-viewport');
-    pages.forEach(page => {
-      page.style.setProperty('--doc-zoom-level', this.zoomLevel);
-    });
-
-    const zoomDisplay = document.getElementById('docZoomLevel');
-    if (zoomDisplay) {
-      zoomDisplay.textContent = `${Math.round(this.zoomLevel * 100)}%`;
-    }
-  }
-
-  /**
-   * Toggle sidebar visibility
-   * @private
-   */
-  _toggleSidebar() {
-    this.isSidebarVisible = !this.isSidebarVisible;
-
-    const sidebar = document.getElementById('docViewerSidebar');
-    const toggleBtn = document.getElementById('togglePagesBtn');
-
-    if (sidebar) {
-      sidebar.classList.toggle('hidden', !this.isSidebarVisible);
-    }
-
-    if (toggleBtn) {
-      toggleBtn.classList.toggle('active', this.isSidebarVisible);
-    }
-  }
-
-  /**
-   * Toggle table of contents
-   * @private
-   */
-  _toggleTOC() {
-    this.tocVisible = !this.tocVisible;
-
-    const overlay = document.getElementById('docTOCOverlay');
-    if (overlay) {
-      overlay.classList.toggle('visible', this.tocVisible);
-    }
-  }
-
-  /**
-   * Toggle fullscreen mode
-   * @private
-   */
-  _toggleFullscreen() {
-    this.isFullscreen = !this.isFullscreen;
-
-    const viewer = this.container;
-    const toggleBtn = document.getElementById('toggleFullscreenBtn');
-
-    if (viewer) {
-      viewer.classList.toggle('fullscreen', this.isFullscreen);
-
-      if (toggleBtn) {
-        const text = this.isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
-        toggleBtn.innerHTML = `<span class="doc-viewer-btn-icon">⛶</span><span>${text}</span>`;
-        toggleBtn.classList.toggle('active', this.isFullscreen);
-      }
-    }
-  }
-
-  /**
-   * Toggle keyboard shortcuts overlay
-   * @private
-   */
-  _toggleShortcuts() {
-    this.shortcutsVisible = !this.shortcutsVisible;
-
-    const overlay = document.getElementById('docShortcutsOverlay');
-    if (overlay) {
-      overlay.classList.toggle('visible', this.shortcutsVisible);
-    }
-  }
-
-  /**
-   * Handle keyboard shortcuts
-   * @private
-   */
-  handleKeyPress(e) {
-    // Don't handle if overlays are visible (except Escape)
-    if ((this.shortcutsVisible || this.tocVisible) && e.key !== 'Escape') return;
-
-    // Don't handle if user is typing in an input
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    switch(e.key) {
-      case 'ArrowRight':
-      case 'PageDown':
-        e.preventDefault();
-        this._nextPage();
-        break;
-      case 'ArrowLeft':
-      case 'PageUp':
-        e.preventDefault();
-        this._previousPage();
-        break;
-      case 'Home':
-        e.preventDefault();
-        this._goToPage(0);
-        break;
-      case 'End':
-        e.preventDefault();
-        this._goToPage(this.pages.length - 1);
-        break;
-      case '+':
-      case '=':
-        e.preventDefault();
-        this._zoomIn();
-        break;
-      case '-':
-      case '_':
-        e.preventDefault();
-        this._zoomOut();
-        break;
-      case '0':
-        e.preventDefault();
-        this._zoomReset();
-        break;
-      case 'f':
-      case 'F':
-        if (!e.ctrlKey && !e.metaKey) {
-          e.preventDefault();
-          this._toggleFullscreen();
-        }
-        break;
-      case 'c':
-      case 'C':
-        e.preventDefault();
-        this._toggleTOC();
-        break;
-      case '?':
-        e.preventDefault();
-        this._toggleShortcuts();
-        break;
-      case 'p':
-        if (e.ctrlKey || e.metaKey) {
-          // Let browser handle Ctrl+P for print
-          return;
-        }
-        break;
-      case 'Escape':
-        e.preventDefault();
-        if (this.shortcutsVisible) {
-          this._toggleShortcuts();
-        } else if (this.tocVisible) {
-          this._toggleTOC();
-        } else if (this.isFullscreen) {
-          this._toggleFullscreen();
-        }
-        break;
-    }
   }
 
   /**
@@ -1166,11 +291,11 @@ export class ExecutiveSummary {
    */
   _renderStrategicNarrative(data) {
     return `
-      <section class="doc-section">
-        <p class="doc-paragraph">${data.elevatorPitch || ''}</p>
-        ${data.valueProposition ? `<p class="doc-paragraph">${data.valueProposition}</p>` : ''}
-        ${data.callToAction ? `<p class="doc-paragraph"><strong>${data.callToAction}</strong></p>` : ''}
-      </section>
+      <div class="document-section">
+        <p class="document-paragraph">${data.elevatorPitch || ''}</p>
+        ${data.valueProposition ? `<p class="document-paragraph">${data.valueProposition}</p>` : ''}
+        ${data.callToAction ? `<p class="document-paragraph document-paragraph-emphasis">${data.callToAction}</p>` : ''}
+      </div>
     `;
   }
 
@@ -1182,12 +307,21 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="doc-section">
-        <h2 class="doc-heading">Strategic Priorities</h2>
+      <div class="document-section">
+        <h2 class="document-heading">Strategic Priorities</h2>
         ${data.map((priority, index) => `
-          <p class="doc-paragraph"><strong>${index + 1}. ${priority.title}.</strong> ${priority.description} ${priority.bankingContext || ''} ${priority.dependencies ? `Dependencies include ${priority.dependencies}.` : ''} ${priority.deadline ? `Deadline: ${priority.deadline}.` : ''}</p>
+          <div class="document-list-item">
+            <div class="document-list-number">${index + 1}</div>
+            <div class="document-list-content">
+              <strong class="document-strong">${priority.title}.</strong>
+              <span class="document-text">${priority.description}</span>
+              ${priority.bankingContext ? `<span class="document-text"> ${priority.bankingContext}</span>` : ''}
+              ${priority.dependencies ? `<span class="document-text-muted"> Dependencies: ${priority.dependencies}.</span>` : ''}
+              ${priority.deadline ? `<span class="document-text-muted"> Deadline: ${priority.deadline}.</span>` : ''}
+            </div>
+          </div>
         `).join('')}
-      </section>
+      </div>
     `;
   }
 
@@ -1199,15 +333,23 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="doc-section">
-        <h2 class="doc-heading">Strategic Drivers</h2>
-        ${data.map(driver => {
+      <div class="document-section">
+        <h2 class="document-heading">Strategic Drivers</h2>
+        ${data.map((driver, index) => {
           const metricsText = driver.metrics && driver.metrics.length > 0
-            ? ` Key metrics include: ${driver.metrics.join('; ')}.`
+            ? ` <span class="document-metrics">Key metrics: ${driver.metrics.join(', ')}.</span>`
             : '';
-          return `<p class="doc-paragraph"><strong>${driver.title}.</strong> ${driver.description}${metricsText}</p>`;
+          return `
+            <div class="document-list-item">
+              <div class="document-list-number">${index + 1}</div>
+              <div class="document-list-content">
+                <strong class="document-strong">${driver.title}.</strong>
+                <span class="document-text">${driver.description}</span>${metricsText}
+              </div>
+            </div>
+          `;
         }).join('')}
-      </section>
+      </div>
     `;
   }
 
@@ -1219,18 +361,30 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="doc-section">
-        <h2 class="doc-heading">Critical Dependencies</h2>
+      <div class="document-section">
+        <h2 class="document-heading">Critical Dependencies</h2>
         ${data.map(dep => {
+          const criticalityClass = (dep.criticality || '').toLowerCase();
+          const criticalityBadge = `<span class="dependency-badge dependency-badge-${criticalityClass}">${dep.criticality || 'Medium'}</span>`;
           const phasesText = dep.impactedPhases && dep.impactedPhases.length > 0
-            ? ` This dependency impacts the following phases: ${dep.impactedPhases.join(', ')}.`
+            ? ` <span class="document-text-muted">Impacts: ${dep.impactedPhases.join(', ')}.</span>`
             : '';
           const mitigationText = dep.mitigationStrategy
-            ? ` Mitigation strategy: ${dep.mitigationStrategy}`
+            ? ` <span class="document-text">Mitigation: ${dep.mitigationStrategy}</span>`
             : '';
-          return `<p class="doc-paragraph"><strong>${dep.name} (${dep.criticality || 'Medium'} Criticality).</strong>${phasesText}${mitigationText}</p>`;
+          return `
+            <div class="document-dependency-item">
+              <div class="document-dependency-header">
+                <strong class="document-strong">${dep.name}</strong>
+                ${criticalityBadge}
+              </div>
+              <div class="document-dependency-content">
+                ${phasesText}${mitigationText}
+              </div>
+            </div>
+          `;
         }).join('')}
-      </section>
+      </div>
     `;
   }
 
@@ -1242,16 +396,53 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="doc-section">
-        <h2 class="doc-heading">Risk Intelligence</h2>
+      <div class="document-section">
+        <h2 class="document-heading">Risk Intelligence</h2>
         ${data.map(risk => {
+          const riskLevel = this._calculateRiskLevel(risk.probability, risk.impact);
+          const riskBadge = `<span class="risk-badge risk-badge-${riskLevel}">${riskLevel.toUpperCase()}</span>`;
           const indicatorsText = risk.earlyIndicators && risk.earlyIndicators.length > 0
-            ? ` Early warning indicators include: ${risk.earlyIndicators.join('; ')}.`
+            ? ` <span class="document-text-muted">Early indicators: ${risk.earlyIndicators.join(', ')}.</span>`
             : '';
-          return `<p class="doc-paragraph"><strong>${risk.category || 'General'} Risk (${risk.probability || 'Medium'} probability, ${risk.impact || 'Moderate'} impact).</strong> ${risk.description}${indicatorsText}</p>`;
+          return `
+            <div class="document-risk-item">
+              <div class="document-risk-header">
+                <strong class="document-strong">${risk.category || 'General'} Risk</strong>
+                ${riskBadge}
+              </div>
+              <div class="document-risk-meta">
+                <span class="risk-meta-item">Probability: ${risk.probability || 'Medium'}</span>
+                <span class="risk-meta-separator">•</span>
+                <span class="risk-meta-item">Impact: ${risk.impact || 'Moderate'}</span>
+              </div>
+              <div class="document-risk-content">
+                <span class="document-text">${risk.description}</span>${indicatorsText}
+              </div>
+            </div>
+          `;
         }).join('')}
-      </section>
+      </div>
     `;
+  }
+
+  /**
+   * Calculate risk level from probability and impact
+   * @private
+   */
+  _calculateRiskLevel(probability, impact) {
+    const probLower = (probability || '').toLowerCase();
+    const impactLower = (impact || '').toLowerCase();
+
+    if ((probLower.includes('high') || probLower.includes('likely')) &&
+        (impactLower.includes('high') || impactLower.includes('severe'))) {
+      return 'critical';
+    } else if ((probLower.includes('high') || impactLower.includes('high')) ||
+               (probLower.includes('medium') && impactLower.includes('medium'))) {
+      return 'high';
+    } else if (probLower.includes('low') && impactLower.includes('low')) {
+      return 'low';
+    }
+    return 'medium';
   }
 
   /**
@@ -1262,13 +453,20 @@ export class ExecutiveSummary {
     if (!Array.isArray(data) || data.length === 0) return '';
 
     return `
-      <section class="doc-section">
-        <h2 class="doc-heading">Key Strategic Insights</h2>
-        ${data.map(insight => {
-          const supportingText = insight.supportingData ? ` ${insight.supportingData}` : '';
-          return `<p class="doc-paragraph"><em>${insight.insight}</em>${supportingText}</p>`;
-        }).join('')}
-      </section>
+      <div class="document-section">
+        <h2 class="document-heading">Key Strategic Insights</h2>
+        <div class="document-insights-grid">
+          ${data.map((insight, index) => `
+            <div class="document-insight-card">
+              <div class="insight-card-number">${index + 1}</div>
+              <div class="insight-card-content">
+                <p class="insight-card-text">${insight.insight}</p>
+                ${insight.supportingData ? `<p class="insight-card-data">${insight.supportingData}</p>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
     `;
   }
 
@@ -1279,21 +477,42 @@ export class ExecutiveSummary {
   _renderCompetitiveIntelligence(data) {
     if (!data) return '';
 
-    let content = '';
+    const hasContent = data.marketTiming || data.competitorMoves ||
+                       data.competitiveAdvantage || data.marketWindow;
 
-    if (data.marketTiming || data.competitorMoves || data.competitiveAdvantage || data.marketWindow) {
-      content = `
-        <section class="doc-section">
-          <h2 class="doc-heading">Competitive Intelligence</h2>
-          ${data.marketTiming ? `<p class="doc-paragraph"><strong>Market Timing.</strong> ${data.marketTiming}</p>` : ''}
-          ${data.competitorMoves && data.competitorMoves.length > 0 ? `<p class="doc-paragraph"><strong>Competitor Moves.</strong> ${data.competitorMoves.join(' ')}</p>` : ''}
-          ${data.competitiveAdvantage ? `<p class="doc-paragraph"><strong>Competitive Advantage.</strong> ${data.competitiveAdvantage}</p>` : ''}
-          ${data.marketWindow ? `<p class="doc-paragraph"><strong>Market Window.</strong> ${data.marketWindow}</p>` : ''}
-        </section>
-      `;
-    }
+    if (!hasContent) return '';
 
-    return content;
+    return `
+      <div class="document-section">
+        <h2 class="document-heading">Competitive Intelligence</h2>
+        <div class="document-competitive-grid">
+          ${data.marketTiming ? `
+            <div class="competitive-card">
+              <div class="competitive-card-label">Market Timing</div>
+              <div class="competitive-card-content">${data.marketTiming}</div>
+            </div>
+          ` : ''}
+          ${data.competitorMoves && data.competitorMoves.length > 0 ? `
+            <div class="competitive-card">
+              <div class="competitive-card-label">Competitor Moves</div>
+              <div class="competitive-card-content">${data.competitorMoves.join(' ')}</div>
+            </div>
+          ` : ''}
+          ${data.competitiveAdvantage ? `
+            <div class="competitive-card">
+              <div class="competitive-card-label">Competitive Advantage</div>
+              <div class="competitive-card-content">${data.competitiveAdvantage}</div>
+            </div>
+          ` : ''}
+          ${data.marketWindow ? `
+            <div class="competitive-card">
+              <div class="competitive-card-label">Market Window</div>
+              <div class="competitive-card-content">${data.marketWindow}</div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -1303,26 +522,135 @@ export class ExecutiveSummary {
   _renderIndustryBenchmarks(data) {
     if (!data) return '';
 
-    let content = '';
+    const hasContent = data.timeToMarket || data.investmentLevel || data.riskProfile;
 
-    if (data.timeToMarket || data.investmentLevel || data.riskProfile) {
-      content = `
-        <section class="doc-section">
-          <h2 class="doc-heading">Industry Benchmarks</h2>
-          ${data.timeToMarket ? `<p class="doc-paragraph"><strong>Time to Market.</strong> Your plan: ${data.timeToMarket.yourPlan} vs. industry average: ${data.timeToMarket.industryAverage} (${data.timeToMarket.variance}). ${data.timeToMarket.insight}</p>` : ''}
-          ${data.investmentLevel ? `<p class="doc-paragraph"><strong>Investment Level.</strong> Your plan: ${data.investmentLevel.yourPlan} vs. industry median: ${data.investmentLevel.industryMedian} (${data.investmentLevel.variance}). ${data.investmentLevel.insight}</p>` : ''}
-          ${data.riskProfile ? `<p class="doc-paragraph"><strong>Risk Profile.</strong> Your plan: ${data.riskProfile.yourPlan}. Industry comparison: ${data.riskProfile.industryComparison}. ${data.riskProfile.insight}</p>` : ''}
-        </section>
-      `;
+    if (!hasContent) return '';
+
+    return `
+      <div class="document-section">
+        <h2 class="document-heading">Industry Benchmarks</h2>
+        <div class="document-benchmarks">
+          ${data.timeToMarket ? `
+            <div class="benchmark-item">
+              <div class="benchmark-label">Time to Market</div>
+              <div class="benchmark-comparison">
+                <div class="benchmark-value">
+                  <span class="benchmark-label-small">Your Plan</span>
+                  <span class="benchmark-number">${data.timeToMarket.yourPlan}</span>
+                </div>
+                <div class="benchmark-vs">vs</div>
+                <div class="benchmark-value">
+                  <span class="benchmark-label-small">Industry Avg</span>
+                  <span class="benchmark-number">${data.timeToMarket.industryAverage}</span>
+                </div>
+              </div>
+              <div class="benchmark-variance">${data.timeToMarket.variance}</div>
+              <div class="benchmark-insight">${data.timeToMarket.insight}</div>
+            </div>
+          ` : ''}
+          ${data.investmentLevel ? `
+            <div class="benchmark-item">
+              <div class="benchmark-label">Investment Level</div>
+              <div class="benchmark-comparison">
+                <div class="benchmark-value">
+                  <span class="benchmark-label-small">Your Plan</span>
+                  <span class="benchmark-number">${data.investmentLevel.yourPlan}</span>
+                </div>
+                <div class="benchmark-vs">vs</div>
+                <div class="benchmark-value">
+                  <span class="benchmark-label-small">Industry Median</span>
+                  <span class="benchmark-number">${data.investmentLevel.industryMedian}</span>
+                </div>
+              </div>
+              <div class="benchmark-variance">${data.investmentLevel.variance}</div>
+              <div class="benchmark-insight">${data.investmentLevel.insight}</div>
+            </div>
+          ` : ''}
+          ${data.riskProfile ? `
+            <div class="benchmark-item">
+              <div class="benchmark-label">Risk Profile</div>
+              <div class="benchmark-single">
+                <div class="benchmark-value-full">
+                  <span class="benchmark-label-small">Your Plan</span>
+                  <span class="benchmark-text">${data.riskProfile.yourPlan}</span>
+                </div>
+                <div class="benchmark-value-full">
+                  <span class="benchmark-label-small">Industry Comparison</span>
+                  <span class="benchmark-text">${data.riskProfile.industryComparison}</span>
+                </div>
+              </div>
+              <div class="benchmark-insight">${data.riskProfile.insight}</div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Print document
+   * @private
+   */
+  _print() {
+    window.print();
+  }
+
+  /**
+   * Export to PDF (using browser print to PDF)
+   * @private
+   */
+  _exportToPDF() {
+    alert('Use your browser\'s Print function (Ctrl/Cmd+P) and select "Save as PDF" to export as PDF.');
+    window.print();
+  }
+
+  /**
+   * Export to PNG using html2canvas
+   * @private
+   */
+  async _exportToPNG() {
+    try {
+      // Check if html2canvas is available
+      if (typeof html2canvas === 'undefined') {
+        alert('Export feature requires html2canvas library. Please check your setup.');
+        return;
+      }
+
+      const documentPage = this.container.querySelector('.reader-document-page');
+      if (!documentPage) {
+        alert('Unable to find document content to export.');
+        return;
+      }
+
+      // Capture the document
+      const canvas = await html2canvas(documentPage, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true
+      });
+
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `executive-summary-${Date.now()}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+
+    } catch (error) {
+      console.error('[ExecutiveSummary] PNG export failed:', error);
+      alert('Failed to export as PNG. Please try again.');
     }
-
-    return content;
   }
 
   /**
    * Cleanup method to remove event listeners
    */
   destroy() {
-    document.removeEventListener('keydown', this.handleKeyPress);
+    // Clean up any event listeners if needed
+    console.log('[ExecutiveSummary] Cleanup complete');
   }
 }
