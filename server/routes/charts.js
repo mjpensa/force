@@ -402,11 +402,13 @@ Example: { "type": "insights", "title": "${slideOutline.title}", "insights": [{"
 
 CRITICAL REQUIREMENT - MUST EXTRACT FROM RESEARCH ABOVE:
 - DO NOT use placeholder text like "First strategic area..."
+- DO NOT use "subtitle" field - this slide type requires "columns" array ONLY
 - EXTRACT SPECIFIC details, data points, metrics, and facts from the research
 - Fill eyebrow with a concise theme from the research (e.g., "STRATEGIC GOALS", "KEY INITIATIVES")
-- Fill each column with 200-400 words of ACTUAL research content with specific details
+- Fill each column (NOT subtitle) with 200-400 words of ACTUAL research content with specific details
 - Use real numbers, dates, names, and insights from the research provided
 - If research lacks specific details, synthesize meaningful content based on context
+- MANDATORY: You MUST include the "columns" array with exactly 3 column objects
 
 This is a modern three-column layout with an eyebrow label and geometric corner decoration.
 
@@ -421,11 +423,13 @@ Example: { "type": "bip-three-column", "title": {"text": "${slideOutline.title}"
 
 CRITICAL REQUIREMENT - MUST EXTRACT FROM RESEARCH ABOVE:
 - DO NOT use generic placeholder text
+- DO NOT use "subtitle" field - this slide type requires "bodyText" ONLY
 - EXTRACT SPECIFIC narrative, context, and detailed information from the research
 - Fill eyebrow with a concise category from research
-- Fill bodyText with 300-500 words of ACTUAL research-based content
+- Fill bodyText (NOT subtitle) with 300-500 words of ACTUAL research-based content
 - Include specific metrics, timelines, stakeholders, and strategic details
 - Use real data points from the research provided above
+- MANDATORY: You MUST include the "bodyText" field with substantial content
 
 This is a large title layout with a single wide text column, ideal for detailed explanations.
 The title supports line breaks using \\n for multi-line display.

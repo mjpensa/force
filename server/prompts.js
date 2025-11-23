@@ -1598,7 +1598,33 @@ export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
             }
           }
         }
-      }
+      },
+      allOf: [
+        {
+          if: {
+            properties: { type: { const: "bip-three-column" } }
+          },
+          then: {
+            required: ["type", "title", "eyebrow", "columns"]
+          }
+        },
+        {
+          if: {
+            properties: { type: { const: "bip-single-column" } }
+          },
+          then: {
+            required: ["type", "title", "eyebrow", "bodyText"]
+          }
+        },
+        {
+          if: {
+            properties: { type: { const: "bip-title-slide" } }
+          },
+          then: {
+            required: ["type", "title", "footerLeft", "footerRight"]
+          }
+        }
+      ]
     }
   },
   required: ["slide"]
