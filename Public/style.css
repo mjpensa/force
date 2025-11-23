@@ -5473,6 +5473,11 @@ body.dragging {
   margin-top: 24px !important;
 }
 
+/* Allow scrolling when executive summary is visible */
+#gantt-chart-container:has(.executive-summary-viewer) {
+  overflow: visible !important;
+}
+
 /* Section Activation Animation */
 .section-activated {
   animation: sectionActivate 0.8s ease;
