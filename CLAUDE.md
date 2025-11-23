@@ -2,6 +2,19 @@
 
 ## Changelog
 
+### Version 2.3.0 (2025-11-23) - Presentation Removal Edition
+- **MAJOR:** Complete removal of presentation slide functionality (~6,000 lines removed)
+- **Removed:** PresentationSlides.js, SlideManager.js, SlideEditor.js, PresenterMode.js components
+- **Removed:** All presentation HTML files (presentation.html, presenter-view.html)
+- **Removed:** All presentation CSS files (presentation-viewer.css, presenter-view.css, presentation-config.js)
+- **Removed:** All presentation routes and navigation from Router.js and HamburgerMenu.js
+- **Removed:** Presentation generation logic from backend charts.js route (~470 lines)
+- **Removed:** All presentation prompts from prompts.js (707 lines): PRESENTATION_SLIDES_OUTLINE_PROMPT, PRESENTATION_SLIDE_CONTENT_PROMPT, BIP schemas
+- **Removed:** presentationSlides column from database schema and storage
+- **Updated:** Executive Summary now primary strategic output (presentation slides deprecated)
+- **Impact:** Reduced codebase complexity, improved maintainability
+- **Focus:** Streamlined to core roadmap and executive summary features
+
 ### Version 2.2.1 (2025-11-23) - Code Cleanup Edition
 - **MAJOR:** Comprehensive cleanup of inactive and broken code (7,272 lines removed)
 - **Cleanup:** Deleted 17 unused files across 3 cleanup phases
@@ -69,13 +82,13 @@
 
 ## Project Overview
 
-**AI Roadmap Generator** is a sophisticated web application that transforms unstructured research documents into interactive, AI-powered Gantt charts with executive summaries and presentation slides.
+**AI Roadmap Generator** is a sophisticated web application that transforms unstructured research documents into interactive, AI-powered Gantt charts with executive summaries.
 
 ### Core Functionality
 1. **File Upload**: Users upload research files (.md, .txt, .docx, .pdf) with project instructions
 2. **AI Processing**: Google Gemini AI analyzes content and generates structured JSON
 3. **Interactive Visualization**: Dynamic Gantt chart with drag-to-edit, resize, and color customization
-4. **Strategic Intelligence**: Auto-generated executive summaries and presentation slides
+4. **Strategic Intelligence**: Auto-generated executive summaries
 5. **Task Analysis**: Detailed analysis with Q&A chat for individual tasks
 
 ### Research Synthesis Edition (NEW - v2.2.0)
@@ -96,6 +109,8 @@
 
 ### Key Innovation
 Uses Gemini AI's JSON schema validation for structured output, enabling complex project visualizations from unstructured research with minimal user intervention. **Now enhanced with cross-LLM research synthesis for rigorous, cited insights and banking-specific intelligence** for strategic decision-making.
+
+**Note:** As of v2.3.0, presentation slide functionality has been removed. The application now focuses on roadmap visualization and executive summaries as the primary strategic outputs.
 
 ---
 
