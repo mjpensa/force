@@ -58,11 +58,6 @@ ${researchTextCache}
       temperature: CONFIG.API.TEMPERATURE_STRUCTURED,
       topP: CONFIG.API.TOP_P,
       topK: CONFIG.API.TOP_K
-      // NOTE: thinkingConfig temporarily disabled for debugging
-      // Re-enable after confirming it works with JSON schema
-      // thinkingConfig: {
-      //   thinkingBudget: CONFIG.API.THINKING_BUDGET_ANALYSIS
-      // }
     }
   };
 
