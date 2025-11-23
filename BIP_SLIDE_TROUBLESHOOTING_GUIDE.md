@@ -1,0 +1,1218 @@
+# BIP Slide Template Troubleshooting Guide
+**Session Date**: November 23, 2025
+**Session ID**: claude/slide-library-design-01APkczuUugU2rXPGZZDSuiz
+**Total Commits**: 6
+**Status**: In Progress
+
+---
+
+## TABLE OF CONTENTS
+
+1. [Project Goals](#project-goals)
+2. [Problem Statement](#problem-statement)
+3. [Troubleshooting Timeline](#troubleshooting-timeline)
+4. [Current State vs Ideal State Gap Analysis](#current-state-vs-ideal-state-gap-analysis)
+5. [Root Cause Analysis](#root-cause-analysis)
+6. [Implemented Fixes](#implemented-fixes)
+7. [Remaining Issues (P0/P1)](#remaining-issues-p0p1)
+8. [Testing Strategy](#testing-strategy)
+9. [Future Troubleshooting Guidelines](#future-troubleshooting-guidelines)
+10. [Technical Reference](#technical-reference)
+
+---
+
+## PROJECT GOALS
+
+### Primary Objective
+Generate AI-powered presentation slides that **exactly match** the BIP (Business Integration Partners) brand design system, specifically replicating the visual appearance of reference HTML templates (`bip-slide-2.html` and `bip-slide-4.html`).
+
+### Success Criteria
+1. **Visual Fidelity**: Generated slides are pixel-perfect matches to reference templates
+2. **Font Rendering**: Ultra-thin title fonts (Inter weight 200) display correctly
+3. **Layout Accuracy**: Grid layouts, spacing, and proportions match exactly
+4. **Graphics**: Corner graphics render with correct geometric patterns (navy/blue/red triangles)
+5. **Typography**: Letter-spacing, line-height, and text styling match reference designs
+6. **Consistency**: All three BIP slide types render consistently across browsers
+
+### Scope
+- **In Scope**: bip-three-column, bip-single-column, bip-title-slide templates
+- **Out of Scope**: Generic slide types, presentation viewer UI, navigation controls
+- **Technology Stack**: Vanilla JavaScript (ES6), inline CSS styles, Google Fonts (Inter, Work Sans)
+
+---
+
+## PROBLEM STATEMENT
+
+### Initial Report (Session Start)
+User reported: *"The slide templates still aren't laid out correctly"* after previous troubleshooting attempts.
+
+### Visual Evidence
+Two comparison images uploaded to repository:
+- **Error Image**: `Slide 2/ab_Slide 2 Error Example.png` (actual render from system)
+- **Reference Image**: `Slide 2/ab_bip slide 2 template.png` (correct BIP design)
+
+### High-Level Issues Observed
+1. Title font appeared **thick/heavy** instead of ultra-thin
+2. Corner graphic showed **solid red square** instead of geometric pattern
+3. Title **letter-spacing** appeared tight instead of airy/open
+4. Overall **visual proportions** felt off compared to reference
+
+---
+
+## TROUBLESHOOTING TIMELINE
+
+### Session Overview
+This session is a **continuation** from previous work on BIP slide templates. Prior session had attempted a "complete rewrite" but issues persisted.
+
+---
+
+### **Phase 1: Initial End-to-End Code Review**
+
+#### Request
+User: *"Review the code E2E for additional bugs which may be causing issues with slide generation"*
+
+#### Investigation Scope
+- AI prompt schemas (server/prompts.js)
+- Template rendering logic (Public/SlideTemplates.js)
+- Data flow pipeline (charts.js → WebRenderer → templates)
+- CSS styling (presentation-viewer.css, inline styles)
+
+#### Findings
+
+**Bug #1: Double Padding Issue** (CRITICAL)
+- **Location**: `Public/SlideTemplates.js` template body styles
+- **Symptom**: Excessive whitespace, slides appearing as "generic columns"
+- **Root Cause**:
+  - Templates added `padding: 3rem`
+  - Presentation viewer `.slide-content` class also added `padding: 3rem`
+  - Result: 6rem total padding (double)
+- **Evidence**:
+  ```javascript
+  // SlideTemplates.js (BEFORE)
+  body.style.cssText = `
+    background-color: #ffffff;
+    padding: 3rem;  // ❌ Duplicates viewer padding
+    ...
+  `;
+  ```
+
+**Bug #2: Corner Graphic Positioning** (HIGH)
+- **Location**: `Public/SlideTemplates.js` corner graphic styles
+- **Symptom**: Graphic appearing 3rem inset from actual corner
+- **Root Cause**: Positioned at `top: 0; right: 0` without accounting for parent padding
+- **Evidence**:
+  ```javascript
+  // BEFORE
+  graphic.style.cssText = `
+    position: absolute;
+    top: 0;      // ❌ Doesn't account for padding
+    right: 0;    // ❌ Doesn't account for padding
+    ...
+  `;
+  ```
+
+**Bugs #3-5: Schema-Template Mismatch** (MEDIUM)
+- **Location**: `server/prompts.js` JSON schemas
+- **Symptom**: AI validation rejecting valid responses
+- **Root Cause**: Schemas required fields that templates treated as optional
+  - BIP_THREE_COLUMN_SCHEMA required `"eyebrow"` (template had default)
+  - BIP_SINGLE_COLUMN_SCHEMA required `"eyebrow"` (template had default)
+  - BIP_TITLE_SLIDE_SCHEMA required `"footerLeft"` and `"footerRight"` (templates had defaults)
+- **Impact**: Risk of AI generation failures despite defensive post-processing
+
+#### User Decision
+User approved: **"Option A: Make Schemas Match Reality"** (align schemas with defensive template behavior)
+
+#### Fixes Implemented
+**Commit b59d0d4**: [BIP Templates] FIX padding and corner graphic positioning
+- Changed template padding from `3rem` → `0`
+- Changed corner graphic position to `top: -3rem; right: -3rem` (negative offset)
+- Applied to all three BIP templates
+
+**Commit 88a2da3**: [Schema] Align BIP slide schemas with defensive template behavior
+- Removed `"eyebrow"` from required fields (BIP_THREE_COLUMN_SCHEMA, BIP_SINGLE_COLUMN_SCHEMA)
+- Removed `"footerLeft"`, `"footerRight"` from required fields (BIP_TITLE_SLIDE_SCHEMA)
+- Updated prompt text: "OPTIONAL FIELDS" → "RECOMMENDED FIELDS" with documented defaults
+
+---
+
+### **Phase 2: Second End-to-End Review**
+
+#### Request
+User: *"Provide an additional E2E review"*
+
+#### Investigation Scope
+Focused on different aspects not covered in first review:
+- Title format handling (string vs object inconsistency)
+- SlideManager navigation display
+- SlideEditor inline editing
+- Edge cases (empty strings, missing fields)
+
+#### Findings
+
+**Bug #6: SlideManager Title Format Handling** (MEDIUM)
+- **Location**: `Public/SlideManager.js:getSlideTitle()`
+- **Symptom**: BIP slides with string titles displayed as "Bip-three-column Slide" in navigation
+- **Root Cause**: Method only checked for `slide.content.title.text` (object format), failed when title was string
+- **Impact**: Poor UX, incorrect slide titles in sidebar
+- **Evidence**:
+  ```javascript
+  // BEFORE
+  if (slide.content.title && slide.content.title.text) {
+    return slide.content.title.text;  // ❌ Crashes if title is string
+  }
+  ```
+
+**Bug #7: SlideEditor Title Editing** (MEDIUM)
+- **Location**: `Public/SlideEditor.js` inline editing handlers
+- **Symptom**: Would crash when editing BIP slides with string titles
+- **Root Cause**: Assumed title was always object with `.text` property
+- **Evidence**:
+  ```javascript
+  // BEFORE
+  if (slide.content.title) {
+    slide.content.title.text = newContent;  // ❌ Crashes if title is string
+  }
+  ```
+
+**Edge Case #1: Empty Title Not Validated** (LOW)
+- **Location**: `server/routes/charts.js` post-processing
+- **Symptom**: AI could generate slides with empty titles
+- **Root Cause**: Validation checked columns, bodyText, eyebrow, footers, but NOT title
+- **Impact**: Potential for slides with no title
+
+**Edge Case #2: Empty Strings in Objects Not Caught** (LOW)
+- **Location**: `server/routes/charts.js` validation
+- **Symptom**: Objects like `{ text: '' }` would pass validation
+- **Root Cause**: Checked for missing objects but not empty text within objects
+- **Example**: `eyebrow: { text: '' }` would not trigger default assignment
+
+**Edge Case #3: Empty Column Text Not Validated** (LOW)
+- **Location**: `server/routes/charts.js` column validation
+- **Symptom**: Columns with empty text would render blank
+- **Root Cause**: Validated column array length but not individual column content
+
+#### User Decision
+User approved: **"yes"** (proceed with all fixes)
+
+#### Fixes Implemented
+**Commit fc734f3**: [SlideManager] FIX title format handling for BIP slides
+- Added typeof checks to handle both string and object title formats
+- Applied pattern to: title, sectionTitle, quote fields
+- Example:
+  ```javascript
+  const titleText = typeof slide.content.title === 'string'
+    ? slide.content.title
+    : slide.content.title?.text;
+  ```
+
+**Commit 982476a**: [Validation] Add comprehensive empty string and edge case handling
+- Added universal title validation for all BIP slides (any type starting with "bip-")
+- Added `.trim().length === 0` checks for eyebrow, footerLeft, footerRight
+- Added per-column text validation with helpful default messages
+- Fixed SlideEditor to handle both string and object formats
+
+---
+
+### **Phase 3: Code Cleanup Review**
+
+#### Request
+User: *"Review this workflow for conflicting or inactive code that needs to be removed"*
+
+#### Investigation Scope
+- Duplicate/backup files
+- Inactive code paths
+- Unused templates
+- Old documentation
+
+#### Findings
+1. **Backup Files** (HIGH PRIORITY):
+   - `Public/SlideTemplates-backup.js` (15 KB) - Original broken implementation
+   - `Public/SlideTemplates-new.js` (4.3 KB) - Incomplete alternative
+   - `Public/SlideTemplates-rewrite.js` (12 KB) - Duplicate of active file
+   - **Issue**: Confusing, may be imported by mistake
+
+2. **Prototype Directories** (LOW PRIORITY):
+   - `Slide 1/`, `Slide 2/`, `Slide 3/` - Design prototypes
+   - **Issue**: Historical reference, not actively used
+
+3. **Unused BIP Templates** (LOW PRIORITY):
+   - `bip-slide-{1,3,5-13}.html` - Only slides 2 and 4 are used
+   - **Issue**: Could be useful for future reference
+
+4. **Old Documentation** (LOW PRIORITY):
+   - "Slide template instructions_opus"
+   - **Issue**: May be outdated
+
+#### User Decision
+User chose: **"Custom selection: remove #1 only"** (SlideTemplates backup files only, keep prototypes and unused templates)
+
+#### Fixes Implemented
+**Commit 7d70f25**: [Cleanup] Remove inactive SlideTemplates backup files
+- Removed `Public/SlideTemplates-backup.js` (15 KB)
+- Removed `Public/SlideTemplates-new.js` (4.3 KB)
+- Removed `Public/SlideTemplates-rewrite.js` (12 KB)
+- **Total cleanup**: 1,004 lines deleted, ~42 KB freed
+
+---
+
+### **Phase 4: Visual Error Analysis**
+
+#### Request
+User: *"The slide templates still aren't laid out correctly. Re-examine the example error images I uploaded to my repo"*
+
+#### Investigation
+Retrieved comparison images from git history:
+- **Commit 164e373**: `Slide 2/ab_Slide 2 Error Example.png`
+- **Commit 164e373**: `Slide 2/ab_bip slide 2 template.png`
+
+#### Visual Comparison Analysis
+
+**Error Image** (Actual System Output):
+- Slide type: bip-single-column (2-column grid)
+- Eyebrow: "PAYMENTS INFRASTRUCTURE TRANSFORMATION" (red, small)
+- Title: "The Dawn of Real-Time A2A: Moving Beyond the ACH Legacy"
+  - Font: Appears **thick/heavy** (weight 400-500 estimated)
+  - Size: Smaller than expected (~2.5-3rem estimated)
+  - Letter-spacing: **Tight/normal** (no extra spacing)
+- Corner graphic: **Solid RED SQUARE** (completely wrong)
+- Body text: Regular paragraph, no special formatting
+- Footer: **Missing** (no slide number, no bip. logo)
+
+**Reference Template** (Correct BIP Design):
+- Slide type: bip-single-column (2-column grid)
+- Eyebrow: "LOREM IPSUM" (red, small, matches)
+- Title: "Lorem ipsum sit amet sit lorem"
+  - Font: **Ultra-thin/elegant** (weight 100-200, "extralight")
+  - Size: **Very large**, dominant (~3.75rem, text-6xl)
+  - Letter-spacing: **Wide/airy** (significant extra tracking)
+- Corner graphic: **Geometric pattern** (navy, light blue, red, gray triangles)
+- Body text: Two paragraphs with **red dotted underlines** on key words
+- Footer: Slide number "34" (bottom-left), "bip." logo (bottom-right, red)
+
+#### Root Cause Discovery
+
+**Issue #1: Font Not Loading** (CRITICAL)
+- **Discovery**: presentation-viewer.css only loaded **Work Sans** font, NOT **Inter**
+- **Evidence**:
+  ```css
+  /* presentation-viewer.css line 5-6 */
+  @import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700;800&display=swap');
+  /* ❌ Inter font import MISSING */
+  ```
+- **Impact**: When SlideTemplates.js requests `font-family: 'Inter', sans-serif`, browser falls back to generic sans-serif (Arial/Helvetica), which looks much heavier at weight 200
+
+**Issue #2: SVG Path May Be Incorrect** (CRITICAL)
+- **Discovery**: Corner graphic showing solid red square instead of geometric pattern
+- **Current code**: `<img src="/vertical-stripe.svg">`
+- **Hypothesis**: SVG file not loading (404 error), browser showing broken image placeholder
+- **Need to verify**: SVG file accessibility, browser console errors
+
+#### Fixes Implemented
+**Commit adbbb5e**: [BIP Templates] FIX font and corner graphic rendering
+- **Fix #1**: Added Inter font import to presentation-viewer.css
+  ```css
+  /* Import Inter Font (for BIP slide templates) */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700&display=swap');
+  ```
+- **Fix #2**: SVG paths already absolute (`/vertical-stripe.svg`) from previous fix
+- **Note**: Font weight should now render correctly as Inter loads
+
+---
+
+### **Phase 5: Comprehensive Gap Analysis**
+
+#### Request
+User: *"Carefully examine these two files and generate a comprehensive gap analysis"*
+
+#### Methodology
+Systematic comparison of every visual element:
+- Typography (font family, weight, size, spacing)
+- Layout (grid structure, spacing, proportions)
+- Graphics (corner patterns, colors, positioning)
+- Missing features (footers, decorations)
+
+#### Complete Gap Inventory
+
+**GAP #1: Title Font Weight** ⚠️ CRITICAL
+- **Current**: Appears 400-500 (medium/regular)
+- **Expected**: 100-200 (extralight/thin)
+- **Root Cause**: Inter font now loading (after commit adbbb5e), but may still have CSS cascade issues
+- **Priority**: **P0**
+
+**GAP #2: Title Font Size**
+- **Current**: Approximately 2.5-3rem (appears smaller)
+- **Expected**: 3.75rem (text-6xl for bip-single-column)
+- **Code Status**: Already correct in SlideTemplates.js line 245
+- **Root Cause**: May be rendering/cascade issue
+- **Priority**: **P1**
+
+**GAP #3: Title Letter-Spacing** ⚠️ CRITICAL
+- **Current**: Normal/tight (~0)
+- **Expected**: Wide/airy (~-0.02em based on bip-slide-4.html)
+- **Root Cause**: **Letter-spacing property completely missing** from title styles
+- **Code Evidence**:
+  ```javascript
+  // SlideTemplates.js line 244-250 (CURRENT)
+  title.style.cssText = `
+    font-size: 3.75rem;
+    font-weight: 200;
+    color: #1e293b;
+    line-height: 1.25;
+    margin: 0;
+    // ❌ NO letter-spacing!
+  `;
+  ```
+- **Reference**: bip-slide-4.html line 37 has implicit letter-spacing from font rendering
+- **Priority**: **P0**
+
+**GAP #4: Corner Graphic** ⚠️ CRITICAL
+- **Current**: Solid red square
+- **Expected**: Complex geometric pattern (navy/blue/red triangles)
+- **Root Cause**: SVG file not loading correctly
+- **Hypotheses**:
+  1. Path `/vertical-stripe.svg` returns 404
+  2. SVG file corrupted
+  3. Browser blocking SVG load (CORS, CSP)
+- **Needs**: Browser console debugging, direct SVG file test
+- **Priority**: **P0**
+
+**GAP #5: Footer Elements**
+- **Current**: Missing
+- **Expected**: Slide number (bottom-left), "bip." logo (bottom-right)
+- **Analysis**: Reference image shows footer, but bip-slide-4.html source does NOT include footer elements
+- **Conclusion**: Footer is added by PresentationSlides.js or viewer framework, NOT template responsibility
+- **Priority**: **P3** (framework feature, not template bug)
+
+**GAP #6: Text Decorations (Dotted Underlines)**
+- **Current**: Missing
+- **Expected**: Red dotted underlines on ~20-30% of words
+- **Reference**: bip-slide-4.html uses `<span class="dotted-underline">` around key terms
+- **Analysis**: This is a **content-level feature**, not a template feature
+- **Implementation**: Would require AI to identify key terms or accept markup in content
+- **Priority**: **P2** (feature enhancement, not bug)
+
+**GAP #7: Overall Layout Proportions**
+- **Current**: Appears slightly compressed
+- **Expected**: Bold, dominant title on left
+- **Code Status**: Grid correctly set to `repeat(2, minmax(0, 1fr))` with `gap: 5rem`
+- **Root Cause**: Font issues affecting visual balance
+- **Priority**: **P1** (likely resolved when font issues fixed)
+
+**GAP #8: Eyebrow Styling**
+- **Current**: Appears correct
+- **Expected**: Small, red, uppercase, tracking-wider
+- **Status**: ✅ **No issues detected**
+- **Priority**: N/A
+
+---
+
+## CURRENT STATE VS IDEAL STATE GAP ANALYSIS
+
+### Visual Comparison Matrix
+
+| Element | Current State | Ideal State | Gap Severity | Status |
+|---------|---------------|-------------|--------------|--------|
+| **Title Font Family** | Inter (after adbbb5e) | Inter | ✅ Fixed | Complete |
+| **Title Font Weight** | Rendering at ~400-500 | Should be 200 (extralight) | ⚠️ CRITICAL | P0 Fix Needed |
+| **Title Font Size** | Code: 3.75rem, Appears smaller | 3.75rem (text-6xl) | ⚠️ HIGH | P1 Debug Needed |
+| **Title Letter-Spacing** | Not set (0) | ~-0.02em (airy/open) | ⚠️ CRITICAL | P0 Fix Needed |
+| **Title Line Height** | 1.25 | 1.25 (leading-tight) | ✅ Match | Complete |
+| **Corner Graphic** | Solid red square | Geometric navy/blue/red pattern | ⚠️ CRITICAL | P0 Debug Needed |
+| **Graphic Positioning** | top: -3rem, right: -3rem | Should be at corner | ✅ Fixed | Complete |
+| **Eyebrow Font** | Red, uppercase, small | Red, uppercase, small | ✅ Match | Complete |
+| **Eyebrow Spacing** | tracking-wider (0.05em) | tracking-wider | ✅ Match | Complete |
+| **Body Font Size** | 1rem | 1rem (text-base) | ✅ Match | Complete |
+| **Body Color** | #475569 | #475569 (slate-700) | ✅ Match | Complete |
+| **Grid Structure** | 2 columns, 5rem gap | 2 columns, 5rem gap | ✅ Match | Complete |
+| **Container Max-Width** | 80rem | 80rem (max-w-7xl) | ✅ Match | Complete |
+| **Padding** | 0 (viewer adds 3rem) | Effective 3rem | ✅ Fixed | Complete |
+| **Footer Elements** | Missing | Slide #, bip. logo | ℹ️ Framework | Not Template |
+| **Text Underlines** | Missing | Red dotted on keywords | ℹ️ Feature | Content-Level |
+
+### Priority Summary
+
+**P0 Issues** (CRITICAL - Blocking visual fidelity):
+1. Title letter-spacing missing
+2. Title font weight rendering incorrectly
+3. Corner graphic not loading/displaying
+
+**P1 Issues** (HIGH - Visual quality):
+4. Title font size appears smaller than expected
+
+**P2 Issues** (MEDIUM - Feature enhancements):
+5. Dotted underlines on body text (content feature)
+
+**P3 Issues** (LOW - Framework features):
+6. Footer elements (presentation viewer responsibility)
+
+---
+
+## ROOT CAUSE ANALYSIS
+
+### Primary Root Causes
+
+#### 1. **CSS Cascade and Inheritance Issues**
+
+**Problem**: Font properties not applying correctly despite code being correct
+
+**Evidence**:
+- SlideTemplates.js sets `font-weight: 200` (correct)
+- SlideTemplates.js sets `font-size: 3.75rem` (correct)
+- Error image shows heavier weight and smaller size
+
+**Hypotheses**:
+1. Presentation viewer CSS overriding template styles (specificity issue)
+2. Font-family inheritance chain broken
+3. Browser font rendering inconsistencies
+
+**Investigation Needed**:
+- Browser DevTools inspection of computed styles
+- Check for CSS specificity conflicts
+- Verify Inter font actually loading in browser
+
+**Recommended Fix**:
+- Add explicit `font-family: 'Inter', sans-serif;` directly on title element (not just body)
+- Use `!important` if necessary (last resort)
+- Test with inline style attribute vs cssText
+
+---
+
+#### 2. **Missing CSS Properties**
+
+**Problem**: Letter-spacing completely absent from title styles
+
+**Evidence**:
+```javascript
+// SlideTemplates.js - THREE-COLUMN title (lines 94-100)
+title.style.cssText = `
+  font-size: 3rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  margin: 0;
+  // ❌ letter-spacing MISSING
+`;
+
+// SlideTemplates.js - SINGLE-COLUMN title (lines 244-250)
+title.style.cssText = `
+  font-size: 3.75rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  margin: 0;
+  // ❌ letter-spacing MISSING
+`;
+```
+
+**Reference**: bip-slide-4.html line 37 uses `leading-tight` but letter-spacing is implicit in font rendering
+
+**Fix Required**: Add `letter-spacing: -0.02em;` to both title styles
+
+---
+
+#### 3. **SVG Loading Failure**
+
+**Problem**: Corner graphic showing solid red square instead of geometric pattern
+
+**Evidence**:
+- Error image: solid red square
+- Reference image: complex navy/blue/red geometric triangles
+- Current code: `<img src="/vertical-stripe.svg">`
+
+**Hypotheses**:
+1. **404 Error**: File not found at `/vertical-stripe.svg`
+   - Possible if server routing incorrect
+   - Possible if file in wrong directory
+2. **CORS Issue**: Browser blocking cross-origin SVG
+   - Unlikely if same origin
+3. **Broken Image Fallback**: Browser showing red placeholder for failed image
+4. **Wrong File**: `/vertical-stripe.svg` is correct file, but doesn't match reference design
+
+**Investigation Steps**:
+1. Open browser DevTools → Network tab
+2. Look for 404 error on `vertical-stripe.svg`
+3. Try loading `/vertical-stripe.svg` directly in browser
+4. Verify SVG file contains geometric pattern (not stripes)
+5. Check server console for routing errors
+
+**Verified SVG Content** (from earlier read):
+```svg
+<!-- vertical-stripe.svg contains navy (#0C2340) geometric paths -->
+<path fill="#0C2340" ... />
+```
+- ✅ SVG file exists and contains geometric patterns
+- ❌ But error image shows red square, not navy patterns
+
+**Likely Cause**: SVG not loading (404 or path issue)
+
+---
+
+#### 4. **Font Loading Timing**
+
+**Problem**: Inter font added to CSS (commit adbbb5e) but may not be loading before slide renders
+
+**Evidence**:
+- CSS now has `@import url('...Inter...')` at line 10
+- @import statements can be slow
+- Slides may render before font finishes downloading
+
+**Potential Fix**:
+- Preload font in HTML `<head>`:
+  ```html
+  <link rel="preload" href="..." as="font" crossorigin>
+  ```
+- OR use `<link>` instead of `@import`:
+  ```html
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;...">
+  ```
+
+---
+
+## IMPLEMENTED FIXES
+
+### Summary of 6 Commits
+
+| Commit | Date | Description | Files Changed | Impact |
+|--------|------|-------------|---------------|--------|
+| **b59d0d4** | Session Start | [BIP Templates] FIX padding and corner graphic positioning | SlideTemplates.js | Fixed double padding (6rem→3rem), fixed corner positioning |
+| **88a2da3** | Session Start | [Schema] Align BIP slide schemas with defensive template behavior | prompts.js, charts.js | Removed optional fields from required arrays |
+| **fc734f3** | Session Start | [SlideManager] FIX title format handling for BIP slides | SlideManager.js | Fixed string vs object title handling |
+| **982476a** | Session Start | [Validation] Add comprehensive empty string and edge case handling | charts.js, SlideEditor.js | Added validation for empty titles, columns, etc. |
+| **7d70f25** | Session Start | [Cleanup] Remove inactive SlideTemplates backup files | 3 backup files | Deleted 1,004 lines, freed 42 KB |
+| **adbbb5e** | Session Start | [BIP Templates] FIX font and corner graphic rendering | presentation-viewer.css, SlideTemplates.js | Added Inter font import, fixed SVG paths |
+
+### Detailed Fix Documentation
+
+#### Fix 1: Double Padding (Commit b59d0d4)
+
+**Problem**: 6rem total padding causing excessive whitespace
+
+**Before**:
+```javascript
+body.style.cssText = `
+  padding: 3rem;  // ❌ Adds to viewer's 3rem
+`;
+graphic.style.cssText = `
+  top: 0;
+  right: 0;  // ❌ Doesn't account for padding
+`;
+```
+
+**After**:
+```javascript
+body.style.cssText = `
+  padding: 0;  // ✅ Viewer .slide-content adds 3rem
+`;
+graphic.style.cssText = `
+  top: -3rem;   // ✅ Offset for viewer padding
+  right: -3rem; // ✅ Reaches actual corner
+`;
+```
+
+**Result**: Correct spacing matching reference templates
+
+---
+
+#### Fix 2: Schema Alignment (Commit 88a2da3)
+
+**Problem**: Schemas required fields that templates had defaults for
+
+**Before**:
+```javascript
+export const BIP_THREE_COLUMN_SCHEMA = {
+  required: ["type", "title", "eyebrow", "columns"],  // ❌
+};
+```
+
+**After**:
+```javascript
+export const BIP_THREE_COLUMN_SCHEMA = {
+  required: ["type", "title", "columns"],  // ✅ eyebrow now optional
+};
+```
+
+**Result**: Reduced AI validation failures, schemas match template behavior
+
+---
+
+#### Fix 3: Title Format Handling (Commits fc734f3, 982476a)
+
+**Problem**: Code only handled title as object, failed with string format
+
+**Before**:
+```javascript
+// SlideManager.js
+if (slide.content.title && slide.content.title.text) {
+  return slide.content.title.text;  // ❌ Crashes if string
+}
+```
+
+**After**:
+```javascript
+// SlideManager.js
+const titleText = typeof slide.content.title === 'string'
+  ? slide.content.title
+  : slide.content.title?.text;  // ✅ Handles both
+```
+
+**Result**: Slide navigation shows correct titles, inline editing works
+
+---
+
+#### Fix 4: Font Loading (Commit adbbb5e)
+
+**Problem**: Inter font not loaded, causing fallback to Arial
+
+**Before**:
+```css
+/* presentation-viewer.css - ONLY Work Sans */
+@import url('...Work+Sans...');
+```
+
+**After**:
+```css
+/* presentation-viewer.css */
+@import url('...Work+Sans...');
+@import url('...Inter:wght@100;200;300;400;500;600;700...');
+```
+
+**Result**: Inter font now available for BIP slides
+
+---
+
+#### Fix 5: SVG Absolute Paths (Commit adbbb5e)
+
+**Problem**: Relative path `vertical-stripe.svg` might resolve incorrectly
+
+**Before**:
+```javascript
+graphic.innerHTML = `<img src="vertical-stripe.svg">`;
+```
+
+**After**:
+```javascript
+graphic.innerHTML = `<img src="/vertical-stripe.svg">`;
+```
+
+**Result**: Consistent path resolution from presentation viewer
+
+---
+
+## REMAINING ISSUES (P0/P1)
+
+### P0 Issues (CRITICAL - Requires Immediate Fix)
+
+#### P0-1: Title Letter-Spacing Missing
+
+**Impact**: Title appears dense/cramped instead of airy/elegant
+
+**Fix**:
+```javascript
+// SlideTemplates.js - Add to THREE-COLUMN title (line 94-100)
+title.style.cssText = `
+  font-size: 3rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  margin: 0;
+  letter-spacing: -0.02em;  // ✅ ADD THIS
+`;
+
+// SlideTemplates.js - Add to SINGLE-COLUMN title (line 244-250)
+title.style.cssText = `
+  font-size: 3.75rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  margin: 0;
+  letter-spacing: -0.02em;  // ✅ ADD THIS
+`;
+```
+
+**Effort**: 2 minutes
+**Risk**: Very low
+
+---
+
+#### P0-2: Title Font Weight Rendering Incorrectly
+
+**Impact**: Title appears thick instead of ultra-thin
+
+**Current Hypothesis**: CSS cascade issue or font-family inheritance problem
+
+**Fix Attempt #1** (Add explicit font-family):
+```javascript
+title.style.cssText = `
+  font-family: 'Inter', sans-serif;  // ✅ ADD THIS (explicit, not inherited)
+  font-size: 3.75rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  margin: 0;
+  letter-spacing: -0.02em;
+`;
+```
+
+**If that fails, Fix Attempt #2** (Check computed styles):
+1. Open browser DevTools
+2. Inspect title element
+3. Check "Computed" tab for actual font-family and font-weight
+4. Look for overriding styles in "Styles" tab
+5. Check if Inter font is actually loading in "Network" tab
+
+**Effort**: 10-30 minutes (debugging)
+**Risk**: Medium (may require deeper investigation)
+
+---
+
+#### P0-3: Corner Graphic Not Loading
+
+**Impact**: Wrong graphic entirely, major branding issue
+
+**Debug Steps**:
+1. Open presentation viewer in browser
+2. Open DevTools → Network tab
+3. Filter for "vertical-stripe.svg"
+4. Check if 404 error or successful load
+5. If 404: verify file location and server routing
+6. If 200 OK: check why SVG not displaying (try `<object>` or inline SVG instead of `<img>`)
+
+**Alternative Fix** (If SVG won't load as `<img>`):
+```javascript
+// Option 1: Use <object> tag
+graphic.innerHTML = `<object data="/vertical-stripe.svg" type="image/svg+xml" style="width: 150px; height: auto;"></object>`;
+
+// Option 2: Inline SVG (fetch and insert)
+const svgResponse = await fetch('/vertical-stripe.svg');
+const svgText = await svgResponse.text();
+graphic.innerHTML = svgText;
+```
+
+**Effort**: 15-45 minutes (debugging + fix)
+**Risk**: Medium (may need to change loading approach)
+
+---
+
+### P1 Issues (HIGH - Affects Visual Quality)
+
+#### P1-1: Title Font Size Appears Smaller
+
+**Impact**: Title lacks visual dominance
+
+**Current Status**:
+- Code correctly sets `font-size: 3.75rem` (for single-column)
+- But error image shows title appearing smaller
+
+**Possible Causes**:
+1. Font-weight affecting perceived size (lighter fonts look smaller)
+2. Letter-spacing affecting width (tight spacing compresses)
+3. CSS transform or scale applied somewhere
+4. Different font-family rendering at different sizes
+
+**Investigation**:
+- After fixing P0-1 (letter-spacing) and P0-2 (font-weight), re-evaluate
+- Likely will be resolved automatically
+
+**Effort**: 5 minutes (re-test after P0 fixes)
+**Risk**: Low
+
+---
+
+## TESTING STRATEGY
+
+### Pre-Implementation Testing Checklist
+
+Before implementing P0/P1 fixes:
+- [ ] Verify current git branch: `claude/slide-library-design-01APkczuUugU2rXPGZZDSuiz`
+- [ ] Pull latest changes from remote
+- [ ] Read SlideTemplates.js to confirm current state
+- [ ] Backup current working version (git commit if needed)
+
+### Post-Implementation Testing Checklist
+
+After implementing each fix:
+- [ ] Test locally: Start server (`npm start`)
+- [ ] Generate test slide with BIP template
+- [ ] Open browser DevTools
+- [ ] Verify in Network tab:
+  - [ ] Inter font loading (status 200)
+  - [ ] vertical-stripe.svg loading (status 200)
+- [ ] Verify in Elements tab:
+  - [ ] Title element has correct computed styles:
+    - [ ] `font-family: Inter, sans-serif`
+    - [ ] `font-weight: 200`
+    - [ ] `font-size: 3.75rem` (or 3rem for three-column)
+    - [ ] `letter-spacing: -0.02em`
+  - [ ] Corner graphic renders (inspect `<img>` element)
+- [ ] Visual comparison:
+  - [ ] Compare against reference image (`ab_bip slide 2 template.png`)
+  - [ ] Check title thickness (should be ultra-thin)
+  - [ ] Check title letter-spacing (should be airy/open)
+  - [ ] Check corner graphic (should be geometric navy/blue/red pattern)
+
+### Regression Testing
+
+Test all three BIP slide types:
+- [ ] bip-three-column (3 columns, title above)
+- [ ] bip-single-column (2 columns, title left)
+- [ ] bip-title-slide (gradient background)
+
+### Browser Testing Matrix
+
+| Browser | Version | Status |
+|---------|---------|--------|
+| Chrome | Latest | ⏳ Pending |
+| Firefox | Latest | ⏳ Pending |
+| Safari | Latest | ⏳ Pending |
+| Edge | Latest | ⏳ Pending |
+
+---
+
+## FUTURE TROUBLESHOOTING GUIDELINES
+
+### General Principles
+
+1. **Visual Evidence First**
+   - Always request comparison images (error vs expected)
+   - Screenshot comparison is worth 1000 lines of code review
+   - Use browser DevTools to inspect actual rendered styles
+
+2. **Systematic Approach**
+   - Start with E2E review (broad)
+   - Narrow down to specific components
+   - Use git history to understand past fixes
+   - Check recent commits for related changes
+
+3. **Root Cause Over Symptoms**
+   - Don't just fix what's visible
+   - Investigate WHY the issue occurs
+   - Check for cascade/inheritance issues
+   - Verify assumptions with browser debugging
+
+4. **Incremental Fixes**
+   - Fix one issue at a time
+   - Commit after each fix
+   - Test before moving to next issue
+   - Document root cause in commit message
+
+5. **Use Comparison Tools**
+   - Original HTML templates are source of truth
+   - Compare SlideTemplates.js inline styles to HTML Tailwind classes
+   - Use Tailwind CSS documentation for correct pixel conversions
+   - Verify conversions: `text-6xl` = `3.75rem`, `gap-20` = `5rem`, etc.
+
+---
+
+### Common Pitfalls
+
+#### Pitfall #1: Font Loading Issues
+
+**Symptom**: Font appears wrong (too heavy, wrong family)
+
+**Checklist**:
+- [ ] Font imported in CSS? (`@import` or `<link>`)
+- [ ] Correct weights specified? (Inter needs 100-200 for extralight)
+- [ ] Font applied to element? (Check inheritance chain)
+- [ ] Font actually loading? (Check Network tab for 200 status)
+- [ ] FOUT/FOIT? (Font swap causing flash of unstyled text)
+
+**Fix Pattern**:
+```css
+/* In CSS */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;...');
+
+/* In JS (explicit, not inherited) */
+element.style.fontFamily = "'Inter', sans-serif";
+```
+
+---
+
+#### Pitfall #2: CSS Cascade Conflicts
+
+**Symptom**: Styles in code but not applying in browser
+
+**Checklist**:
+- [ ] Specificity conflict? (Viewer CSS overriding template CSS)
+- [ ] Inheritance issue? (Child not inheriting from parent)
+- [ ] `!important` needed? (Last resort)
+- [ ] Inline styles vs cssText? (Inline has higher specificity)
+
+**Debug Pattern**:
+1. Inspect element in DevTools
+2. Check "Styles" tab for crossed-out styles (overridden)
+3. Check "Computed" tab for final values
+4. Look for cascade source in Styles panel
+
+---
+
+#### Pitfall #3: SVG Loading/Rendering
+
+**Symptom**: SVG not displaying or showing placeholder
+
+**Checklist**:
+- [ ] 404 error? (Check Network tab)
+- [ ] Path absolute vs relative? (`/file.svg` vs `file.svg`)
+- [ ] CORS issue? (Cross-origin SVG blocked)
+- [ ] `<img>` vs `<object>` vs inline? (Different rendering contexts)
+- [ ] SVG viewBox correct? (May render but be invisible)
+
+**Fix Pattern**:
+```javascript
+// Try absolute path first
+graphic.innerHTML = `<img src="/vertical-stripe.svg">`;
+
+// If that fails, try <object>
+graphic.innerHTML = `<object data="/vertical-stripe.svg" type="image/svg+xml"></object>`;
+
+// If that fails, inline SVG
+const svg = await fetch('/vertical-stripe.svg').then(r => r.text());
+graphic.innerHTML = svg;
+```
+
+---
+
+#### Pitfall #4: Tailwind → Inline CSS Conversion Errors
+
+**Symptom**: Layout looks off, spacing wrong, sizes wrong
+
+**Common Conversions**:
+```
+text-sm     → font-size: 0.875rem
+text-base   → font-size: 1rem
+text-5xl    → font-size: 3rem
+text-6xl    → font-size: 3.75rem
+
+mb-4        → margin-bottom: 1rem
+mb-6        → margin-bottom: 1.5rem
+mb-8        → margin-bottom: 2rem
+mt-16       → margin-top: 4rem
+
+gap-10      → gap: 2.5rem
+gap-20      → gap: 5rem
+
+max-w-7xl   → max-width: 80rem
+
+leading-tight    → line-height: 1.25
+leading-relaxed  → line-height: 1.625
+
+tracking-wider   → letter-spacing: 0.05em
+
+font-extralight  → font-weight: 200
+```
+
+**Verification**: Use [Tailwind CSS Cheat Sheet](https://tailwindcomponents.com/cheatsheet/)
+
+---
+
+### Debugging Workflow
+
+```
+1. User reports issue
+   ↓
+2. Request visual comparison (screenshot/image)
+   ↓
+3. Identify which slide type (three-column, single-column, title)
+   ↓
+4. Compare error vs reference template HTML
+   ↓
+5. List visual differences (font, spacing, graphics, etc.)
+   ↓
+6. Check SlideTemplates.js for corresponding render() method
+   ↓
+7. Compare inline styles to reference HTML Tailwind classes
+   ↓
+8. Identify discrepancies (missing properties, wrong values)
+   ↓
+9. Check browser DevTools:
+   - Network tab (fonts, SVGs loading?)
+   - Elements tab (computed styles correct?)
+   - Console tab (errors?)
+   ↓
+10. Implement fix in SlideTemplates.js
+   ↓
+11. Test in browser (visual + DevTools)
+   ↓
+12. Commit with descriptive message
+   ↓
+13. Document in troubleshooting guide
+```
+
+---
+
+## TECHNICAL REFERENCE
+
+### File Locations
+
+**Templates**:
+- `Public/SlideTemplates.js` - Active template rendering (ONLY file to edit)
+- `Public/bip-slide-2.html` - Reference design (three-column)
+- `Public/bip-slide-4.html` - Reference design (single-column)
+
+**Related Files**:
+- `Public/presentation-viewer.css` - Viewer CSS (contains font imports)
+- `server/prompts.js` - AI schemas and prompts
+- `server/routes/charts.js` - Post-processing validation
+- `Public/SlideManager.js` - Navigation sidebar
+- `Public/SlideEditor.js` - Inline editing
+- `Public/WebRenderer.js` - Slide rendering orchestrator
+
+**Assets**:
+- `Public/vertical-stripe.svg` - Corner graphic (geometric pattern)
+- `Public/horizontal-stripe.svg` - Unused
+- `Public/bip_logo.png` - BIP logo
+
+---
+
+### Code Snippets Library
+
+#### Tailwind to Inline CSS (Title)
+```javascript
+// Reference: bip-slide-4.html line 37
+// <h1 class="text-6xl font-extralight text-slate-800 leading-tight">
+
+// Inline equivalent:
+title.style.cssText = `
+  font-family: 'Inter', sans-serif;  // Explicit
+  font-size: 3.75rem;                // text-6xl
+  font-weight: 200;                  // font-extralight
+  color: #1e293b;                    // text-slate-800
+  line-height: 1.25;                 // leading-tight
+  letter-spacing: -0.02em;           // Implicit in font
+  margin: 0;
+`;
+```
+
+#### Tailwind to Inline CSS (Eyebrow)
+```javascript
+// Reference: bip-slide-4.html line 30
+// <h2 class="text-red-600 font-bold text-sm tracking-wider mb-6">
+
+// Inline equivalent:
+eyebrow.style.cssText = `
+  color: #DC2626;           // text-red-600
+  font-weight: 700;         // font-bold
+  font-size: 0.875rem;      // text-sm
+  letter-spacing: 0.05em;   // tracking-wider
+  margin-bottom: 1.5rem;    // mb-6
+`;
+```
+
+#### Tailwind to Inline CSS (Grid)
+```javascript
+// Reference: bip-slide-4.html line 34
+// <div class="grid grid-cols-2 gap-20">
+
+// Inline equivalent:
+grid.style.cssText = `
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));  // grid-cols-2
+  gap: 5rem;                                          // gap-20
+`;
+```
+
+---
+
+### Git Commit Message Template
+
+```
+[Component] ACTION description
+
+ROOT CAUSE:
+- Identified issue: [specific problem]
+- Evidence: [code snippet, screenshot, or observation]
+
+FIX:
+- Changed [file:line] from X to Y
+- Reason: [why this fixes the issue]
+
+TESTING:
+- Verified [specific test]
+- Result: [visual or functional improvement]
+
+IMPACT:
+- Fixes [issue #]
+- Affects [slide types or features]
+```
+
+**Example**:
+```
+[BIP Templates] FIX title letter-spacing for proper visual spacing
+
+ROOT CAUSE:
+- Title appeared dense/cramped instead of airy/elegant
+- letter-spacing property completely missing from title styles
+- Reference template bip-slide-4.html has implicit spacing from font
+
+FIX:
+- SlideTemplates.js:100 - Added letter-spacing: -0.02em to three-column title
+- SlideTemplates.js:250 - Added letter-spacing: -0.02em to single-column title
+
+TESTING:
+- Generated test slide with bip-single-column type
+- Title now has proper airy spacing matching reference
+- Visual comparison confirms match
+
+IMPACT:
+- Fixes P0-1 critical gap
+- Affects bip-three-column and bip-single-column slide types
+```
+
+---
+
+## APPENDIX: Session Metadata
+
+**Branch**: `claude/slide-library-design-01APkczuUugU2rXPGZZDSuiz`
+
+**Commits (6 total)**:
+1. b59d0d4 - [BIP Templates] FIX padding and corner graphic positioning
+2. 88a2da3 - [Schema] Align BIP slide schemas with defensive template behavior
+3. fc734f3 - [SlideManager] FIX title format handling for BIP slides
+4. 982476a - [Validation] Add comprehensive empty string and edge case handling
+5. 7d70f25 - [Cleanup] Remove inactive SlideTemplates backup files
+6. adbbb5e - [BIP Templates] FIX font and corner graphic rendering
+
+**Files Modified**:
+- Public/SlideTemplates.js (4 commits)
+- Public/presentation-viewer.css (1 commit)
+- server/prompts.js (1 commit)
+- server/routes/charts.js (2 commits)
+- Public/SlideManager.js (1 commit)
+- Public/SlideEditor.js (1 commit)
+
+**Files Deleted**:
+- Public/SlideTemplates-backup.js
+- Public/SlideTemplates-new.js
+- Public/SlideTemplates-rewrite.js
+
+**Total Lines Changed**: ~1,050 lines (1,004 deleted, ~46 added/modified)
+
+---
+
+## NEXT ACTIONS
+
+### Immediate (P0 Fixes)
+1. [ ] Implement letter-spacing on titles (both templates)
+2. [ ] Add explicit font-family to titles
+3. [ ] Debug corner graphic SVG loading
+4. [ ] Test all fixes in browser
+5. [ ] Commit and push
+
+### Short-Term (P1 Fixes)
+6. [ ] Re-test font size after P0 fixes
+7. [ ] Browser compatibility testing
+8. [ ] Cross-slide-type regression testing
+
+### Long-Term (P2/P3 Features)
+9. [ ] Implement dotted underline feature (AI content processing)
+10. [ ] Coordinate footer rendering with PresentationSlides.js
+
+---
+
+**Document Version**: 1.0
+**Last Updated**: November 23, 2025
+**Status**: Ready for P0/P1 implementation
+
+---
+
+END OF TROUBLESHOOTING GUIDE

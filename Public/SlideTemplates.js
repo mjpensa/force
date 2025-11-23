@@ -92,10 +92,12 @@ export const CUSTOM_SLIDE_TYPES = {
           title.appendChild(document.createTextNode(line));
         });
         title.style.cssText = `
+          font-family: 'Inter', sans-serif;
           font-size: 3rem;
           font-weight: 200;
           color: #1e293b;
           line-height: 1.25;
+          letter-spacing: -0.02em;
           margin: 0;
         `;
         header.appendChild(title);
@@ -242,10 +244,12 @@ export const CUSTOM_SLIDE_TYPES = {
           title.appendChild(document.createTextNode(line));
         });
         title.style.cssText = `
+          font-family: 'Inter', sans-serif;
           font-size: 3.75rem;
           font-weight: 200;
           color: #1e293b;
           line-height: 1.25;
+          letter-spacing: -0.02em;
           margin: 0;
         `;
         leftCol.appendChild(title);
