@@ -41,7 +41,6 @@ import { startCleanupInterval } from './server/storage.js';
 import chartRoutes from './server/routes/charts.js';
 import analysisRoutes from './server/routes/analysis.js';
 import analyticsRoutes from './server/routes/analytics.js';
-import researchRoutes from './server/routes/research.js';
 
 // --- Server Setup ---
 const app = express();
@@ -88,8 +87,6 @@ app.use(configureTimeout);
 app.use('/', chartRoutes);
 app.use('/', analysisRoutes);
 app.use('/', analyticsRoutes);
-// Research synthesis routes (upload middleware applied per-route in research.js)
-app.use('/', researchRoutes);
 
 // --- Error Handling ---
 app.use(handleUploadErrors);
