@@ -7692,3 +7692,35 @@ body.dragging {
   color: #6b7280;
   font-size: 0.875rem;
 }
+
+/* Document Viewer Structure */
+.doc-viewer-stage {
+  width: 100%;
+  background: #ffffff;
+  overflow-y: auto;
+  min-height: 100vh;
+}
+
+.doc-pages-container {
+  width: 100%;
+  background: #ffffff;
+}
+
+.doc-page-viewport {
+  width: 100%;
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+.doc-page-content {
+  width: 100%;
+  background: #ffffff;
+}
+
+/* Hide pagination controls and navigation for single-page document */
+.doc-viewer-topbar,
+.doc-page-nav,
+.doc-viewer-sidebar,
+.doc-viewer-progress {
+  display: none;
+}
