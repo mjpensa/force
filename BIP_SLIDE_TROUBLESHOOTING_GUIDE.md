@@ -334,6 +334,8 @@ Systematic comparison of every visual element:
 
 #### Complete Gap Inventory
 
+> **NOTE**: This gap inventory is **historical** and represents the initial analysis focusing on fonts, graphics, and styling. The definitive **layout positioning analysis** (text box positioning only) has been updated in the section [CURRENT STATE VS IDEAL STATE GAP ANALYSIS](#current-state-vs-ideal-state-gap-analysis) below.
+
 **GAP #1: Title Font Weight** ⚠️ CRITICAL
 - **Current**: Appears 400-500 (medium/regular)
 - **Expected**: 100-200 (extralight/thin)
@@ -392,12 +394,15 @@ Systematic comparison of every visual element:
 - **Implementation**: Would require AI to identify key terms or accept markup in content
 - **Priority**: **P2** (feature enhancement, not bug)
 
-**GAP #7: Overall Layout Proportions**
-- **Current**: Appears slightly compressed
-- **Expected**: Bold, dominant title on left
-- **Code Status**: Grid correctly set to `repeat(2, minmax(0, 1fr))` with `gap: 5rem`
-- **Root Cause**: Font issues affecting visual balance
-- **Priority**: **P1** (likely resolved when font issues fixed)
+**GAP #7: Overall Layout Proportions** [SUPERSEDED]
+> **This gap has been superseded by the detailed layout positioning analysis in [CURRENT STATE VS IDEAL STATE GAP ANALYSIS](#current-state-vs-ideal-state-gap-analysis)**. The actual root cause is **vertical and horizontal misalignment of text boxes**, not font issues. See updated analysis for details on:
+> - Body text positioned ~15-20% too high (not vertically centered with title)
+> - Body text positioned ~10% too far right (excessive horizontal gap)
+- ~~**Current**: Appears slightly compressed~~
+- ~~**Expected**: Bold, dominant title on left~~
+- ~~**Code Status**: Grid correctly set to `repeat(2, minmax(0, 1fr))` with `gap: 5rem`~~
+- ~~**Root Cause**: Font issues affecting visual balance~~
+- **Priority**: **P0** (repositioning required)
 
 **GAP #8: Eyebrow Styling**
 - **Current**: Appears correct
@@ -409,42 +414,79 @@ Systematic comparison of every visual element:
 
 ## CURRENT STATE VS IDEAL STATE GAP ANALYSIS
 
-### Visual Comparison Matrix
+### Layout Positioning Analysis
 
-| Element | Current State | Ideal State | Gap Severity | Status |
-|---------|---------------|-------------|--------------|--------|
-| **Title Font Family** | Inter (after adbbb5e) | Inter | ✅ Fixed | Complete |
-| **Title Font Weight** | Rendering at ~400-500 | Should be 200 (extralight) | ⚠️ CRITICAL | P0 Fix Needed |
-| **Title Font Size** | Code: 3.75rem, Appears smaller | 3.75rem (text-6xl) | ⚠️ HIGH | P1 Debug Needed |
-| **Title Letter-Spacing** | Not set (0) | ~-0.02em (airy/open) | ⚠️ CRITICAL | P0 Fix Needed |
-| **Title Line Height** | 1.25 | 1.25 (leading-tight) | ✅ Match | Complete |
-| **Corner Graphic** | Solid red square | Geometric navy/blue/red pattern | ⚠️ CRITICAL | P0 Debug Needed |
-| **Graphic Positioning** | top: -3rem, right: -3rem | Should be at corner | ✅ Fixed | Complete |
-| **Eyebrow Font** | Red, uppercase, small | Red, uppercase, small | ✅ Match | Complete |
-| **Eyebrow Spacing** | tracking-wider (0.05em) | tracking-wider | ✅ Match | Complete |
-| **Body Font Size** | 1rem | 1rem (text-base) | ✅ Match | Complete |
-| **Body Color** | #475569 | #475569 (slate-700) | ✅ Match | Complete |
-| **Grid Structure** | 2 columns, 5rem gap | 2 columns, 5rem gap | ✅ Match | Complete |
-| **Container Max-Width** | 80rem | 80rem (max-w-7xl) | ✅ Match | Complete |
-| **Padding** | 0 (viewer adds 3rem) | Effective 3rem | ✅ Fixed | Complete |
-| **Footer Elements** | Missing | Slide #, bip. logo | ℹ️ Framework | Not Template |
-| **Text Underlines** | Missing | Red dotted on keywords | ℹ️ Feature | Content-Level |
+This analysis focuses **solely on text box positioning and spatial relationships** between elements. Font styling, weight, letter-spacing, and graphics are excluded from this analysis.
 
-### Priority Summary
+---
 
-**P0 Issues** (CRITICAL - Blocking visual fidelity):
-1. Title letter-spacing missing
-2. Title font weight rendering incorrectly
-3. Corner graphic not loading/displaying
+### **TEMPLATE LAYOUT (Correct - Reference)**
 
-**P1 Issues** (HIGH - Visual quality):
-4. Title font size appears smaller than expected
+#### Text Box Positioning:
+1. **Header** ("LOREM IPSUM"): Top-left corner
+2. **Large Title** ("Lorem ipsum sit..."): Left side, occupies ~40% of slide width, positioned in upper-middle area
+3. **Body Paragraph 1**: Right side, starts at approximately the **same vertical midpoint** as the large title
+4. **Body Paragraph 2**: Directly below Paragraph 1, maintaining same horizontal alignment
 
-**P2 Issues** (MEDIUM - Feature enhancements):
-5. Dotted underlines on body text (content feature)
+#### Spatial Relationships:
+- Title and body text are **vertically centered together** - they share a common vertical midpoint
+- Body text column positioned in the **right 50-60%** of the slide
+- Moderate horizontal gap between title and body text (~10-15% of slide width)
 
-**P3 Issues** (LOW - Framework features):
-6. Footer elements (presentation viewer responsibility)
+---
+
+### **ERROR LAYOUT (Incorrect - System Output)**
+
+#### Text Box Positioning:
+1. **Header** ("PAYMENTS INFRASTRUCTURE..."): Top-left corner
+2. **Large Title** ("The Dawn of Real-Time..."): Left side, similar position to template
+3. **Body Paragraph 1**: Right side, starts **MUCH HIGHER** than template - near the top of the content area
+4. **Body Paragraphs 2 & 3**: Stacked below Paragraph 1
+
+#### Spatial Relationships:
+- Body text is **NOT vertically aligned** with the large title - it starts near the header level
+- Body text column is pushed **further right** (occupies only ~40% of slide width on right edge)
+- **Excessive horizontal gap** between title and body text (~30% of slide width)
+
+---
+
+### **KEY POSITIONING GAPS**
+
+| Element | Template Position | Error Position | Gap Description |
+|---------|------------------|----------------|-----------------|
+| **Body Text Vertical Start** | Middle of slide, aligned with title center | Near top of content area | **~15-20% too high** |
+| **Body Text Horizontal Position** | Starts at ~50% slide width | Starts at ~60% slide width | **~10% too far right** |
+| **Title-to-Body Gap** | Moderate (~10-15%) | Excessive (~30%) | **~15-20% too wide** |
+| **Vertical Centering** | Title and body share midpoint | Body floats above title | **No vertical alignment** |
+
+---
+
+### **CRITICAL LAYOUT ISSUES**
+
+**Issue #1: Vertical Misalignment** ⚠️ CRITICAL
+- **Impact**: Body text boxes are positioned too high on the slide
+- **Expected**: Body text should be vertically centered with the large title
+- **Actual**: Body text starts near the header level, not centered with title
+- **Fix Required**: Adjust vertical positioning of body text container to align its midpoint with title midpoint
+- **Priority**: **P0**
+
+**Issue #2: Horizontal Overcorrection** ⚠️ CRITICAL
+- **Impact**: Body text column pushed too far right, creating excessive whitespace
+- **Expected**: Body text should start at ~50% slide width with moderate gap
+- **Actual**: Body text starts at ~60% slide width with excessive gap (~30%)
+- **Fix Required**: Adjust horizontal positioning of body text container to start at ~50% slide width
+- **Priority**: **P0**
+
+---
+
+### **SUMMARY**
+
+The template achieves visual balance by **vertically centering** the title and body text together as a cohesive unit. The error breaks this relationship by:
+
+1. Floating the body text **too high** (near header instead of centered with title)
+2. Pushing the body text **too far right** (excessive whitespace between title and body)
+
+These positioning errors destroy the intended two-column layout balance where the title and body text should form a harmonious, vertically-aligned composition.
 
 ---
 
@@ -701,121 +743,90 @@ graphic.innerHTML = `<img src="/vertical-stripe.svg">`;
 
 ## REMAINING ISSUES (P0/P1)
 
+> **NOTE**: This section has been updated to focus on **layout positioning issues only**, based on the detailed gap analysis comparing template vs. error images. Font styling and graphics issues have been moved to historical sections.
+
 ### P0 Issues (CRITICAL - Requires Immediate Fix)
 
-#### P0-1: Title Letter-Spacing Missing
+#### P0-1: Body Text Vertical Misalignment
 
-**Impact**: Title appears dense/cramped instead of airy/elegant
+**Impact**: Body text boxes positioned too high on slide, breaking vertical alignment with title
 
-**Fix**:
+**Current State**: Body text starts near the top of the content area (near header level)
+
+**Expected State**: Body text should be vertically centered, with its midpoint aligned to the title's midpoint
+
+**Gap**: Body text is positioned ~15-20% too high
+
+**Fix Required**:
 ```javascript
-// SlideTemplates.js - Add to THREE-COLUMN title (line 94-100)
-title.style.cssText = `
-  font-size: 3rem;
-  font-weight: 200;
-  color: #1e293b;
-  line-height: 1.25;
-  margin: 0;
-  letter-spacing: -0.02em;  // ✅ ADD THIS
-`;
-
-// SlideTemplates.js - Add to SINGLE-COLUMN title (line 244-250)
-title.style.cssText = `
-  font-size: 3.75rem;
-  font-weight: 200;
-  color: #1e293b;
-  line-height: 1.25;
-  margin: 0;
-  letter-spacing: -0.02em;  // ✅ ADD THIS
-`;
+// SlideTemplates.js - SINGLE-COLUMN body text container
+// Need to adjust vertical positioning/alignment of the right column
+// Options:
+// 1. Add align-items: center to grid container
+// 2. Add explicit top margin/padding to body column
+// 3. Use flexbox with align-items: center on body column
 ```
 
-**Effort**: 2 minutes
-**Risk**: Very low
+**Investigation Needed**:
+1. Locate body text container creation in SlideTemplates.js (single-column template)
+2. Check current CSS for vertical alignment properties
+3. Determine if grid or flexbox approach is being used
+4. Test alignment changes to vertically center body with title
+
+**Effort**: 15-30 minutes (investigation + fix)
+**Risk**: Medium (may require restructuring container CSS)
+**Priority**: **P0**
 
 ---
 
-#### P0-2: Title Font Weight Rendering Incorrectly
+#### P0-2: Body Text Horizontal Overcorrection
 
-**Impact**: Title appears thick instead of ultra-thin
+**Impact**: Body text column pushed too far right, creating excessive whitespace between title and body
 
-**Current Hypothesis**: CSS cascade issue or font-family inheritance problem
+**Current State**: Body text starts at ~60% slide width
 
-**Fix Attempt #1** (Add explicit font-family):
+**Expected State**: Body text should start at ~50% slide width
+
+**Gap**: Body text is positioned ~10% too far right, with ~30% gap instead of ~10-15% gap
+
+**Fix Required**:
 ```javascript
-title.style.cssText = `
-  font-family: 'Inter', sans-serif;  // ✅ ADD THIS (explicit, not inherited)
-  font-size: 3.75rem;
-  font-weight: 200;
-  color: #1e293b;
-  line-height: 1.25;
-  margin: 0;
-  letter-spacing: -0.02em;
-`;
+// SlideTemplates.js - SINGLE-COLUMN grid
+// Check grid-template-columns definition
+// May need to adjust column widths or gap property
+// Current: likely using 1fr 1fr (50/50 split)
+// May need: asymmetric split like 40% 60% or adjust gap
 ```
 
-**If that fails, Fix Attempt #2** (Check computed styles):
-1. Open browser DevTools
-2. Inspect title element
-3. Check "Computed" tab for actual font-family and font-weight
-4. Look for overriding styles in "Styles" tab
-5. Check if Inter font is actually loading in "Network" tab
+**Investigation Needed**:
+1. Check grid-template-columns value in single-column template
+2. Check gap property value
+3. Measure actual rendered widths in browser DevTools
+4. Adjust column ratios or gap to achieve ~50% start point
 
-**Effort**: 10-30 minutes (debugging)
-**Risk**: Medium (may require deeper investigation)
+**Effort**: 15-30 minutes (investigation + fix)
+**Risk**: Low to Medium (straightforward CSS adjustment)
+**Priority**: **P0**
 
 ---
 
-#### P0-3: Corner Graphic Not Loading
+### P1 Issues (HIGH - Visual Balance)
 
-**Impact**: Wrong graphic entirely, major branding issue
+#### P1-1: Overall Composition Balance
 
-**Debug Steps**:
-1. Open presentation viewer in browser
-2. Open DevTools → Network tab
-3. Filter for "vertical-stripe.svg"
-4. Check if 404 error or successful load
-5. If 404: verify file location and server routing
-6. If 200 OK: check why SVG not displaying (try `<object>` or inline SVG instead of `<img>`)
+**Impact**: Combined effect of vertical and horizontal misalignment destroys intended layout harmony
 
-**Alternative Fix** (If SVG won't load as `<img>`):
-```javascript
-// Option 1: Use <object> tag
-graphic.innerHTML = `<object data="/vertical-stripe.svg" type="image/svg+xml" style="width: 150px; height: auto;"></object>`;
+**Current State**: Title and body appear disconnected, with body floating in upper-right corner
 
-// Option 2: Inline SVG (fetch and insert)
-const svgResponse = await fetch('/vertical-stripe.svg');
-const svgText = await svgResponse.text();
-graphic.innerHTML = svgText;
-```
-
-**Effort**: 15-45 minutes (debugging + fix)
-**Risk**: Medium (may need to change loading approach)
-
----
-
-### P1 Issues (HIGH - Affects Visual Quality)
-
-#### P1-1: Title Font Size Appears Smaller
-
-**Impact**: Title lacks visual dominance
-
-**Current Status**:
-- Code correctly sets `font-size: 3.75rem` (for single-column)
-- But error image shows title appearing smaller
-
-**Possible Causes**:
-1. Font-weight affecting perceived size (lighter fonts look smaller)
-2. Letter-spacing affecting width (tight spacing compresses)
-3. CSS transform or scale applied somewhere
-4. Different font-family rendering at different sizes
+**Expected State**: Title and body form cohesive, vertically-aligned two-column composition
 
 **Investigation**:
-- After fixing P0-1 (letter-spacing) and P0-2 (font-weight), re-evaluate
-- Likely will be resolved automatically
+- Re-test after fixing P0-1 (vertical alignment) and P0-2 (horizontal positioning)
+- Likely will be resolved automatically when primary positioning issues are fixed
 
-**Effort**: 5 minutes (re-test after P0 fixes)
+**Effort**: 5 minutes (visual re-evaluation after P0 fixes)
 **Risk**: Low
+**Priority**: **P1** (dependent on P0 fixes)
 
 ---
 
