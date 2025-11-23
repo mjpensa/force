@@ -19,6 +19,7 @@ export const CUSTOM_SLIDE_TYPES = {
   /**
    * BIP Three-Column Layout (from Slide 1)
    * Eyebrow + Title + 3 text columns with corner graphic
+   * Responsive 16:9 aspect ratio
    */
   'bip-three-column': {
     name: 'BIP Three-Column Layout',
@@ -53,24 +54,29 @@ export const CUSTOM_SLIDE_TYPES = {
       container.className = 'slide-container bip-three-column-slide';
       container.style.cssText = `
         position: relative;
-        width: 1478px;
-        height: 835px;
+        width: 100%;
+        aspect-ratio: 16/9;
+        max-width: 1200px;
+        max-height: 90vh;
+        margin: 0 auto;
         background-color: #ffffff;
-        border: 1px solid #d4d4d4;
         overflow: hidden;
         font-family: 'Work Sans', sans-serif;
         box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
       `;
 
-      // Corner graphic (top-right)
+      // Corner graphic (top-right) - scaled to container
       if (slide.content.showCornerGraphic !== false) {
         const cornerGraphic = document.createElement('div');
         cornerGraphic.style.cssText = `
           position: absolute;
           top: 0;
           right: 0;
-          width: 377px;
-          height: 299px;
+          width: 25.5%;
+          height: 35.8%;
+          z-index: 1;
         `;
         cornerGraphic.innerHTML = `
           <svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg" style="display: block; width: 100%; height: 100%;">
@@ -84,61 +90,67 @@ export const CUSTOM_SLIDE_TYPES = {
         container.appendChild(cornerGraphic);
       }
 
+      // Content wrapper
+      const contentWrapper = document.createElement('div');
+      contentWrapper.style.cssText = `
+        position: relative;
+        width: 100%;
+        height: 100%;
+        padding: 2.7%;
+        box-sizing: border-box;
+        z-index: 2;
+      `;
+
       // Eyebrow
       if (slide.content.eyebrow?.text) {
         const eyebrow = document.createElement('div');
         eyebrow.textContent = slide.content.eyebrow.text;
         eyebrow.style.cssText = `
-          position: absolute;
-          left: 40px;
-          top: 40px;
-          font-size: 12pt;
+          font-size: clamp(10px, 0.8vw, 14px);
           letter-spacing: 0.16em;
           text-transform: uppercase;
           color: ${theme?.colors?.primary || '#d02010'};
           font-weight: 600;
+          margin-bottom: 1%;
         `;
-        container.appendChild(eyebrow);
+        contentWrapper.appendChild(eyebrow);
       }
 
-      // Main title
+      // Main title (left column, narrow)
       if (slide.content.title?.text) {
         const title = document.createElement('div');
         title.textContent = slide.content.title.text;
         title.style.cssText = `
-          position: absolute;
-          left: 40px;
-          top: 72px;
-          width: 276px;
-          font-size: 44pt;
+          width: 18.7%;
+          font-size: clamp(20px, 3vw, 44px);
           line-height: 1;
           color: #002040;
           font-weight: 300;
           letter-spacing: -0.02em;
+          margin-bottom: 8%;
         `;
-        container.appendChild(title);
+        contentWrapper.appendChild(title);
       }
 
-      // Three columns
-      const columns = slide.content.columns || [];
-      const columnPositions = [
-        { left: '396px', width: '276px' },
-        { left: '752px', width: '276px' },
-        { left: '1108px', width: '276px' }
-      ];
+      // Three columns container
+      const columnsContainer = document.createElement('div');
+      columnsContainer.style.cssText = `
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 3.4%;
+        margin-left: 26.8%;
+        width: 73.2%;
+      `;
 
-      columns.slice(0, 3).forEach((col, idx) => {
+      const columns = slide.content.columns || [];
+      columns.slice(0, 3).forEach((col) => {
         const columnDiv = document.createElement('div');
         columnDiv.style.cssText = `
-          position: absolute;
-          top: 384px;
-          left: ${columnPositions[idx].left};
-          width: ${columnPositions[idx].width};
-          font-size: 12pt;
+          font-size: clamp(10px, 0.85vw, 14px);
           line-height: 1.5;
           color: #333333;
           text-align: justify;
-          letter-spacing: -0.2px;
+          letter-spacing: -0.01em;
         `;
 
         // Split by paragraphs
@@ -147,13 +159,16 @@ export const CUSTOM_SLIDE_TYPES = {
           if (para.trim()) {
             const p = document.createElement('p');
             p.textContent = para.trim();
-            p.style.cssText = 'margin: 0 0 24px 0;';
+            p.style.cssText = 'margin: 0 0 1.5em 0;';
             columnDiv.appendChild(p);
           }
         });
 
-        container.appendChild(columnDiv);
+        columnsContainer.appendChild(columnDiv);
       });
+
+      contentWrapper.appendChild(columnsContainer);
+      container.appendChild(contentWrapper);
 
       return container;
     }
@@ -162,6 +177,7 @@ export const CUSTOM_SLIDE_TYPES = {
   /**
    * BIP Single-Column Layout (from Slide 2)
    * Eyebrow + Large Title + Single wide text column
+   * Responsive 16:9 aspect ratio
    */
   'bip-single-column': {
     name: 'BIP Single-Column Layout',
@@ -189,12 +205,37 @@ export const CUSTOM_SLIDE_TYPES = {
       container.className = 'slide-container bip-single-column-slide';
       container.style.cssText = `
         position: relative;
-        width: 1478px;
-        height: 835px;
+        width: 100%;
+        aspect-ratio: 16/9;
+        max-width: 1200px;
+        max-height: 90vh;
+        margin: 0 auto;
         background-color: white;
         overflow: hidden;
         font-family: 'Work Sans', sans-serif;
         box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+      `;
+
+      // Content wrapper
+      const contentWrapper = document.createElement('div');
+      contentWrapper.style.cssText = `
+        position: relative;
+        width: 100%;
+        height: 100%;
+        padding: 2.7%;
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5%;
+      `;
+
+      // Left column (eyebrow + title)
+      const leftColumn = document.createElement('div');
+      leftColumn.style.cssText = `
+        display: flex;
+        flex-direction: column;
       `;
 
       // Eyebrow
@@ -202,18 +243,15 @@ export const CUSTOM_SLIDE_TYPES = {
         const eyebrow = document.createElement('div');
         eyebrow.textContent = slide.content.eyebrow.text;
         eyebrow.style.cssText = `
-          position: absolute;
-          top: 40px;
-          left: 40px;
-          width: 276px;
           font-weight: 600;
-          font-size: 16px;
+          font-size: clamp(10px, 1vw, 16px);
           text-transform: uppercase;
           letter-spacing: 0.16em;
           color: ${theme?.colors?.primary || '#d02010'};
           line-height: 1;
+          margin-bottom: 2%;
         `;
-        container.appendChild(eyebrow);
+        leftColumn.appendChild(eyebrow);
       }
 
       // Main Title (large, thin font)
@@ -227,32 +265,35 @@ export const CUSTOM_SLIDE_TYPES = {
         });
 
         title.style.cssText = `
-          position: absolute;
-          top: 72px;
-          left: 40px;
-          width: 632px;
           font-weight: 100;
-          font-size: 96px;
+          font-size: clamp(32px, 6.5vw, 96px);
           line-height: 0.9;
           letter-spacing: -0.02em;
           color: #002040;
           margin: 0;
         `;
-        container.appendChild(title);
+        leftColumn.appendChild(title);
       }
+
+      contentWrapper.appendChild(leftColumn);
+
+      // Right column (body text) - positioned in lower half
+      const rightColumn = document.createElement('div');
+      rightColumn.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding-bottom: 8%;
+      `;
 
       // Body text column (wide)
       if (slide.content.bodyText?.text) {
         const bodyColumn = document.createElement('div');
         bodyColumn.style.cssText = `
-          position: absolute;
-          top: 456px;
-          left: 752px;
-          width: 632px;
           font-weight: 400;
-          font-size: 16px;
-          line-height: 24px;
-          letter-spacing: -0.2px;
+          font-size: clamp(10px, 1vw, 16px);
+          line-height: 1.5;
+          letter-spacing: -0.01em;
           color: #333333;
           text-align: justify;
         `;
@@ -263,13 +304,16 @@ export const CUSTOM_SLIDE_TYPES = {
           if (para.trim()) {
             const p = document.createElement('p');
             p.textContent = para.trim();
-            p.style.cssText = 'margin-bottom: 24px;';
+            p.style.cssText = 'margin-bottom: 1.5em;';
             bodyColumn.appendChild(p);
           }
         });
 
-        container.appendChild(bodyColumn);
+        rightColumn.appendChild(bodyColumn);
       }
+
+      contentWrapper.appendChild(rightColumn);
+      container.appendChild(contentWrapper);
 
       return container;
     }
@@ -279,6 +323,7 @@ export const CUSTOM_SLIDE_TYPES = {
   /**
    * BIP Title Slide (from Slide 3)
    * Large centered title with footer
+   * Responsive 16:9 aspect ratio
    */
   'bip-title-slide': {
     name: 'BIP Title Slide',
@@ -303,8 +348,11 @@ export const CUSTOM_SLIDE_TYPES = {
       container.className = 'slide-container bip-title-slide';
       container.style.cssText = `
         position: relative;
-        width: 1478px;
-        height: 835px;
+        width: 100%;
+        aspect-ratio: 16/9;
+        max-width: 1200px;
+        max-height: 90vh;
+        margin: 0 auto;
         background: linear-gradient(135deg, #002040 0%, #003060 100%);
         display: flex;
         align-items: center;
@@ -323,7 +371,8 @@ export const CUSTOM_SLIDE_TYPES = {
         display: flex;
         flex-direction: column;
         justify-content: center;
-        padding: 80px;
+        padding: 5.4%;
+        box-sizing: border-box;
       `;
 
       // Title
@@ -340,7 +389,7 @@ export const CUSTOM_SLIDE_TYPES = {
         });
 
         title.style.cssText = `
-          font-size: 120px;
+          font-size: clamp(40px, 8.1vw, 120px);
           font-weight: 100;
           line-height: 1.1;
           letter-spacing: -0.02em;
@@ -355,13 +404,13 @@ export const CUSTOM_SLIDE_TYPES = {
       const footer = document.createElement('div');
       footer.style.cssText = `
         position: absolute;
-        bottom: 40px;
-        left: 80px;
-        right: 80px;
+        bottom: 4.8%;
+        left: 5.4%;
+        right: 5.4%;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 18px;
+        font-size: clamp(12px, 1.2vw, 18px);
         color: #ffffff;
         font-weight: 400;
       `;
