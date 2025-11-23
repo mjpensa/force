@@ -509,36 +509,46 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
             if (!transformedSlide.content.columns || !Array.isArray(transformedSlide.content.columns)) {
               validationWarnings.push('Missing columns array');
               transformedSlide.content.columns = [
-                { heading: 'Strategic Area 1', bodyText: 'Content not provided by AI. Please regenerate with more specific research details.' },
-                { heading: 'Strategic Area 2', bodyText: 'Content not provided by AI. Please regenerate with more specific research details.' },
-                { heading: 'Strategic Area 3', bodyText: 'Content not provided by AI. Please regenerate with more specific research details.' }
+                { text: 'Content not provided by AI. This column should contain detailed research findings, data points, and strategic insights. Please regenerate with more specific research materials.' },
+                { text: 'Content not provided by AI. This column should contain detailed research findings, data points, and strategic insights. Please regenerate with more specific research materials.' },
+                { text: 'Content not provided by AI. This column should contain detailed research findings, data points, and strategic insights. Please regenerate with more specific research materials.' }
               ];
             } else if (transformedSlide.content.columns.length !== 3) {
               validationWarnings.push(`Expected 3 columns, got ${transformedSlide.content.columns.length}`);
               // Pad or trim to exactly 3
               while (transformedSlide.content.columns.length < 3) {
                 transformedSlide.content.columns.push({
-                  heading: `Strategic Area ${transformedSlide.content.columns.length + 1}`,
-                  bodyText: 'Additional content area. Please regenerate with more research details.'
+                  text: 'Additional content area. Please regenerate with more research details.'
                 });
               }
               transformedSlide.content.columns = transformedSlide.content.columns.slice(0, 3);
             }
-            // Recommended: eyebrow
+            // Recommended: eyebrow (must be object with text property)
             if (!transformedSlide.content.eyebrow) {
               validationWarnings.push('Missing eyebrow field');
-              transformedSlide.content.eyebrow = 'KEY THEMES';
+              transformedSlide.content.eyebrow = { text: 'KEY THEMES' };
+            } else if (typeof transformedSlide.content.eyebrow === 'string') {
+              // Normalize string to object format
+              transformedSlide.content.eyebrow = { text: transformedSlide.content.eyebrow };
             }
           } else if (type === 'bip-single-column') {
-            // Required: bodyText
-            if (!transformedSlide.content.bodyText || transformedSlide.content.bodyText.trim().length === 0) {
+            // Required: bodyText (must be object with text property)
+            if (!transformedSlide.content.bodyText || !transformedSlide.content.bodyText.text || transformedSlide.content.bodyText.text.trim().length === 0) {
               validationWarnings.push('Missing bodyText field');
-              transformedSlide.content.bodyText = 'This slide should contain detailed narrative content based on the research provided. The AI did not generate sufficient content. Please regenerate the presentation with more specific research materials or adjust the slide outline.';
+              transformedSlide.content.bodyText = {
+                text: 'This slide should contain detailed narrative content based on the research provided. The AI did not generate sufficient content. Please regenerate the presentation with more specific research materials or adjust the slide outline.'
+              };
+            } else if (typeof transformedSlide.content.bodyText === 'string') {
+              // Normalize string to object format
+              transformedSlide.content.bodyText = { text: transformedSlide.content.bodyText };
             }
-            // Recommended: eyebrow
+            // Recommended: eyebrow (must be object with text property)
             if (!transformedSlide.content.eyebrow) {
               validationWarnings.push('Missing eyebrow field');
-              transformedSlide.content.eyebrow = 'OVERVIEW';
+              transformedSlide.content.eyebrow = { text: 'OVERVIEW' };
+            } else if (typeof transformedSlide.content.eyebrow === 'string') {
+              // Normalize string to object format
+              transformedSlide.content.eyebrow = { text: transformedSlide.content.eyebrow };
             }
           } else if (type === 'bip-title-slide') {
             // Required: footerLeft, footerRight
