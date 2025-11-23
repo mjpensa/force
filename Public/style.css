@@ -7654,6 +7654,12 @@ body.dragging {
    EXECUTIVE SUMMARY CONTENT STYLES (Document-Based Prose Format)
    =================================================================== */
 
+.executive-summary-viewer {
+  background: #ffffff;
+  min-height: 100vh;
+  width: 100%;
+}
+
 .executive-summary-page {
   padding: 3rem 4rem;
   max-width: 900px;

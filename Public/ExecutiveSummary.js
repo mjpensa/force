@@ -82,15 +82,15 @@ export class ExecutiveSummary {
     // Create main container
     this.container = document.createElement('div');
     this.container.className = 'executive-summary-viewer';
-    this.container.id = 'executiveSummaryViewer';
+    this.container.id = 'executiveSummary';
 
     // Check if summary data exists
     if (!this.summaryData) {
       this.container.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #0a0e1a; color: #9ca3af;">
+        <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #ffffff; color: #6b7280;">
           <div style="text-align: center;">
             <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
-            <p style="font-size: 1.25rem; font-weight: 500;">No executive summary available</p>
+            <p style="font-size: 1.25rem; font-weight: 500; color: #1f2937;">No executive summary available</p>
             <p style="font-size: 0.875rem; margin-top: 0.5rem;">Summary will appear here once generated</p>
           </div>
         </div>
