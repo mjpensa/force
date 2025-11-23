@@ -80,7 +80,7 @@ export const CUSTOM_SLIDE_TYPES = {
           font-weight: 200;
           color: #1e293b;
           line-height: 1.25;
-          letter-spacing: -0.02em;
+          letter-spacing: 0.05em;
           margin: 0;
         `;
         header.appendChild(title);
@@ -215,7 +215,7 @@ export const CUSTOM_SLIDE_TYPES = {
           font-weight: 200;
           color: #1e293b;
           line-height: 1.25;
-          letter-spacing: -0.02em;
+          letter-spacing: 0.05em;
           margin: 0;
         `;
         leftCol.appendChild(title);
