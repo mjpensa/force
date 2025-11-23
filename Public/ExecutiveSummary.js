@@ -27,6 +27,18 @@ export class ExecutiveSummary {
     this.isFullscreen = false;
     this.tocVisible = false;
     this.shortcutsVisible = false;
+
+    // Debug logging
+    console.log('📋 ExecutiveSummary constructor called');
+    console.log('  Summary data exists:', !!summaryData);
+    if (summaryData) {
+      console.log('  Summary data keys:', Object.keys(summaryData));
+      console.log('  strategicNarrative exists:', !!summaryData.strategicNarrative);
+      console.log('  drivers exists:', !!summaryData.drivers);
+      console.log('  dependencies exists:', !!summaryData.dependencies);
+      console.log('  risks exists:', !!summaryData.risks);
+      console.log('  keyInsights exists:', !!summaryData.keyInsights);
+    }
     this.viewMode = 'continuous'; // 'continuous' or 'single'
 
     // Keyboard shortcuts binding
@@ -82,15 +94,15 @@ export class ExecutiveSummary {
     // Create main container
     this.container = document.createElement('div');
     this.container.className = 'executive-summary-viewer';
-    this.container.id = 'executiveSummaryViewer';
+    this.container.id = 'executiveSummary';
 
     // Check if summary data exists
     if (!this.summaryData) {
       this.container.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #0a0e1a; color: #9ca3af;">
+        <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #ffffff; color: #6b7280;">
           <div style="text-align: center;">
             <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
-            <p style="font-size: 1.25rem; font-weight: 500;">No executive summary available</p>
+            <p style="font-size: 1.25rem; font-weight: 500; color: #1f2937;">No executive summary available</p>
             <p style="font-size: 0.875rem; margin-top: 0.5rem;">Summary will appear here once generated</p>
           </div>
         </div>
@@ -579,6 +591,9 @@ export class ExecutiveSummary {
    * @returns {string} HTML content for the page
    */
   _renderPageContent(page) {
+    console.log('📝 Rendering page content for:', page.title);
+    console.log('  Sections to render:', page.sections);
+
     let html = '<div class="executive-summary-page">';
 
     // Page title
@@ -587,6 +602,7 @@ export class ExecutiveSummary {
     // Render each section
     page.sections.forEach(sectionName => {
       const sectionData = this.summaryData[sectionName];
+      console.log(`  Section "${sectionName}":`, sectionData ? 'EXISTS' : 'MISSING');
       if (!sectionData) return;
 
       switch (sectionName) {

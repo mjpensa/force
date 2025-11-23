@@ -7654,20 +7654,27 @@ body.dragging {
    EXECUTIVE SUMMARY CONTENT STYLES (Document-Based Prose Format)
    =================================================================== */
 
+.executive-summary-viewer {
+  background: #ffffff;
+  min-height: 100vh;
+  width: 100%;
+}
+
 .executive-summary-page {
   padding: 3rem 4rem;
   max-width: 900px;
   margin: 0 auto;
-  color: #e2e8f0;
+  color: #1f2937;
   font-family: 'Work Sans', sans-serif;
   line-height: 1.8;
+  background: #ffffff;
 }
 
 .page-title {
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: 2.5rem;
-  color: #fff;
+  color: #0f172a;
   border-bottom: 2px solid #3b82f6;
   padding-bottom: 1rem;
   text-align: center;
@@ -7682,8 +7689,8 @@ body.dragging {
   font-weight: 600;
   margin-bottom: 1.25rem;
   margin-top: 2.5rem;
-  color: #60a5fa;
-  border-bottom: 1px solid rgba(96, 165, 250, 0.3);
+  color: #1e40af;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
   padding-bottom: 0.5rem;
 }
 
@@ -7691,18 +7698,18 @@ body.dragging {
   font-size: 1.05rem;
   line-height: 1.9;
   margin-bottom: 1.25rem;
-  color: #e2e8f0;
+  color: #1f2937;
   text-align: justify;
 }
 
 .doc-paragraph strong {
-  color: #fff;
+  color: #000000;
   font-weight: 600;
 }
 
 .doc-paragraph em {
   font-style: italic;
-  color: #93c5fd;
+  color: #1d4ed8;
   font-size: 1.1rem;
 }
 
@@ -7710,7 +7717,7 @@ body.dragging {
 .doc-page-footer {
   margin-top: 4rem;
   padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
   text-align: center;
   color: #6b7280;
   font-size: 0.875rem;
