@@ -482,6 +482,9 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
           }
         );
 
+        // DEBUG: Log raw AI response
+        console.log(`Job ${jobId}:   [RAW AI RESPONSE]`, JSON.stringify(slideResponse, null, 2));
+
         const slide = slideResponse.slide;
         if (slide) {
           // Transform slide data: wrap all fields (except type) into content object
