@@ -11,7 +11,7 @@ import { CONFIG } from '../config.js';
 import { sanitizePrompt, isValidChartId, isValidJobId } from '../utils.js';
 import { createSession, storeChart, getChart, updateChart, createJob, updateJob, getJob, completeJob, failJob } from '../storage.js';
 import { callGeminiForJson } from '../gemini.js';
-import { CHART_GENERATION_SYSTEM_PROMPT, GANTT_CHART_SCHEMA, EXECUTIVE_SUMMARY_GENERATION_PROMPT, EXECUTIVE_SUMMARY_SCHEMA, PRESENTATION_SLIDES_OUTLINE_PROMPT, PRESENTATION_SLIDES_OUTLINE_SCHEMA, PRESENTATION_SLIDE_CONTENT_PROMPT, PRESENTATION_SLIDE_CONTENT_SCHEMA } from '../prompts.js';
+import { CHART_GENERATION_SYSTEM_PROMPT, GANTT_CHART_SCHEMA, EXECUTIVE_SUMMARY_GENERATION_PROMPT, EXECUTIVE_SUMMARY_SCHEMA, PRESENTATION_SLIDES_OUTLINE_PROMPT, PRESENTATION_SLIDES_OUTLINE_SCHEMA, PRESENTATION_SLIDE_CONTENT_PROMPT, PRESENTATION_SLIDE_CONTENT_SCHEMA, BIP_THREE_COLUMN_SCHEMA, BIP_SINGLE_COLUMN_SCHEMA, BIP_TITLE_SLIDE_SCHEMA } from '../prompts.js';
 import { strictLimiter, apiLimiter, uploadMiddleware } from '../middleware.js';
 import { trackEvent } from '../database.js'; // FEATURE #9: Analytics tracking
 
@@ -465,12 +465,25 @@ Each item should be concise and actionable (1-3 sentences).
 Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key takeaway about project scope and objectives", "Important milestone or deliverable to highlight", "Critical success factor or requirement", ...] }`;
         }
 
+        // Select appropriate schema based on slide type (BIP slides have stricter requirements)
+        let selectedSchema = PRESENTATION_SLIDE_CONTENT_SCHEMA;
+        if (slideOutline.type === 'bip-three-column') {
+          selectedSchema = BIP_THREE_COLUMN_SCHEMA;
+          console.log(`Job ${jobId}:   Using BIP_THREE_COLUMN_SCHEMA (requires columns, eyebrow)`);
+        } else if (slideOutline.type === 'bip-single-column') {
+          selectedSchema = BIP_SINGLE_COLUMN_SCHEMA;
+          console.log(`Job ${jobId}:   Using BIP_SINGLE_COLUMN_SCHEMA (requires bodyText, eyebrow)`);
+        } else if (slideOutline.type === 'bip-title-slide') {
+          selectedSchema = BIP_TITLE_SLIDE_SCHEMA;
+          console.log(`Job ${jobId}:   Using BIP_TITLE_SLIDE_SCHEMA (requires footerLeft, footerRight)`);
+        }
+
         const slidePayload = {
           contents: [{ parts: [{ text: slidePrompt }] }],
           systemInstruction: { parts: [{ text: PRESENTATION_SLIDE_CONTENT_PROMPT }] },
           generationConfig: {
             responseMimeType: "application/json",
-            responseSchema: PRESENTATION_SLIDE_CONTENT_SCHEMA,
+            responseSchema: selectedSchema,
             maxOutputTokens: 16384,
             temperature: 0.7,
             topP: CONFIG.API.TOP_P,

@@ -1600,6 +1600,139 @@ export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
   required: ["slide"]
 };
 
+// BIP-specific schemas that REQUIRE content fields (workaround for Gemini's lack of conditional schema support)
+export const BIP_THREE_COLUMN_SCHEMA = {
+  type: "object",
+  properties: {
+    slide: {
+      type: "object",
+      required: ["type", "title", "eyebrow", "columns"],  // FORCE columns to be required
+      properties: {
+        type: {
+          type: "string",
+          enum: ["bip-three-column"]
+        },
+        title: {
+          oneOf: [
+            { type: "string", maxLength: 200 },
+            {
+              type: "object",
+              properties: {
+                text: { type: "string", maxLength: 200 }
+              }
+            }
+          ]
+        },
+        eyebrow: {
+          type: "object",
+          properties: {
+            text: { type: "string", maxLength: 100 }
+          }
+        },
+        columns: {
+          type: "array",
+          minItems: 3,
+          maxItems: 3,
+          items: {
+            type: "object",
+            required: ["text"],
+            properties: {
+              text: { type: "string", maxLength: 1000 }
+            }
+          }
+        },
+        showCornerGraphic: {
+          type: "boolean"
+        }
+      }
+    }
+  },
+  required: ["slide"]
+};
+
+export const BIP_SINGLE_COLUMN_SCHEMA = {
+  type: "object",
+  properties: {
+    slide: {
+      type: "object",
+      required: ["type", "title", "eyebrow", "bodyText"],  // FORCE bodyText to be required
+      properties: {
+        type: {
+          type: "string",
+          enum: ["bip-single-column"]
+        },
+        title: {
+          oneOf: [
+            { type: "string", maxLength: 200 },
+            {
+              type: "object",
+              properties: {
+                text: { type: "string", maxLength: 200 }
+              }
+            }
+          ]
+        },
+        eyebrow: {
+          type: "object",
+          properties: {
+            text: { type: "string", maxLength: 100 }
+          }
+        },
+        bodyText: {
+          type: "object",
+          properties: {
+            text: { type: "string", maxLength: 2000 }
+          }
+        },
+        showCornerGraphic: {
+          type: "boolean"
+        }
+      }
+    }
+  },
+  required: ["slide"]
+};
+
+export const BIP_TITLE_SLIDE_SCHEMA = {
+  type: "object",
+  properties: {
+    slide: {
+      type: "object",
+      required: ["type", "title", "footerLeft", "footerRight"],  // FORCE footer fields to be required
+      properties: {
+        type: {
+          type: "string",
+          enum: ["bip-title-slide"]
+        },
+        title: {
+          oneOf: [
+            { type: "string", maxLength: 200 },
+            {
+              type: "object",
+              properties: {
+                text: { type: "string", maxLength: 200 }
+              }
+            }
+          ]
+        },
+        footerLeft: {
+          type: "object",
+          properties: {
+            text: { type: "string", maxLength: 100 }
+          }
+        },
+        footerRight: {
+          type: "object",
+          properties: {
+            text: { type: "string", maxLength: 100 }
+          }
+        }
+      }
+    }
+  },
+  required: ["slide"]
+};
+
 /**
  * Presentation Slides Generation Prompt (DEPRECATED - kept for reference)
  * Creates professional slide deck from research data
