@@ -1545,7 +1545,7 @@ SLIDE TYPES AVAILABLE:
 - "risks": Strategic risk assessment (3-5 items)
 - "insights": Expert conversation points / key insights (4-6 items)
 - "simple": General content slide
-- "bip-three-column": BIP three-column layout with eyebrow and geometric graphic
+- "bip-three-column": BIP three-column layout with eyebrow
 - "bip-single-column": BIP single-column layout with large title
 - "bip-title-slide": BIP branded title slide with gradient background
 
@@ -1888,9 +1888,6 @@ export const PRESENTATION_SLIDE_CONTENT_SCHEMA = {
               }
             }
           }
-        },
-        showCornerGraphic: {
-          type: "boolean"
         },
         bodyText: {
           type: "object",
