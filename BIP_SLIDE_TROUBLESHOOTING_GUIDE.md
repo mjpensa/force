@@ -416,44 +416,79 @@ Systematic comparison of every visual element:
 ---
 
 ## CURRENT STATE VS IDEAL STATE GAP ANALYSIS
+**Last Updated**: November 23, 2025 (After commits 587b1d7 + 4eaf686)
+**Focus**: Text spatial alignment and typography ONLY
 
-### Layout Positioning Analysis
+### Visual Comparison Matrix - TEXT ELEMENTS ONLY
 
-This analysis focuses **solely on text box positioning and spatial relationships** between elements. Font styling, weight, letter-spacing, and graphics are excluded from this analysis.
+| Element | Current State (After Fixes) | Ideal State | Gap Severity | Status |
+|---------|----------------------------|-------------|--------------|--------|
+| **Title Font Family** | Inter, explicit on element | Inter | ✅ Fixed | Complete |
+| **Title Font Weight** | Code: 200, Rendering: TBD | 200 (extralight) | ⚠️ UNKNOWN | Needs Browser Test |
+| **Title Font Size** | Code: 3.75rem (single) / 3rem (three) | 3.75rem / 3rem | ✅ Fixed | Complete |
+| **Title Letter-Spacing** | **0.05em (positive, wide)** | Positive spacing (airy) | ✅ Fixed | Complete |
+| **Title Line Height** | 1.25 | 1.25 (leading-tight) | ✅ Match | Complete |
+| **Title Color** | #1e293b (slate-800) | #1e293b | ✅ Match | Complete |
+| **Eyebrow Font** | Red, uppercase, small | Red, uppercase, small | ✅ Match | Complete |
+| **Eyebrow Font Size** | 0.875rem (text-sm) | 0.875rem | ✅ Match | Complete |
+| **Eyebrow Spacing** | tracking-wider (0.05em) | tracking-wider | ✅ Match | Complete |
+| **Eyebrow Margin** | 1.5rem bottom (mb-6) | 1.5rem bottom | ✅ Match | Complete |
+| **Body Font Size** | 1rem (text-base) | 1rem | ✅ Match | Complete |
+| **Body Font Weight** | Normal (400) | Normal | ✅ Match | Complete |
+| **Body Color** | #475569 (slate-700) | #475569 | ✅ Match | Complete |
+| **Body Line Height** | 1.625 (leading-relaxed) | 1.625 | ✅ Match | Complete |
+| **Paragraph Spacing** | 2rem (space-y-8) | 2rem | ✅ Match | Complete |
+| **Grid Structure** | 2/3 columns, correct gaps | 2/3 columns | ✅ Match | Complete |
+| **Column Gap (2-col)** | 5rem (gap-20) | 5rem | ✅ Match | Complete |
+| **Column Gap (3-col)** | 2.5rem (gap-10) | 2.5rem | ✅ Match | Complete |
+| **Container Max-Width** | 80rem (max-w-7xl) | 80rem | ✅ Match | Complete |
+| **Container Padding** | 0 (viewer adds 3rem) | Effective 3rem | ✅ Fixed | Complete |
+| **Header Margin** | 2rem bottom (mb-8) | 2rem bottom | ✅ Match | Complete |
+| **Grid Margin Top** | 4rem (mt-16, three-col only) | 4rem | ✅ Match | Complete |
+
+### Non-Text Elements (Removed from Scope)
+
+| Element | Status | Notes |
+|---------|--------|-------|
+| **Corner Graphics** | ✅ REMOVED | Commit 587b1d7 - Not needed for text layout |
+| **Logos** | ✅ REMOVED | Commit 587b1d7 - Not needed for text layout |
+| **Stripes** | ✅ REMOVED | Commit 587b1d7 - Not needed for text layout |
+| **Footer Elements** | ℹ️ Framework | Slide #, bip. logo - presentation viewer responsibility |
+| **Text Underlines** | ℹ️ Content | Red dotted on keywords - content-level feature |
 
 ---
 
-### **TEMPLATE LAYOUT (Correct - Reference)**
+### Layout Positioning Analysis (Continuation Session)
 
-#### Text Box Positioning:
+> **NOTE**: This analysis was added in continuation session `claude/compare-box-layouts-014ejaonbobQff1i9VC9FwU9` after typography fixes were completed. It focuses **solely on text box positioning and spatial relationships** between elements.
+
+#### **TEMPLATE LAYOUT (Correct - Reference)**
+
+**Text Box Positioning**:
 1. **Header** ("LOREM IPSUM"): Top-left corner
 2. **Large Title** ("Lorem ipsum sit..."): Left side, occupies ~40% of slide width, positioned in upper-middle area
 3. **Body Paragraph 1**: Right side, starts at approximately the **same vertical midpoint** as the large title
 4. **Body Paragraph 2**: Directly below Paragraph 1, maintaining same horizontal alignment
 
-#### Spatial Relationships:
+**Spatial Relationships**:
 - Title and body text are **vertically centered together** - they share a common vertical midpoint
 - Body text column positioned in the **right 50-60%** of the slide
 - Moderate horizontal gap between title and body text (~10-15% of slide width)
 
----
+#### **ERROR LAYOUT (Incorrect - System Output)**
 
-### **ERROR LAYOUT (Incorrect - System Output)**
-
-#### Text Box Positioning:
+**Text Box Positioning**:
 1. **Header** ("PAYMENTS INFRASTRUCTURE..."): Top-left corner
 2. **Large Title** ("The Dawn of Real-Time..."): Left side, similar position to template
 3. **Body Paragraph 1**: Right side, starts **MUCH HIGHER** than template - near the top of the content area
 4. **Body Paragraphs 2 & 3**: Stacked below Paragraph 1
 
-#### Spatial Relationships:
+**Spatial Relationships**:
 - Body text is **NOT vertically aligned** with the large title - it starts near the header level
 - Body text column is pushed **further right** (occupies only ~40% of slide width on right edge)
 - **Excessive horizontal gap** between title and body text (~30% of slide width)
 
----
-
-### **KEY POSITIONING GAPS**
+#### **KEY POSITIONING GAPS**
 
 | Element | Template Position | Error Position | Gap Description |
 |---------|------------------|----------------|-----------------|
@@ -462,34 +497,14 @@ This analysis focuses **solely on text box positioning and spatial relationships
 | **Title-to-Body Gap** | Moderate (~10-15%) | Excessive (~30%) | **~15-20% too wide** |
 | **Vertical Centering** | Title and body share midpoint | Body floats above title | **No vertical alignment** |
 
----
-
-### **CRITICAL LAYOUT ISSUES**
-
-**Issue #1: Vertical Misalignment** ⚠️ CRITICAL
-- **Impact**: Body text boxes are positioned too high on the slide
-- **Expected**: Body text should be vertically centered with the large title
-- **Actual**: Body text starts near the header level, not centered with title
-- **Fix Required**: Adjust vertical positioning of body text container to align its midpoint with title midpoint
-- **Priority**: **P0**
-
-**Issue #2: Horizontal Overcorrection** ⚠️ CRITICAL
-- **Impact**: Body text column pushed too far right, creating excessive whitespace
-- **Expected**: Body text should start at ~50% slide width with moderate gap
-- **Actual**: Body text starts at ~60% slide width with excessive gap (~30%)
-- **Fix Required**: Adjust horizontal positioning of body text container to start at ~50% slide width
-- **Priority**: **P0**
-
----
-
-### **SUMMARY**
+#### **SUMMARY**
 
 The template achieves visual balance by **vertically centering** the title and body text together as a cohesive unit. The error breaks this relationship by:
 
 1. Floating the body text **too high** (near header instead of centered with title)
 2. Pushing the body text **too far right** (excessive whitespace between title and body)
 
-These positioning errors destroy the intended two-column layout balance where the title and body text should form a harmonious, vertically-aligned composition.
+These positioning errors destroy the intended two-column layout balance where the title and body text should form a harmonious, vertically-aligned composition
 
 ---
 
@@ -616,16 +631,20 @@ title.style.cssText = `
 
 ## IMPLEMENTED FIXES
 
-### Summary of 6 Commits
+### Summary of 10 Commits
 
 | Commit | Date | Description | Files Changed | Impact |
 |--------|------|-------------|---------------|--------|
-| **b59d0d4** | Session Start | [BIP Templates] FIX padding and corner graphic positioning | SlideTemplates.js | Fixed double padding (6rem→3rem), fixed corner positioning |
-| **88a2da3** | Session Start | [Schema] Align BIP slide schemas with defensive template behavior | prompts.js, charts.js | Removed optional fields from required arrays |
-| **fc734f3** | Session Start | [SlideManager] FIX title format handling for BIP slides | SlideManager.js | Fixed string vs object title handling |
-| **982476a** | Session Start | [Validation] Add comprehensive empty string and edge case handling | charts.js, SlideEditor.js | Added validation for empty titles, columns, etc. |
-| **7d70f25** | Session Start | [Cleanup] Remove inactive SlideTemplates backup files | 3 backup files | Deleted 1,004 lines, freed 42 KB |
-| **adbbb5e** | Session Start | [BIP Templates] FIX font and corner graphic rendering | presentation-viewer.css, SlideTemplates.js | Added Inter font import, fixed SVG paths |
+| **b59d0d4** | Session Phase 1 | [BIP Templates] FIX padding and corner graphic positioning | SlideTemplates.js | Fixed double padding (6rem→3rem), fixed corner positioning |
+| **88a2da3** | Session Phase 1 | [Schema] Align BIP slide schemas with defensive template behavior | prompts.js, charts.js | Removed optional fields from required arrays |
+| **fc734f3** | Session Phase 2 | [SlideManager] FIX title format handling for BIP slides | SlideManager.js | Fixed string vs object title handling |
+| **982476a** | Session Phase 2 | [Validation] Add comprehensive empty string and edge case handling | charts.js, SlideEditor.js | Added validation for empty titles, columns, etc. |
+| **7d70f25** | Session Phase 3 | [Cleanup] Remove inactive SlideTemplates backup files | 3 backup files | Deleted 1,004 lines, freed 42 KB |
+| **adbbb5e** | Session Phase 4 | [BIP Templates] FIX font and corner graphic rendering | presentation-viewer.css, SlideTemplates.js | Added Inter font import, fixed SVG paths |
+| **c02eb58** | Session Phase 5 | [P0 FIXES] Add letter-spacing and explicit font-family | SlideTemplates.js, GUIDE.md | Added letter-spacing -0.02em (later fixed), explicit font-family |
+| **5a83b2a** | Session Phase 6 | [Documentation] Add comprehensive text layout gap analysis | TEXT_LAYOUT_GAP_ANALYSIS.md | Identified letter-spacing sign error, 9 text gaps documented |
+| **587b1d7** | Session Phase 7 | [Cleanup] Remove all corner graphics/stripes/logos | SlideTemplates.js | Removed 36 lines of graphics code, focus on text only |
+| **4eaf686** | Session Phase 8 | [P0 CRITICAL FIX] Correct letter-spacing sign | SlideTemplates.js | Fixed letter-spacing from -0.02em to +0.05em (CRITICAL) |
 
 ### Detailed Fix Documentation
 
@@ -744,11 +763,94 @@ graphic.innerHTML = `<img src="/vertical-stripe.svg">`;
 
 ---
 
-## REMAINING ISSUES (P0/P1)
+#### Fix 6: Title Letter-Spacing and Font-Family (Commits c02eb58, 4eaf686)
 
-> **NOTE**: This section has been updated to focus on **layout positioning issues only**, based on the detailed gap analysis comparing template vs. error images. Font styling and graphics issues have been moved to historical sections.
+**Problem**: Letter-spacing missing, then added with WRONG SIGN
 
-### P0 Issues (CRITICAL - Requires Immediate Fix)
+**Evolution**:
+1. **Initial**: No letter-spacing property
+2. **Commit c02eb58**: Added `letter-spacing: -0.02em` (NEGATIVE = tighter) ❌
+3. **Discovered**: TEXT_LAYOUT_GAP_ANALYSIS.md identified sign error
+4. **Commit 4eaf686**: Fixed to `letter-spacing: 0.05em` (POSITIVE = wider) ✅
+
+**Before**:
+```javascript
+title.style.cssText = `
+  font-size: 3.75rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  margin: 0;
+  // ❌ No letter-spacing
+`;
+```
+
+**After Fix Attempt 1** (c02eb58 - WRONG):
+```javascript
+title.style.cssText = `
+  font-family: 'Inter', sans-serif;  // ✅ Added explicit font
+  font-size: 3.75rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  letter-spacing: -0.02em;  // ❌ WRONG SIGN (negative)
+  margin: 0;
+`;
+```
+
+**After Fix Attempt 2** (4eaf686 - CORRECT):
+```javascript
+title.style.cssText = `
+  font-family: 'Inter', sans-serif;  // ✅ Explicit font
+  font-size: 3.75rem;
+  font-weight: 200;
+  color: #1e293b;
+  line-height: 1.25;
+  letter-spacing: 0.05em;  // ✅ CORRECT (positive = wide/airy)
+  margin: 0;
+`;
+```
+
+**Result**: Title now has wide/airy letter-spacing matching reference aesthetic
+
+---
+
+#### Fix 7: Remove Graphics (Commit 587b1d7)
+
+**Problem**: Graphics code distracted from text layout focus
+
+**Removed**:
+- Corner graphic rendering (both templates)
+- vertical-stripe.svg references
+- showCornerGraphic schema fields
+- Total: 36 lines removed
+
+**Before**:
+```javascript
+if (slide.content.showCornerGraphic !== false) {
+  const graphic = document.createElement('div');
+  graphic.style.cssText = `position: absolute; top: -3rem; right: -3rem;...`;
+  graphic.innerHTML = `<img src="/vertical-stripe.svg">`;
+  body.appendChild(graphic);
+}
+```
+
+**After**:
+```javascript
+// ✅ REMOVED - focus on text layout only
+```
+
+**Result**: Templates now focus purely on text spatial alignment and typography
+
+---
+
+## REMAINING ISSUES
+
+**Last Updated**: November 23, 2025 (After continuation session layout analysis)
+
+### P0 Issues (CRITICAL - Layout Positioning) [NEW - Continuation Session]
+
+> **NOTE**: These layout positioning issues were identified in continuation session `claude/compare-box-layouts-014ejaonbobQff1i9VC9FwU9` after typography fixes were completed.
 
 #### P0-1: Body Text Vertical Misalignment
 
@@ -813,9 +915,62 @@ graphic.innerHTML = `<img src="/vertical-stripe.svg">`;
 
 ---
 
-### P1 Issues (HIGH - Visual Balance)
+### P1 Issues (HIGH - Typography & Visual Balance)
 
-#### P1-1: Overall Composition Balance
+#### P1-1: Title Font Weight Rendering [Original Session]
+
+**Impact**: Title may still appear heavier than reference ultra-thin appearance
+
+**Current State**:
+- Code: `font-weight: 200` (extralight) ✅
+- Font: `'Inter', sans-serif` explicit ✅
+- Status: **NEEDS BROWSER VERIFICATION**
+
+**Debug Steps**:
+1. Generate test slide with bip-single-column
+2. Open browser DevTools (F12)
+3. **Network tab**: Verify Inter font loads (status 200)
+4. **Elements tab**: Inspect title, check Computed styles
+   - Verify `font-family: "Inter", sans-serif`
+   - Verify `font-weight: 200`
+5. Compare visually to reference image
+
+**If Still Too Heavy**:
+```javascript
+// Try thinner weight:
+font-weight: 100;  // Thin (vs 200 Extralight)
+```
+
+**Effort**: 15-30 minutes (browser debugging)
+**Risk**: Low
+**Priority**: **P1**
+
+---
+
+#### P1-2: Letter-Spacing Fine-Tuning [Original Session]
+
+**Impact**: 0.05em may not be wide enough compared to reference
+
+**Current State**:
+- Code: `letter-spacing: 0.05em` ✅
+- Status: **NEEDS VISUAL COMPARISON**
+
+**Reference Analysis**:
+- Reference image shows VERY wide letter-spacing
+- May need 0.075em or 0.1em for full match
+
+**Testing Progression**:
+1. Visual compare current 0.05em to reference
+2. If still too tight, try: `letter-spacing: 0.075em;`
+3. If still too tight, try: `letter-spacing: 0.1em;`
+
+**Effort**: 5 minutes per test
+**Risk**: Very low
+**Priority**: **P1**
+
+---
+
+#### P1-3: Overall Composition Balance [Continuation Session]
 
 **Impact**: Combined effect of vertical and horizontal misalignment destroys intended layout harmony
 
