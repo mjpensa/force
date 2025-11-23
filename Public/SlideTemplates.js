@@ -50,21 +50,31 @@ export const CUSTOM_SLIDE_TYPES = {
     },
 
     render: (slide, theme, slideNumber) => {
+      // Responsive wrapper that scales fixed-size content to fit
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `
+        width: 100%;
+        aspect-ratio: 16/9;
+        max-width: 1280px;
+        margin: 0 auto;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+
+      // FIXED SIZE container (1280px × 720px) to match original HTML template proportions
       const container = document.createElement('div');
       container.className = 'slide-container bip-three-column-slide';
       container.style.cssText = `
         position: relative;
-        width: 100%;
-        aspect-ratio: 16/9;
-        max-width: 1200px;
-        max-height: 90vh;
-        margin: 0 auto;
+        width: 1280px;
+        height: 720px;
         background-color: #ffffff;
         overflow: hidden;
         font-family: 'Inter', sans-serif;
         box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
+        transform-origin: center center;
       `;
 
       // Corner graphic (top-right) - scaled to container
@@ -208,21 +218,17 @@ export const CUSTOM_SLIDE_TYPES = {
     },
 
     render: (slide, theme, slideNumber) => {
+      // FIXED SIZE container (1280px × 720px) to match original HTML template proportions
       const container = document.createElement('div');
       container.className = 'slide-container bip-single-column-slide';
       container.style.cssText = `
         position: relative;
-        width: 100%;
-        aspect-ratio: 16/9;
-        max-width: 1200px;
-        max-height: 90vh;
-        margin: 0 auto;
+        width: 1280px;
+        height: 720px;
         background-color: white;
         overflow: hidden;
         font-family: 'Inter', sans-serif;
         box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
       `;
 
       // Content wrapper
@@ -352,15 +358,13 @@ export const CUSTOM_SLIDE_TYPES = {
     },
 
     render: (slide, theme, slideNumber) => {
+      // FIXED SIZE container (1280px × 720px) to match original HTML template proportions
       const container = document.createElement('div');
       container.className = 'slide-container bip-title-slide';
       container.style.cssText = `
         position: relative;
-        width: 100%;
-        aspect-ratio: 16/9;
-        max-width: 1200px;
-        max-height: 90vh;
-        margin: 0 auto;
+        width: 1280px;
+        height: 720px;
         background: linear-gradient(135deg, #002040 0%, #003060 100%);
         display: flex;
         align-items: center;
