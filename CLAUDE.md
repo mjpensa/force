@@ -2,6 +2,20 @@
 
 ## Changelog
 
+### Version 2.3.0 (2025-11-23) - Research Synthesis Complete Removal
+- **MAJOR:** Complete removal of Research Synthesis feature (6,500+ lines deleted)
+- **Deleted:** Public/ResearchSynthesizer.js (1,836 lines)
+- **Deleted:** server/routes/research.js (928 lines)
+- **Deleted:** server/prompts-research.js (744 lines)
+- **Deleted:** server/validation/ProvenanceAuditor.js
+- **Deleted:** Research synthesis styles from style.css (1,374 lines)
+- **Deleted:** Research Checker Requirements document
+- **Removed:** All research synthesis UI elements from index.html and chart.html
+- **Removed:** ResearchSynthesizer imports and initialization from all JS files
+- **Removed:** Research routes from server.js
+- **Result:** Codebase now focused on core features: Gantt charts, Executive Summary, and Presentations
+- **Note:** Analytics tracking (from v2.2.0) retained, Chart.js dependency removed
+
 ### Version 2.2.1 (2025-11-23) - Code Cleanup Edition
 - **MAJOR:** Comprehensive cleanup of inactive and broken code (7,272 lines removed)
 - **Cleanup:** Deleted 17 unused files across 3 cleanup phases

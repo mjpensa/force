@@ -287,7 +287,7 @@ export class GanttChart {
 
     // Initialize the router with component references
     if (this.router) {
-      this.router.init(this, this.executiveSummary, this.presentationSlides, this.researchSynthesizer);
+      this.router.init(this, this.executiveSummary, this.presentationSlides);
     }
   }
 
