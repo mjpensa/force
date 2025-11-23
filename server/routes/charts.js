@@ -464,14 +464,19 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
         if (slide) {
           // Transform slide data: wrap all fields (except type) into content object
           // This ensures compatibility with WebRenderer which expects slide.content.*
-          const { type, title: slideTitle, ...rest } = slide;
+          const { type, ...rest } = slide;
           const transformedSlide = {
             type,
-            content: { ...rest }
+            content: { ...rest }  // Includes title and all other fields
           };
 
           slides.push(transformedSlide);
           console.log(`Job ${jobId}: ✓ Generated content for slide ${i + 1}: type="${slide.type}"`);
+          console.log(`Job ${jobId}:   Content fields: ${Object.keys(rest).join(', ')}`);
+          // Debug: Log actual content for BIP slides
+          if (type.startsWith('bip-')) {
+            console.log(`Job ${jobId}:   [DEBUG] BIP slide data:`, JSON.stringify(transformedSlide, null, 2));
+          }
         } else {
           console.warn(`Job ${jobId}: ⚠️ Failed to generate content for slide ${i + 1}, skipping`);
         }
