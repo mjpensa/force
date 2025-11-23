@@ -4,12 +4,10 @@
 class Router {
     constructor() {
         this.routes = {
-            'roadmap': () => this.showSection('roadmap'),
-            'executive-summary': () => this.showSection('executive-summary')
+            'roadmap': () => this.showSection('roadmap')
         };
         this.currentRoute = null;
         this.ganttChart = null;
-        this.executiveSummary = null;
         this.hamburgerMenu = null;
 
         // Bind event handlers
@@ -19,15 +17,12 @@ class Router {
     /**
      * Initialize the router with component references
      */
-    init(ganttChart, executiveSummary) {
+    init(ganttChart) {
         console.log('🚀 Router.init called with:', {
-            ganttChart: !!ganttChart,
-            executiveSummary: !!executiveSummary,
-            executiveSummaryContainer: !!executiveSummary?.container
+            ganttChart: !!ganttChart
         });
 
         this.ganttChart = ganttChart;
-        this.executiveSummary = executiveSummary;
         this.hamburgerMenu = ganttChart?.hamburgerMenu;
 
         // Listen for hash changes
@@ -80,24 +75,15 @@ class Router {
             this.hamburgerMenu.updateActiveItem(section);
         }
 
-        // Get container elements - use multiple strategies to ensure we find them
-        // Note: Don't hide chartWrapper itself, as it contains all sections
+        // Get container elements
         const ganttGrid = document.querySelector('.gantt-grid');
         const ganttTitle = document.querySelector('.gantt-title');
-        const summaryContainer = this.executiveSummary?.container || document.getElementById('executiveSummary');
 
         console.log('📦 Container references:', {
             ganttGrid: !!ganttGrid,
             ganttTitle: !!ganttTitle,
-            summaryContainer: !!summaryContainer,
-            ganttChart: !!this.ganttChart,
-            executiveSummary: !!this.executiveSummary
+            ganttChart: !!this.ganttChart
         });
-
-        // Warn if containers are missing
-        if (!summaryContainer) {
-            console.warn('⚠️ Executive Summary container not found');
-        }
 
         // Also get the legend and other Gantt-specific elements
         const legend = document.querySelector('.gantt-legend');
@@ -106,7 +92,7 @@ class Router {
 
         switch (section) {
             case 'roadmap':
-                // Show only the Gantt chart elements
+                // Show the Gantt chart elements
                 if (ganttGrid) {
                     ganttGrid.style.display = '';
                 }
@@ -121,33 +107,6 @@ class Router {
                 }
                 if (exportContainer) {
                     exportContainer.style.display = '';
-                }
-                if (summaryContainer) {
-                    summaryContainer.style.display = 'none';
-                    summaryContainer.classList.remove('section-isolated');
-                }
-                break;
-
-            case 'executive-summary':
-                // Show only the Executive Summary
-                if (ganttGrid) {
-                    ganttGrid.style.display = 'none';
-                }
-                if (ganttTitle) {
-                    ganttTitle.style.display = 'none';
-                }
-                if (legend) {
-                    legend.style.display = 'none';
-                }
-                if (todayLine) {
-                    todayLine.style.display = 'none';
-                }
-                if (exportContainer) {
-                    exportContainer.style.display = 'none';
-                }
-                if (summaryContainer) {
-                    summaryContainer.style.display = '';
-                    summaryContainer.classList.add('section-isolated');
                 }
                 break;
 

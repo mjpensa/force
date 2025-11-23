@@ -10,7 +10,6 @@ import { safeGetElement, findTodayColumnPosition, buildLegend, PerformanceTimer,
 import { DraggableGantt } from './DraggableGantt.js';
 import { ResizableGantt } from './ResizableGantt.js';
 import { ContextMenu } from './ContextMenu.js';
-import { ExecutiveSummary } from './ExecutiveSummary.js';
 import { HamburgerMenu } from './HamburgerMenu.js';
 
 // Import Router (loaded as global from Router.js)
@@ -44,7 +43,6 @@ export class GanttChart {
     this.titleElement = null; // Reference to the title element for edit mode
     this.legendElement = null; // Reference to the legend element for edit mode
     this.hamburgerMenu = null; // Hamburger menu for section navigation
-    this.executiveSummary = null; // Reference to ExecutiveSummary component
     this.router = null; // Router for navigation between sections
   }
 
@@ -85,10 +83,7 @@ export class GanttChart {
 
     this._addLegend();
 
-    // Add Executive Summary - Always create component, it will handle missing data gracefully
-    this._addExecutiveSummary();
-
-    // Add footer stripe after Executive Summary
+    // Add footer stripe
     this._addFooterSVG();
 
     // Add export and edit mode toggle buttons
@@ -225,16 +220,6 @@ export class GanttChart {
   }
 
   /**
-   * Adds the executive summary component to the chart
-   * @private
-   */
-  _addExecutiveSummary() {
-    this.executiveSummary = new ExecutiveSummary(this.ganttData.executiveSummary, this.footerSVG);
-    const summaryElement = this.executiveSummary.render();
-    this.chartWrapper.appendChild(summaryElement);
-  }
-
-  /**
    * Adds the hamburger menu for navigation
    * @private
    */
@@ -251,9 +236,7 @@ export class GanttChart {
     }
 
     // Determine content availability
-    const contentAvailability = {
-      hasExecutiveSummary: !!this.ganttData.executiveSummary
-    };
+    const contentAvailability = {};
 
     console.log('Content availability for hamburger menu:', contentAvailability);
 
@@ -266,7 +249,7 @@ export class GanttChart {
 
     // Initialize the router with component references
     if (this.router) {
-      this.router.init(this, this.executiveSummary);
+      this.router.init(this, null);
     }
   }
 
@@ -1313,21 +1296,13 @@ export class GanttChart {
           }
           break;
 
-        case 's':
-          // S = Summary (navigate to executive summary view)
-          if (this.router) {
-            this.router.navigate('executive-summary');
-            console.log('⌨️ Keyboard shortcut: S (Summary)');
-          }
-          break;
-
         default:
           // No action for other keys
           break;
       }
     });
 
-    console.log('⌨️ Keyboard shortcuts enabled: T=Timeline, S=Summary');
+    console.log('⌨️ Keyboard shortcuts enabled: T=Timeline');
   }
 
 
