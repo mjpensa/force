@@ -136,7 +136,7 @@ export function getSession(sessionId) {
 
 /**
  * Stores a chart with a unique ID
- * @param {Object} ganttData - The chart data (includes ganttData, executiveSummary, presentationSlides)
+ * @param {Object} ganttData - The chart data (includes ganttData, executiveSummary)
  * @param {string} sessionId - Associated session ID
  * @returns {string} The chart ID
  */
@@ -153,13 +153,11 @@ export function storeChart(ganttData, sessionId) {
   // Extract components from the chart data
   const gantt = ganttData.ganttData || ganttData;
   const executiveSummary = ganttData.executiveSummary || null;
-  const presentationSlides = ganttData.presentationSlides || null;
 
   chartStore.set(chartId, {
     data: {
       ...gantt,
-      executiveSummary,
-      presentationSlides
+      executiveSummary
     },
     sessionId,
     createdAt: now,
@@ -221,13 +219,11 @@ export function updateChart(chartId, updatedData) {
   // Extract components from updated data
   const gantt = updatedData.ganttData || updatedData;
   const executiveSummary = updatedData.executiveSummary || existing.data.executiveSummary;
-  const presentationSlides = updatedData.presentationSlides || existing.data.presentationSlides;
 
   chartStore.set(chartId, {
     data: {
       ...gantt,
-      executiveSummary,
-      presentationSlides
+      executiveSummary
     },
     sessionId: existing.sessionId,
     createdAt: existing.createdAt,

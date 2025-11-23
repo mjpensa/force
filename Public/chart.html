@@ -13,35 +13,7 @@
       referrerpolicy="no-referrer"
     ></script>
 
-    <!-- 1b. Load PptxGenJS for PowerPoint export -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js"
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
-    
-    <!-- 2. Load Tailwind CSS for BIP slide templates -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      // Configure Tailwind to include BIP slide classes (added via JavaScript)
-      tailwind.config = {
-        safelist: [
-          // BIP Typography classes
-          'text-5xl', 'text-6xl', 'font-extralight', 'text-slate-800', 'text-slate-700',
-          'text-red-600', 'font-bold', 'text-sm', 'text-base', 'tracking-wider',
-          'leading-tight', 'leading-relaxed',
-          // BIP Layout classes
-          'grid', 'grid-cols-2', 'grid-cols-3', 'gap-10', 'gap-20',
-          'max-w-7xl', 'mx-auto', 'bg-white',
-          // BIP Spacing classes
-          'mb-4', 'mb-6', 'mb-8', 'mt-16', 'space-y-8',
-          // Ensure these classes are always available for dynamic slides
-          'h-full', 'w-full'
-        ]
-      }
-    </script>
-
-    <!-- 3. Load the original chart styles -->
+    <!-- 2. Load the original chart styles -->
     <!-- <link rel="stylesheet" href="/style.css" /> -->
     <script>
       // --- FIX: Cache-bust the CSS file ---
@@ -52,13 +24,6 @@
       link.type = 'text/css';
       link.href = '/style.css?t=' + new Date().getTime(); // Appends a unique timestamp
       head.appendChild(link);
-
-      // Load modern presentation viewer CSS
-      const presentationLink = document.createElement('link');
-      presentationLink.rel = 'stylesheet';
-      presentationLink.type = 'text/css';
-      presentationLink.href = '/presentation-viewer.css?t=' + new Date().getTime();
-      head.appendChild(presentationLink);
 
       // Load modern executive summary viewer CSS
       const executiveSummaryLink = document.createElement('link');
