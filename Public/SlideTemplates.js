@@ -116,33 +116,37 @@ export const CUSTOM_SLIDE_TYPES = {
         contentWrapper.appendChild(eyebrow);
       }
 
-      // Main title (left column, narrow)
+      // Main title (FULL WIDTH - matches bip-slide-2.html lines 31-36)
       const titleText = typeof slide.content.title === 'string'
         ? slide.content.title
         : slide.content.title?.text;
       if (titleText) {
-        const title = document.createElement('div');
-        title.textContent = titleText;
+        const title = document.createElement('h1');
+        // Preserve line breaks in title (supports \n from AI)
+        const titleLines = titleText.split(/\\n|\n/);
+        titleLines.forEach((line, idx) => {
+          if (idx > 0) title.appendChild(document.createElement('br'));
+          title.appendChild(document.createTextNode(line));
+        });
+
         title.style.cssText = `
-          width: 18.7%;
-          font-size: clamp(20px, 3vw, 48px);
+          font-size: clamp(32px, 3vw, 48px);
           line-height: 1.2;
           color: #1e293b;
           font-weight: 200;
           letter-spacing: -0.02em;
-          margin-bottom: 8%;
+          margin: 0 0 4rem 0;
         `;
         contentWrapper.appendChild(title);
       }
 
-      // Three columns container
+      // Three EQUAL columns (matches bip-slide-2.html line 40: grid-cols-3 gap-10)
       const columnsContainer = document.createElement('div');
       columnsContainer.style.cssText = `
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 3.4%;
-        margin-left: 26.8%;
-        width: 73.2%;
+        gap: 2.5rem;
+        margin-top: 4rem;
       `;
 
       const columns = slide.content.columns || [];
