@@ -231,11 +231,11 @@ export const CUSTOM_SLIDE_TYPES = {
         position: relative;
         width: 100%;
         height: 100%;
-        padding: 2.7%;
+        padding: 3rem;
         box-sizing: border-box;
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 5%;
+        gap: 5rem;
       `;
 
       // Left column (eyebrow + title)
@@ -287,13 +287,11 @@ export const CUSTOM_SLIDE_TYPES = {
 
       contentWrapper.appendChild(leftColumn);
 
-      // Right column (body text) - positioned in lower half
+      // Right column (body text) - TOP ALIGNED per bip-slide-4.html line 45-64
       const rightColumn = document.createElement('div');
       rightColumn.style.cssText = `
         display: flex;
         flex-direction: column;
-        justify-content: flex-end;
-        padding-bottom: 8%;
       `;
 
       // Body text column (wide)
