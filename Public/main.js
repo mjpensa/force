@@ -539,14 +539,11 @@ async function handleChartGenerate(event) {
     }
 
     // 4. Get content selection preferences
-    const generateExecutiveSummaryToggle = document.getElementById('generate-executive-summary-toggle');
     const generatePresentationToggle = document.getElementById('generate-presentation-toggle');
 
-    const generateExecutiveSummary = generateExecutiveSummaryToggle && generateExecutiveSummaryToggle.checked;
     const generatePresentation = generatePresentationToggle && generatePresentationToggle.checked;
 
     console.log('Content generation preferences:', {
-      generateExecutiveSummary,
       generatePresentation
     });
 
@@ -554,7 +551,6 @@ async function handleChartGenerate(event) {
     formData.append('prompt', promptInput.value);
 
     // Add content selection flags
-    formData.append('generateExecutiveSummary', generateExecutiveSummary ? 'true' : 'false');
     formData.append('generatePresentation', generatePresentation ? 'true' : 'false');
 
     // Append all files with the correct field name

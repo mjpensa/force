@@ -11,7 +11,7 @@ import { CONFIG } from '../config.js';
 import { sanitizePrompt, isValidChartId, isValidJobId } from '../utils.js';
 import { createSession, storeChart, getChart, createJob, updateJob, getJob, completeJob, failJob } from '../storage.js';
 import { callGeminiForJson } from '../gemini.js';
-import { CHART_GENERATION_SYSTEM_PROMPT, GANTT_CHART_SCHEMA, EXECUTIVE_SUMMARY_GENERATION_PROMPT, EXECUTIVE_SUMMARY_SCHEMA, PRESENTATION_SLIDES_OUTLINE_PROMPT, PRESENTATION_SLIDES_OUTLINE_SCHEMA, PRESENTATION_SLIDE_CONTENT_PROMPT, PRESENTATION_SLIDE_CONTENT_SCHEMA, BIP_THREE_COLUMN_SCHEMA, BIP_SINGLE_COLUMN_SCHEMA, BIP_TITLE_SLIDE_SCHEMA } from '../prompts.js';
+import { CHART_GENERATION_SYSTEM_PROMPT, GANTT_CHART_SCHEMA, PRESENTATION_SLIDES_OUTLINE_PROMPT, PRESENTATION_SLIDES_OUTLINE_SCHEMA, PRESENTATION_SLIDE_CONTENT_PROMPT, PRESENTATION_SLIDE_CONTENT_SCHEMA, BIP_THREE_COLUMN_SCHEMA, BIP_SINGLE_COLUMN_SCHEMA, BIP_TITLE_SLIDE_SCHEMA } from '../prompts.js';
 import { strictLimiter, apiLimiter, uploadMiddleware } from '../middleware.js';
 import { trackEvent } from '../database.js'; // FEATURE #9: Analytics tracking
 
@@ -35,11 +35,9 @@ async function processChartGeneration(jobId, reqBody, files) {
     const userPrompt = reqBody.prompt;
 
     // Parse content generation preferences (default to true for backward compatibility)
-    const generateExecutiveSummary = reqBody.generateExecutiveSummary !== 'false';
     const generatePresentation = reqBody.generatePresentation !== 'false';
 
     console.log(`Job ${jobId}: Content generation preferences:`, {
-      generateExecutiveSummary,
       generatePresentation
     });
 
@@ -161,74 +159,6 @@ ${researchTextCache}`;
     }
 
     console.log(`Job ${jobId}: Data validation passed - timeColumns: ${ganttData.timeColumns.length} items, data: ${ganttData.data.length} tasks`);
-
-    // NEW: Executive Summary Generation (conditional)
-    let executiveSummary = null;
-    if (generateExecutiveSummary) {
-      // Update progress
-      updateJob(jobId, {
-        status: 'processing',
-        progress: 'Generating executive summary...'
-      });
-
-      try {
-      console.log(`Job ${jobId}: Generating executive summary from research data...`);
-
-      const executiveSummaryQuery = `${sanitizedPrompt}
-
-Analyze the following research content and generate a comprehensive executive summary that synthesizes strategic insights across all documents.
-
-Research Content:
-${researchTextCache}`;
-
-      const executiveSummaryPayload = {
-        contents: [{ parts: [{ text: executiveSummaryQuery }] }],
-        systemInstruction: { parts: [{ text: EXECUTIVE_SUMMARY_GENERATION_PROMPT }] },
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: EXECUTIVE_SUMMARY_SCHEMA,
-          maxOutputTokens: CONFIG.API.MAX_OUTPUT_TOKENS_CHART,
-          temperature: 0.8,  // Increased from 0.7 for bifurcation style (more creative/theatrical output)
-          topP: CONFIG.API.TOP_P,
-          topK: CONFIG.API.TOP_K
-          // NOTE: thinkingConfig temporarily disabled for chart generation
-          // Re-enable after testing if it's causing JSON parsing issues
-          // thinkingConfig: {
-          //   thinkingBudget: CONFIG.API.THINKING_BUDGET_EXECUTIVE
-          // }
-        }
-      };
-
-      const summaryResponse = await callGeminiForJson(
-        executiveSummaryPayload,
-        CONFIG.API.RETRY_COUNT,
-        (attemptNum, error) => {
-          updateJob(jobId, {
-            status: 'processing',
-            progress: `Retrying executive summary generation (attempt ${attemptNum + 1}/${CONFIG.API.RETRY_COUNT})...`
-          });
-          console.log(`Job ${jobId}: Retrying executive summary due to error: ${error.message}`);
-        }
-      );
-
-      // Extract the executiveSummary object from the response
-      executiveSummary = summaryResponse.executiveSummary;
-
-      // Add metadata
-      if (executiveSummary && executiveSummary.metadata) {
-        executiveSummary.metadata.lastUpdated = new Date().toISOString();
-        executiveSummary.metadata.documentsCited = researchFilesCache.length;
-      }
-
-        console.log(`Job ${jobId}: Executive summary generated successfully`);
-      } catch (summaryError) {
-        console.error(`Job ${jobId}: Failed to generate executive summary:`, summaryError);
-        // Don't fail the entire job if executive summary fails - just log it
-        executiveSummary = null;
-      }
-    } else {
-      console.log(`Job ${jobId}: Skipping executive summary generation (user disabled)`);
-    }
 
     // NEW: Presentation Slides Generation (conditional, Two-Phase Approach)
     let presentationSlides = null;
@@ -711,10 +641,9 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
     // Create session to store research data for future requests
     const sessionId = createSession(researchTextCache, researchFilesCache);
 
-    // Store chart data with unique ID for URL-based sharing (including executive summary and presentation slides)
+    // Store chart data with unique ID for URL-based sharing (including presentation slides)
     const chartDataWithEnhancements = {
       ...ganttData,
-      executiveSummary: executiveSummary,
       presentationSlides: presentationSlides
     };
     const chartId = storeChart(chartDataWithEnhancements, sessionId);
@@ -722,14 +651,12 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
     // Update job status to complete
     const completeData = {
       ...ganttData,
-      executiveSummary: executiveSummary,
       presentationSlides: presentationSlides,
       sessionId,
       chartId
     };
     console.log(`Job ${jobId}: Setting complete status with data keys:`, Object.keys(completeData));
     console.log(`Job ${jobId}: Final data structure:`, {
-      hasExecutiveSummary: !!executiveSummary,
       hasPresentationSlides: !!presentationSlides,
       presentationSlidesCount: presentationSlides?.slides?.length || 0
     });
@@ -752,7 +679,6 @@ Example: { "type": "simple", "title": "${slideOutline.title}", "content": ["Key 
     trackEvent('chart_generated', {
       taskCount,
       generationTime,
-      hasExecutiveSummary: !!executiveSummary,
       hasPresentationSlides: !!presentationSlides,
       slideCount: presentationSlides?.slides?.length || 0,
       fileCount: researchFilesCache.length
@@ -929,7 +855,6 @@ router.get('/chart/:id', (req, res) => {
   // FEATURE #9: Track chart view
   trackEvent('chart_viewed', {
     taskCount: chart.data.data.length,
-    hasExecutiveSummary: !!chart.data.executiveSummary,
     hasPresentationSlides: !!chart.data.presentationSlides
   }, chartId, chart.sessionId);
 

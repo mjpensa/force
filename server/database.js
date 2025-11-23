@@ -237,12 +237,11 @@ export function getSession(sessionId) {
  * @param {string} chartId - Unique chart ID
  * @param {string} sessionId - Associated session ID
  * @param {object} ganttData - Gantt chart data
- * @param {object} executiveSummary - Executive summary data
  * @param {object} presentationSlides - Presentation slides data
  * @param {number} expirationDays - Days until expiration (default: 30)
  * @returns {object} Saved chart metadata
  */
-export function saveChart(chartId, sessionId, ganttData, executiveSummary, presentationSlides, expirationDays = DEFAULT_EXPIRATION_DAYS) {
+export function saveChart(chartId, sessionId, ganttData, presentationSlides, expirationDays = DEFAULT_EXPIRATION_DAYS) {
   const db = getDatabase();
   const now = Date.now();
   const expiresAt = now + (expirationDays * 24 * 60 * 60 * 1000);
@@ -256,7 +255,7 @@ export function saveChart(chartId, sessionId, ganttData, executiveSummary, prese
     chartId,
     sessionId,
     JSON.stringify(ganttData),
-    JSON.stringify(executiveSummary),
+    null,  // executiveSummary no longer used
     JSON.stringify(presentationSlides),
     now,
     expiresAt
@@ -288,8 +287,7 @@ export function getChart(chartId) {
     chartId: row.chartId,
     sessionId: row.sessionId,
     ganttData: JSON.parse(row.ganttData),
-    executiveSummary: JSON.parse(row.executiveSummary),
-    presentationSlides: JSON.parse(row.presentationSlides),
+    presentationSlides: row.presentationSlides ? JSON.parse(row.presentationSlides) : null,
     createdAt: new Date(row.createdAt)
   };
 }

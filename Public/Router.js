@@ -5,12 +5,10 @@ class Router {
     constructor() {
         this.routes = {
             'roadmap': () => this.showSection('roadmap'),
-            'executive-summary': () => this.showSection('executive-summary'),
             'presentation': () => this.showSection('presentation')
         };
         this.currentRoute = null;
         this.ganttChart = null;
-        this.executiveSummary = null;
         this.presentationSlides = null;
         this.hamburgerMenu = null;
 
@@ -21,17 +19,14 @@ class Router {
     /**
      * Initialize the router with component references
      */
-    init(ganttChart, executiveSummary, presentationSlides) {
+    init(ganttChart, presentationSlides) {
         console.log('🚀 Router.init called with:', {
             ganttChart: !!ganttChart,
-            executiveSummary: !!executiveSummary,
             presentationSlides: !!presentationSlides,
-            executiveSummaryContainer: !!executiveSummary?.container,
             presentationSlidesContainer: !!presentationSlides?.container
         });
 
         this.ganttChart = ganttChart;
-        this.executiveSummary = executiveSummary;
         this.presentationSlides = presentationSlides;
         this.hamburgerMenu = ganttChart?.hamburgerMenu;
 
@@ -89,23 +84,17 @@ class Router {
         // Note: Don't hide chartWrapper itself, as it contains all sections
         const ganttGrid = document.querySelector('.gantt-grid');
         const ganttTitle = document.querySelector('.gantt-title');
-        const summaryContainer = this.executiveSummary?.container || document.getElementById('executiveSummary');
         const slidesContainer = this.presentationSlides?.container || document.getElementById('presentationSlides');
 
         console.log('📦 Container references:', {
             ganttGrid: !!ganttGrid,
             ganttTitle: !!ganttTitle,
-            summaryContainer: !!summaryContainer,
             slidesContainer: !!slidesContainer,
             ganttChart: !!this.ganttChart,
-            executiveSummary: !!this.executiveSummary,
             presentationSlides: !!this.presentationSlides
         });
 
         // Warn if containers are missing
-        if (!summaryContainer) {
-            console.warn('⚠️ Executive Summary container not found');
-        }
         if (!slidesContainer) {
             console.warn('⚠️ Presentation Slides container not found');
         }
@@ -133,37 +122,6 @@ class Router {
                 if (exportContainer) {
                     exportContainer.style.display = '';
                 }
-                if (summaryContainer) {
-                    summaryContainer.style.display = 'none';
-                    summaryContainer.classList.remove('section-isolated');
-                }
-                if (slidesContainer) {
-                    slidesContainer.style.display = 'none';
-                    slidesContainer.classList.remove('section-isolated');
-                }
-                break;
-
-            case 'executive-summary':
-                // Show only the Executive Summary
-                if (ganttGrid) {
-                    ganttGrid.style.display = 'none';
-                }
-                if (ganttTitle) {
-                    ganttTitle.style.display = 'none';
-                }
-                if (legend) {
-                    legend.style.display = 'none';
-                }
-                if (todayLine) {
-                    todayLine.style.display = 'none';
-                }
-                if (exportContainer) {
-                    exportContainer.style.display = 'none';
-                }
-                if (summaryContainer) {
-                    summaryContainer.style.display = '';
-                    summaryContainer.classList.add('section-isolated');
-                }
                 if (slidesContainer) {
                     slidesContainer.style.display = 'none';
                     slidesContainer.classList.remove('section-isolated');
@@ -186,10 +144,6 @@ class Router {
                 }
                 if (exportContainer) {
                     exportContainer.style.display = 'none';
-                }
-                if (summaryContainer) {
-                    summaryContainer.style.display = 'none';
-                    summaryContainer.classList.remove('section-isolated');
                 }
                 if (slidesContainer) {
                     slidesContainer.style.display = '';

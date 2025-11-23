@@ -10,7 +10,6 @@ import { safeGetElement, findTodayColumnPosition, buildLegend, PerformanceTimer,
 import { DraggableGantt } from './DraggableGantt.js';
 import { ResizableGantt } from './ResizableGantt.js';
 import { ContextMenu } from './ContextMenu.js';
-import { ExecutiveSummary } from './ExecutiveSummary.js';
 import { PresentationSlides } from './PresentationSlides.js';
 import { HamburgerMenu } from './HamburgerMenu.js';
 
@@ -45,7 +44,6 @@ export class GanttChart {
     this.titleElement = null; // Reference to the title element for edit mode
     this.legendElement = null; // Reference to the legend element for edit mode
     this.hamburgerMenu = null; // Hamburger menu for section navigation
-    this.executiveSummary = null; // Reference to ExecutiveSummary component
     this.presentationSlides = null; // Reference to PresentationSlides component
     this.router = null; // Router for navigation between sections
   }
@@ -86,9 +84,6 @@ export class GanttChart {
     renderTimer.mark('Grid created');
 
     this._addLegend();
-
-    // Add Executive Summary - Always create component, it will handle missing data gracefully
-    this._addExecutiveSummary();
 
     // Add Presentation Slides - Always create component, it will handle missing data gracefully
     console.log('🎭 Presentation Slides Data Check:', {
@@ -237,16 +232,6 @@ export class GanttChart {
   }
 
   /**
-   * Adds the executive summary component to the chart
-   * @private
-   */
-  _addExecutiveSummary() {
-    this.executiveSummary = new ExecutiveSummary(this.ganttData.executiveSummary, this.footerSVG);
-    const summaryElement = this.executiveSummary.render();
-    this.chartWrapper.appendChild(summaryElement);
-  }
-
-  /**
    * Adds the presentation slides component to the chart
    * @private
    */
@@ -274,7 +259,6 @@ export class GanttChart {
 
     // Determine content availability
     const contentAvailability = {
-      hasExecutiveSummary: !!this.ganttData.executiveSummary,
       hasPresentationSlides: !!(this.ganttData.presentationSlides && this.ganttData.presentationSlides.slides && this.ganttData.presentationSlides.slides.length > 0)
     };
 
@@ -289,7 +273,7 @@ export class GanttChart {
 
     // Initialize the router with component references
     if (this.router) {
-      this.router.init(this, this.executiveSummary, this.presentationSlides, this.researchSynthesizer);
+      this.router.init(this, this.presentationSlides);
     }
   }
 
