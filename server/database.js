@@ -154,9 +154,10 @@ let db = null;
 
 /**
  * Get database instance (creates if doesn't exist)
+ * Internal use only - not exported
  * @returns {Database}
  */
-export function getDatabase() {
+function getDatabase() {
   if (!db) {
     db = initializeDatabase();
   }
@@ -405,9 +406,11 @@ export function getJob(jobId) {
 
 /**
  * Delete job by ID
+ * Internal use only - not exported
+ * Currently unused, but kept for potential future cleanup operations
  * @param {string} jobId - Job ID
  */
-export function deleteJob(jobId) {
+function deleteJob(jobId) {
   const db = getDatabase();
   const stmt = db.prepare('DELETE FROM jobs WHERE jobId = ?');
   stmt.run(jobId);
