@@ -188,7 +188,7 @@ ${researchTextCache}`;
           responseMimeType: "application/json",
           responseSchema: EXECUTIVE_SUMMARY_SCHEMA,
           maxOutputTokens: CONFIG.API.MAX_OUTPUT_TOKENS_CHART,
-          temperature: 0.7,
+          temperature: 0.8,  // Increased from 0.7 for bifurcation style (more creative/theatrical output)
           topP: CONFIG.API.TOP_P,
           topK: CONFIG.API.TOP_K
           // NOTE: thinkingConfig temporarily disabled for chart generation
