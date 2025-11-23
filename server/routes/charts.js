@@ -421,11 +421,13 @@ Example: { "type": "bip-three-column", "title": {"text": "${slideOutline.title}"
 
 CRITICAL REQUIREMENT - MUST EXTRACT FROM RESEARCH ABOVE:
 - DO NOT use generic placeholder text
+- DO NOT use "subtitle" field - this slide type requires "bodyText" ONLY
 - EXTRACT SPECIFIC narrative, context, and detailed information from the research
 - Fill eyebrow with a concise category from research
-- Fill bodyText with 300-500 words of ACTUAL research-based content
+- Fill bodyText (NOT subtitle) with 300-500 words of ACTUAL research-based content
 - Include specific metrics, timelines, stakeholders, and strategic details
 - Use real data points from the research provided above
+- MANDATORY: You MUST include the "bodyText" field with substantial content
 
 This is a large title layout with a single wide text column, ideal for detailed explanations.
 The title supports line breaks using \\n for multi-line display.
