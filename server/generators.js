@@ -4,6 +4,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { jsonrepair } from 'jsonrepair';
 import { ContentDB, JobDB, SessionDB } from './db.js';
 import { generateRoadmapPrompt, roadmapSchema } from './prompts/roadmap.js';
 import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
@@ -35,9 +36,38 @@ async function generateWithGemini(prompt, schema, contentType) {
     const text = response.text();
 
     console.log(`[${contentType}] Generation complete, parsing JSON...`);
-    const data = JSON.parse(text);
+    console.log(`[${contentType}] Response text length: ${text.length}`);
 
-    return data;
+    try {
+      const data = JSON.parse(text);
+      return data;
+    } catch (parseError) {
+      // Log the parse error details
+      const positionMatch = parseError.message.match(/position (\d+)/);
+      const errorPosition = positionMatch ? parseInt(positionMatch[1]) : 0;
+
+      console.error(`[${contentType}] JSON Parse Error:`, parseError.message);
+      console.error(`[${contentType}] Total JSON length:`, text.length);
+      console.error(`[${contentType}] Problematic JSON (first 500 chars):`, text.substring(0, 500));
+      if (errorPosition > 0) {
+        const contextStart = Math.max(0, errorPosition - 200);
+        const contextEnd = Math.min(text.length, errorPosition + 200);
+        console.error(`[${contentType}] JSON around error position:`, text.substring(contextStart, contextEnd));
+      }
+
+      // Try to repair the JSON using jsonrepair library
+      try {
+        console.log(`[${contentType}] Attempting to repair JSON using jsonrepair library...`);
+        const repairedJsonText = jsonrepair(text);
+        const repairedData = JSON.parse(repairedJsonText);
+        console.log(`[${contentType}] Successfully repaired and parsed JSON!`);
+        return repairedData;
+      } catch (repairError) {
+        console.error(`[${contentType}] JSON repair failed:`, repairError.message);
+        console.error(`[${contentType}] Full JSON response:`, text);
+        throw parseError; // Throw the original parse error
+      }
+    }
 
   } catch (error) {
     console.error(`[${contentType}] Generation error:`, error);
