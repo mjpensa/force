@@ -403,4 +403,32 @@ export const Cleanup = {
 // Initialize database on module load
 initializeDatabase();
 
+/**
+ * Get database startup info (helps diagnose restart issues)
+ */
+export function getDatabaseInfo() {
+  try {
+    const sessionCount = db.prepare('SELECT COUNT(*) as count FROM sessions').get().count;
+    const contentCount = db.prepare('SELECT COUNT(*) as count FROM content').get().count;
+    const jobCount = db.prepare('SELECT COUNT(*) as count FROM jobs').get().count;
+    const dbExists = fs.existsSync(DB_PATH);
+    const dbSize = dbExists ? fs.statSync(DB_PATH).size : 0;
+
+    return {
+      path: DB_PATH,
+      exists: dbExists,
+      size: dbSize,
+      sessions: sessionCount,
+      content: contentCount,
+      jobs: jobCount,
+      isEmpty: sessionCount === 0 && contentCount === 0 && jobCount === 0
+    };
+  } catch (error) {
+    return {
+      path: DB_PATH,
+      error: error.message
+    };
+  }
+}
+
 export default db;
