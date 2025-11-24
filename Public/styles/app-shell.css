@@ -68,13 +68,11 @@
   border-radius: var(--radius-sm);
   outline: none;
   transition: all var(--transition-fast);
-  max-width: 400px;
+  flex: 1;
+  min-width: 0;
   text-align: center;
   border: 1px solid transparent;
   background: transparent;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .document-title:hover {
@@ -85,8 +83,6 @@
   background: var(--color-surface);
   border-color: var(--color-primary);
   box-shadow: var(--shadow-focus);
-  text-overflow: clip;
-  white-space: normal;
 }
 
 /* Icon Buttons */
@@ -446,9 +442,6 @@
 
 /* Tablet: 768px - 1023px */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .document-title {
-    max-width: 300px;
-  }
 }
 
 /* Desktop: >= 1024px */
