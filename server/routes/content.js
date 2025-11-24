@@ -2,12 +2,16 @@
  * Unified Content Generation Routes
  * Phase 2: Handles generation and retrieval of all three content types
  * (Roadmap, Slides, Document)
+ * Phase 6: Added compatibility layer for legacy chartId support
  */
 
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import mammoth from 'mammoth';
 import { SessionDB, ContentDB, JobDB } from '../db.js';
 import { generateAllContent } from '../generators.js';
+import { getChart } from '../storage.js'; // Import legacy chart getter for compatibility
+import { uploadMiddleware, handleUploadErrors } from '../middleware.js'; // Phase 6: File upload support
 
 const router = express.Router();
 
@@ -15,35 +19,64 @@ const router = express.Router();
  * POST /api/content/generate
  * Generates all three content types (roadmap, slides, document) in parallel
  *
- * Request body:
- * {
- *   prompt: string,
- *   researchFiles: Array<{filename: string, content: string}>
- * }
+ * Phase 6 Update: Now accepts multipart/form-data with file uploads
+ *
+ * Request (multipart/form-data):
+ * - prompt: string (form field)
+ * - researchFiles: File[] (uploaded files)
  *
  * Response:
  * {
  *   sessionId: string,
+ *   jobIds: { roadmap: string, slides: string, document: string },
  *   status: 'processing',
  *   message: 'Content generation started'
  * }
  */
-router.post('/generate', async (req, res) => {
+router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, res) => {
   try {
-    const { prompt, researchFiles } = req.body;
+    const { prompt } = req.body;
+    const files = req.files;
 
     // Validate input
-    if (!prompt || !researchFiles || !Array.isArray(researchFiles)) {
+    if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({
-        error: 'Invalid request. Required: prompt (string), researchFiles (array)'
+        error: 'Invalid request. Required: prompt (string)'
       });
     }
 
-    if (researchFiles.length === 0) {
+    if (!files || files.length === 0) {
       return res.status(400).json({
         error: 'At least one research file is required'
       });
     }
+
+    // Process uploaded files to extract content
+    console.log(`Processing ${files.length} uploaded files for content generation`);
+    const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
+
+    // Process files in parallel
+    const fileProcessingPromises = sortedFiles.map(async (file) => {
+      let content = '';
+
+      // Handle DOCX files with mammoth
+      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        const result = await mammoth.convertToHtml({ buffer: file.buffer });
+        content = result.value;
+      } else {
+        // Handle text-based files (TXT, MD, etc.)
+        content = file.buffer.toString('utf8');
+      }
+
+      return {
+        filename: file.originalname,
+        content: content
+      };
+    });
+
+    // Wait for all files to be processed
+    const researchFiles = await Promise.all(fileProcessingPromises);
+    console.log(`Processed ${researchFiles.length} files (${researchFiles.reduce((sum, f) => sum + f.content.length, 0)} total characters)`);
 
     // Generate unique session ID
     const sessionId = uuidv4();
@@ -115,7 +148,33 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       });
     }
 
-    // Check if session exists
+    // **PHASE 6 COMPATIBILITY**: Check if this is a legacy chartId
+    // Legacy chartIds are UUIDs from the old /generate-chart system
+    const chart = getChart(sessionId);
+    if (chart && viewType === 'roadmap') {
+      // This is a legacy chartId - return the Gantt chart data as roadmap
+      console.log(`[Compatibility] Serving legacy chart ${sessionId} as roadmap`);
+      return res.json({
+        sessionId,
+        viewType: 'roadmap',
+        status: 'completed',
+        data: chart.data,
+        generatedAt: chart.createdAt || new Date().toISOString()
+      });
+    }
+
+    // If legacy chartId but requesting slides/document, return not available
+    if (chart && (viewType === 'slides' || viewType === 'document')) {
+      return res.json({
+        sessionId,
+        viewType,
+        status: 'error',
+        data: null,
+        error: 'This content type is not available for legacy charts. Only roadmap view is supported.'
+      });
+    }
+
+    // Check if session exists in Phase 2 database
     const session = SessionDB.get(sessionId);
     if (!session) {
       return res.status(404).json({
@@ -300,5 +359,8 @@ router.delete('/:sessionId', async (req, res) => {
     });
   }
 });
+
+// Apply upload error handling middleware
+router.use(handleUploadErrors);
 
 export default router;

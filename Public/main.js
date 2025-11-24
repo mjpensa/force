@@ -318,8 +318,106 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /**
- * Phase 3 Enhancement: Polls the /job/:id endpoint until job is complete
- * Race condition fix: Prevents concurrent polls and handles edge cases
+ * Phase 6 Enhancement: Polls the Phase 2 /api/content/:sessionId/:viewType endpoint
+ * Polls for content generation completion for a specific view type
+ * @param {string} sessionId - The session ID returned from /api/content/generate
+ * @param {string} viewType - View type: 'roadmap', 'slides', or 'document'
+ * @param {HTMLElement} generateBtn - The generate button element to update with progress
+ * @returns {Promise<Object>} The content data when generation is complete
+ * @throws {Error} If generation fails or times out
+ */
+async function pollForPhase2Content(sessionId, viewType, generateBtn) {
+  const POLL_INTERVAL = 1000; // Poll every 1 second
+  const MAX_ATTEMPTS = 300; // 5 minutes maximum (300 seconds)
+  let attempts = 0;
+  let isPolling = false; // Prevent concurrent polls
+
+  // Recursive polling function with race condition protection
+  const poll = async () => {
+    // Prevent concurrent poll requests
+    if (isPolling) {
+      console.warn('Poll already in progress, skipping...');
+      return;
+    }
+
+    // Check timeout before attempting
+    if (attempts >= MAX_ATTEMPTS) {
+      throw new Error('Content generation timed out after 5 minutes. Please try again.');
+    }
+
+    isPolling = true;
+    attempts++;
+
+    try {
+      const response = await fetch(`/api/content/${sessionId}/${viewType}`);
+
+      if (!response.ok) {
+        // Handle non-JSON error responses gracefully
+        let errorText = `Server error: ${response.status}`;
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const err = await response.json();
+            errorText = err.error || errorText;
+          } else {
+            const text = await response.text();
+            errorText = text.substring(0, 200) || errorText;
+          }
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+        }
+        throw new Error(errorText);
+      }
+
+      const content = await response.json();
+
+      // Debug: Log content response
+      console.log(`Poll attempt ${attempts}, ${viewType} status:`, content.status);
+
+      // Update button text with progress
+      if (generateBtn) {
+        generateBtn.textContent = `Generating ${viewType}... (${attempts}s)`;
+      }
+
+      // Check content status
+      if (content.status === 'completed') {
+        console.log(`${viewType} content generated successfully`);
+        return content.data; // Return the content data
+      } else if (content.status === 'error' || content.status === 'failed') {
+        throw new Error(content.error || `${viewType} generation failed with unknown error`);
+      } else if (content.status === 'processing' || content.status === 'pending') {
+        // Content still generating, schedule next poll
+        isPolling = false;
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+        return await poll(); // Recursive call
+      } else {
+        // Unknown status - treat as error
+        console.error('Unknown content status:', content.status);
+        throw new Error(`Unknown content status: ${content.status}`);
+      }
+
+    } catch (error) {
+      isPolling = false;
+
+      // If it's a network error, retry after a short delay
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        console.warn(`Network error on attempt ${attempts}, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+        return await poll(); // Retry
+      }
+
+      // Other errors are fatal
+      throw error;
+    }
+  };
+
+  return await poll();
+}
+
+/**
+ * LEGACY: Phase 3 Enhancement: Polls the /job/:id endpoint until job is complete
+ * This function is kept for backward compatibility with legacy /generate-chart endpoint
+ * @deprecated Use pollForPhase2Content for new Phase 2 API
  * @param {string} jobId - The job ID returned from /generate-chart
  * @param {HTMLElement} generateBtn - The generate button element to update with progress
  * @returns {Promise<Object>} The chart data when job is complete
@@ -511,8 +609,9 @@ async function handleChartGenerate(event) {
     errorMessage.style.display = 'none';
     chartOutput.innerHTML = ''; // Clear old chart
 
-    // 6. Call chart generation endpoint
-    const response = await fetch('/generate-chart', {
+    // 6. Call Phase 2 unified content generation endpoint
+    // This generates all three views (roadmap, slides, document) in parallel
+    const response = await fetch('/api/content/generate', {
       method: 'POST',
       body: formData,
     });
@@ -535,18 +634,20 @@ async function handleChartGenerate(event) {
       throw new Error(errorText);
     }
 
-    // 7. Get job ID from response
-    const jobResponse = await response.json();
-    const jobId = jobResponse.jobId;
+    // 7. Get session ID and job IDs from response
+    const generationResponse = await response.json();
+    const sessionId = generationResponse.sessionId;
 
-    if (!jobId) {
-      throw new Error('Server did not return a job ID');
+    if (!sessionId) {
+      throw new Error('Server did not return a session ID');
     }
 
-    console.log('Job started:', jobId);
+    console.log('Content generation started for session:', sessionId);
+    console.log('Generating all three views:', generationResponse.jobIds);
 
-    // 8. Poll for job completion
-    const ganttData = await pollForJobCompletion(jobId, generateBtn);
+    // 8. Poll for roadmap completion (other views continue in background)
+    // We'll poll the /api/content/:sessionId/roadmap endpoint
+    const ganttData = await pollForPhase2Content(sessionId, 'roadmap', generateBtn);
 
     // Debug: Log the received data structure
     console.log('Received ganttData:', ganttData);
@@ -590,21 +691,11 @@ async function handleChartGenerate(event) {
       throw new Error('The AI was unable to find any tasks or time columns in the provided documents. Please check your files or try a different prompt.');
     }
 
-    // 9. Open in new tab
-    // Use URL-based sharing with chartId
-    if (ganttData.chartId) {
-      // Primary method: Open chart using URL parameter
-      window.open(`/chart.html?id=${ganttData.chartId}`, '_blank');
-      console.log('Chart opened with ID:', ganttData.chartId);
-
-      // Also store in sessionStorage as fallback for backward compatibility
-      sessionStorage.setItem('ganttData', JSON.stringify(ganttData));
-    } else {
-      // Fallback: Use sessionStorage method (for older API responses)
-      sessionStorage.setItem('ganttData', JSON.stringify(ganttData));
-      window.open('/chart.html', '_blank');
-      console.log('Chart opened using sessionStorage (fallback)');
-    }
+    // 9. Open in new tab - Phase 6 three-view viewer
+    // Use sessionId to open the unified viewer with all three views
+    window.open(`/viewer.html?sessionId=${sessionId}#roadmap`, '_blank');
+    console.log('Opening three-view viewer with sessionId:', sessionId);
+    console.log('All three views (roadmap, slides, document) will be available when generation completes');
     
 
   } catch (error) {
