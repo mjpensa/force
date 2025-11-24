@@ -375,12 +375,19 @@ class ContentViewer {
       logError(error, { component: 'ContentViewer', action: 'loadView', viewName });
 
       // Show user-friendly error notification with retry option
-      showErrorNotification(error, {
-        onRetry: () => this._loadView(viewName),
-        dismissible: true
-      });
+      // Check if this is a legacy chart limitation
+      const isLegacyLimitation = error.message && error.message.includes('not available for legacy charts');
 
-      this._showError(`Failed to load ${viewName}`, error.message);
+      if (isLegacyLimitation) {
+        // Special handling for legacy chart limitations
+        this._showLegacyChartLimitation(viewName);
+      } else {
+        showErrorNotification(error, {
+          onRetry: () => this._loadView(viewName),
+          dismissible: true
+        });
+        this._showError(`Failed to load ${viewName}`, error.message);
+      }
     }
   }
 
@@ -420,21 +427,47 @@ class ContentViewer {
   async _renderRoadmapView(data) {
     console.log('[Viewer] Rendering roadmap view');
 
-    // For now, show a placeholder for roadmap
-    // In a complete implementation, this would integrate the existing GanttChart component
-    this.contentContainer.innerHTML = `
-      <div class="empty-state">
-        <h2>Roadmap View</h2>
-        <p>Gantt chart integration coming soon.</p>
-        <p>Session ID: ${this.sessionId}</p>
-        <pre>${JSON.stringify(data, null, 2).substring(0, 500)}...</pre>
-      </div>
-    `;
+    // Clear container
+    this.contentContainer.innerHTML = '';
 
-    // TODO: Integrate existing GanttChart component
-    // const ganttChart = new GanttChart(data);
-    // this.contentContainer.appendChild(ganttChart.render());
-    // this.currentViewComponent = ganttChart;
+    // Create a container div for the chart
+    const chartContainer = document.createElement('div');
+    chartContainer.id = 'chart-root';
+    chartContainer.style.cssText = 'width: 100%; height: 100%; overflow: auto;';
+    this.contentContainer.appendChild(chartContainer);
+
+    // Dynamically import and render the GanttChart
+    try {
+      const { GanttChart } = await import('./GanttChart.js');
+
+      // GanttChart expects data with timeColumns and data properties
+      if (!data.timeColumns || !data.data) {
+        throw new Error('Invalid Gantt chart data structure');
+      }
+
+      const ganttChart = new GanttChart(chartContainer, data, this.sessionId);
+      ganttChart.render();
+
+      this.currentViewComponent = ganttChart;
+      console.log('✅ Gantt chart rendered successfully');
+
+    } catch (error) {
+      console.error('Error rendering Gantt chart:', error);
+
+      // Show error state
+      this.contentContainer.innerHTML = `
+        <div class="empty-state" style="padding: 2rem; text-align: center;">
+          <h2 style="color: var(--color-error);">Failed to Load Roadmap</h2>
+          <p style="color: var(--color-text-secondary); margin: 1rem 0;">
+            ${error.message}
+          </p>
+          <button onclick="window.location.reload()"
+                  style="padding: 0.75rem 1.5rem; background: var(--color-primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
+            Reload Page
+          </button>
+        </div>
+      `;
+    }
   }
 
   /**
@@ -465,6 +498,42 @@ class ContentViewer {
         <button onclick="window.location.reload()" style="margin-top: 2rem; padding: 0.75rem 1.5rem; background: var(--color-primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
           Refresh Page
         </button>
+      </div>
+    `;
+  }
+
+  /**
+   * Show legacy chart limitation message
+   * For charts generated before the three-view system
+   */
+  _showLegacyChartLimitation(viewName) {
+    this.contentContainer.innerHTML = `
+      <div style="padding: 3rem; text-align: center; max-width: 600px; margin: 0 auto;">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color: var(--color-warning, #f59e0b); margin-bottom: 1.5rem;">
+          <circle cx="12" cy="12" r="10" stroke-width="2"/>
+          <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"/>
+          <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"/>
+        </svg>
+        <h2 style="margin-bottom: 1rem; color: var(--color-text-primary);">
+          ${viewName.charAt(0).toUpperCase() + viewName.slice(1)} View Not Available
+        </h2>
+        <p style="color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 2rem;">
+          This chart was generated using the older system and only supports the <strong>Roadmap view</strong>.
+          The ${viewName} view is only available for newly generated content.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <button onclick="window.location.hash='roadmap'"
+                  style="padding: 0.75rem 1.5rem; background: var(--color-primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+            📊 View Roadmap
+          </button>
+          <button onclick="window.location.href='/'"
+                  style="padding: 0.75rem 1.5rem; background: transparent; color: var(--color-text-primary); border: 2px solid var(--color-border); border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+            Generate New Content
+          </button>
+        </div>
+        <p style="margin-top: 2rem; font-size: 0.875rem; color: var(--color-text-tertiary);">
+          💡 Tip: Generate new content to access all three views (Roadmap, Slides, and Document)
+        </p>
       </div>
     `;
   }

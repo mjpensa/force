@@ -590,20 +590,20 @@ async function handleChartGenerate(event) {
       throw new Error('The AI was unable to find any tasks or time columns in the provided documents. Please check your files or try a different prompt.');
     }
 
-    // 9. Open in new tab
-    // Use URL-based sharing with chartId
+    // 9. Open in new tab - Updated for Phase 6 three-view viewer
+    // Use chartId as sessionId for the new unified viewer
     if (ganttData.chartId) {
-      // Primary method: Open chart using URL parameter
-      window.open(`/chart.html?id=${ganttData.chartId}`, '_blank');
-      console.log('Chart opened with ID:', ganttData.chartId);
+      // Primary method: Open new three-view viewer with chartId as sessionId
+      window.open(`/viewer.html?sessionId=${ganttData.chartId}#roadmap`, '_blank');
+      console.log('Opening three-view viewer with chartId:', ganttData.chartId);
 
       // Also store in sessionStorage as fallback for backward compatibility
       sessionStorage.setItem('ganttData', JSON.stringify(ganttData));
     } else {
       // Fallback: Use sessionStorage method (for older API responses)
       sessionStorage.setItem('ganttData', JSON.stringify(ganttData));
-      window.open('/chart.html', '_blank');
-      console.log('Chart opened using sessionStorage (fallback)');
+      window.open('/viewer.html?sessionId=legacy#roadmap', '_blank');
+      console.log('Opening viewer using sessionStorage (fallback)');
     }
     
 

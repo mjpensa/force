@@ -2,12 +2,14 @@
  * Unified Content Generation Routes
  * Phase 2: Handles generation and retrieval of all three content types
  * (Roadmap, Slides, Document)
+ * Phase 6: Added compatibility layer for legacy chartId support
  */
 
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { SessionDB, ContentDB, JobDB } from '../db.js';
 import { generateAllContent } from '../generators.js';
+import { getChart } from '../storage.js'; // Import legacy chart getter for compatibility
 
 const router = express.Router();
 
@@ -115,7 +117,33 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       });
     }
 
-    // Check if session exists
+    // **PHASE 6 COMPATIBILITY**: Check if this is a legacy chartId
+    // Legacy chartIds are UUIDs from the old /generate-chart system
+    const chart = getChart(sessionId);
+    if (chart && viewType === 'roadmap') {
+      // This is a legacy chartId - return the Gantt chart data as roadmap
+      console.log(`[Compatibility] Serving legacy chart ${sessionId} as roadmap`);
+      return res.json({
+        sessionId,
+        viewType: 'roadmap',
+        status: 'completed',
+        data: chart.data,
+        generatedAt: chart.createdAt || new Date().toISOString()
+      });
+    }
+
+    // If legacy chartId but requesting slides/document, return not available
+    if (chart && (viewType === 'slides' || viewType === 'document')) {
+      return res.json({
+        sessionId,
+        viewType,
+        status: 'error',
+        data: null,
+        error: 'This content type is not available for legacy charts. Only roadmap view is supported.'
+      });
+    }
+
+    // Check if session exists in Phase 2 database
     const session = SessionDB.get(sessionId);
     if (!session) {
       return res.status(404).json({
