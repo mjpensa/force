@@ -31,6 +31,8 @@ import {
   showErrorNotification,
   logError
 } from './components/shared/ErrorHandler.js';
+import { loadFooterSVG } from './Utils.js'; // For GanttChart footer
+import { TaskAnalyzer } from './TaskAnalyzer.js'; // For task clicks
 
 class ContentViewer {
   constructor() {
@@ -43,6 +45,10 @@ class ContentViewer {
     this.appRoot = document.getElementById('app-root');
     this.navContainer = null;
     this.contentContainer = null;
+
+    // GanttChart dependencies (CRITICAL: same as original chart-renderer.js)
+    this.footerSVG = '';
+    this.taskAnalyzer = new TaskAnalyzer();
   }
 
   /**
@@ -54,6 +60,9 @@ class ContentViewer {
 
       // Add lazy loading styles
       addLazyLoadingStyles();
+
+      // CRITICAL: Load footer SVG for GanttChart (same as original chart-renderer.js)
+      this.footerSVG = await loadFooterSVG();
 
       // Initialize accessibility features
       initAccessibility({
@@ -423,9 +432,10 @@ class ContentViewer {
 
   /**
    * Render roadmap view (Gantt chart)
+   * CRITICAL: Uses EXACT SAME logic and parameters as original chart-renderer.js
    */
   async _renderRoadmapView(data) {
-    console.log('[Viewer] Rendering roadmap view');
+    console.log('[Viewer] Rendering roadmap view with original GanttChart component');
 
     // Clear container
     this.contentContainer.innerHTML = '';
@@ -440,19 +450,43 @@ class ContentViewer {
     try {
       const { GanttChart } = await import('./GanttChart.js');
 
-      // GanttChart expects data with timeColumns and data properties
-      if (!data.timeColumns || !data.data) {
-        throw new Error('Invalid Gantt chart data structure');
+      // Validate data structure (EXACT same validation as original)
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid chart data structure');
       }
 
-      const ganttChart = new GanttChart(chartContainer, data, this.sessionId);
+      if (!data.timeColumns || !Array.isArray(data.timeColumns)) {
+        throw new Error('Invalid timeColumns in chart data');
+      }
+
+      if (!data.data || !Array.isArray(data.data)) {
+        throw new Error('Invalid data array in chart data');
+      }
+
+      console.log('✅ Chart data validation passed - timeColumns:', data.timeColumns.length, 'data:', data.data.length);
+
+      // Task click handler (EXACT same as original chart-renderer.js)
+      const handleTaskClick = (taskIdentifier) => {
+        this.taskAnalyzer.showAnalysis(taskIdentifier);
+      };
+
+      // CRITICAL: Create GanttChart with EXACT SAME parameters as original
+      // Signature: new GanttChart(container, ganttData, footerSVG, onTaskClick)
+      const ganttChart = new GanttChart(
+        chartContainer,      // container element
+        data,                // ganttData object (with timeColumns and data)
+        this.footerSVG,      // footerSVG decoration (CRITICAL!)
+        handleTaskClick      // onTaskClick callback
+      );
+
+      // Render the chart (EXACT same as original)
       ganttChart.render();
 
       this.currentViewComponent = ganttChart;
-      console.log('✅ Gantt chart rendered successfully');
+      console.log('✅ Gantt chart rendered successfully using ORIGINAL component and logic');
 
     } catch (error) {
-      console.error('Error rendering Gantt chart:', error);
+      console.error('❌ Error rendering Gantt chart:', error);
 
       // Show error state
       this.contentContainer.innerHTML = `
