@@ -118,10 +118,19 @@ export const SessionDB = {
 
     if (!row) return null;
 
+    // Safely parse research_files with error handling
+    let researchFiles = [];
+    try {
+      researchFiles = JSON.parse(row.research_files);
+    } catch (parseError) {
+      console.error(`Failed to parse research_files for session ${sessionId}:`, parseError.message);
+      // Return empty array as fallback - session can still be retrieved
+    }
+
     return {
       sessionId: row.session_id,
       prompt: row.prompt,
-      researchFiles: JSON.parse(row.research_files),
+      researchFiles,
       status: row.status,
       errorMessage: row.error_message,
       createdAt: row.created_at,
@@ -209,8 +218,27 @@ export const ContentDB = {
 
     if (!row) return null;
 
+    // Safely parse data with error handling
+    let parsedData = null;
+    if (row.data) {
+      try {
+        parsedData = JSON.parse(row.data);
+      } catch (parseError) {
+        console.error(`Failed to parse ${viewType} data for session ${sessionId}:`, parseError.message);
+        // Return error status so users know something went wrong
+        return {
+          data: null,
+          status: 'error',
+          error_message: 'Data corruption detected. Please regenerate this content.',
+          generated_at: row.generated_at,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at
+        };
+      }
+    }
+
     return {
-      data: row.data ? JSON.parse(row.data) : null,
+      data: parsedData,
       status: row.status,
       error_message: row.error_message,
       generated_at: row.generated_at,
@@ -233,10 +261,25 @@ export const ContentDB = {
 
     const result = {};
     rows.forEach(row => {
+      // Safely parse data with error handling per row
+      let parsedData = null;
+      let status = row.status;
+      let errorMessage = row.error_message;
+
+      if (row.data) {
+        try {
+          parsedData = JSON.parse(row.data);
+        } catch (parseError) {
+          console.error(`Failed to parse ${row.view_type} data for session ${sessionId}:`, parseError.message);
+          status = 'error';
+          errorMessage = 'Data corruption detected. Please regenerate this content.';
+        }
+      }
+
       result[row.view_type] = {
-        data: row.data ? JSON.parse(row.data) : null,
-        status: row.status,
-        error_message: row.error_message,
+        data: parsedData,
+        status,
+        error_message: errorMessage,
         generated_at: row.generated_at,
         createdAt: row.created_at,
         updatedAt: row.updated_at

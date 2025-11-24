@@ -325,10 +325,11 @@ class ContentViewer {
     try {
       markPerformance(`view-${viewName}-start`);
 
-      // Destroy previous view
+      // Destroy previous view and clear reference
       if (this.currentViewComponent && this.currentViewComponent.destroy) {
         this.currentViewComponent.destroy();
       }
+      this.currentViewComponent = null;
 
       // Show loading state
       this._showLoading(viewName);

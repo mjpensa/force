@@ -5,6 +5,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { jsonrepair } from 'jsonrepair';
+import { v4 as uuidv4 } from 'uuid';
 import { ContentDB, JobDB, SessionDB } from './db.js';
 import { generateRoadmapPrompt, roadmapSchema } from './prompts/roadmap.js';
 import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
@@ -261,11 +262,10 @@ export async function regenerateContent(sessionId, viewType) {
       throw new Error('Session not found');
     }
 
-    const { prompt, research_files } = session;
-    const researchFiles = JSON.parse(research_files);
+    // Note: SessionDB.get() already parses researchFiles, so use it directly
+    const { prompt, researchFiles } = session;
 
-    // Create new job
-    const { v4: uuidv4 } = await import('uuid');
+    // Create new job (uuidv4 is imported at module level)
     const jobId = uuidv4();
     JobDB.create(jobId, sessionId, viewType);
 

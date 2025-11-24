@@ -184,8 +184,8 @@ export function logError(error, context = {}) {
   // Add to in-memory log
   errorLog.push(errorEntry);
 
-  // Keep only last 100 errors
-  if (errorLog.length > 100) {
+  // Keep only last 100 errors (remove excess from start)
+  while (errorLog.length > 100) {
     errorLog.shift();
   }
 
@@ -440,7 +440,13 @@ export function showErrorNotification(error, options = {}) {
   const dismissBtn = notification.querySelector('.dismiss-btn');
   const closeBtn = notification.querySelector('.close-btn');
 
+  // Guard against multiple calls to removeNotification
+  let isRemoving = false;
+
   function removeNotification() {
+    if (isRemoving) return; // Prevent multiple calls
+    isRemoving = true;
+
     notification.style.animation = 'slideOutRight 0.3s ease-in';
     setTimeout(() => {
       notification.remove();
