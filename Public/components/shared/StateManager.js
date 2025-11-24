@@ -1,7 +1,10 @@
 /**
  * Centralized state management for the application
  * Provides reactive state updates across all views
+ * Phase 6: Enhanced with error handling and retry logic
  */
+
+import { fetchWithRetry, AppError, ErrorTypes, ErrorSeverity } from './ErrorHandler.js';
 
 export class StateManager {
   constructor() {
@@ -136,6 +139,7 @@ export class StateManager {
 
   /**
    * Load content for a specific view
+   * Enhanced with retry logic and better error handling
    */
   async loadView(viewName) {
     // Check if already loaded
@@ -151,27 +155,69 @@ export class StateManager {
     });
 
     try {
-      const response = await fetch(
-        `/api/content/${this.state.sessionId}/${viewName}`
+      // Use fetchWithRetry for automatic retry on failures
+      const response = await fetchWithRetry(
+        `/api/content/${this.state.sessionId}/${viewName}`,
+        {
+          headers: {
+            'Accept': 'application/json'
+          }
+        }
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to load ${viewName}: ${response.statusText}`);
+        // Determine error type based on status code
+        let errorType = ErrorTypes.API;
+        let severity = ErrorSeverity.MEDIUM;
+
+        if (response.status === 404) {
+          errorType = ErrorTypes.NOT_FOUND;
+        } else if (response.status === 403) {
+          errorType = ErrorTypes.PERMISSION;
+        } else if (response.status >= 500) {
+          severity = ErrorSeverity.HIGH;
+        }
+
+        throw new AppError(
+          `Failed to load ${viewName}: ${response.statusText}`,
+          errorType,
+          severity,
+          { status: response.status, viewName }
+        );
       }
 
       const result = await response.json();
 
       // Check status from Phase 2 API
       if (result.status === 'processing') {
-        throw new Error(`${viewName} is still being generated. Please wait...`);
+        throw new AppError(
+          `${viewName} is still being generated. Please wait...`,
+          ErrorTypes.API,
+          ErrorSeverity.LOW,
+          { viewName, processing: true }
+        );
       }
 
       if (result.status === 'error') {
-        throw new Error(result.error || `Failed to generate ${viewName}`);
+        throw new AppError(
+          result.error || `Failed to generate ${viewName}`,
+          ErrorTypes.API,
+          ErrorSeverity.HIGH,
+          { viewName, apiError: true }
+        );
       }
 
       // Extract data from response
       const data = result.data;
+
+      if (!data) {
+        throw new AppError(
+          `No data received for ${viewName}`,
+          ErrorTypes.API,
+          ErrorSeverity.MEDIUM,
+          { viewName, emptyData: true }
+        );
+      }
 
       // Update state with loaded data
       this.setState({
@@ -179,16 +225,28 @@ export class StateManager {
         loading: { ...this.state.loading, [viewName]: false }
       });
 
+      console.log(`✅ ${viewName} loaded successfully`);
       return data;
+
     } catch (error) {
-      console.error(`Error loading ${viewName}:`, error);
+      console.error(`❌ Error loading ${viewName}:`, error);
+
+      // Convert to AppError if not already
+      const appError = error instanceof AppError
+        ? error
+        : new AppError(
+            error.message || `Failed to load ${viewName}`,
+            ErrorTypes.UNKNOWN,
+            ErrorSeverity.MEDIUM,
+            { viewName, originalError: error }
+          );
 
       this.setState({
         loading: { ...this.state.loading, [viewName]: false },
-        errors: { ...this.state.errors, [viewName]: error.message }
+        errors: { ...this.state.errors, [viewName]: appError.message }
       });
 
-      throw error;
+      throw appError;
     }
   }
 

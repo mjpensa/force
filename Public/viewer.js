@@ -1,17 +1,36 @@
 /**
  * Unified Content Viewer
  * Phase 5: Integrates all three views (Roadmap, Slides, Document)
+ * Phase 6: Enhanced with performance monitoring and lazy loading
  *
  * Handles:
  * - Session loading from URL
  * - View routing (#roadmap, #slides, #document)
  * - State management with StateManager
  * - Component lifecycle
+ * - Performance monitoring
+ * - Lazy loading for optimal performance
  */
 
 import { StateManager } from './components/shared/StateManager.js';
 import { SlidesView } from './components/views/SlidesView.js';
 import { DocumentView } from './components/views/DocumentView.js';
+import { addLazyLoadingStyles, initLazyLoading } from './components/shared/LazyLoader.js';
+import {
+  markPerformance,
+  measurePerformance,
+  logPerformanceMetrics,
+  reportWebVitals
+} from './components/shared/Performance.js';
+import {
+  initAccessibility,
+  announceToScreenReader,
+  addKeyboardShortcuts
+} from './components/shared/Accessibility.js';
+import {
+  showErrorNotification,
+  logError
+} from './components/shared/ErrorHandler.js';
 
 class ContentViewer {
   constructor() {
@@ -31,6 +50,31 @@ class ContentViewer {
    */
   async init() {
     try {
+      markPerformance('viewer-init-start');
+
+      // Add lazy loading styles
+      addLazyLoadingStyles();
+
+      // Initialize accessibility features
+      initAccessibility({
+        skipLink: true,
+        skipLinkTarget: 'main-content',
+        announceRouteChanges: true,
+        validateHeadings: true,
+        validateImages: true,
+        focusManagement: true
+      });
+
+      // Setup keyboard shortcuts
+      this._setupKeyboardShortcuts();
+
+      // Setup Web Vitals monitoring
+      if (window.location.search.includes('debug=true')) {
+        reportWebVitals((vital) => {
+          console.log(`[Web Vitals] ${vital.name}:`, vital.value, `(${vital.rating})`);
+        });
+      }
+
       // Get session ID from URL
       this.sessionId = this._getSessionIdFromURL();
       if (!this.sessionId) {
@@ -49,6 +93,10 @@ class ContentViewer {
 
       // Load initial view
       await this._handleRouteChange();
+
+      markPerformance('viewer-init-end');
+      const initTime = measurePerformance('viewer-initialization', 'viewer-init-start', 'viewer-init-end');
+      console.log(`[Performance] Viewer initialized in ${initTime.toFixed(2)}ms`);
 
     } catch (error) {
       console.error('Viewer initialization error:', error);
@@ -123,6 +171,111 @@ class ContentViewer {
   }
 
   /**
+   * Setup keyboard shortcuts for accessibility
+   */
+  _setupKeyboardShortcuts() {
+    this.removeShortcuts = addKeyboardShortcuts({
+      // Navigate between views
+      '1': () => window.location.hash = 'roadmap',
+      '2': () => window.location.hash = 'slides',
+      '3': () => window.location.hash = 'document',
+
+      // Arrow key navigation
+      'ArrowLeft': () => this._navigateToPreviousView(),
+      'ArrowRight': () => this._navigateToNextView(),
+
+      // Help
+      '?': () => this._showKeyboardShortcutsHelp(),
+
+      // Focus management
+      'Escape': () => {
+        // Close any open modals or dialogs
+        const activeElement = document.activeElement;
+        if (activeElement && activeElement !== document.body) {
+          activeElement.blur();
+        }
+      }
+    });
+  }
+
+  /**
+   * Navigate to previous view
+   * @private
+   */
+  _navigateToPreviousView() {
+    const views = ['roadmap', 'slides', 'document'];
+    const currentIndex = views.indexOf(this.currentView);
+    const previousIndex = (currentIndex - 1 + views.length) % views.length;
+    window.location.hash = views[previousIndex];
+    announceToScreenReader(`Navigated to ${views[previousIndex]} view`);
+  }
+
+  /**
+   * Navigate to next view
+   * @private
+   */
+  _navigateToNextView() {
+    const views = ['roadmap', 'slides', 'document'];
+    const currentIndex = views.indexOf(this.currentView);
+    const nextIndex = (currentIndex + 1) % views.length;
+    window.location.hash = views[nextIndex];
+    announceToScreenReader(`Navigated to ${views[nextIndex]} view`);
+  }
+
+  /**
+   * Show keyboard shortcuts help dialog
+   * @private
+   */
+  _showKeyboardShortcutsHelp() {
+    const helpHtml = `
+      <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px;">
+        <h2 style="margin-top: 0;">Keyboard Shortcuts</h2>
+        <dl style="line-height: 2;">
+          <dt style="font-weight: 600;">1, 2, 3</dt>
+          <dd style="margin-left: 2rem; color: #666;">Navigate to Roadmap, Slides, or Document view</dd>
+
+          <dt style="font-weight: 600;">← →</dt>
+          <dd style="margin-left: 2rem; color: #666;">Navigate between views</dd>
+
+          <dt style="font-weight: 600;">?</dt>
+          <dd style="margin-left: 2rem; color: #666;">Show this help dialog</dd>
+
+          <dt style="font-weight: 600;">Esc</dt>
+          <dd style="margin-left: 2rem; color: #666;">Close dialog or clear focus</dd>
+        </dl>
+        <button onclick="this.closest('.modal-overlay').remove()"
+                style="margin-top: 1.5rem; padding: 0.5rem 1.5rem; background: var(--color-primary); color: white; border: none; border-radius: 4px; cursor: pointer;">
+          Close
+        </button>
+      </div>
+    `;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    `;
+    overlay.innerHTML = helpHtml;
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.remove();
+      }
+    });
+
+    document.body.appendChild(overlay);
+    announceToScreenReader('Keyboard shortcuts dialog opened');
+  }
+
+  /**
    * Handle route changes
    */
   async _handleRouteChange() {
@@ -161,6 +314,8 @@ class ContentViewer {
    */
   async _loadView(viewName) {
     try {
+      markPerformance(`view-${viewName}-start`);
+
       // Destroy previous view
       if (this.currentViewComponent && this.currentViewComponent.destroy) {
         this.currentViewComponent.destroy();
@@ -170,9 +325,13 @@ class ContentViewer {
       this._showLoading(viewName);
 
       // Load view data using StateManager
+      markPerformance(`api-${viewName}-start`);
       let viewData;
       try {
         viewData = await this.stateManager.loadView(viewName);
+        markPerformance(`api-${viewName}-end`);
+        const apiTime = measurePerformance(`api-${viewName}`, `api-${viewName}-start`, `api-${viewName}-end`);
+        console.log(`[Performance] API call for ${viewName}: ${apiTime.toFixed(2)}ms`);
       } catch (error) {
         // Check if it's a "still processing" error
         if (error.message.includes('processing')) {
@@ -183,6 +342,7 @@ class ContentViewer {
       }
 
       // Render the appropriate view
+      markPerformance(`render-${viewName}-start`);
       switch (viewName) {
         case 'slides':
           await this._renderSlidesView(viewData);
@@ -195,11 +355,31 @@ class ContentViewer {
           await this._renderRoadmapView(viewData);
           break;
       }
+      markPerformance(`render-${viewName}-end`);
+      const renderTime = measurePerformance(`render-${viewName}`, `render-${viewName}-start`, `render-${viewName}-end`);
+      console.log(`[Performance] Render ${viewName}: ${renderTime.toFixed(2)}ms`);
 
       this.currentView = viewName;
 
+      markPerformance(`view-${viewName}-end`);
+      const totalTime = measurePerformance(`view-${viewName}-total`, `view-${viewName}-start`, `view-${viewName}-end`);
+      console.log(`[Performance] Total ${viewName} load: ${totalTime.toFixed(2)}ms`);
+
+      // Initialize lazy loading for any images in the view
+      setTimeout(() => {
+        initLazyLoading('img[data-src]');
+      }, 0);
+
     } catch (error) {
       console.error(`Error loading ${viewName}:`, error);
+      logError(error, { component: 'ContentViewer', action: 'loadView', viewName });
+
+      // Show user-friendly error notification with retry option
+      showErrorNotification(error, {
+        onRetry: () => this._loadView(viewName),
+        dismissible: true
+      });
+
       this._showError(`Failed to load ${viewName}`, error.message);
     }
   }
