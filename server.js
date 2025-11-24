@@ -40,7 +40,6 @@ import { startCleanupInterval } from './server/storage.js';
 // Import routes
 import chartRoutes from './server/routes/charts.js';
 import analysisRoutes from './server/routes/analysis.js';
-import analyticsRoutes from './server/routes/analytics.js';
 
 // --- Server Setup ---
 const app = express();
@@ -86,7 +85,6 @@ app.use(configureTimeout);
 // Mount routes without global upload middleware (upload middleware is applied per-route where needed)
 app.use('/', chartRoutes);
 app.use('/', analysisRoutes);
-app.use('/', analyticsRoutes);
 
 // --- Error Handling ---
 app.use(handleUploadErrors);

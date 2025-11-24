@@ -61,22 +61,7 @@ You MUST respond with *only* a valid JSON object matching the schema.
       * If task title contains words like "Launch", "Complete", "Go Live", "Delivery", "Milestone" → taskType should be "milestone"
       * Otherwise → taskType should be "task"
     - **IMPORTANT:** Executive View will only show tasks where taskType is "milestone" or "decision"
-7.  **CRITICAL PATH (ADVANCED GANTT ENHANCEMENT):** For each task, determine if it's on the critical path:
-    - Set 'isCriticalPath' to true if the task meets BOTH criteria:
-      * The task is time-sensitive (delays would push the final project deadline)
-      * The task has no schedule slack (no buffer time, must start/end on specific dates)
-    - Use this logic to identify critical path tasks:
-      * Tasks explicitly mentioned as "critical" or "blocking" in research
-      * Tasks with strict deadlines
-      * Tasks that other tasks depend on (predecessors to multiple tasks)
-      * Tasks on the longest sequence of dependent activities
-    - Set 'isCriticalPath' to false for tasks with:
-      * Schedule flexibility or slack time
-      * Can be delayed without affecting project completion
-      * Parallel tasks that aren't blocking
-    - If research mentions "critical path" explicitly, prioritize those tasks
-    - **IMPORTANT:** Typically 20-40% of tasks are on critical path (not all tasks!)
-9.  **SANITIZATION:** All string values MUST be valid JSON strings. You MUST properly escape any characters that would break JSON, such as double quotes (\") and newlines (\\n), within the string value itself.`;
+7.  **SANITIZATION:** All string values MUST be valid JSON strings. You MUST properly escape any characters that would break JSON, such as double quotes (\") and newlines (\\n), within the string value itself.`;
 
 /**
  * Task Analysis System Prompt
@@ -109,7 +94,6 @@ You MUST respond with *only* a valid JSON object matching the 'analysisSchema'.
     - 'rationale': Explain the timing drivers (market events, predecessor completions, resource availability, etc.)
     - 'predecessors': List tasks that must complete before this task can start (extract from research or infer from timeline)
     - 'successors': List tasks that depend on this task's completion (extract from research or infer from timeline)
-    - 'isCriticalPath': Determine if this task is on the critical path (true if delays would push the final deadline)
     - 'slackDays': Estimate schedule slack/float in days (how much delay is tolerable), or null if unknown
 
 7.  **TIMELINE SCENARIOS:** Provide three timeline estimates based on research:
@@ -450,13 +434,9 @@ export const GANTT_CHART_SCHEMA = {
             type: "string",
             enum: ["milestone", "decision", "task"],
             description: "Task classification for Executive View filtering"
-          },
-          isCriticalPath: {
-            type: "boolean",
-            description: "Whether this task is on the critical path (delays would push final deadline)"
           }
         },
-        required: ["title", "isSwimlane", "entity", "taskType", "isCriticalPath"]
+        required: ["title", "isSwimlane", "entity", "taskType"]
       }
     },
     legend: {
@@ -517,7 +497,6 @@ export const TASK_ANALYSIS_SCHEMA = {
         rationale: { type: "string" },
         predecessors: { type: "array", items: { type: "string" } },
         successors: { type: "array", items: { type: "string" } },
-        isCriticalPath: { type: "boolean" },
         slackDays: { type: "number" }
       }
     },

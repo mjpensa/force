@@ -432,17 +432,6 @@ export function buildSchedulingContext(schedulingContext) {
     `;
   }
 
-  if (schedulingContext.isCriticalPath !== undefined) {
-    const criticalPathIcon = schedulingContext.isCriticalPath ? '✅' : '❌';
-    contentHTML += `
-      <p class="scheduling-item">
-        <strong>Critical Path:</strong>
-        ${criticalPathIcon} ${schedulingContext.isCriticalPath ? 'Yes' : 'No'}
-        ${schedulingContext.isCriticalPath ? '- Any delay impacts final deadline' : '- Has schedule flexibility'}
-      </p>
-    `;
-  }
-
   if (schedulingContext.slackDays !== undefined && schedulingContext.slackDays !== null) {
     contentHTML += `
       <p class="scheduling-item">
@@ -1939,46 +1928,5 @@ export async function measureAsync(label, fn) {
   } catch (error) {
     timer.end();
     throw error;
-  }
-}
-
-/**
- * ANALYTICS TRACKING
- * FEATURE #9: Track user events for analytics and ROI demonstration
- */
-
-/**
- * Tracks an analytics event by sending it to the backend
- * @param {string} eventType - Type of event (export_png, feature_critical_path, etc.)
- * @param {Object} eventData - Additional event data
- * @param {string|null} chartId - Optional chart ID
- * @param {string|null} sessionId - Optional session ID
- * @returns {Promise<void>}
- */
-export async function trackEvent(eventType, eventData = {}, chartId = null, sessionId = null) {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentChartId = chartId || urlParams.get('id');
-    const currentSessionId = sessionId || sessionStorage.getItem('sessionId');
-
-    const response = await fetch('/track-event', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        eventType,
-        eventData,
-        chartId: currentChartId,
-        sessionId: currentSessionId
-      })
-    });
-
-    if (!response.ok) {
-      console.warn(`Analytics tracking failed: ${response.statusText}`);
-    }
-  } catch (error) {
-    // Silently fail - analytics should not break user experience
-    console.warn('Analytics tracking error:', error.message);
   }
 }
