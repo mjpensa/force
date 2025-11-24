@@ -140,6 +140,8 @@ router.get('/:sessionId/:viewType', async (req, res) => {
   try {
     const { sessionId, viewType } = req.params;
 
+    console.log(`[Content GET] Request for sessionId: ${sessionId}, viewType: ${viewType}`);
+
     // Validate view type
     const validViewTypes = ['roadmap', 'slides', 'document'];
     if (!validViewTypes.includes(viewType)) {
@@ -177,38 +179,53 @@ router.get('/:sessionId/:viewType', async (req, res) => {
     // Check if session exists in Phase 2 database
     const session = SessionDB.get(sessionId);
     if (!session) {
+      console.log(`[Content GET] Session not found: ${sessionId}`);
       return res.status(404).json({
         error: 'Session not found',
         sessionId
       });
     }
 
+    console.log(`[Content GET] Session found with status: ${session.status}`);
+
     // Get content for this view
     const content = ContentDB.get(sessionId, viewType);
 
     if (!content) {
+      console.log(`[Content GET] Content not yet generated, checking job status...`);
       // Content not yet generated - check job status
       const jobs = JobDB.getBySession(sessionId);
-      const job = jobs.find(j => j.content_type === viewType);
+      console.log(`[Content GET] Found ${jobs.length} jobs for session`);
+      console.log(`[Content GET] Jobs:`, jobs.map(j => ({ contentType: j.contentType, status: j.status })));
+
+      const job = jobs.find(j => j.contentType === viewType);
 
       if (!job) {
+        console.error(`[Content GET] ERROR: No job found for viewType: ${viewType}`);
+        console.error(`[Content GET] Available contentTypes:`, jobs.map(j => j.contentType));
         return res.status(404).json({
           error: 'No generation job found for this view',
           sessionId,
-          viewType
+          viewType,
+          debug: {
+            availableJobs: jobs.map(j => j.contentType),
+            requestedViewType: viewType
+          }
         });
       }
 
+      console.log(`[Content GET] Job found with status: ${job.status}`);
       return res.json({
         sessionId,
         viewType,
         status: job.status,
         data: null,
-        error: job.error_message
+        error: job.errorMessage
       });
     }
 
     // Content exists - return it
+    console.log(`[Content GET] Content exists with status: ${content.status}`);
     res.json({
       sessionId,
       viewType,
@@ -276,9 +293,9 @@ router.get('/:sessionId', async (req, res) => {
           error: roadmap.error_message,
           generatedAt: roadmap.generated_at
         } : {
-          status: jobs.find(j => j.content_type === 'roadmap')?.status || 'pending',
+          status: jobs.find(j => j.contentType === 'roadmap')?.status || 'pending',
           data: null,
-          error: jobs.find(j => j.content_type === 'roadmap')?.error_message || null
+          error: jobs.find(j => j.contentType === 'roadmap')?.errorMessage || null
         },
         slides: slides ? {
           status: slides.status,
@@ -286,9 +303,9 @@ router.get('/:sessionId', async (req, res) => {
           error: slides.error_message,
           generatedAt: slides.generated_at
         } : {
-          status: jobs.find(j => j.content_type === 'slides')?.status || 'pending',
+          status: jobs.find(j => j.contentType === 'slides')?.status || 'pending',
           data: null,
-          error: jobs.find(j => j.content_type === 'slides')?.error_message || null
+          error: jobs.find(j => j.contentType === 'slides')?.errorMessage || null
         },
         document: document ? {
           status: document.status,
@@ -296,9 +313,9 @@ router.get('/:sessionId', async (req, res) => {
           error: document.error_message,
           generatedAt: document.generated_at
         } : {
-          status: jobs.find(j => j.content_type === 'document')?.status || 'pending',
+          status: jobs.find(j => j.contentType === 'document')?.status || 'pending',
           data: null,
-          error: jobs.find(j => j.content_type === 'document')?.error_message || null
+          error: jobs.find(j => j.contentType === 'document')?.errorMessage || null
         }
       }
     };
