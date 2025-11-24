@@ -189,7 +189,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
     if (!content) {
       // Content not yet generated - check job status
       const jobs = JobDB.getBySession(sessionId);
-      const job = jobs.find(j => j.content_type === viewType);
+      const job = jobs.find(j => j.contentType === viewType);
 
       if (!job) {
         return res.status(404).json({
@@ -204,7 +204,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
         viewType,
         status: job.status,
         data: null,
-        error: job.error_message
+        error: job.errorMessage
       });
     }
 
@@ -276,9 +276,9 @@ router.get('/:sessionId', async (req, res) => {
           error: roadmap.error_message,
           generatedAt: roadmap.generated_at
         } : {
-          status: jobs.find(j => j.content_type === 'roadmap')?.status || 'pending',
+          status: jobs.find(j => j.contentType === 'roadmap')?.status || 'pending',
           data: null,
-          error: jobs.find(j => j.content_type === 'roadmap')?.error_message || null
+          error: jobs.find(j => j.contentType === 'roadmap')?.errorMessage || null
         },
         slides: slides ? {
           status: slides.status,
@@ -286,9 +286,9 @@ router.get('/:sessionId', async (req, res) => {
           error: slides.error_message,
           generatedAt: slides.generated_at
         } : {
-          status: jobs.find(j => j.content_type === 'slides')?.status || 'pending',
+          status: jobs.find(j => j.contentType === 'slides')?.status || 'pending',
           data: null,
-          error: jobs.find(j => j.content_type === 'slides')?.error_message || null
+          error: jobs.find(j => j.contentType === 'slides')?.errorMessage || null
         },
         document: document ? {
           status: document.status,
@@ -296,9 +296,9 @@ router.get('/:sessionId', async (req, res) => {
           error: document.error_message,
           generatedAt: document.generated_at
         } : {
-          status: jobs.find(j => j.content_type === 'document')?.status || 'pending',
+          status: jobs.find(j => j.contentType === 'document')?.status || 'pending',
           data: null,
-          error: jobs.find(j => j.content_type === 'document')?.error_message || null
+          error: jobs.find(j => j.contentType === 'document')?.errorMessage || null
         }
       }
     };
