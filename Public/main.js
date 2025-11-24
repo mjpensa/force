@@ -358,7 +358,12 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const err = await response.json();
-            errorText = err.error || errorText;
+            // Use detailed message if available, otherwise fall back to error field
+            errorText = err.message || err.error || errorText;
+            // Log hint for debugging if present
+            if (err.hint) {
+              console.warn('Server hint:', err.hint);
+            }
           } else {
             const text = await response.text();
             errorText = text.substring(0, 200) || errorText;

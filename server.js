@@ -38,7 +38,7 @@ import {
 import { startCleanupInterval } from './server/storage.js';
 
 // Import database (Phase 2)
-import { initializeDatabase } from './server/db.js';
+import { initializeDatabase, getDatabaseInfo } from './server/db.js';
 
 // Import routes
 import chartRoutes from './server/routes/charts.js';
@@ -85,6 +85,23 @@ app.use(express.static(join(__dirname, 'Public')));
 // Request timeout
 app.use(configureTimeout);
 
+// --- Health Check Endpoint ---
+// Useful for diagnosing server restarts
+let serverStartTime = null;
+app.get('/api/health', (req, res) => {
+  const dbInfo = getDatabaseInfo();
+  res.json({
+    status: 'healthy',
+    startedAt: serverStartTime,
+    uptime: serverStartTime ? Math.floor((Date.now() - new Date(serverStartTime).getTime()) / 1000) : 0,
+    database: {
+      isEmpty: dbInfo.isEmpty,
+      sessions: dbInfo.sessions,
+      content: dbInfo.content
+    }
+  });
+});
+
 // --- Mount Routes ---
 // Mount routes without global upload middleware (upload middleware is applied per-route where needed)
 app.use('/', chartRoutes);
@@ -130,14 +147,25 @@ process.on('SIGINT', () => {
 console.log('📦 Initializing SQLite database...');
 initializeDatabase();
 
+// Log database state to help diagnose restart issues
+const dbInfo = getDatabaseInfo();
+if (dbInfo.isEmpty) {
+  console.log('⚠️  Database is empty (fresh start or data loss after restart)');
+} else {
+  console.log(`📊 Database has existing data: ${dbInfo.sessions} sessions, ${dbInfo.content} content records`);
+}
+console.log(`💾 Database path: ${dbInfo.path}`);
+
 // --- Start Storage Cleanup ---
 startCleanupInterval();
 
 // --- Start Server ---
+serverStartTime = new Date().toISOString();
 app.listen(port, () => {
   console.log('🚀 AI Roadmap Generator Server');
   console.log(`📊 Server running at http://localhost:${port}`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`⏰ Server started at: ${serverStartTime}`);
   console.log('✅ All modules loaded successfully');
   console.log('💾 SQLite database ready');
   console.log('🔄 Unified content generation enabled');

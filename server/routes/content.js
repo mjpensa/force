@@ -180,9 +180,12 @@ router.get('/:sessionId/:viewType', async (req, res) => {
     const session = SessionDB.get(sessionId);
     if (!session) {
       console.log(`[Content GET] Session not found: ${sessionId}`);
+      // Provide a more helpful error message that explains potential causes
       return res.status(404).json({
         error: 'Session not found',
-        sessionId
+        message: 'This session may have been lost due to a server restart. Please try generating again.',
+        sessionId,
+        hint: 'If this error persists, check that your deployment platform has persistent storage configured for the data directory.'
       });
     }
 

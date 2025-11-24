@@ -69,8 +69,13 @@ async function generateRoadmap(sessionId, jobId, userPrompt, researchFiles) {
 
   } catch (error) {
     console.error('[Roadmap] Generation failed:', error);
-    JobDB.updateStatus(jobId, 'error', error.message);
-    ContentDB.create(sessionId, 'roadmap', null, error.message);
+    // Wrap database operations in try-catch to prevent cascade failures
+    try {
+      JobDB.updateStatus(jobId, 'error', error.message);
+      ContentDB.create(sessionId, 'roadmap', null, error.message);
+    } catch (dbError) {
+      console.error('[Roadmap] Failed to update error status in database:', dbError);
+    }
     return { success: false, error: error.message };
   }
 }
@@ -99,8 +104,13 @@ async function generateSlides(sessionId, jobId, userPrompt, researchFiles) {
 
   } catch (error) {
     console.error('[Slides] Generation failed:', error);
-    JobDB.updateStatus(jobId, 'error', error.message);
-    ContentDB.create(sessionId, 'slides', null, error.message);
+    // Wrap database operations in try-catch to prevent cascade failures
+    try {
+      JobDB.updateStatus(jobId, 'error', error.message);
+      ContentDB.create(sessionId, 'slides', null, error.message);
+    } catch (dbError) {
+      console.error('[Slides] Failed to update error status in database:', dbError);
+    }
     return { success: false, error: error.message };
   }
 }
@@ -129,8 +139,13 @@ async function generateDocument(sessionId, jobId, userPrompt, researchFiles) {
 
   } catch (error) {
     console.error('[Document] Generation failed:', error);
-    JobDB.updateStatus(jobId, 'error', error.message);
-    ContentDB.create(sessionId, 'document', null, error.message);
+    // Wrap database operations in try-catch to prevent cascade failures
+    try {
+      JobDB.updateStatus(jobId, 'error', error.message);
+      ContentDB.create(sessionId, 'document', null, error.message);
+    } catch (dbError) {
+      console.error('[Document] Failed to update error status in database:', dbError);
+    }
     return { success: false, error: error.message };
   }
 }
@@ -147,8 +162,13 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
   try {
     console.log(`[Session ${sessionId}] Starting parallel generation of all content types`);
 
-    // Update session status
-    SessionDB.updateStatus(sessionId, 'processing');
+    // Update session status - wrapped in try-catch to prevent early failures
+    try {
+      SessionDB.updateStatus(sessionId, 'processing');
+    } catch (dbError) {
+      console.error(`[Session ${sessionId}] Failed to update initial status:`, dbError);
+      // Continue anyway - the session was already created
+    }
 
     // Generate all three in parallel
     const results = await Promise.allSettled([
@@ -163,16 +183,20 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
     const allSuccessful = results.every(r => r.status === 'fulfilled' && r.value.success);
     const anySuccessful = results.some(r => r.status === 'fulfilled' && r.value.success);
 
-    // Update session status based on results
-    if (allSuccessful) {
-      SessionDB.updateStatus(sessionId, 'completed');
-      console.log(`[Session ${sessionId}] All content generated successfully`);
-    } else if (anySuccessful) {
-      SessionDB.updateStatus(sessionId, 'partial');
-      console.log(`[Session ${sessionId}] Some content generated, some failed`);
-    } else {
-      SessionDB.updateStatus(sessionId, 'error', 'All content generation failed');
-      console.log(`[Session ${sessionId}] All content generation failed`);
+    // Update session status based on results - wrapped in try-catch
+    try {
+      if (allSuccessful) {
+        SessionDB.updateStatus(sessionId, 'completed');
+        console.log(`[Session ${sessionId}] All content generated successfully`);
+      } else if (anySuccessful) {
+        SessionDB.updateStatus(sessionId, 'partial');
+        console.log(`[Session ${sessionId}] Some content generated, some failed`);
+      } else {
+        SessionDB.updateStatus(sessionId, 'error', 'All content generation failed');
+        console.log(`[Session ${sessionId}] All content generation failed`);
+      }
+    } catch (dbError) {
+      console.error(`[Session ${sessionId}] Failed to update final status:`, dbError);
     }
 
     return {
@@ -184,7 +208,11 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
 
   } catch (error) {
     console.error(`[Session ${sessionId}] Fatal error in parallel generation:`, error);
-    SessionDB.updateStatus(sessionId, 'error', error.message);
+    try {
+      SessionDB.updateStatus(sessionId, 'error', error.message);
+    } catch (dbError) {
+      console.error(`[Session ${sessionId}] Failed to update error status:`, dbError);
+    }
     throw error;
   }
 }
