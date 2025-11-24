@@ -80,327 +80,43 @@ You MUST respond with *only* a valid JSON object matching the schema.
 
 /**
  * Task Analysis System Prompt
+ * Simplified to match the reduced schema complexity
  */
-export const TASK_ANALYSIS_SYSTEM_PROMPT = `You are a senior project management analyst. Your job is to analyze the provided research and a user prompt to build a detailed analysis for *one single task*.
+export const TASK_ANALYSIS_SYSTEM_PROMPT = `You are a senior project management analyst analyzing a specific task from research documents.
 
-The 'Research Content' may contain raw HTML (from .docx files) and Markdown (from .md files). You MUST parse these.
+Respond with ONLY a valid JSON object matching the schema. Keep your analysis concise and factual.
 
-You MUST respond with *only* a valid JSON object matching the 'analysisSchema'.
+**REQUIRED FIELDS:**
+- taskName: The task name
+- startDate: Start date if found (or "Unknown")
+- endDate: End date if found (or "Unknown")
+- status: "completed", "in-progress", or "not-started"
+- rationale: Brief analysis of timeline likelihood (2-3 sentences)
+- summary: Concise task summary (2-3 sentences)
 
-**CRITICAL RULES FOR ANALYSIS:**
-1.  **NO INFERENCE:** For 'taskName', 'facts', and 'assumptions', you MUST use key phrases and data extracted *directly* from the provided text.
-2.  **CITE SOURCES & URLS (HIERARCHY):** You MUST find a source and a URL (if possible) for every 'fact' and 'assumption'. Follow this logic:
-    a.  **PRIORITY 1 (HTML Link):** Search for an HTML \`<a>\` tag near the fact.
-        - 'source': The text inside the tag (e.g., "example.com").
-        - 'url': The \`href\` attribute (e.g., "https://example.com/article/nine").
-    b.  **PRIORITY 2 (Markdown Link):** Search for a Markdown link \`[text](url)\` near the fact.
-        - 'source': The \`text\` part.
-        - 'url': The \`url\` part.
-    c.  **PRIORITY 3 (Fallback):** If no link is found, use the filename as the 'source'.
-        - 'source': The filename (e.g., "FileA.docx") from the \`--- Start of file: ... ---\` wrapper.
-        - 'url': You MUST set this to \`null\`.
-3.  **DETERMINE STATUS:** Determine the task's 'status' ("completed", "in-progress", or "not-started") based on the current date (assume "November 2025") and the task's dates.
-4.  **PROVIDE RATIONALE:** You MUST provide a 'rationale' for 'in-progress' and 'not-started' tasks, analyzing the likelihood of on-time completion based on the 'facts' and 'assumptions'.
-5.  **CLEAN STRINGS:** All string values MUST be valid JSON strings. You MUST properly escape any characters that would break JSON, such as double quotes (\") and newlines (\\n).
+**OPTIONAL FIELDS (provide if data available):**
+- factsText: Key facts from research, formatted as a bulleted list
+- assumptionsText: Key assumptions, formatted as a bulleted list
+- expectedDate: Expected completion date
+- bestCaseDate: Optimistic completion date
+- worstCaseDate: Pessimistic completion date
+- risksText: Top 3-5 risks, formatted as a bulleted list
+- businessImpact: Business consequences of delay (1-2 sentences)
+- strategicImpact: Strategic implications (1-2 sentences)
+- percentComplete: Completion percentage (0-100) for in-progress tasks
+- velocity: "on-track", "behind", or "ahead" for in-progress tasks
+- totalCost: Total project cost estimate
+- totalBenefit: Total annual benefit estimate
+- roiSummary: ROI summary (payback period, first year ROI)
+- stakeholderSummary: Key stakeholders and change management notes (2-3 sentences)
+- changeReadiness: Organizational readiness assessment (1-2 sentences)
+- keyMetrics: Top 3-5 success metrics, formatted as a bulleted list
 
-**PHASE 1 ENHANCEMENT REQUIREMENTS:**
-
-6.  **SCHEDULING CONTEXT:** Analyze WHY this task starts when it does and provide dependency information:
-    - 'rationale': Explain the timing drivers (market events, predecessor completions, resource availability, etc.)
-    - 'predecessors': List tasks that must complete before this task can start (extract from research or infer from timeline)
-    - 'successors': List tasks that depend on this task's completion (extract from research or infer from timeline)
-    - 'isCriticalPath': Determine if this task is on the critical path (true if delays would push the final deadline)
-    - 'slackDays': Estimate schedule slack/float in days (how much delay is tolerable), or null if unknown
-
-7.  **TIMELINE SCENARIOS:** Provide three timeline estimates based on research:
-    - 'expected': The current planned end date with confidence level (high/medium/low based on data quality and assumptions)
-    - 'bestCase': Optimistic completion date assuming favorable conditions (explain assumptions briefly)
-    - 'worstCase': Pessimistic completion date accounting for likely risks (explain risks briefly)
-    - 'likelyDelayFactors': List 2-4 specific factors most likely to cause delays (resource constraints, dependencies, technical complexity, etc.)
-
-8.  **RISK ANALYSIS:** Identify 2-5 specific risks or roadblocks:
-    - 'name': Brief risk description (e.g., "Approval delays", "Technical complexity")
-    - 'severity': Impact level - "high" (project-critical), "medium" (significant impact), or "low" (minor impact)
-    - 'likelihood': Probability - "probable" (>60%), "possible" (30-60%), or "unlikely" (<30%)
-    - 'impact': Describe what happens if this risk occurs (timeline, cost, scope, quality impact)
-    - 'mitigation': Suggest concrete actions to reduce or avoid the risk
-
-9.  **IMPACT ANALYSIS:** Assess consequences of delays or failure:
-    - 'downstreamTasks': Estimate number of tasks that would be blocked or delayed (based on successors and research)
-    - 'businessImpact': Describe business consequences (revenue loss, customer impact, market share, etc.)
-    - 'strategicImpact': Describe effect on strategic goals, company roadmap, competitive position, etc.
-    - 'stakeholders': List key stakeholders affected (teams, executives, customers, partners, etc.)
-
-**PHASE 2 ENHANCEMENT REQUIREMENTS:**
-
-10. **PROGRESS TRACKING:** For in-progress tasks ONLY, provide detailed progress information:
-    - 'percentComplete': Estimate completion percentage (0-100%) based on milestones achieved, time elapsed, and remaining work
-    - 'milestones': List 3-6 key checkpoints with:
-      * 'name': Milestone description
-      * 'completed': true if achieved, false if pending
-      * 'date': Target or actual completion date
-    - 'velocity': Assess current progress - "on-track" (meeting timeline), "behind" (delayed), or "ahead" (early)
-    - 'activeBlockers': List current active issues blocking progress (empty array if none)
-
-11. **ACCELERATORS:** Identify factors that could speed up completion or ensure success:
-    - 'externalDrivers': Market pressures, competitive threats, customer demand (2-4 items)
-    - 'internalIncentives': Team bonuses, executive sponsorship, strategic priorities, budget allocations (2-3 items)
-    - 'efficiencyOpportunities': Parallel workstreams, automation, additional resources, process improvements (2-4 items)
-    - 'successFactors': Critical conditions that must be maintained for on-time delivery (2-4 items)
-
-**PHASE 3 ENHANCEMENT REQUIREMENTS:**
-
-12. **CONFIDENCE ASSESSMENT:** Evaluate the reliability of the analysis:
-    - 'level': Overall confidence level in the analysis - "high" (strong evidence, few assumptions), "medium" (moderate evidence, some assumptions), or "low" (limited evidence, many assumptions)
-    - 'dataQuality': Quality of available research data - "complete" (comprehensive research coverage), "partial" (some gaps in data), or "limited" (minimal research available)
-    - 'assumptionCount': Count the total number of assumptions made in the analysis (from assumptions array)
-    - 'rationale': Brief explanation of confidence level (1-2 sentences explaining why confidence is high/medium/low)
-
-**BANKING ENHANCEMENT - FINANCIAL IMPACT ANALYSIS:**
-
-13. **FINANCIAL IMPACT ANALYSIS (BANKING CRITICAL):**
-    Analyze the research documents for financial information and calculate ROI metrics:
-
-    - **COSTS**: Extract or estimate cost information:
-      * 'laborCosts': FTE counts × duration × average salary (use "$250K fully-loaded per banking FTE" if not specified)
-      * 'technologyCosts': Infrastructure, licenses, cloud costs
-      * 'vendorCosts': Consulting fees, third-party services
-      * 'totalCost': Sum of all costs
-      Example format: "$1.2M - 8 FTE × 6 months @ $250K fully-loaded"
-
-    - **BENEFITS**: Identify and quantify benefits from research:
-      * 'revenueIncrease': New customers, faster processing, upsell opportunities
-      * 'costSavings': Automation savings, headcount reduction, efficiency gains
-      * 'riskReduction': Compliance improvements, fraud prevention, error reduction
-      * 'totalAnnualBenefit': Sum of annual benefits
-      Example format: "$4.2M annually - 2,000 new accounts @ $2,100 annual value"
-
-    - **ROI METRICS**: Calculate financial performance indicators:
-      * 'paybackPeriod': Total Investment ÷ Annual Benefit (in months)
-      * 'firstYearROI': ((Annual Benefit - Total Cost) ÷ Total Cost) × 100 (as percentage)
-      * 'threeYearNPV': Sum of discounted cash flows using 8% discount rate (standard for banking)
-      * 'confidenceLevel': "high" (strong financial data), "medium" (some estimates), "low" (many assumptions)
-      Example: "paybackPeriod": "4.3 months", "firstYearROI": "277%", "threeYearNPV": "$16.4M at 8% discount"
-
-    - **ESTIMATION GUIDELINES**: If specific financial numbers aren't in research, provide reasonable estimates:
-      * Banking FTE fully-loaded cost: $200K-$300K
-      * Typical digital banking project: 6-12 FTE for 6-12 months
-      * Technology costs: $300K-$800K for cloud platforms
-      * Clearly note all assumptions with disclaimer: "Estimated based on industry benchmarks"
-
-    - **CRITICAL**: Always populate financial impact when possible. Executives make decisions based on ROI.
-      If insufficient data, estimate conservatively and mark as "low" confidence.
-
-  **BANKING ENHANCEMENT - STAKEHOLDER & CHANGE MANAGEMENT ANALYSIS:**
-    Generate a comprehensive stakeholder analysis in the "stakeholderImpact" field. This is CRITICAL for banking executives to understand organizational readiness and change management requirements.
-
-    - **customerExperience**: Analyze how this task impacts end customers
-      * currentState: Describe current customer experience pain points (e.g., "Manual loan applications taking 3-5 days")
-      * futureState: Describe improved experience after change (e.g., "Instant pre-qualification with 15-minute applications")
-      * primaryBenefits: 3-5 concrete customer benefits (faster service, lower fees, better rates, convenience)
-      * potentialConcerns: 2-4 realistic customer concerns (privacy, learning curve, trust in automation)
-      * communicationStrategy: How to message this change to customers (town halls, FAQ, pilot program)
-
-    - **internalStakeholders**: Identify 4-6 key employee groups affected by this task
-      For each group (loan officers, IT staff, compliance team, branch managers, call center reps, etc.):
-      * group: Role/department name
-      * size: Approximate headcount ("~25 loan officers", "5-person IT team")
-      * currentRole: What they do today
-      * futureRole: How their job changes
-      * impactLevel: "high" (job fundamentally changes), "medium" (significant new tools/processes), "low" (minor adjustments)
-      * concerns: 2-3 realistic concerns (job security, skill gaps, workload, resistance to change)
-      * trainingNeeds: Specific training required ("2-day platform certification", "ongoing AI oversight training")
-      * championOpportunity: true if this group could become change advocates (early adopters, tech-savvy, high influence)
-
-    - **executiveAlignment**: Map C-suite support for this initiative
-      * sponsor: Primary executive sponsor (CEO, CTO, COO) with brief reason
-      * supporters: 1-3 executives likely to support (with reasons: aligns with their goals, proven ROI, competitive pressure)
-      * neutrals: 1-2 executives on the fence (reasons: other priorities, need more data, budget concerns)
-      * resistors: 1-2 potential resistors (reasons: risk aversion, past failed projects, turf protection)
-      * alignmentStrategy: 2-3 tactics to build consensus (steering committee, phased approach, quick wins, data-driven updates)
-
-    - **changeReadiness**: Assess organizational readiness for this change (0-100 score)
-      * score: Overall readiness score (0-100)
-        - 0-30: High resistance, major cultural barriers
-        - 31-60: Moderate readiness, need significant change management
-        - 61-85: Good readiness, some friction expected
-        - 86-100: Excellent readiness, change champions in place
-      * culturalFit: How well this aligns with bank culture ("Conservative, risk-averse culture may resist rapid AI adoption")
-      * historicalChangeSuccess: Track record with similar changes ("Successfully migrated to cloud in 2023, but mobile banking rollout had delays")
-      * leadershipSupport: Strength of leadership commitment ("CEO publicly committed, but middle management skeptical")
-      * resourceAvailability: Do they have bandwidth? ("IT team already at capacity with compliance projects")
-
-    - **resistanceRisks**: Identify 3-5 specific resistance scenarios with mitigation plans
-      For each risk:
-      * risk: Specific resistance scenario (e.g., "Loan officers fear AI will replace them, leading to passive resistance")
-      * probability: "high" (>60% chance), "medium" (30-60%), "low" (<30%)
-      * impact: "critical" (could derail project), "major" (significant delays/cost), "moderate" (manageable setback)
-      * mitigation: Concrete action plan (e.g., "Position AI as assistant, not replacement. Show case studies of productivity gains without headcount cuts. Involve loan officers in pilot design.")
-      * earlyWarnings: 2-3 signs this is happening ("Low pilot participation", "Negative sentiment in surveys", "Key influencers spreading FUD")
-
-    - **ESTIMATION GUIDELINES for stakeholder analysis**:
-      * If research lacks specifics, use realistic banking industry assumptions
-      * Typical banking org: 200-5000 employees, with 5-15 executives
-      * Change readiness for traditional banks: typically 40-65 (moderate)
-      * Change readiness for digital-first banks: typically 70-85 (good)
-      * Common stakeholder groups: Branch staff, loan officers, IT, compliance, risk, operations, call center, marketing
-      * Always include at least one resistance risk - no major change happens without resistance
-
-    - **CRITICAL**: Stakeholder analysis should feel realistic and actionable. Avoid generic change management platitudes.
-      Focus on banking-specific concerns (customer trust, employee skill gaps, technology debt).
-      Executives need this to anticipate resistance and plan proactive interventions.
-
-  **BANKING ENHANCEMENT - DATA MIGRATION & ANALYTICS STRATEGY:**
-    Generate a comprehensive data migration and analytics strategy in the "dataMigrationStrategy" field. This is CRITICAL for banking executives to understand data complexity and analytics maturity progression.
-
-    - **migrationComplexity**: Assess the data migration challenge
-      * complexityLevel: "low" (single system, <100K records), "medium" (2-3 systems, 100K-1M records), "high" (4-6 systems, 1M-10M records), "critical" (7+ systems, >10M records, legacy mainframes)
-      * volumeEstimate: Specific numbers (e.g., "2.4M customer records, 15M transactions, 450GB total")
-      * systemsInvolved: Array of source systems (e.g., ["Core Banking (Fiserv)", "CRM (Salesforce)", "Loan Origination (Encompass)", "Legacy Mainframe (COBOL)"])
-      * estimatedDuration: Realistic timeline (e.g., "6-9 months including parallel run")
-      * technicalChallenges: 3-5 specific issues (e.g., "COBOL mainframe data extraction", "Real-time sync during cutover", "Customer SSN encryption migration", "Deduplication of 15% duplicate records")
-
-    - **dataQuality**: Current state and improvement plan
-      * currentQualityScore: 0-100 scale (banking typical: 55-75)
-      * qualityIssues: Array of 3-6 specific issues with severity and remediation
-        - Issue examples: "Address standardization (23% non-standard formats)", "Missing email addresses (42% of customers)", "Duplicate customer records (15% duplication rate)"
-        - Severity: "critical" (blocks launch), "high" (major risk), "medium" (acceptable workaround), "low" (post-launch cleanup)
-        - Remediation: Specific action (e.g., "Implement USPS address validation API", "Email collection campaign with incentives")
-      * cleansingStrategy: Overall approach (e.g., "3-phase cleansing: automated deduplication (80% cases) → manual review (15%) → business rule exceptions (5%)")
-      * validationRules: 4-6 rules (e.g., "SSN format validation", "Account balance reconciliation", "Transaction date logical consistency")
-
-    - **analyticsRoadmap**: Maturity progression (4 phases)
-      * currentMaturity: "descriptive" (reports), "diagnostic" (root cause), "predictive" (forecasts), "prescriptive" (recommendations)
-      * targetMaturity: Same options - banking typical: descriptive → predictive
-      * phases: Array of 3-4 phases showing progression
-        - Phase 1 - Operational Analytics (Months 1-6):
-          * Capabilities: ["Real-time transaction monitoring", "Daily reconciliation dashboards", "Branch performance reports", "Customer service metrics"]
-          * Timeline: "Months 1-6"
-          * Prerequisites: ["Data warehouse setup", "ETL pipelines for core systems", "BI tool implementation (Tableau/Power BI)"]
-        - Phase 2 - Management Analytics (Months 7-12):
-          * Capabilities: ["Customer segmentation analysis", "Product profitability analysis", "Risk exposure dashboards", "Compliance reporting automation"]
-          * Prerequisites: ["Phase 1 complete", "Historical data cleaned (2+ years)", "Business glossary defined"]
-        - Phase 3 - Predictive Analytics (Months 13-18):
-          * Capabilities: ["Loan default prediction", "Customer churn models", "Cross-sell propensity scoring", "Fraud detection ML models"]
-          * Prerequisites: ["Data science team hired", "MLOps infrastructure", "Model governance framework"]
-        - Phase 4 - Prescriptive Analytics (Months 19-24+):
-          * Capabilities: ["Personalized product recommendations", "Dynamic pricing optimization", "Automated lending decisions", "Real-time risk adjustments"]
-          * Prerequisites: ["Phase 3 models validated", "A/B testing infrastructure", "Approval for AI decisions"]
-
-    - **dataGovernance**: Framework for data management
-      * ownershipModel: Who owns data (e.g., "Federated model: Business units own data, IT owns infrastructure, CDO owns standards")
-      * dataClassification: Array of 3-5 data types with classification
-        - Examples:
-          * { dataType: "Customer PII (SSN, DOB)", classification: "restricted", handlingRequirements: "Encryption at rest/transit, access logging, annual recertification" }
-          * { dataType: "Transaction history", classification: "confidential", handlingRequirements: "Encrypted storage, role-based access, 7-year retention" }
-          * { dataType: "Marketing preferences", classification: "internal", handlingRequirements: "Standard access controls, opt-out honored" }
-      * retentionPolicies: Array of 3-5 policies (e.g., "Transaction records: 7 years (compliance)", "Customer communications: 3 years", "Marketing data: Until opt-out")
-      * qualityMetrics: Array of 4-6 KPIs (e.g., "Completeness: >95%", "Accuracy: >98%", "Timeliness: <24hr latency", "Consistency: <2% cross-system variance")
-      * auditRequirements: Specific needs (e.g., "SOC 2 Type II annual audit, OCC data quality reviews, quarterly data lineage documentation")
-
-    - **privacySecurity**: Compliance and protection measures
-      * complianceRequirements: Array of applicable regulations (e.g., ["GLBA (Gramm-Leach-Bliley Act)", "FCRA (Fair Credit Reporting Act)", "State data breach laws", "GDPR (for EU customers)", "CCPA (California customers)"])
-      * encryptionStrategy: Specific approach (e.g., "AES-256 for data at rest, TLS 1.3 for transit, tokenization for SSN/account numbers, hardware security modules (HSM) for key management")
-      * accessControls: Detailed controls (e.g., "Role-based access (RBAC) with least privilege, MFA for all users, privileged access management (PAM) for admins, 90-day access recertification")
-      * dataLineage: Tracking approach (e.g., "Automated lineage tracking via Collibra, source-to-report traceability, impact analysis for schema changes")
-      * incidentResponse: Plan summary (e.g., "24-hour breach notification protocol, incident response team on call, customer notification templates pre-approved by legal, cyber insurance coverage")
-
-    - **ESTIMATION GUIDELINES for data migration & analytics**:
-      * Banking data complexity is typically HIGH due to:
-        - Multiple legacy systems (core banking, loans, deposits, cards)
-        - Data retention requirements (7+ years)
-        - Customer privacy sensitivities
-        - Real-time processing needs
-      * Typical banking data quality scores: 55-75/100 (lower than most industries)
-      * Analytics maturity progression: 6-24 months per phase
-      * Always include compliance requirements - banking is heavily regulated
-      * Common data issues: duplicates, address quality, missing emails, account reconciliation
-
-    - **CRITICAL**: Data migration and analytics strategy should be realistic and banking-specific. Avoid generic IT platitudes.
-      Focus on banking-specific challenges (compliance, real-time processing, customer privacy, legacy mainframe integration).
-      Executives need this to understand technical complexity and set realistic expectations for analytics maturity.
-
-  **BANKING ENHANCEMENT - SUCCESS METRICS & KPI FRAMEWORK:**
-    Generate a comprehensive success metrics and KPI framework in the "successMetrics" field. This is CRITICAL for banking executives to commit to measurable outcomes and track continuous improvement.
-
-    - **northStarMetric**: Define the single most important success indicator
-      * metric: The one metric that best represents success (e.g., "Customer Digital Adoption Rate", "Net Promoter Score (NPS)", "Operational Cost per Transaction", "Loan Approval Speed")
-      * definition: Precise measurement definition (e.g., "Percentage of customers using mobile app for >3 transactions per month")
-      * targetValue: Specific, measurable target (e.g., "65% adoption within 12 months", "NPS >50")
-      * currentBaseline: Current state measurement (e.g., "Current: 23% adoption", "Current NPS: 32")
-      * measurementFrequency: "daily", "weekly", "monthly", "quarterly" (choose appropriate cadence)
-      * rationale: Why this metric matters most (e.g., "Digital adoption is the best leading indicator of customer satisfaction, cost reduction, and competitive positioning")
-
-    - **businessMetrics**: Categorized business outcome metrics (4 categories)
-
-      * **revenueMetrics**: 2-4 metrics that drive top-line growth
-        - Banking examples: "New account acquisitions", "Cross-sell rate", "Average customer lifetime value", "Fee income per customer"
-        - For each metric: name, target, baseline, timeframe, trackingMethod
-        - Example: { name: "New digital account openings", target: "5,000/month", baseline: "1,200/month (current)", timeframe: "Month 6 onwards", trackingMethod: "Real-time dashboard from core banking system" }
-
-      * **costMetrics**: 2-4 metrics that reduce bottom-line costs
-        - Banking examples: "Cost per transaction", "Branch operating costs", "Manual processing time", "Customer service handle time"
-        - Example: { name: "Manual loan processing time", target: "Reduce from 45 min to 12 min", baseline: "45 min average (current)", timeframe: "By Month 9", trackingMethod: "Workflow system timestamps" }
-
-      * **experienceMetrics**: 2-4 metrics measuring customer/employee satisfaction
-        - Banking examples: "Net Promoter Score (NPS)", "Customer Effort Score (CES)", "Mobile app rating", "Employee satisfaction score", "First-call resolution rate"
-        - Example: { name: "Mobile app store rating", target: "4.5+ stars", baseline: "3.2 stars (current)", timeframe: "Month 12", trackingMethod: "Weekly app store scraping" }
-
-      * **riskMetrics**: 2-4 metrics reducing operational risk
-        - Banking examples: "Fraud detection rate", "Compliance incidents", "System uptime", "Data breach incidents", "Audit findings"
-        - Example: { name: "Compliance incidents", target: "Zero incidents", baseline: "3 incidents in past 12 months", timeframe: "Ongoing", trackingMethod: "Compliance management system tracking" }
-
-    - **leadingIndicators**: 3-6 early warning metrics that predict outcomes
-      * indicator: Specific measurable signal (e.g., "Daily active mobile users", "Customer support ticket volume", "Feature adoption rate", "Employee training completion")
-      * predictedOutcome: What this indicates (e.g., "High DAU predicts strong monthly adoption rates", "Rising ticket volume signals UX issues before app rating drops")
-      * thresholdAlert: When to act (e.g., "Alert if DAU drops >10% week-over-week", "Alert if tickets exceed 50/day")
-      * monitoringFrequency: "daily", "weekly", "monthly" (choose appropriate cadence)
-      * actionTrigger: What to do when threshold breached (e.g., "Conduct user interviews to identify friction points", "Activate UX improvement sprint")
-
-    - **kpiDashboard**: 6-10 KPIs for executive dashboard (mix of categories)
-      For each KPI:
-      * kpi: Specific metric name (e.g., "Mobile app monthly active users", "Cost per digital transaction", "Digital account NPS")
-      * category: "revenue", "cost", "experience", "risk", "operational"
-      * currentValue: Current measurement (e.g., "45,000 MAU", "$0.87", "NPS 42")
-      * targetValue: Goal (e.g., "120,000 MAU", "$0.25", "NPS 55+")
-      * trend: "improving" (trending toward target), "declining" (moving away), "stable" (flat), "new" (no trend yet)
-      * statusIndicator: "green" (on track), "yellow" (at risk), "red" (behind)
-      * owner: Responsible executive (e.g., "Chief Digital Officer", "Head of Retail Banking", "SVP Customer Experience")
-      * reviewCadence: "weekly", "monthly", "quarterly" (how often executives review)
-
-    - **continuousImprovement**: Framework for ongoing optimization
-      * reviewCycle: Cadence for metrics review (e.g., "Monthly business review with executives, quarterly deep-dive with board")
-      * improvementTargets: 3-5 areas for ongoing optimization (e.g., ["Reduce mobile app latency from 2.1s to <1s", "Increase self-service resolution from 45% to 70%", "Expand product features based on top 5 user requests"])
-      * optimizationOpportunities: 3-5 quick wins identified (e.g., ["A/B test simplified onboarding flow", "Implement proactive fraud alerts", "Add biometric login option"])
-      * benchmarkComparison: How you compare to industry (e.g., "Top quartile in mobile adoption (65% vs. 48% industry average), lagging in NPS (42 vs. 52 industry average)")
-      * iterationPlan: How to evolve metrics (e.g., "Phase 1: Core KPIs (months 1-6), Phase 2: Add predictive analytics (months 7-12), Phase 3: Real-time personalization metrics (year 2)")
-
-    - **ESTIMATION GUIDELINES for success metrics**:
-      * North Star Metric should be customer-centric or business-outcome-focused (not internal/technical)
-      * Banking typical targets:
-        - Digital adoption: 50-70% for retail banking, 30-50% for commercial banking
-        - NPS: 40-60 (banking industry average: 30-40)
-        - Cost reduction: 30-50% through automation
-        - Processing time: 60-80% reduction via digital channels
-      * Leading indicators should be measurable daily or weekly (not lagging annual metrics)
-      * KPI dashboard should have 6-10 KPIs total (not too many to overwhelm executives)
-      * Status indicators: Use red/yellow/green honestly based on actual progress
-      * Always include at least one risk metric - banking is heavily regulated
-      * Continuous improvement should reference industry benchmarks when possible
-
-    - **CRITICAL**: Success metrics should be SMART (Specific, Measurable, Achievable, Relevant, Time-bound).
-      Avoid vanity metrics ("increase awareness") - focus on business outcomes (revenue, cost, satisfaction, risk).
-      Executives use these metrics to justify investment, track ROI, and make course corrections.
-      Leading indicators are especially valuable - they allow proactive intervention before lagging metrics decline.
-
-**IMPORTANT NOTES:**
-- If research data is insufficient for Phase 1, 2, or 3 fields, provide reasonable estimates based on context, but note uncertainty in confidence levels.
-- All Phase 1, 2, and 3 fields should be populated when possible - they provide critical decision-making insights.
-- Ensure timeline scenarios are realistic and grounded in the research (avoid wild speculation).
-- Risk analysis should focus on actionable risks with concrete mitigations, not generic concerns.
-- Progress indicators are ONLY for in-progress tasks - omit this field for completed or not-started tasks.
-- Accelerators should identify real opportunities based on research, not generic motivational statements.
-- Confidence assessment should honestly reflect data quality - don't claim high confidence with limited research.`;
+**GUIDELINES:**
+- Extract facts directly from research - no speculation
+- Determine status based on current date (November 2025)
+- Keep all text fields concise - use bullet points for lists
+- Properly escape quotes and newlines in JSON strings`;
 
 /**
  * Q&A System Prompt Template
@@ -476,7 +192,8 @@ export const GANTT_CHART_SCHEMA = {
 
 /**
  * Task Analysis JSON Schema
- * Simplified to avoid Gemini API "too many states" error
+ * Aggressively simplified to avoid Gemini API "too many states" error
+ * Reduced nesting and complexity while keeping essential fields
  */
 export const TASK_ANALYSIS_SCHEMA = {
   type: "object",
@@ -485,179 +202,38 @@ export const TASK_ANALYSIS_SCHEMA = {
     startDate: { type: "string" },
     endDate: { type: "string" },
     status: { type: "string" },
-    facts: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          fact: { type: "string" },
-          source: { type: "string" },
-          url: { type: "string" }
-        }
-      }
-    },
-    assumptions: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          assumption: { type: "string" },
-          source: { type: "string" },
-          url: { type: "string" }
-        }
-      }
-    },
     rationale: { type: "string" },
     summary: { type: "string" },
 
-    // PHASE 1 ENHANCEMENTS - Simplified
-    schedulingContext: {
-      type: "object",
-      properties: {
-        rationale: { type: "string" },
-        predecessors: { type: "array", items: { type: "string" } },
-        successors: { type: "array", items: { type: "string" } },
-        isCriticalPath: { type: "boolean" },
-        slackDays: { type: "number" }
-      }
-    },
+    // Simplified facts and assumptions - reduced nesting
+    factsText: { type: "string" },
+    assumptionsText: { type: "string" },
 
-    timelineScenarios: {
-      type: "object",
-      properties: {
-        expected: {
-          type: "object",
-          properties: {
-            date: { type: "string" },
-            confidence: { type: "string" }
-          }
-        },
-        bestCase: {
-          type: "object",
-          properties: {
-            date: { type: "string" },
-            assumptions: { type: "string" }
-          }
-        },
-        worstCase: {
-          type: "object",
-          properties: {
-            date: { type: "string" },
-            risks: { type: "string" }
-          }
-        },
-        likelyDelayFactors: { type: "array", items: { type: "string" } }
-      }
-    },
+    // Timeline information
+    expectedDate: { type: "string" },
+    bestCaseDate: { type: "string" },
+    worstCaseDate: { type: "string" },
 
-    risks: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          severity: { type: "string" },
-          likelihood: { type: "string" },
-          impact: { type: "string" },
-          mitigation: { type: "string" }
-        }
-      }
-    },
+    // Risk and impact - simplified to strings
+    risksText: { type: "string" },
+    businessImpact: { type: "string" },
+    strategicImpact: { type: "string" },
 
-    impact: {
-      type: "object",
-      properties: {
-        downstreamTasks: { type: "number" },
-        businessImpact: { type: "string" },
-        strategicImpact: { type: "string" },
-        stakeholders: { type: "array", items: { type: "string" } }
-      }
-    },
+    // Progress (for in-progress tasks)
+    percentComplete: { type: "number" },
+    velocity: { type: "string" },
 
-    // PHASE 2 ENHANCEMENTS - Simplified
-    progress: {
-      type: "object",
-      properties: {
-        percentComplete: { type: "number" },
-        milestones: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              completed: { type: "boolean" },
-              date: { type: "string" }
-            }
-          }
-        },
-        velocity: { type: "string" },
-        activeBlockers: { type: "array", items: { type: "string" } }
-      }
-    },
+    // Financial impact - minimal fields
+    totalCost: { type: "string" },
+    totalBenefit: { type: "string" },
+    roiSummary: { type: "string" },
 
-    accelerators: {
-      type: "object",
-      properties: {
-        externalDrivers: { type: "array", items: { type: "string" } },
-        internalIncentives: { type: "array", items: { type: "string" } },
-        efficiencyOpportunities: { type: "array", items: { type: "string" } },
-        successFactors: { type: "array", items: { type: "string" } }
-      }
-    },
+    // Stakeholder and change management
+    stakeholderSummary: { type: "string" },
+    changeReadiness: { type: "string" },
 
-    // PHASE 3 ENHANCEMENTS - Simplified
-    confidence: {
-      type: "object",
-      properties: {
-        level: { type: "string" },
-        dataQuality: { type: "string" },
-        assumptionCount: { type: "number" },
-        rationale: { type: "string" }
-      }
-    },
-
-    // BANKING ENHANCEMENTS - Simplified to reduce complexity
-    financialImpact: {
-      type: "object",
-      properties: {
-        totalCost: { type: "string" },
-        totalAnnualBenefit: { type: "string" },
-        paybackPeriod: { type: "string" },
-        firstYearROI: { type: "string" },
-        confidenceLevel: { type: "string" }
-      }
-    },
-
-    stakeholderImpact: {
-      type: "object",
-      properties: {
-        customerImpact: { type: "string" },
-        employeeImpact: { type: "string" },
-        executiveSponsor: { type: "string" },
-        changeReadinessScore: { type: "string" },
-        resistanceRisks: { type: "array", items: { type: "string" } }
-      }
-    },
-
-    dataMigrationStrategy: {
-      type: "object",
-      properties: {
-        complexityLevel: { type: "string" },
-        volumeEstimate: { type: "string" },
-        estimatedDuration: { type: "string" },
-        keyRisks: { type: "array", items: { type: "string" } }
-      }
-    },
-
-    successMetrics: {
-      type: "object",
-      properties: {
-        northStarMetric: { type: "string" },
-        targetValue: { type: "string" },
-        currentBaseline: { type: "string" },
-        keyKPIs: { type: "array", items: { type: "string" } }
-      }
-    }
+    // Success metrics
+    keyMetrics: { type: "string" }
   },
   required: ["taskName", "status"]
 };
