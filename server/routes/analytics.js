@@ -28,7 +28,6 @@ router.post('/track-event', apiLimiter, (req, res) => {
     // Validate eventType is in allowed list
     const allowedEventTypes = [
       'export_png',
-      'feature_critical_path',
       'feature_edit_mode',
       'feature_theme_toggle',
       'feature_keyboard_shortcut',

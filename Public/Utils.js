@@ -432,17 +432,6 @@ export function buildSchedulingContext(schedulingContext) {
     `;
   }
 
-  if (schedulingContext.isCriticalPath !== undefined) {
-    const criticalPathIcon = schedulingContext.isCriticalPath ? '✅' : '❌';
-    contentHTML += `
-      <p class="scheduling-item">
-        <strong>Critical Path:</strong>
-        ${criticalPathIcon} ${schedulingContext.isCriticalPath ? 'Yes' : 'No'}
-        ${schedulingContext.isCriticalPath ? '- Any delay impacts final deadline' : '- Has schedule flexibility'}
-      </p>
-    `;
-  }
-
   if (schedulingContext.slackDays !== undefined && schedulingContext.slackDays !== null) {
     contentHTML += `
       <p class="scheduling-item">
@@ -1949,7 +1938,7 @@ export async function measureAsync(label, fn) {
 
 /**
  * Tracks an analytics event by sending it to the backend
- * @param {string} eventType - Type of event (export_png, feature_critical_path, etc.)
+ * @param {string} eventType - Type of event (export_png, feature_edit_mode, etc.)
  * @param {Object} eventData - Additional event data
  * @param {string|null} chartId - Optional chart ID
  * @param {string|null} sessionId - Optional session ID

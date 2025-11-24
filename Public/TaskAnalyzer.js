@@ -309,7 +309,6 @@ export class TaskAnalyzer {
    */
   _buildQuickFacts(analysis) {
     const statusClass = analysis.status.replace(/\s+/g, '-').toLowerCase();
-    const criticalPath = analysis.schedulingContext?.isCriticalPath;
     const downstreamTasks = analysis.impact?.downstreamTasks;
 
     let quickFactsHTML = `
@@ -326,18 +325,6 @@ export class TaskAnalyzer {
           <span class="fact-value">${DOMPurify.sanitize(analysis.startDate || 'N/A')} - ${DOMPurify.sanitize(analysis.endDate || 'N/A')}</span>
         </div>
     `;
-
-    // Add critical path indicator
-    if (criticalPath !== undefined) {
-      const cpIcon = criticalPath ? '🔴' : '🟢';
-      const cpText = criticalPath ? 'Critical Path' : 'Has Flexibility';
-      quickFactsHTML += `
-        <div class="quick-fact">
-          <span class="fact-label">Path Status</span>
-          <span class="fact-value">${cpIcon} ${cpText}</span>
-        </div>
-      `;
-    }
 
     // Add downstream impact
     if (downstreamTasks !== undefined && downstreamTasks !== null) {
