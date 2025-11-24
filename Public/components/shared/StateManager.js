@@ -152,14 +152,26 @@ export class StateManager {
 
     try {
       const response = await fetch(
-        `/content/${this.state.sessionId}/${viewName}`
+        `/api/content/${this.state.sessionId}/${viewName}`
       );
 
       if (!response.ok) {
         throw new Error(`Failed to load ${viewName}: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const result = await response.json();
+
+      // Check status from Phase 2 API
+      if (result.status === 'processing') {
+        throw new Error(`${viewName} is still being generated. Please wait...`);
+      }
+
+      if (result.status === 'error') {
+        throw new Error(result.error || `Failed to generate ${viewName}`);
+      }
+
+      // Extract data from response
+      const data = result.data;
 
       // Update state with loaded data
       this.setState({

@@ -47,22 +47,27 @@ export function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT NOT NULL,
       view_type TEXT NOT NULL,  -- 'roadmap', 'slides', 'document'
-      data TEXT NOT NULL,        -- JSON data for the view
+      data TEXT,                 -- JSON data for the view (NULL if generation failed)
+      status TEXT DEFAULT 'pending',  -- pending, completed, error
+      error_message TEXT,
+      generated_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
       UNIQUE(session_id, view_type)
     );
 
-    -- Jobs table: tracks async generation jobs
+    -- Jobs table: tracks async generation jobs (one per content type)
     CREATE TABLE IF NOT EXISTS jobs (
       job_id TEXT PRIMARY KEY,
-      session_id TEXT,
-      status TEXT DEFAULT 'pending',  -- pending, processing, complete, partial, error
-      progress TEXT,  -- JSON: { roadmap: 'complete', slides: 'processing', ... }
+      session_id TEXT NOT NULL,
+      content_type TEXT NOT NULL,  -- 'roadmap', 'slides', or 'document'
+      status TEXT DEFAULT 'pending',  -- pending, processing, completed, error
+      error_message TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+      FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE,
+      UNIQUE(session_id, content_type)
     );
 
     -- Indexes for better performance
@@ -165,19 +170,29 @@ export const SessionDB = {
  */
 export const ContentDB = {
   /**
-   * Save content for a specific view
+   * Create/update content for a specific view
    */
-  save(sessionId, viewType, data) {
+  create(sessionId, viewType, data, errorMessage = null) {
+    const status = data ? 'completed' : 'error';
     const stmt = db.prepare(`
-      INSERT INTO content (session_id, view_type, data)
-      VALUES (?, ?, ?)
+      INSERT INTO content (session_id, view_type, data, status, error_message, generated_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(session_id, view_type)
       DO UPDATE SET
         data = excluded.data,
+        status = excluded.status,
+        error_message = excluded.error_message,
+        generated_at = excluded.generated_at,
         updated_at = CURRENT_TIMESTAMP
     `);
 
-    return stmt.run(sessionId, viewType, JSON.stringify(data));
+    return stmt.run(
+      sessionId,
+      viewType,
+      data ? JSON.stringify(data) : null,
+      status,
+      errorMessage
+    );
   },
 
   /**
@@ -185,7 +200,7 @@ export const ContentDB = {
    */
   get(sessionId, viewType) {
     const stmt = db.prepare(`
-      SELECT data, created_at, updated_at
+      SELECT data, status, error_message, generated_at, created_at, updated_at
       FROM content
       WHERE session_id = ? AND view_type = ?
     `);
@@ -195,7 +210,10 @@ export const ContentDB = {
     if (!row) return null;
 
     return {
-      data: JSON.parse(row.data),
+      data: row.data ? JSON.parse(row.data) : null,
+      status: row.status,
+      error_message: row.error_message,
+      generated_at: row.generated_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
@@ -206,7 +224,7 @@ export const ContentDB = {
    */
   getAll(sessionId) {
     const stmt = db.prepare(`
-      SELECT view_type, data, created_at, updated_at
+      SELECT view_type, data, status, error_message, generated_at, created_at, updated_at
       FROM content
       WHERE session_id = ?
     `);
@@ -216,7 +234,10 @@ export const ContentDB = {
     const result = {};
     rows.forEach(row => {
       result[row.view_type] = {
-        data: JSON.parse(row.data),
+        data: row.data ? JSON.parse(row.data) : null,
+        status: row.status,
+        error_message: row.error_message,
+        generated_at: row.generated_at,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       };
@@ -235,6 +256,18 @@ export const ContentDB = {
     `);
 
     return stmt.run(sessionId, viewType);
+  },
+
+  /**
+   * Delete all content for a session
+   */
+  deleteBySession(sessionId) {
+    const stmt = db.prepare(`
+      DELETE FROM content
+      WHERE session_id = ?
+    `);
+
+    return stmt.run(sessionId);
   }
 };
 
@@ -243,21 +276,15 @@ export const ContentDB = {
  */
 export const JobDB = {
   /**
-   * Create a new job
+   * Create a new job for a specific content type
    */
-  create(jobId, sessionId) {
-    const initialProgress = JSON.stringify({
-      roadmap: 'pending',
-      slides: 'pending',
-      document: 'pending'
-    });
-
+  create(jobId, sessionId, contentType) {
     const stmt = db.prepare(`
-      INSERT INTO jobs (job_id, session_id, status, progress)
-      VALUES (?, ?, 'processing', ?)
+      INSERT INTO jobs (job_id, session_id, content_type, status)
+      VALUES (?, ?, ?, 'pending')
     `);
 
-    return stmt.run(jobId, sessionId, initialProgress);
+    return stmt.run(jobId, sessionId, contentType);
   },
 
   /**
@@ -272,37 +299,48 @@ export const JobDB = {
     return {
       jobId: row.job_id,
       sessionId: row.session_id,
+      contentType: row.content_type,
       status: row.status,
-      progress: JSON.parse(row.progress),
+      errorMessage: row.error_message,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
   },
 
   /**
-   * Update job progress
+   * Get all jobs for a session
    */
-  updateProgress(jobId, progress) {
+  getBySession(sessionId) {
     const stmt = db.prepare(`
-      UPDATE jobs
-      SET progress = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE job_id = ?
+      SELECT * FROM jobs
+      WHERE session_id = ?
+      ORDER BY created_at ASC
     `);
 
-    return stmt.run(JSON.stringify(progress), jobId);
+    const rows = stmt.all(sessionId);
+
+    return rows.map(row => ({
+      jobId: row.job_id,
+      sessionId: row.session_id,
+      contentType: row.content_type,
+      status: row.status,
+      errorMessage: row.error_message,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
   },
 
   /**
    * Update job status
    */
-  updateStatus(jobId, status) {
+  updateStatus(jobId, status, errorMessage = null) {
     const stmt = db.prepare(`
       UPDATE jobs
-      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      SET status = ?, error_message = ?, updated_at = CURRENT_TIMESTAMP
       WHERE job_id = ?
     `);
 
-    return stmt.run(status, jobId);
+    return stmt.run(status, errorMessage, jobId);
   },
 
   /**
@@ -311,11 +349,23 @@ export const JobDB = {
   deleteOld(daysOld = 7) {
     const stmt = db.prepare(`
       DELETE FROM jobs
-      WHERE status IN ('complete', 'error', 'partial')
+      WHERE status IN ('completed', 'error')
       AND created_at < datetime('now', '-' || ? || ' days')
     `);
 
     return stmt.run(daysOld);
+  },
+
+  /**
+   * Delete all jobs for a session
+   */
+  deleteBySession(sessionId) {
+    const stmt = db.prepare(`
+      DELETE FROM jobs
+      WHERE session_id = ?
+    `);
+
+    return stmt.run(sessionId);
   }
 };
 
