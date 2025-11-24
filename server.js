@@ -37,9 +37,13 @@ import {
 // Import storage management
 import { startCleanupInterval } from './server/storage.js';
 
+// Import database (Phase 2)
+import { initializeDatabase } from './server/db.js';
+
 // Import routes
 import chartRoutes from './server/routes/charts.js';
 import analysisRoutes from './server/routes/analysis.js';
+import contentRoutes from './server/routes/content.js';
 
 // --- Server Setup ---
 const app = express();
@@ -85,6 +89,7 @@ app.use(configureTimeout);
 // Mount routes without global upload middleware (upload middleware is applied per-route where needed)
 app.use('/', chartRoutes);
 app.use('/', analysisRoutes);
+app.use('/api/content', contentRoutes);
 
 // --- Error Handling ---
 app.use(handleUploadErrors);
@@ -121,6 +126,10 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
+// --- Initialize Database (Phase 2) ---
+console.log('📦 Initializing SQLite database...');
+initializeDatabase();
+
 // --- Start Storage Cleanup ---
 startCleanupInterval();
 
@@ -130,5 +139,7 @@ app.listen(port, () => {
   console.log(`📊 Server running at http://localhost:${port}`);
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('✅ All modules loaded successfully');
+  console.log('💾 SQLite database ready');
+  console.log('🔄 Unified content generation enabled');
   console.log('🛡️  Global error handlers enabled');
 });

@@ -17,6 +17,7 @@
     "test:semantic:determinism": "node test-semantic-engine.js determinism"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "better-sqlite3": "^12.4.6",
     "chart.js": "^4.4.1",
     "compression": "^1.7.4",
