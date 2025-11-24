@@ -219,6 +219,30 @@ export class StateManager {
         );
       }
 
+      // Validate document-specific structure
+      if (viewName === 'document') {
+        if (!data.sections || !Array.isArray(data.sections) || data.sections.length === 0) {
+          throw new AppError(
+            `Document is still being generated. Please wait...`,
+            ErrorTypes.API,
+            ErrorSeverity.LOW,
+            { viewName, processing: true, incompleteData: true }
+          );
+        }
+      }
+
+      // Validate slides-specific structure
+      if (viewName === 'slides') {
+        if (!data.slides || !Array.isArray(data.slides) || data.slides.length === 0) {
+          throw new AppError(
+            `Slides are still being generated. Please wait...`,
+            ErrorTypes.API,
+            ErrorSeverity.LOW,
+            { viewName, processing: true, incompleteData: true }
+          );
+        }
+      }
+
       // Update state with loaded data
       this.setState({
         content: { ...this.state.content, [viewName]: data },
