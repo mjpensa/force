@@ -371,8 +371,14 @@ export class DocumentView {
         <line x1="16" y1="17" x2="8" y2="17"/>
         <polyline points="10 9 9 9 8 9"/>
       </svg>
-      <h2>No Document Available</h2>
-      <p>The document has not been generated yet for this session.</p>
+      <h2>Document Not Ready</h2>
+      <p>The executive summary may still be generating or encountered an issue.</p>
+      <button onclick="window.location.reload()" style="margin-top: 1.5rem; padding: 0.75rem 1.5rem; background: var(--color-primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+        Refresh Page
+      </button>
+      <p style="margin-top: 1rem; font-size: 0.875rem; color: var(--color-text-tertiary);">
+        If the issue persists, try generating new content from the home page.
+      </p>
     `;
     return emptyState;
   }
