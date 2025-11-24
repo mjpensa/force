@@ -615,11 +615,9 @@ export function buildAccelerators(accelerators) {
 }
 
 /**
- * BANKING ENHANCEMENT - Financial Impact Dashboard
- * Builds the Financial Impact Dashboard section
- * Shows costs, benefits, and ROI metrics in executive-friendly format
- * @param {Object} financialImpact - Financial impact data from AI analysis
- * @returns {string} HTML string for the financial impact section
+ * Builds the legend for the Gantt chart
+ * @param {Array} legendData - Legend data
+ * @returns {HTMLElement} Legend DOM element
  */
 export function buildLegend(legendData) {
   const legendContainer = document.createElement('div');
