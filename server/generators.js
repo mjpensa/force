@@ -22,7 +22,7 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 async function generateWithGemini(prompt, schema, contentType) {
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.5-flash-preview-09-2025',
       generationConfig: {
         responseMimeType: 'application/json',
         responseSchema: schema
