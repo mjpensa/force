@@ -6,7 +6,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { safeGetElement, findTodayColumnPosition, buildLegend, PerformanceTimer, trackEvent } from './Utils.js';
+import { safeGetElement, findTodayColumnPosition, buildLegend, PerformanceTimer } from './Utils.js';
 import { DraggableGantt } from './DraggableGantt.js';
 import { ResizableGantt } from './ResizableGantt.js';
 import { ContextMenu } from './ContextMenu.js';
@@ -855,21 +855,11 @@ export class GanttChart {
         // ACCESSIBILITY: Announce mode change to screen readers
         this._announceToScreenReader('Edit mode enabled. You can now drag, resize, and customize chart elements.');
 
-        // FEATURE #9: Track feature usage
-        trackEvent('feature_edit_mode', {
-          enabled: true
-        });
-
         console.log('✓ Edit mode enabled');
       } else {
         this._disableAllEditFeatures();
         // ACCESSIBILITY: Announce mode change to screen readers
         this._announceToScreenReader('Edit mode disabled. Chart is now read-only.');
-
-        // FEATURE #9: Track feature usage
-        trackEvent('feature_edit_mode', {
-          enabled: false
-        });
 
         console.log('✓ Edit mode disabled');
       }
@@ -933,12 +923,6 @@ export class GanttChart {
         // Performance logging
         const duration = Math.round(performance.now() - startTime);
         console.log(`✓ PNG export completed in ${duration}ms`);
-
-        // FEATURE #9: Track PNG export
-        trackEvent('export_png', {
-          taskCount: this.ganttData.data.length,
-          exportTime: duration
-        });
 
         // Update button state
         exportBtn.textContent = 'Export as PNG';
@@ -1087,12 +1071,6 @@ export class GanttChart {
         const duration = Math.round(performance.now() - startTime);
         console.log(`✓ SVG export completed in ${duration}ms`);
 
-        // Track SVG export
-        trackEvent('export_svg', {
-          taskCount: this.ganttData.data.length,
-          exportTime: duration
-        });
-
         // Update button state
         exportBtn.textContent = 'Export as SVG';
         exportBtn.disabled = false;
@@ -1193,12 +1171,6 @@ export class GanttChart {
 
         // ACCESSIBILITY: Announce to screen readers
         this._announceToScreenReader('Chart URL copied to clipboard');
-
-        // FEATURE #9: Track URL sharing
-        trackEvent('url_share', {
-          url: currentUrl,
-          taskCount: this.ganttData.data.length
-        });
 
         // Reset button after 2 seconds
         setTimeout(() => {
