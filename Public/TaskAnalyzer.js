@@ -156,21 +156,17 @@ export class TaskAnalyzer {
     // Build quick facts sidebar (Phase 3)
     const quickFactsHTML = this._buildQuickFacts(analysis);
 
-    // Build main analysis content
-    // ORDER: Financial Impact, Stakeholder Impact, Data Migration Strategy, Success Metrics (Banking Enhancements), Timeline Scenarios, Risks, Impact, Scheduling Context, Progress (Phase 2), Accelerators (Phase 2), Facts, Assumptions, Summary/Rationale
+    // Build main analysis content - Simplified schema version
+    // ORDER: Financial Impact, Stakeholder & Change, Success Metrics, Timeline, Risks & Impact, Facts & Assumptions, Summary/Rationale
     const mainContentHTML = `
-      ${buildFinancialImpact(analysis.financialImpact)}
-      ${buildStakeholderImpact(analysis.stakeholderImpact)}
-      ${buildDataMigrationStrategy(analysis.dataMigrationStrategy)}
-      ${buildSuccessMetrics(analysis.successMetrics)}
-      ${buildTimelineScenarios(analysis.timelineScenarios)}
-      ${buildRiskAnalysis(analysis.risks)}
-      ${buildImpactAnalysis(analysis.impact)}
-      ${buildSchedulingContext(analysis.schedulingContext)}
-      ${buildProgressIndicators(analysis.progress, analysis.status)}
-      ${buildAccelerators(analysis.accelerators)}
-      ${buildAnalysisList('Facts', analysis.facts, 'fact', 'source')}
-      ${buildAnalysisList('Assumptions', analysis.assumptions, 'assumption', 'source')}
+      ${this._buildFinancialSection(analysis)}
+      ${this._buildStakeholderSection(analysis)}
+      ${buildAnalysisSection('Success Metrics', analysis.keyMetrics)}
+      ${this._buildTimelineSection(analysis)}
+      ${this._buildRisksImpactSection(analysis)}
+      ${this._buildProgressSection(analysis)}
+      ${buildAnalysisSection('Facts', analysis.factsText)}
+      ${buildAnalysisSection('Assumptions', analysis.assumptionsText)}
       ${buildAnalysisSection('Summary', analysis.summary)}
       ${buildAnalysisSection('Rationale / Hurdles', analysis.rationale)}
     `;
@@ -215,7 +211,7 @@ export class TaskAnalyzer {
   }
 
   /**
-   * Exports analysis as a text file (Phase 3)
+   * Exports analysis as a text file (simplified schema version)
    * @param {Object} analysis - The analysis data
    * @private
    */
@@ -227,50 +223,46 @@ export class TaskAnalyzer {
     content += `Status: ${analysis.status}\n`;
     content += `Timeline: ${analysis.startDate || 'N/A'} - ${analysis.endDate || 'N/A'}\n\n`;
 
+    // Summary
+    if (analysis.summary) {
+      content += `SUMMARY\n${'─'.repeat(40)}\n${analysis.summary}\n\n`;
+    }
+
     // Timeline Scenarios
-    if (analysis.timelineScenarios) {
+    if (analysis.expectedDate || analysis.bestCaseDate || analysis.worstCaseDate) {
       content += `TIMELINE SCENARIOS\n${'─'.repeat(40)}\n`;
-      if (analysis.timelineScenarios.bestCase) {
-        content += `Best-Case: ${analysis.timelineScenarios.bestCase.date}\n`;
-        if (analysis.timelineScenarios.bestCase.assumptions) {
-          content += `  ${analysis.timelineScenarios.bestCase.assumptions}\n`;
-        }
-      }
-      if (analysis.timelineScenarios.expected) {
-        content += `Expected: ${analysis.timelineScenarios.expected.date} (${analysis.timelineScenarios.expected.confidence} confidence)\n`;
-      }
-      if (analysis.timelineScenarios.worstCase) {
-        content += `Worst-Case: ${analysis.timelineScenarios.worstCase.date}\n`;
-        if (analysis.timelineScenarios.worstCase.risks) {
-          content += `  ${analysis.timelineScenarios.worstCase.risks}\n`;
-        }
-      }
+      if (analysis.bestCaseDate) content += `Best-Case: ${analysis.bestCaseDate}\n`;
+      if (analysis.expectedDate) content += `Expected: ${analysis.expectedDate}\n`;
+      if (analysis.worstCaseDate) content += `Worst-Case: ${analysis.worstCaseDate}\n`;
       content += '\n';
     }
 
-    // Risks
-    if (analysis.risks && analysis.risks.length > 0) {
-      content += `RISKS & ROADBLOCKS\n${'─'.repeat(40)}\n`;
-      analysis.risks.forEach((risk, i) => {
-        content += `${i + 1}. [${risk.severity?.toUpperCase()}] ${risk.name}\n`;
-        content += `   Impact: ${risk.impact}\n`;
-        content += `   Mitigation: ${risk.mitigation}\n\n`;
-      });
+    // Risks & Impact
+    if (analysis.risksText) {
+      content += `RISKS\n${'─'.repeat(40)}\n${analysis.risksText}\n\n`;
+    }
+    if (analysis.businessImpact) {
+      content += `BUSINESS IMPACT\n${'─'.repeat(40)}\n${analysis.businessImpact}\n\n`;
+    }
+    if (analysis.strategicImpact) {
+      content += `STRATEGIC IMPACT\n${'─'.repeat(40)}\n${analysis.strategicImpact}\n\n`;
     }
 
-    // Impact
-    if (analysis.impact) {
-      content += `IMPACT ANALYSIS\n${'─'.repeat(40)}\n`;
-      if (analysis.impact.downstreamTasks !== undefined) {
-        content += `Downstream Tasks: ${analysis.impact.downstreamTasks}\n`;
-      }
-      if (analysis.impact.businessImpact) {
-        content += `Business Impact: ${analysis.impact.businessImpact}\n`;
-      }
-      if (analysis.impact.strategicImpact) {
-        content += `Strategic Impact: ${analysis.impact.strategicImpact}\n`;
-      }
+    // Financial Impact
+    if (analysis.totalCost || analysis.totalBenefit || analysis.roiSummary) {
+      content += `FINANCIAL IMPACT\n${'─'.repeat(40)}\n`;
+      if (analysis.totalCost) content += `Cost: ${analysis.totalCost}\n`;
+      if (analysis.totalBenefit) content += `Benefit: ${analysis.totalBenefit}\n`;
+      if (analysis.roiSummary) content += `ROI: ${analysis.roiSummary}\n`;
       content += '\n';
+    }
+
+    // Facts & Assumptions
+    if (analysis.factsText) {
+      content += `FACTS\n${'─'.repeat(40)}\n${analysis.factsText}\n\n`;
+    }
+    if (analysis.assumptionsText) {
+      content += `ASSUMPTIONS\n${'─'.repeat(40)}\n${analysis.assumptionsText}\n\n`;
     }
 
     // Download the file
@@ -286,31 +278,24 @@ export class TaskAnalyzer {
   }
 
   /**
-   * Builds confidence badge HTML for the modal header (Phase 3)
-   * @param {Object} confidence - Confidence assessment data
-   * @returns {string} HTML for confidence badge
+   * Builds confidence badge HTML for the modal header (simplified schema - not available)
+   * @param {Object} confidence - Confidence assessment data (may be undefined in simplified schema)
+   * @returns {string} HTML for confidence badge (empty string in simplified schema)
    * @private
    */
   _buildConfidenceBadge(confidence) {
-    if (!confidence || !confidence.level) return '';
-
-    const level = confidence.level.toLowerCase();
-    const icon = level === 'high' ? '✓' : level === 'medium' ? '◐' : '!';
-    const title = confidence.rationale || `${confidence.dataQuality || ''} data quality`;
-
-    return `<span class="confidence-badge-header confidence-${level}" title="${DOMPurify.sanitize(title)}">${icon} ${DOMPurify.sanitize(level)} confidence</span>`;
+    // Confidence data not available in simplified schema
+    return '';
   }
 
   /**
-   * Builds quick facts sidebar HTML (Phase 3)
+   * Builds quick facts sidebar HTML (simplified schema version)
    * @param {Object} analysis - The analysis data
    * @returns {string} HTML for quick facts panel
    * @private
    */
   _buildQuickFacts(analysis) {
     const statusClass = analysis.status.replace(/\s+/g, '-').toLowerCase();
-    const criticalPath = analysis.schedulingContext?.isCriticalPath;
-    const downstreamTasks = analysis.impact?.downstreamTasks;
 
     let quickFactsHTML = `
       <div class="quick-facts-panel">
@@ -327,64 +312,35 @@ export class TaskAnalyzer {
         </div>
     `;
 
-    // Add critical path indicator
-    if (criticalPath !== undefined) {
-      const cpIcon = criticalPath ? '🔴' : '🟢';
-      const cpText = criticalPath ? 'Critical Path' : 'Has Flexibility';
+    // Add progress for in-progress tasks
+    if (analysis.status === 'in-progress' && analysis.percentComplete !== undefined) {
       quickFactsHTML += `
         <div class="quick-fact">
-          <span class="fact-label">Path Status</span>
-          <span class="fact-value">${cpIcon} ${cpText}</span>
+          <span class="fact-label">Progress</span>
+          <span class="fact-value">${analysis.percentComplete}%</span>
         </div>
       `;
     }
 
-    // Add downstream impact
-    if (downstreamTasks !== undefined && downstreamTasks !== null) {
+    // Add velocity for in-progress tasks
+    if (analysis.status === 'in-progress' && analysis.velocity) {
+      const velocityIcon = analysis.velocity === 'on-track' ? '✓' : analysis.velocity === 'ahead' ? '▲' : '▼';
       quickFactsHTML += `
         <div class="quick-fact">
-          <span class="fact-label">Downstream</span>
-          <span class="fact-value impact-highlight">${downstreamTasks} task${downstreamTasks !== 1 ? 's' : ''}</span>
+          <span class="fact-label">Velocity</span>
+          <span class="fact-value">${velocityIcon} ${DOMPurify.sanitize(analysis.velocity)}</span>
         </div>
       `;
     }
 
-    // Add confidence assessment
-    if (analysis.confidence) {
-      const conf = analysis.confidence;
-      const levelIcon = conf.level === 'high' ? '✓' : conf.level === 'medium' ? '◐' : '!';
+    // Add financial ROI summary if available
+    if (analysis.roiSummary) {
       quickFactsHTML += `
         <div class="quick-fact">
-          <span class="fact-label">Confidence</span>
-          <span class="fact-value confidence-${conf.level}">${levelIcon} ${DOMPurify.sanitize(conf.level)}</span>
-        </div>
-        <div class="quick-fact">
-          <span class="fact-label">Data Quality</span>
-          <span class="fact-value">${DOMPurify.sanitize(conf.dataQuality || 'Unknown')}</span>
+          <span class="fact-label">ROI</span>
+          <span class="fact-value">${DOMPurify.sanitize(analysis.roiSummary.substring(0, 50))}${analysis.roiSummary.length > 50 ? '...' : ''}</span>
         </div>
       `;
-
-      if (conf.assumptionCount !== undefined) {
-        quickFactsHTML += `
-          <div class="quick-fact">
-            <span class="fact-label">Assumptions</span>
-            <span class="fact-value">${conf.assumptionCount}</span>
-          </div>
-        `;
-      }
-    }
-
-    // Add high-severity risks count
-    if (analysis.risks && analysis.risks.length > 0) {
-      const highRisks = analysis.risks.filter(r => r.severity === 'high').length;
-      if (highRisks > 0) {
-        quickFactsHTML += `
-          <div class="quick-fact alert-fact">
-            <span class="fact-label">🔴 High Risks</span>
-            <span class="fact-value">${highRisks}</span>
-          </div>
-        `;
-      }
     }
 
     quickFactsHTML += `</div>`;
@@ -393,11 +349,131 @@ export class TaskAnalyzer {
   }
 
   /**
+   * Builds financial impact section HTML (simplified schema)
+   * @param {Object} analysis - The analysis data
+   * @returns {string} HTML for financial impact section
+   * @private
+   */
+  _buildFinancialSection(analysis) {
+    if (!analysis.totalCost && !analysis.totalBenefit && !analysis.roiSummary) return '';
+
+    let html = '<div class="analysis-section financial-impact-section"><h4>💰 Financial Impact</h4>';
+
+    if (analysis.totalCost) {
+      html += `<p><strong>Total Cost:</strong> ${DOMPurify.sanitize(analysis.totalCost)}</p>`;
+    }
+    if (analysis.totalBenefit) {
+      html += `<p><strong>Annual Benefit:</strong> ${DOMPurify.sanitize(analysis.totalBenefit)}</p>`;
+    }
+    if (analysis.roiSummary) {
+      html += `<p><strong>ROI:</strong> ${DOMPurify.sanitize(analysis.roiSummary)}</p>`;
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  /**
+   * Builds stakeholder and change management section HTML (simplified schema)
+   * @param {Object} analysis - The analysis data
+   * @returns {string} HTML for stakeholder section
+   * @private
+   */
+  _buildStakeholderSection(analysis) {
+    if (!analysis.stakeholderSummary && !analysis.changeReadiness) return '';
+
+    let html = '<div class="analysis-section stakeholder-impact-section"><h4>👥 Stakeholder & Change Management</h4>';
+
+    if (analysis.stakeholderSummary) {
+      html += `<p>${DOMPurify.sanitize(analysis.stakeholderSummary)}</p>`;
+    }
+    if (analysis.changeReadiness) {
+      html += `<p><strong>Change Readiness:</strong> ${DOMPurify.sanitize(analysis.changeReadiness)}</p>`;
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  /**
+   * Builds timeline section HTML (simplified schema)
+   * @param {Object} analysis - The analysis data
+   * @returns {string} HTML for timeline section
+   * @private
+   */
+  _buildTimelineSection(analysis) {
+    if (!analysis.expectedDate && !analysis.bestCaseDate && !analysis.worstCaseDate) return '';
+
+    let html = '<div class="analysis-section timeline-scenarios-section"><h4>📅 Timeline Scenarios</h4>';
+
+    if (analysis.bestCaseDate) {
+      html += `<p><strong>Best Case:</strong> ${DOMPurify.sanitize(analysis.bestCaseDate)}</p>`;
+    }
+    if (analysis.expectedDate) {
+      html += `<p><strong>Expected:</strong> ${DOMPurify.sanitize(analysis.expectedDate)}</p>`;
+    }
+    if (analysis.worstCaseDate) {
+      html += `<p><strong>Worst Case:</strong> ${DOMPurify.sanitize(analysis.worstCaseDate)}</p>`;
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  /**
+   * Builds risks and impact section HTML (simplified schema)
+   * @param {Object} analysis - The analysis data
+   * @returns {string} HTML for risks and impact section
+   * @private
+   */
+  _buildRisksImpactSection(analysis) {
+    if (!analysis.risksText && !analysis.businessImpact && !analysis.strategicImpact) return '';
+
+    let html = '<div class="analysis-section risks-section"><h4>⚠️ Risks & Impact</h4>';
+
+    if (analysis.risksText) {
+      html += `<div><strong>Key Risks:</strong><div>${DOMPurify.sanitize(analysis.risksText)}</div></div>`;
+    }
+    if (analysis.businessImpact) {
+      html += `<p><strong>Business Impact:</strong> ${DOMPurify.sanitize(analysis.businessImpact)}</p>`;
+    }
+    if (analysis.strategicImpact) {
+      html += `<p><strong>Strategic Impact:</strong> ${DOMPurify.sanitize(analysis.strategicImpact)}</p>`;
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  /**
+   * Builds progress section HTML (simplified schema)
+   * @param {Object} analysis - The analysis data
+   * @returns {string} HTML for progress section
+   * @private
+   */
+  _buildProgressSection(analysis) {
+    if (analysis.status !== 'in-progress' || (!analysis.percentComplete && !analysis.velocity)) return '';
+
+    let html = '<div class="analysis-section progress-section"><h4>📊 Progress</h4>';
+
+    if (analysis.percentComplete !== undefined) {
+      html += `<p><strong>Completion:</strong> ${analysis.percentComplete}%</p>`;
+    }
+    if (analysis.velocity) {
+      const velocityIcon = analysis.velocity === 'on-track' ? '✓' : analysis.velocity === 'ahead' ? '▲' : '▼';
+      html += `<p><strong>Velocity:</strong> ${velocityIcon} ${DOMPurify.sanitize(analysis.velocity)}</p>`;
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  /**
    * Initializes collapsible functionality for analysis sections
    * @private
    */
   _initializeCollapsibleSections() {
-    const sections = document.querySelectorAll('.analysis-section.timeline-scenarios-section, .analysis-section.risks-section, .analysis-section.impact-section, .analysis-section.scheduling-section, .analysis-section.progress-section, .analysis-section.accelerators-section');
+    const sections = document.querySelectorAll('.analysis-section.timeline-scenarios-section, .analysis-section.risks-section, .analysis-section.impact-section, .analysis-section.scheduling-section, .analysis-section.progress-section, .analysis-section.accelerators-section, .analysis-section.financial-impact-section, .analysis-section.stakeholder-impact-section');
 
     sections.forEach(section => {
       const header = section.querySelector('h4');
