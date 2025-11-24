@@ -399,7 +399,21 @@ MIT License - see LICENSE file for details
 
 ## Changelog
 
-### Phase 6 (Current) - Polish & Optimization
+### Phase 7 (Current) - Full Three-View Generation ✅
+
+**New Features:**
+- ✅ Unified upload endpoint generates all three views (roadmap, slides, document)
+- ✅ Parallel content generation in background
+- ✅ Seamless integration with three-view viewer
+- ✅ Full backward compatibility with legacy charts
+
+**Implementation:**
+- Updated `/api/content/generate` to accept file uploads via multipart/form-data
+- Added file processing for DOCX, TXT, and other formats
+- Frontend now uses Phase 2 API for new uploads
+- Legacy `/generate-chart` endpoint maintained for compatibility
+
+### Phase 6 - Polish & Optimization
 
 **Performance:**
 - ✅ Lazy loading for images and components
