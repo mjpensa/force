@@ -65,89 +65,43 @@ You MUST respond with *only* a valid JSON object matching the schema.
 
 /**
  * Task Analysis System Prompt
+ * Simplified to match the reduced schema complexity
  */
-export const TASK_ANALYSIS_SYSTEM_PROMPT = `You are a senior project management analyst. Your job is to analyze the provided research and a user prompt to build a detailed analysis for *one single task*.
+export const TASK_ANALYSIS_SYSTEM_PROMPT = `You are a senior project management analyst analyzing a specific task from research documents.
 
-The 'Research Content' may contain raw HTML (from .docx files) and Markdown (from .md files). You MUST parse these.
+Respond with ONLY a valid JSON object matching the schema. Keep your analysis concise and factual.
 
-You MUST respond with *only* a valid JSON object matching the 'analysisSchema'.
+**REQUIRED FIELDS:**
+- taskName: The task name
+- startDate: Start date if found (or "Unknown")
+- endDate: End date if found (or "Unknown")
+- status: "completed", "in-progress", or "not-started"
+- rationale: Brief analysis of timeline likelihood (2-3 sentences)
+- summary: Concise task summary (2-3 sentences)
 
-**CRITICAL RULES FOR ANALYSIS:**
-1.  **NO INFERENCE:** For 'taskName', 'facts', and 'assumptions', you MUST use key phrases and data extracted *directly* from the provided text.
-2.  **CITE SOURCES & URLS (HIERARCHY):** You MUST find a source and a URL (if possible) for every 'fact' and 'assumption'. Follow this logic:
-    a.  **PRIORITY 1 (HTML Link):** Search for an HTML \`<a>\` tag near the fact.
-        - 'source': The text inside the tag (e.g., "example.com").
-        - 'url': The \`href\` attribute (e.g., "https://example.com/article/nine").
-    b.  **PRIORITY 2 (Markdown Link):** Search for a Markdown link \`[text](url)\` near the fact.
-        - 'source': The \`text\` part.
-        - 'url': The \`url\` part.
-    c.  **PRIORITY 3 (Fallback):** If no link is found, use the filename as the 'source'.
-        - 'source': The filename (e.g., "FileA.docx") from the \`--- Start of file: ... ---\` wrapper.
-        - 'url': You MUST set this to \`null\`.
-3.  **DETERMINE STATUS:** Determine the task's 'status' ("completed", "in-progress", or "not-started") based on the current date (assume "November 2025") and the task's dates.
-4.  **PROVIDE RATIONALE:** You MUST provide a 'rationale' for 'in-progress' and 'not-started' tasks, analyzing the likelihood of on-time completion based on the 'facts' and 'assumptions'.
-5.  **CLEAN STRINGS:** All string values MUST be valid JSON strings. You MUST properly escape any characters that would break JSON, such as double quotes (\") and newlines (\\n).
+**OPTIONAL FIELDS (provide if data available):**
+- factsText: Key facts from research, formatted as a bulleted list
+- assumptionsText: Key assumptions, formatted as a bulleted list
+- expectedDate: Expected completion date
+- bestCaseDate: Optimistic completion date
+- worstCaseDate: Pessimistic completion date
+- risksText: Top 3-5 risks, formatted as a bulleted list
+- businessImpact: Business consequences of delay (1-2 sentences)
+- strategicImpact: Strategic implications (1-2 sentences)
+- percentComplete: Completion percentage (0-100) for in-progress tasks
+- velocity: "on-track", "behind", or "ahead" for in-progress tasks
+- totalCost: Total project cost estimate
+- totalBenefit: Total annual benefit estimate
+- roiSummary: ROI summary (payback period, first year ROI)
+- stakeholderSummary: Key stakeholders and change management notes (2-3 sentences)
+- changeReadiness: Organizational readiness assessment (1-2 sentences)
+- keyMetrics: Top 3-5 success metrics, formatted as a bulleted list
 
-**PHASE 1 ENHANCEMENT REQUIREMENTS:**
-
-6.  **SCHEDULING CONTEXT:** Analyze WHY this task starts when it does and provide dependency information:
-    - 'rationale': Explain the timing drivers (market events, predecessor completions, resource availability, etc.)
-    - 'predecessors': List tasks that must complete before this task can start (extract from research or infer from timeline)
-    - 'successors': List tasks that depend on this task's completion (extract from research or infer from timeline)
-    - 'slackDays': Estimate schedule slack/float in days (how much delay is tolerable), or null if unknown
-
-7.  **TIMELINE SCENARIOS:** Provide three timeline estimates based on research:
-    - 'expected': The current planned end date with confidence level (high/medium/low based on data quality and assumptions)
-    - 'bestCase': Optimistic completion date assuming favorable conditions (explain assumptions briefly)
-    - 'worstCase': Pessimistic completion date accounting for likely risks (explain risks briefly)
-    - 'likelyDelayFactors': List 2-4 specific factors most likely to cause delays (resource constraints, dependencies, technical complexity, etc.)
-
-8.  **RISK ANALYSIS:** Identify 2-5 specific risks or roadblocks:
-    - 'name': Brief risk description (e.g., "Approval delays", "Technical complexity")
-    - 'severity': Impact level - "high" (project-critical), "medium" (significant impact), or "low" (minor impact)
-    - 'likelihood': Probability - "probable" (>60%), "possible" (30-60%), or "unlikely" (<30%)
-    - 'impact': Describe what happens if this risk occurs (timeline, cost, scope, quality impact)
-    - 'mitigation': Suggest concrete actions to reduce or avoid the risk
-
-9.  **IMPACT ANALYSIS:** Assess consequences of delays or failure:
-    - 'downstreamTasks': Estimate number of tasks that would be blocked or delayed (based on successors and research)
-    - 'businessImpact': Describe business consequences (revenue loss, customer impact, market share, etc.)
-    - 'strategicImpact': Describe effect on strategic goals, company roadmap, competitive position, etc.
-    - 'stakeholders': List key stakeholders affected (teams, executives, customers, partners, etc.)
-
-**PHASE 2 ENHANCEMENT REQUIREMENTS:**
-
-10. **PROGRESS TRACKING:** For in-progress tasks ONLY, provide detailed progress information:
-    - 'percentComplete': Estimate completion percentage (0-100%) based on milestones achieved, time elapsed, and remaining work
-    - 'milestones': List 3-6 key checkpoints with:
-      * 'name': Milestone description
-      * 'completed': true if achieved, false if pending
-      * 'date': Target or actual completion date
-    - 'velocity': Assess current progress - "on-track" (meeting timeline), "behind" (delayed), or "ahead" (early)
-    - 'activeBlockers': List current active issues blocking progress (empty array if none)
-
-11. **ACCELERATORS:** Identify factors that could speed up completion or ensure success:
-    - 'externalDrivers': Market pressures, competitive threats, customer demand (2-4 items)
-    - 'internalIncentives': Team bonuses, executive sponsorship, strategic priorities, budget allocations (2-3 items)
-    - 'efficiencyOpportunities': Parallel workstreams, automation, additional resources, process improvements (2-4 items)
-    - 'successFactors': Critical conditions that must be maintained for on-time delivery (2-4 items)
-
-**PHASE 3 ENHANCEMENT REQUIREMENTS:**
-
-12. **CONFIDENCE ASSESSMENT:** Evaluate the reliability of the analysis:
-    - 'level': Overall confidence level in the analysis - "high" (strong evidence, few assumptions), "medium" (moderate evidence, some assumptions), or "low" (limited evidence, many assumptions)
-    - 'dataQuality': Quality of available research data - "complete" (comprehensive research coverage), "partial" (some gaps in data), or "limited" (minimal research available)
-    - 'assumptionCount': Count the total number of assumptions made in the analysis (from assumptions array)
-    - 'rationale': Brief explanation of confidence level (1-2 sentences explaining why confidence is high/medium/low)
-
-**IMPORTANT NOTES:**
-- If research data is insufficient for Phase 1, 2, or 3 fields, provide reasonable estimates based on context, but note uncertainty in confidence levels.
-- All Phase 1, 2, and 3 fields should be populated when possible - they provide critical decision-making insights.
-- Ensure timeline scenarios are realistic and grounded in the research (avoid wild speculation).
-- Risk analysis should focus on actionable risks with concrete mitigations, not generic concerns.
-- Progress indicators are ONLY for in-progress tasks - omit this field for completed or not-started tasks.
-- Accelerators should identify real opportunities based on research, not generic motivational statements.
-- Confidence assessment should honestly reflect data quality - don't claim high confidence with limited research.`;
+**GUIDELINES:**
+- Extract facts directly from research - no speculation
+- Determine status based on current date (November 2025)
+- Keep all text fields concise - use bullet points for lists
+- Properly escape quotes and newlines in JSON strings`;
 
 /**
  * Q&A System Prompt Template
@@ -219,7 +173,8 @@ export const GANTT_CHART_SCHEMA = {
 
 /**
  * Task Analysis JSON Schema
- * Simplified to avoid Gemini API "too many states" error
+ * Aggressively simplified to avoid Gemini API "too many states" error
+ * Reduced nesting and complexity while keeping essential fields
  */
 export const TASK_ANALYSIS_SCHEMA = {
   type: "object",
@@ -228,135 +183,38 @@ export const TASK_ANALYSIS_SCHEMA = {
     startDate: { type: "string" },
     endDate: { type: "string" },
     status: { type: "string" },
-    facts: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          fact: { type: "string" },
-          source: { type: "string" },
-          url: { type: "string" }
-        }
-      }
-    },
-    assumptions: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          assumption: { type: "string" },
-          source: { type: "string" },
-          url: { type: "string" }
-        }
-      }
-    },
     rationale: { type: "string" },
     summary: { type: "string" },
 
-    // PHASE 1 ENHANCEMENTS - Simplified
-    schedulingContext: {
-      type: "object",
-      properties: {
-        rationale: { type: "string" },
-        predecessors: { type: "array", items: { type: "string" } },
-        successors: { type: "array", items: { type: "string" } },
-        slackDays: { type: "number" }
-      }
-    },
+    // Simplified facts and assumptions - reduced nesting
+    factsText: { type: "string" },
+    assumptionsText: { type: "string" },
 
-    timelineScenarios: {
-      type: "object",
-      properties: {
-        expected: {
-          type: "object",
-          properties: {
-            date: { type: "string" },
-            confidence: { type: "string" }
-          }
-        },
-        bestCase: {
-          type: "object",
-          properties: {
-            date: { type: "string" },
-            assumptions: { type: "string" }
-          }
-        },
-        worstCase: {
-          type: "object",
-          properties: {
-            date: { type: "string" },
-            risks: { type: "string" }
-          }
-        },
-        likelyDelayFactors: { type: "array", items: { type: "string" } }
-      }
-    },
+    // Timeline information
+    expectedDate: { type: "string" },
+    bestCaseDate: { type: "string" },
+    worstCaseDate: { type: "string" },
 
-    risks: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          severity: { type: "string" },
-          likelihood: { type: "string" },
-          impact: { type: "string" },
-          mitigation: { type: "string" }
-        }
-      }
-    },
+    // Risk and impact - simplified to strings
+    risksText: { type: "string" },
+    businessImpact: { type: "string" },
+    strategicImpact: { type: "string" },
 
-    impact: {
-      type: "object",
-      properties: {
-        downstreamTasks: { type: "number" },
-        businessImpact: { type: "string" },
-        strategicImpact: { type: "string" },
-        stakeholders: { type: "array", items: { type: "string" } }
-      }
-    },
+    // Progress (for in-progress tasks)
+    percentComplete: { type: "number" },
+    velocity: { type: "string" },
 
-    // PHASE 2 ENHANCEMENTS - Simplified
-    progress: {
-      type: "object",
-      properties: {
-        percentComplete: { type: "number" },
-        milestones: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              completed: { type: "boolean" },
-              date: { type: "string" }
-            }
-          }
-        },
-        velocity: { type: "string" },
-        activeBlockers: { type: "array", items: { type: "string" } }
-      }
-    },
+    // Financial impact - minimal fields
+    totalCost: { type: "string" },
+    totalBenefit: { type: "string" },
+    roiSummary: { type: "string" },
 
-    accelerators: {
-      type: "object",
-      properties: {
-        externalDrivers: { type: "array", items: { type: "string" } },
-        internalIncentives: { type: "array", items: { type: "string" } },
-        efficiencyOpportunities: { type: "array", items: { type: "string" } },
-        successFactors: { type: "array", items: { type: "string" } }
-      }
-    },
+    // Stakeholder and change management
+    stakeholderSummary: { type: "string" },
+    changeReadiness: { type: "string" },
 
-    // PHASE 3 ENHANCEMENTS - Simplified
-    confidence: {
-      type: "object",
-      properties: {
-        level: { type: "string" },
-        dataQuality: { type: "string" },
-        assumptionCount: { type: "number" },
-        rationale: { type: "string" }
-      }
-    }
+    // Success metrics
+    keyMetrics: { type: "string" }
   },
   required: ["taskName", "status"]
 };
