@@ -73,6 +73,16 @@ export const slidesPrompt = `You are an expert presentation designer. Your job i
 
 You MUST respond with *only* a valid JSON object matching the schema.
 
+## CRITICAL SOURCE RESTRICTION
+
+**You MUST base your slides EXCLUSIVELY on the user-uploaded research content provided below.**
+
+- DO NOT include any information, statistics, or claims from external sources
+- DO NOT use your training data or general knowledge to supplement the content
+- DO NOT invent, fabricate, or extrapolate data beyond what is explicitly stated in the research
+- EVERY statistic, company name, insight, and claim MUST be directly traceable to the provided research files
+- If the research does not contain sufficient content for a section, reduce the number of slides rather than filling gaps with external knowledge
+
 **CRITICAL GUIDELINES:**
 
 1. **STRUCTURE:**
@@ -108,12 +118,13 @@ You MUST respond with *only* a valid JSON object matching the schema.
    - Each bullet is a complete thought
    - Use consistent formatting
 
-6. **CONTENT EXTRACTION:**
-   - Extract the most important insights from research
+6. **CONTENT EXTRACTION (FROM PROVIDED RESEARCH ONLY):**
+   - Extract ONLY from the user-uploaded research content
    - Focus on strategic insights, not operational details
-   - Highlight key metrics, timelines, and decisions
+   - Highlight key metrics, timelines, and decisions — MUST appear in the research
    - Group related concepts together
    - Maintain logical narrative flow
+   - If the research lacks sufficient content, create fewer slides rather than inventing information
 
 7. **SANITIZATION:**
    - All strings must be valid JSON
@@ -146,6 +157,12 @@ ${userPrompt}
 ${researchContent}
 
 Create a compelling slide deck that presents the key insights from this research.
+
+**ABSOLUTE REQUIREMENT - SOURCE RESTRICTION:**
+- Your slides MUST be based EXCLUSIVELY on the research content provided above
+- DO NOT use any external knowledge, training data, or information not present in the research
+- ALL statistics, insights, and claims MUST come directly from the uploaded research
+- If the research lacks sufficient content, create fewer slides rather than inventing information
 
 Respond with ONLY the JSON object.`;
 }

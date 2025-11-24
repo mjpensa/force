@@ -132,15 +132,28 @@ export const documentPrompt = `You are an expert strategic analyst and narrative
 
 You MUST respond with *only* a valid JSON object matching the schema.
 
+## CRITICAL SOURCE RESTRICTION
+
+**You MUST base your analysis EXCLUSIVELY on the user-uploaded research content provided below.**
+
+- DO NOT include any information, statistics, or claims from external sources
+- DO NOT use your training data or general knowledge to supplement the analysis
+- DO NOT invent, fabricate, or extrapolate data beyond what is explicitly stated in the research
+- EVERY statistic, company name, project name, and claim MUST be directly traceable to the provided research files
+- If the research does not contain sufficient data for a section, acknowledge this limitation rather than filling gaps with external knowledge
+- Citations [source.com] MUST reference sources mentioned within the uploaded research, not external sources
+
 ## CORE REQUIREMENTS
 
-### Data Extraction
-Extract from research:
-- 20+ specific statistics (NEVER round—use exact figures like "260 million" not "hundreds of millions")
-- 10+ company/organization names with specific examples
-- 5+ project/initiative names
-- Inline citations in [source.com] format immediately after each claim
-- Specific dates, deadlines, and timeframes
+### Data Extraction (FROM PROVIDED RESEARCH ONLY)
+Extract ONLY from the user-uploaded research content:
+- 20+ specific statistics (NEVER round—use exact figures like "260 million" not "hundreds of millions") — MUST appear in the research
+- 10+ company/organization names with specific examples — MUST be mentioned in the research
+- 5+ project/initiative names — MUST be referenced in the research
+- Inline citations in [source.com] format immediately after each claim — source MUST be from the research
+- Specific dates, deadlines, and timeframes — MUST be stated in the research
+
+**If the research contains fewer statistics or examples than specified, use only what is available. DO NOT supplement with external information.**
 
 ### Metaphor System
 Select ONE metaphor system and maintain it consistently throughout:
@@ -323,9 +336,15 @@ Transform this research into a compelling executive summary using the Great Bifu
 7. Include a QUANTIFIED SCORE in your future landscape (e.g., "Convergence Score of 58/100")
 8. END with metaphor callback and existential stakes: "The [Concept] isn't coming—it's here..."
 
-**CITATION FORMAT:** Place [source.com] immediately after each claim, inline with text.
+**CITATION FORMAT:** Place [source.com] immediately after each claim, inline with text. Citations MUST reference sources found within the uploaded research files.
 
-Target: 1,600-2,000 words with 20+ statistics, 15+ citations, and 10+ named companies/initiatives.
+**ABSOLUTE REQUIREMENT - SOURCE RESTRICTION:**
+- Your analysis MUST be based EXCLUSIVELY on the research content provided above
+- DO NOT use any external knowledge, training data, or information not present in the research
+- ALL statistics, company names, project names, and claims MUST come directly from the uploaded research
+- If the research lacks sufficient data, scale your output accordingly rather than inventing information
+
+Target: 1,600-2,000 words with statistics, citations, and named companies/initiatives extracted ONLY from the provided research.
 
 Respond with ONLY the JSON object.`;
 }
