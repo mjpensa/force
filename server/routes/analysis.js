@@ -10,6 +10,7 @@ import { getSession } from '../storage.js';
 import { callGeminiForJson, callGeminiForText } from '../gemini.js';
 import { TASK_ANALYSIS_SYSTEM_PROMPT, TASK_ANALYSIS_SCHEMA, getQASystemPrompt } from '../prompts.js';
 import { apiLimiter } from '../middleware.js';
+import { sanitizePrompt } from '../utils.js';
 
 const router = express.Router();
 
@@ -36,6 +37,10 @@ router.post('/get-task-analysis', apiLimiter, async (req, res) => {
 
   const researchTextCache = session.researchText;
 
+  // Sanitize user inputs to prevent prompt injection
+  const sanitizedEntity = sanitizePrompt(entity);
+  const sanitizedTaskName = sanitizePrompt(taskName);
+
   // Build user query
   const geminiUserQuery = `**CRITICAL REMINDER:** You MUST escape all newlines (\\n) and double-quotes (\") found in the research content before placing them into the final JSON string values.
 
@@ -43,8 +48,8 @@ Research Content:
 ${researchTextCache}
 
 **YOUR TASK:** Provide a full, detailed analysis for this specific task:
-  - Entity: "${entity}"
-  - Task Name: "${taskName}"`;
+  - Entity: ${sanitizedEntity}
+  - Task Name: ${sanitizedTaskName}`;
 
   // Define the payload
   const payload = {
@@ -108,13 +113,18 @@ router.post('/ask-question', apiLimiter, async (req, res) => {
 
   const researchTextCache = session.researchText;
 
+  // Sanitize user inputs to prevent prompt injection
+  const sanitizedQuestion = sanitizePrompt(question);
+  const sanitizedTaskName = sanitizePrompt(taskName);
+  const sanitizedEntity = sanitizePrompt(entity);
+
   // Build user query
-  const geminiUserQuery = `Research Content:\n${researchTextCache}\n\n**User Question:** ${question}`;
+  const geminiUserQuery = `Research Content:\n${researchTextCache}\n\n**User Question:** ${sanitizedQuestion}`;
 
   // Define the payload (no schema, simple text generation)
   const payload = {
     contents: [{ parts: [{ text: geminiUserQuery }] }],
-    systemInstruction: { parts: [{ text: getQASystemPrompt(taskName, entity) }] },
+    systemInstruction: { parts: [{ text: getQASystemPrompt(sanitizedTaskName, sanitizedEntity) }] },
     generationConfig: {
       maxOutputTokens: CONFIG.API.MAX_OUTPUT_TOKENS_QA,
       temperature: CONFIG.API.TEMPERATURE_QA,
