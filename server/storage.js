@@ -18,11 +18,14 @@ const sessionStore = new Map();
 const chartStore = new Map();
 const jobStore = new Map();
 
+// Store interval ID for cleanup on shutdown
+let cleanupIntervalId = null;
+
 /**
  * Starts the cleanup interval for expired sessions, charts, and jobs
  */
 export function startCleanupInterval() {
-  setInterval(() => {
+  cleanupIntervalId = setInterval(() => {
     const now = Date.now();
     let sessionsDeleted = 0;
     let chartsDeleted = 0;
@@ -272,5 +275,16 @@ export function failJob(jobId, errorMessage) {
     status: 'error',
     error: errorMessage || 'Unknown error occurred'
   });
+}
+
+/**
+ * Stops the cleanup interval (call on server shutdown)
+ */
+export function stopCleanupInterval() {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+    console.log('✅ Storage cleanup interval stopped');
+  }
 }
 

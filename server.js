@@ -35,10 +35,10 @@ import {
 } from './server/middleware.js';
 
 // Import storage management
-import { startCleanupInterval } from './server/storage.js';
+import { startCleanupInterval, stopCleanupInterval } from './server/storage.js';
 
 // Import database (Phase 2)
-import { initializeDatabase, getDatabaseInfo } from './server/db.js';
+import { initializeDatabase, getDatabaseInfo, closeDatabase } from './server/db.js';
 
 // Import routes
 import chartRoutes from './server/routes/charts.js';
@@ -133,13 +133,16 @@ process.on('uncaughtException', (error) => {
 // Handle SIGTERM gracefully (for deployment platforms like Railway)
 process.on('SIGTERM', () => {
   console.log('⚠️  SIGTERM signal received: closing HTTP server gracefully');
-  // In a production app, you'd close database connections, etc. here
+  stopCleanupInterval();
+  closeDatabase();
   process.exit(0);
 });
 
 // Handle SIGINT gracefully (Ctrl+C)
 process.on('SIGINT', () => {
   console.log('\n⚠️  SIGINT signal received: shutting down gracefully');
+  stopCleanupInterval();
+  closeDatabase();
   process.exit(0);
 });
 
