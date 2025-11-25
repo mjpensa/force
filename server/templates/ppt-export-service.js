@@ -95,6 +95,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'timelineCardsAlt':
           addTimelineCardsAltSlide(pptx, slideData, slideNumber);
           break;
+        case 'timelinePhases':
+          addTimelinePhasesSlide(pptx, slideData, slideNumber);
+          break;
         case 'timelineNumberedMarkers':
           addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
           break;
@@ -1399,6 +1402,113 @@ function addTimelineCardsSlide(pptx, slideData, slideNumber) {
       h: Math.abs(connectorEndY - connectorStartY),
       line: { color: timelineConfig.markerColor, width: 1, dashType: 'dash' }
     });
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add timeline phases slide (Slide 25 - horizontal timeline with phase labels and bars)
+ */
+function addTimelinePhasesSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.timelinePhases;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  if (slideData.section) {
+    slide.addText(slideData.section.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  const phasesConfig = layout.elements.phases;
+  const phases = slideData.phases || slideData.items || [];
+
+  phases.forEach((phase, i) => {
+    const x = phasesConfig.startX + (i * (phasesConfig.phaseWidth + phasesConfig.gap));
+    let y = phasesConfig.startY;
+
+    // Phase label (red)
+    if (phase.label || phase.title) {
+      slide.addText(phase.label || phase.title, {
+        x: x,
+        y: y,
+        w: phasesConfig.phaseWidth,
+        h: 0.5,
+        fontSize: phasesConfig.labelFontSize,
+        fontFace: phasesConfig.labelFontFace,
+        color: phasesConfig.labelColor,
+        align: 'left'
+      });
+      y += 0.6;
+    }
+
+    // Phase bar (navy)
+    slide.addShape('rect', {
+      x: x,
+      y: y,
+      w: phasesConfig.phaseWidth,
+      h: phasesConfig.barHeight,
+      fill: { color: phasesConfig.barColor }
+    });
+    y += phasesConfig.barHeight + 0.2;
+
+    // Phase details/description
+    if (phase.details || phase.description || phase.content) {
+      const detailsText = phase.details || phase.description || phase.content;
+      // Handle array of details or single string
+      const textContent = Array.isArray(detailsText) ? detailsText.join('\n• ') : detailsText;
+      const formattedText = Array.isArray(detailsText) ? '• ' + textContent : textContent;
+
+      slide.addText(formattedText, {
+        x: x,
+        y: y,
+        w: phasesConfig.phaseWidth,
+        h: phasesConfig.detailsHeight,
+        fontSize: phasesConfig.detailsFontSize,
+        fontFace: phasesConfig.detailsFontFace,
+        color: phasesConfig.detailsColor,
+        align: 'left',
+        valign: 'top'
+      });
+    }
   });
 
   // Page number
