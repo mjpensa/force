@@ -904,6 +904,77 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // PROCESS STEPS ALT - Horizontal process steps white background (Slide 28)
+  // ============================================
+  processStepsAlt: {
+    name: 'Horizontal Process Steps (Alternative)',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.5,
+        w: 12,
+        h: 0.8,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Steps configuration
+      steps: {
+        startX: 0.5,
+        y: 2.5,
+        circleSize: 1,
+        gap: 0.4,
+        circleBgColor: COLORS.red,
+        numberFontSize: 24,
+        numberFontFace: FONTS.bold,
+        numberColor: COLORS.white,
+        titleFontSize: 14,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        descFontSize: 10,
+        descFontFace: FONTS.regular,
+        descColor: COLORS.darkGray,
+        lineColor: COLORS.red,
+        lineWidth: 2,
+        contentWidth: 2.2
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // PROCESS STEPS 5 - Horizontal 5-step process (Slide 27)
   // ============================================
   processSteps5: {
@@ -1348,6 +1419,7 @@ export const SLIDE_TYPE_MAP = {
   'timelineNumberedMarkers': 'timelineNumberedMarkers',
   'stepsVertical': 'stepsVertical',
   'processSteps5': 'processSteps5',
+  'processStepsAlt': 'processStepsAlt',
   'section': 'sectionDivider',
   'thankyou': 'thankYou',
   'toc': 'tableOfContents',
