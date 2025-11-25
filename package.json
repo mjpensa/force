@@ -9,12 +9,7 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest --coverage",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest --watch",
     "test:unit": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest tests/unit",
-    "test:integration": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest tests/integration",
-    "test:semantic": "node test-semantic-engine.js all",
-    "test:semantic:generate": "node test-semantic-engine.js generate",
-    "test:semantic:banking": "node test-semantic-engine.js banking",
-    "test:semantic:endpoints": "node test-semantic-engine.js endpoints",
-    "test:semantic:determinism": "node test-semantic-engine.js determinism"
+    "test:integration": "NODE_OPTIONS=--experimental-vm-modules NODE_ENV=test jest tests/integration"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
