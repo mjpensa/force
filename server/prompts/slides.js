@@ -679,6 +679,99 @@ Choose the appropriate slide type based on your content structure:
 export const dataStructureExamples = `
 ## DATA STRUCTURE EXAMPLES
 
+### titleWithImage Example:
+{
+  "type": "titleWithImage",
+  "title": "Digital Transformation Journey",
+  "tagline": "INNOVATION STRATEGY",
+  "businessArea": "Technology Division",
+  "date": "January 2025"
+}
+
+### tableOfContents Example:
+{
+  "type": "tableOfContents",
+  "title": "Agenda",
+  "items": ["Executive Summary", "Market Analysis", "Strategic Priorities", "Implementation Plan", "Next Steps"]
+}
+
+### contentsNav Example:
+{
+  "type": "contentsNav",
+  "title": "Contents",
+  "sections": [
+    { "title": "Introduction" },
+    { "title": "Market Overview" },
+    { "title": "Our Approach" },
+    { "title": "Timeline" },
+    { "title": "Conclusions" }
+  ],
+  "previewNumber": "01",
+  "previewTitle": "Introduction"
+}
+
+### bullets Example:
+{
+  "type": "bullets",
+  "title": "Key Strategic Priorities",
+  "section": "STRATEGY",
+  "bullets": [
+    "Accelerate digital transformation across all business units",
+    "Expand market presence in emerging regions",
+    "Enhance customer experience through AI-driven personalization",
+    "Drive operational efficiency with automation"
+  ]
+}
+
+### contentMultiColumn Example:
+{
+  "type": "contentMultiColumn",
+  "title": "Market Dynamics",
+  "section": "ANALYSIS",
+  "columns": [
+    "The global market is experiencing unprecedented growth driven by digital adoption. Key players are investing heavily in technology infrastructure to maintain competitive advantage.",
+    "Consumer behavior has shifted dramatically toward online channels. Organizations must adapt their strategies to meet evolving customer expectations and preferences."
+  ]
+}
+
+### stepsVertical Example:
+{
+  "type": "stepsVertical",
+  "title": "Implementation Approach",
+  "section": "METHODOLOGY",
+  "steps": [
+    { "title": "Assessment", "description": "Evaluate current state and identify gaps" },
+    { "title": "Planning", "description": "Define roadmap and resource requirements" },
+    { "title": "Execution", "description": "Implement changes in phased approach" },
+    { "title": "Validation", "description": "Test and verify outcomes against targets" }
+  ]
+}
+
+### quoteDataA Example:
+{
+  "type": "quoteDataA",
+  "title": "Market Insight",
+  "section": "RESEARCH",
+  "quote": "Organizations that embrace digital transformation see 2x revenue growth compared to laggards",
+  "attribution": "Industry Research Report 2024",
+  "metrics": [
+    { "value": "67%", "label": "Adoption Rate" },
+    { "value": "2.3x", "label": "ROI Improvement" },
+    { "value": "45%", "label": "Cost Savings" }
+  ]
+}
+
+### rolloutTimeline Example:
+{
+  "type": "rolloutTimeline",
+  "title": "Deployment Roadmap",
+  "phases": [
+    { "title": "Phase 1", "details": ["Pilot launch", "Initial testing", "Feedback collection"] },
+    { "title": "Phase 2", "details": ["Regional expansion", "Team training", "Process refinement"] },
+    { "title": "Phase 3", "details": ["Global rollout", "Full integration", "Ongoing optimization"] }
+  ]
+}
+
 ### cardGrid Example:
 {
   "type": "cardGrid",
@@ -908,6 +1001,43 @@ ${presentationTemplates}
    - Use "ganttChart" for project schedules with time-based activities
 5. **END APPROPRIATELY**: Use "thankYou" as final slide
 6. **USE SECTION LABELS**: Include "section" field for content slides (displayed in red at top)
+
+## COMMON MISTAKES TO AVOID
+
+1. **DON'T use "bullets" for everything** - Vary your slide types to keep the presentation engaging
+2. **DON'T overload slides** - Max 6 bullets, 9 cards, 4 metrics, 7 steps per slide
+3. **DON'T use complex types for simple content** - Use "bullets" for basic lists, not "cardGrid"
+4. **DON'T forget section labels** - Include "section" for content slides to show context
+5. **DON'T use timeline slides without dates** - Timeline items should have date/phase labels
+6. **DON'T use ganttChart without proper month data** - Activities need startMonth and endMonth (0-11)
+7. **DON'T mix incompatible data** - Each slide type expects specific data structures
+8. **DON'T use "content" type when "bullets" would work** - Bullets are more scannable
+
+## CHOOSING BETWEEN SIMILAR TYPES
+
+| If you have... | Use this type | Not this |
+|----------------|---------------|----------|
+| 3-6 simple points | bullets | cardGrid |
+| 6-9 themed concepts with descriptions | cardGrid | bullets |
+| Capabilities with icons | featureGrid | cardGrid |
+| Sequential steps (3-5) | processSteps5 | stepsVertical |
+| Sequential steps (4-8) | stepsVertical | processSteps5 |
+| Timeline with details | timelineCards | timelineNumberedMarkers |
+| Simple timeline | timelineNumberedMarkers | timelineCards |
+| Quote + numbers | quoteWithMetrics | quote |
+| Two contrasting quotes | quoteTwoColumn | quote (twice) |
+| Phase-based plan | rolloutGrid | bullets |
+| Monthly schedule | ganttChart | rolloutTimeline |
+| Comparison data | table | bullets |
+
+## EDGE CASES
+
+1. **Empty arrays**: If you have no items for cards/features/steps, use a simpler slide type instead
+2. **Single item**: Don't use grid layouts for just 1 item - use bullets or content instead
+3. **Too many items**: Split across multiple slides rather than exceeding limits
+4. **No metrics available**: Use "quote" instead of "quoteWithMetrics"
+5. **No timeline dates**: Use "processSteps5" or "stepsVertical" instead of timeline types
+6. **Simple vs complex**: When in doubt, use simpler types (bullets, content, quote)
 
 ## CONTENT RULES
 
