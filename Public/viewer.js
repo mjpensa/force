@@ -1,11 +1,11 @@
 /**
  * Unified Content Viewer
- * Phase 5: Integrates all three views (Roadmap, Slides, Document)
+ * Phase 5: Integrates all four views (Roadmap, Slides, Document, Research Analysis)
  * Phase 6: Enhanced with performance monitoring and lazy loading
  *
  * Handles:
  * - Session loading from URL
- * - View routing (#roadmap, #slides, #document)
+ * - View routing (#roadmap, #slides, #document, #research-analysis)
  * - State management with StateManager
  * - Component lifecycle
  * - Performance monitoring
@@ -15,6 +15,7 @@
 import { StateManager } from './components/shared/StateManager.js';
 import { SlidesView } from './components/views/SlidesView.js';
 import { DocumentView } from './components/views/DocumentView.js';
+import { ResearchAnalysisView } from './components/views/ResearchAnalysisView.js';
 import { addLazyLoadingStyles, initLazyLoading } from './components/shared/LazyLoader.js';
 import {
   markPerformance,
@@ -152,6 +153,11 @@ class ContentViewer {
             <span class="tab-label">Document</span>
             <span class="tab-status" id="status-document" title="Loading..."></span>
           </button>
+          <button class="view-tab" data-view="research-analysis" aria-label="Research Analysis view">
+            <span class="tab-icon">🔍</span>
+            <span class="tab-label">Analysis</span>
+            <span class="tab-status" id="status-research-analysis" title="Loading..."></span>
+          </button>
         </nav>
       </div>
     `;
@@ -197,6 +203,7 @@ class ContentViewer {
       '1': () => window.location.hash = 'roadmap',
       '2': () => window.location.hash = 'slides',
       '3': () => window.location.hash = 'document',
+      '4': () => window.location.hash = 'research-analysis',
 
       // Arrow key navigation
       'ArrowLeft': () => this._navigateToPreviousView(),
@@ -221,7 +228,7 @@ class ContentViewer {
    * @private
    */
   _navigateToPreviousView() {
-    const views = ['roadmap', 'slides', 'document'];
+    const views = ['roadmap', 'slides', 'document', 'research-analysis'];
     const currentIndex = views.indexOf(this.currentView);
     const previousIndex = (currentIndex - 1 + views.length) % views.length;
     window.location.hash = views[previousIndex];
@@ -233,7 +240,7 @@ class ContentViewer {
    * @private
    */
   _navigateToNextView() {
-    const views = ['roadmap', 'slides', 'document'];
+    const views = ['roadmap', 'slides', 'document', 'research-analysis'];
     const currentIndex = views.indexOf(this.currentView);
     const nextIndex = (currentIndex + 1) % views.length;
     window.location.hash = views[nextIndex];
@@ -249,8 +256,8 @@ class ContentViewer {
       <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px;">
         <h2 style="margin-top: 0;">Keyboard Shortcuts</h2>
         <dl style="line-height: 2;">
-          <dt style="font-weight: 600;">1, 2, 3</dt>
-          <dd style="margin-left: 2rem; color: #666;">Navigate to Roadmap, Slides, or Document view</dd>
+          <dt style="font-weight: 600;">1, 2, 3, 4</dt>
+          <dd style="margin-left: 2rem; color: #666;">Navigate to Roadmap, Slides, Document, or Analysis view</dd>
 
           <dt style="font-weight: 600;">← →</dt>
           <dd style="margin-left: 2rem; color: #666;">Navigate between views</dd>
@@ -382,6 +389,9 @@ class ContentViewer {
         case 'document':
           await this._renderDocumentView(viewData);
           break;
+        case 'research-analysis':
+          await this._renderResearchAnalysisView(viewData);
+          break;
         case 'roadmap':
         default:
           await this._renderRoadmapView(viewData);
@@ -451,6 +461,21 @@ class ContentViewer {
     this.contentContainer.appendChild(container);
 
     this.currentViewComponent = documentView;
+  }
+
+  /**
+   * Render research analysis view
+   */
+  async _renderResearchAnalysisView(data) {
+    console.log('[Viewer] Rendering research analysis view');
+
+    const analysisView = new ResearchAnalysisView(data, this.sessionId);
+    const container = analysisView.render();
+
+    this.contentContainer.innerHTML = '';
+    this.contentContainer.appendChild(container);
+
+    this.currentViewComponent = analysisView;
   }
 
   /**

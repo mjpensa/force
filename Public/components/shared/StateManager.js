@@ -11,27 +11,30 @@ export class StateManager {
     this.state = {
       // Session info
       sessionId: null,
-      currentView: 'roadmap',  // 'roadmap' | 'slides' | 'document'
+      currentView: 'roadmap',  // 'roadmap' | 'slides' | 'document' | 'research-analysis'
 
       // Content data
       content: {
         roadmap: null,
         slides: null,
-        document: null
+        document: null,
+        'research-analysis': null
       },
 
       // Loading states
       loading: {
         roadmap: false,
         slides: false,
-        document: false
+        document: false,
+        'research-analysis': false
       },
 
       // Error states
       errors: {
         roadmap: null,
         slides: null,
-        document: null
+        document: null,
+        'research-analysis': null
       },
 
       // UI state
@@ -254,6 +257,18 @@ export class StateManager {
         }
       }
 
+      // Validate research-analysis-specific structure
+      if (viewName === 'research-analysis') {
+        if (!data.themes || !Array.isArray(data.themes) || data.themes.length === 0) {
+          throw new AppError(
+            `Research analysis generation completed but produced empty content. Please try regenerating.`,
+            ErrorTypes.VALIDATION,
+            ErrorSeverity.MEDIUM,
+            { viewName, emptyContent: true, canRetry: true }
+          );
+        }
+      }
+
       // Update state with loaded data
       this.setState({
         content: { ...this.state.content, [viewName]: data },
@@ -323,7 +338,7 @@ export class StateManager {
    * Prefetch other views in background
    */
   async prefetchOtherViews(currentView) {
-    const views = ['roadmap', 'slides', 'document'];
+    const views = ['roadmap', 'slides', 'document', 'research-analysis'];
     const otherViews = views.filter(v => v !== currentView);
 
     // Wait a bit, then prefetch
@@ -361,9 +376,9 @@ export class StateManager {
     this.setState({
       sessionId: null,
       currentView: 'roadmap',
-      content: { roadmap: null, slides: null, document: null },
-      loading: { roadmap: false, slides: false, document: false },
-      errors: { roadmap: null, slides: null, document: null }
+      content: { roadmap: null, slides: null, document: null, 'research-analysis': null },
+      loading: { roadmap: false, slides: false, document: false, 'research-analysis': false },
+      errors: { roadmap: null, slides: null, document: null, 'research-analysis': null }
     });
   }
 
