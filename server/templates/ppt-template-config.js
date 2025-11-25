@@ -904,6 +904,82 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // TIMELINE NUMBERED MARKERS - Horizontal timeline with numbered markers (Slide 23)
+  // ============================================
+  timelineNumberedMarkers: {
+    name: 'Timeline with Numbered Markers',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.3,
+        w: 12,
+        h: 0.6,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Timeline line configuration
+      timeline: {
+        y: 3.5,
+        startX: 1,
+        endX: 12,
+        lineColor: COLORS.red,
+        lineWidth: 3,
+        markerSize: 0.8,
+        markerColor: COLORS.red
+      },
+      // Step configuration
+      steps: {
+        contentWidth: 2,
+        contentHeight: 2,
+        contentY: 4.2,
+        numberFontSize: 18,
+        numberFontFace: FONTS.bold,
+        numberColor: COLORS.white,
+        titleFontSize: 12,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        descFontSize: 10,
+        descFontFace: FONTS.regular,
+        descColor: COLORS.darkGray
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // TIMELINE CARDS - Horizontal timeline with cards (Slide 22)
   // ============================================
   timelineCards: {
@@ -991,6 +1067,7 @@ export const SLIDE_TYPE_MAP = {
   'quoteTwoColumn': 'quoteTwoColumn',
   'quoteWithMetrics': 'quoteWithMetrics',
   'timelineCards': 'timelineCards',
+  'timelineNumberedMarkers': 'timelineNumberedMarkers',
   'section': 'sectionDivider',
   'thankyou': 'thankYou',
   'toc': 'tableOfContents',

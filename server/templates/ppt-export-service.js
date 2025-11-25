@@ -92,6 +92,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'timeline':
           addTimelineCardsSlide(pptx, slideData, slideNumber);
           break;
+        case 'timelineNumberedMarkers':
+          addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1393,6 +1396,134 @@ function addTimelineCardsSlide(pptx, slideData, slideNumber) {
       h: Math.abs(connectorEndY - connectorStartY),
       line: { color: timelineConfig.markerColor, width: 1, dashType: 'dash' }
     });
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add timeline with numbered markers slide (Slide 23 - horizontal timeline with numbered circles)
+ */
+function addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.timelineNumberedMarkers;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  if (slideData.section) {
+    slide.addText(slideData.section.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  const timelineConfig = layout.elements.timeline;
+  const stepsConfig = layout.elements.steps;
+  const steps = slideData.steps || slideData.items || [];
+  const stepCount = steps.length;
+
+  // Draw timeline line
+  slide.addShape('line', {
+    x: timelineConfig.startX,
+    y: timelineConfig.y,
+    w: timelineConfig.endX - timelineConfig.startX,
+    h: 0,
+    line: { color: timelineConfig.lineColor, width: timelineConfig.lineWidth }
+  });
+
+  // Calculate spacing for step markers
+  const totalWidth = timelineConfig.endX - timelineConfig.startX;
+  const spacing = stepCount > 1 ? totalWidth / (stepCount - 1) : totalWidth / 2;
+
+  steps.forEach((step, i) => {
+    const markerX = timelineConfig.startX + (i * spacing);
+    const contentX = markerX - (stepsConfig.contentWidth / 2);
+
+    // Numbered circle marker (on the line)
+    slide.addShape('ellipse', {
+      x: markerX - (timelineConfig.markerSize / 2),
+      y: timelineConfig.y - (timelineConfig.markerSize / 2),
+      w: timelineConfig.markerSize,
+      h: timelineConfig.markerSize,
+      fill: { color: timelineConfig.markerColor }
+    });
+
+    // Step number inside circle
+    slide.addText(`${i + 1}`, {
+      x: markerX - (timelineConfig.markerSize / 2),
+      y: timelineConfig.y - (timelineConfig.markerSize / 2),
+      w: timelineConfig.markerSize,
+      h: timelineConfig.markerSize,
+      fontSize: stepsConfig.numberFontSize,
+      fontFace: stepsConfig.numberFontFace,
+      color: stepsConfig.numberColor,
+      align: 'center',
+      valign: 'middle'
+    });
+
+    // Step title (below line)
+    if (step.title) {
+      slide.addText(step.title, {
+        x: contentX,
+        y: stepsConfig.contentY,
+        w: stepsConfig.contentWidth,
+        h: 0.5,
+        fontSize: stepsConfig.titleFontSize,
+        fontFace: stepsConfig.titleFontFace,
+        color: stepsConfig.titleColor,
+        align: 'center'
+      });
+    }
+
+    // Step description (below title)
+    if (step.description || step.content) {
+      slide.addText(step.description || step.content, {
+        x: contentX,
+        y: stepsConfig.contentY + 0.6,
+        w: stepsConfig.contentWidth,
+        h: stepsConfig.contentHeight - 0.6,
+        fontSize: stepsConfig.descFontSize,
+        fontFace: stepsConfig.descFontFace,
+        color: stepsConfig.descColor,
+        align: 'center',
+        valign: 'top'
+      });
+    }
   });
 
   // Page number
