@@ -914,11 +914,14 @@ export class GanttChart {
           height: chartContainer.scrollHeight
         });
 
-        // Create download link
+        // Create download link and append to DOM (required for some browsers)
         const link = document.createElement('a');
         link.download = 'gantt-chart.png';
         link.href = canvas.toDataURL('image/png');
+        link.style.display = 'none';
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
 
         // Performance logging
         const duration = Math.round(performance.now() - startTime);
@@ -1058,13 +1061,16 @@ export class GanttChart {
          preserveAspectRatio="xMidYMid meet"/>
 </svg>`;
 
-        // Create blob and download
+        // Create blob and download (append to DOM for browser compatibility)
         const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.download = 'gantt-chart.svg';
         link.href = url;
+        link.style.display = 'none';
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
         // Performance logging
