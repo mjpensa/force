@@ -54,8 +54,9 @@ You MUST respond with *only* a valid JSON object matching the schema.
       * 2nd swimlane: "medium-red"
       * 3rd swimlane: "mid-grey"
       * 4th swimlane: "light-grey"
-      * 5th swimlane: "dark-blue"
-      * 6th+ swimlanes: cycle back starting with "priority-red"
+      * 5th swimlane: "white"
+      * 6th swimlane: "dark-blue"
+      * 7th+ swimlanes: cycle back starting with "priority-red"
     - ALL tasks within a swimlane get that swimlane's color
     - Populate the 'legend' array with swimlane names in ALPHABETICAL order: \`"legend": [{ "color": "priority-red", "label": "First Swimlane (A-Z)" }, ...]\`
     - **CRITICAL:** The 'legend' array must NEVER be empty.
