@@ -1327,6 +1327,70 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // ROLLOUT DESCRIPTION - Phase cards with descriptions (Slide 33)
+  // ============================================
+  rolloutDescription: {
+    name: 'Rollout Schedule Description',
+    background: COLORS.white,
+    elements: {
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.3,
+        w: 4,
+        h: 0.8,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Phase cards configuration
+      phases: {
+        startX: 0.5,
+        startY: 1.4,
+        cardWidth: 4,
+        cardHeight: 2.8,
+        gapX: 0.25,
+        gapY: 0.25,
+        columns: 3,
+        maxRows: 2,
+        padding: 0.2,
+        // Default colors for phases
+        colors: [
+          { bg: COLORS.navy, text: COLORS.white, note: COLORS.lightGray },
+          { bg: COLORS.red, text: COLORS.white, note: COLORS.lightGray },
+          { bg: COLORS.lightGray, text: COLORS.navy, note: COLORS.darkGray }
+        ],
+        titleFontSize: 14,
+        titleFontFace: FONTS.semibold,
+        descFontSize: 10,
+        descFontFace: FONTS.regular,
+        noteFontSize: 9,
+        noteFontFace: FONTS.regular
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // GANTT CHART - Schedule with Gantt bars (Slide 32)
   // ============================================
   ganttChart: {
@@ -1625,7 +1689,8 @@ export const SLIDE_TYPE_MAP = {
   'rolloutGrid': 'rolloutGrid',
   'rolloutTimeline': 'rolloutTimeline',
   'ganttChart': 'ganttChart',
-  'gantt': 'ganttChart'
+  'gantt': 'ganttChart',
+  'rolloutDescription': 'rolloutDescription'
 };
 
 /**

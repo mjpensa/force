@@ -121,6 +121,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'gantt':
           addGanttChartSlide(pptx, slideData, slideNumber);
           break;
+        case 'rolloutDescription':
+          addRolloutDescriptionSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1650,6 +1653,123 @@ function addRolloutGridSlide(pptx, slideData, slideNumber) {
         color: textColor,
         align: 'left',
         valign: 'top'
+      });
+    }
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add rollout description slide (Slide 33 - phase cards with descriptions)
+ */
+function addRolloutDescriptionSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.rolloutDescription;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Main title
+  slide.addText(slideData.title || 'Rollout Schedule', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align
+  });
+
+  const phasesConfig = layout.elements.phases;
+  const phases = slideData.phases || slideData.items || [];
+
+  phases.forEach((phase, i) => {
+    const row = Math.floor(i / phasesConfig.columns);
+    const col = i % phasesConfig.columns;
+
+    // Skip if exceeding max rows
+    if (row >= phasesConfig.maxRows) return;
+
+    const x = phasesConfig.startX + (col * (phasesConfig.cardWidth + phasesConfig.gapX));
+    const y = phasesConfig.startY + (row * (phasesConfig.cardHeight + phasesConfig.gapY));
+
+    // Get colors for this phase (use data override or default from config)
+    const colorIndex = i % phasesConfig.colors.length;
+    const bgColor = phase.bgColor || phasesConfig.colors[colorIndex].bg;
+    const textColor = phase.textColor || phasesConfig.colors[colorIndex].text;
+    const noteColor = phase.noteColor || phasesConfig.colors[colorIndex].note;
+
+    // Phase card background
+    slide.addShape('rect', {
+      x: x,
+      y: y,
+      w: phasesConfig.cardWidth,
+      h: phasesConfig.cardHeight,
+      fill: { color: bgColor }
+    });
+
+    // Phase title
+    if (phase.title || phase.name) {
+      slide.addText(phase.title || phase.name, {
+        x: x + phasesConfig.padding,
+        y: y + phasesConfig.padding,
+        w: phasesConfig.cardWidth - (phasesConfig.padding * 2),
+        h: 0.5,
+        fontSize: phasesConfig.titleFontSize,
+        fontFace: phasesConfig.titleFontFace,
+        color: textColor,
+        align: 'left',
+        bold: true
+      });
+    }
+
+    // Phase description
+    const description = phase.description || phase.content;
+    if (description) {
+      const descText = Array.isArray(description)
+        ? description.map(item => `• ${item}`).join('\n')
+        : description;
+
+      slide.addText(descText, {
+        x: x + phasesConfig.padding,
+        y: y + phasesConfig.padding + 0.6,
+        w: phasesConfig.cardWidth - (phasesConfig.padding * 2),
+        h: phasesConfig.cardHeight - phasesConfig.padding - 1.4,
+        fontSize: phasesConfig.descFontSize,
+        fontFace: phasesConfig.descFontFace,
+        color: textColor,
+        align: 'left',
+        valign: 'top'
+      });
+    }
+
+    // Phase note (bottom of card)
+    if (phase.note || phase.date) {
+      slide.addText(phase.note || phase.date, {
+        x: x + phasesConfig.padding,
+        y: y + phasesConfig.cardHeight - phasesConfig.padding - 0.4,
+        w: phasesConfig.cardWidth - (phasesConfig.padding * 2),
+        h: 0.4,
+        fontSize: phasesConfig.noteFontSize,
+        fontFace: phasesConfig.noteFontFace,
+        color: noteColor,
+        align: 'left',
+        valign: 'bottom'
       });
     }
   });
