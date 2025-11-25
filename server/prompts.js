@@ -62,7 +62,20 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - **Priority:** If a task matches both "decision" and "milestone" keywords, classify as "decision"
     - **IMPORTANT:** Executive View will only show tasks where taskType is "milestone" or "decision"
 8.  **SANITIZATION:** All string values MUST be valid JSON strings. You MUST properly escape any characters that would break JSON, such as double quotes (\\") and newlines (\\\\n), within the string value itself.
-9.  **COMPREHENSIVENESS:** Extract ALL tasks mentioned in the research. Do not summarize or consolidate. Include every distinct task, milestone, and decision point found in the source materials.`;
+9.  **COMPREHENSIVENESS (CRITICAL - EXTRACT EVERYTHING):** You MUST extract ALL events from the research. This is the most important rule. Scan the research files exhaustively and include:
+    - **Tasks:** Any work item, activity, implementation, development, testing, or operational task
+    - **Milestones:** Any deliverable, phase completion, launch, go-live, release, or achievement
+    - **Decisions:** Any approval, gate, review, sign-off, or decision point
+    - **Events:** Any meeting, conference, announcement, regulatory deadline, or scheduled occurrence
+    - **Deadlines:** Any due date, target date, compliance date, or time-bound requirement
+    - **Dependencies:** Any prerequisite, blocker, or sequential requirement mentioned
+    - **Phases:** Any project phase, stage, sprint, or iteration
+    **EXTRACTION RULES:**
+    - Do NOT summarize or consolidate similar items - include each one separately
+    - Do NOT skip items because they seem minor - include everything mentioned
+    - If an item appears in multiple places, include it once with the most complete information
+    - If dates are mentioned for ANY activity, that activity MUST appear in the chart
+    - Err on the side of INCLUSION - when in doubt, add it to the chart`;
 
 /**
  * Task Analysis System Prompt
