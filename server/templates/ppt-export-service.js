@@ -92,6 +92,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'timeline':
           addTimelineCardsSlide(pptx, slideData, slideNumber);
           break;
+        case 'timelineCardsAlt':
+          addTimelineCardsAltSlide(pptx, slideData, slideNumber);
+          break;
         case 'timelineNumberedMarkers':
           addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
           break;
@@ -1394,6 +1397,156 @@ function addTimelineCardsSlide(pptx, slideData, slideNumber) {
       y: connectorStartY,
       w: 0,
       h: Math.abs(connectorEndY - connectorStartY),
+      line: { color: timelineConfig.markerColor, width: 1, dashType: 'dash' }
+    });
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add timeline cards alt slide (Slide 24 - horizontal timeline with all cards below)
+ */
+function addTimelineCardsAltSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.timelineCardsAlt;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  if (slideData.section) {
+    slide.addText(slideData.section.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  const timelineConfig = layout.elements.timeline;
+  const labelsConfig = layout.elements.labels;
+  const cardsConfig = layout.elements.cards;
+  const items = slideData.items || slideData.timeline || [];
+  const itemCount = items.length;
+
+  // Draw timeline line
+  slide.addShape('line', {
+    x: timelineConfig.startX,
+    y: timelineConfig.y,
+    w: timelineConfig.endX - timelineConfig.startX,
+    h: 0,
+    line: { color: timelineConfig.lineColor, width: timelineConfig.lineWidth }
+  });
+
+  // Calculate spacing
+  const totalWidth = timelineConfig.endX - timelineConfig.startX;
+  const spacing = itemCount > 1 ? totalWidth / (itemCount - 1) : totalWidth / 2;
+
+  items.forEach((item, i) => {
+    const markerX = timelineConfig.startX + (i * spacing);
+    const cardX = markerX - (cardsConfig.width / 2);
+
+    // Timeline marker
+    slide.addShape('ellipse', {
+      x: markerX - (timelineConfig.markerSize / 2),
+      y: timelineConfig.y - (timelineConfig.markerSize / 2),
+      w: timelineConfig.markerSize,
+      h: timelineConfig.markerSize,
+      fill: { color: timelineConfig.markerColor }
+    });
+
+    // Date/phase label (above line)
+    if (item.date || item.phase || item.label) {
+      slide.addText(item.date || item.phase || item.label, {
+        x: cardX,
+        y: labelsConfig.y,
+        w: cardsConfig.width,
+        h: 0.4,
+        fontSize: labelsConfig.fontSize,
+        fontFace: labelsConfig.fontFace,
+        color: labelsConfig.color,
+        align: 'center'
+      });
+    }
+
+    // Card (below line) with navy border
+    slide.addShape('rect', {
+      x: cardX,
+      y: cardsConfig.y,
+      w: cardsConfig.width,
+      h: cardsConfig.height,
+      fill: { color: cardsConfig.background },
+      line: { color: cardsConfig.borderColor, width: cardsConfig.borderWidth }
+    });
+
+    // Card title
+    if (item.title) {
+      slide.addText(item.title, {
+        x: cardX + cardsConfig.padding,
+        y: cardsConfig.y + cardsConfig.padding,
+        w: cardsConfig.width - (cardsConfig.padding * 2),
+        h: 0.4,
+        fontSize: cardsConfig.titleFontSize,
+        fontFace: cardsConfig.titleFontFace,
+        color: cardsConfig.titleColor,
+        align: 'left',
+        bold: true
+      });
+    }
+
+    // Card content
+    if (item.content || item.description) {
+      slide.addText(item.content || item.description, {
+        x: cardX + cardsConfig.padding,
+        y: cardsConfig.y + cardsConfig.padding + 0.5,
+        w: cardsConfig.width - (cardsConfig.padding * 2),
+        h: cardsConfig.height - cardsConfig.padding - 0.6,
+        fontSize: cardsConfig.contentFontSize,
+        fontFace: cardsConfig.contentFontFace,
+        color: cardsConfig.contentColor,
+        align: 'left',
+        valign: 'top'
+      });
+    }
+
+    // Connector line from marker to card
+    slide.addShape('line', {
+      x: markerX,
+      y: timelineConfig.y + (timelineConfig.markerSize / 2),
+      w: 0,
+      h: cardsConfig.y - timelineConfig.y - (timelineConfig.markerSize / 2),
       line: { color: timelineConfig.markerColor, width: 1, dashType: 'dash' }
     });
   });
