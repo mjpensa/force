@@ -127,6 +127,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'quoteDataA':
           addQuoteDataASlide(pptx, slideData, slideNumber);
           break;
+        case 'quoteDataB':
+          addQuoteDataBSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1656,6 +1659,145 @@ function addRolloutGridSlide(pptx, slideData, slideNumber) {
         color: textColor,
         align: 'left',
         valign: 'top'
+      });
+    }
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add quote with data visualization slide B (Slide 19 - quote with chart and metrics row)
+ */
+function addQuoteDataBSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.quoteDataB;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  if (slideData.section || slideData.sectionLabel) {
+    slide.addText(slideData.section || slideData.sectionLabel, {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  const quoteConfig = layout.elements.quote;
+
+  // Quote title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: quoteConfig.x,
+      y: quoteConfig.y,
+      w: quoteConfig.w,
+      h: 1.2,
+      fontSize: quoteConfig.titleFontSize,
+      fontFace: quoteConfig.titleFontFace,
+      color: quoteConfig.titleColor,
+      align: 'left'
+    });
+  }
+
+  // Red accent line
+  slide.addShape('rect', {
+    x: quoteConfig.x - 0.1,
+    y: quoteConfig.y + 1.5,
+    w: quoteConfig.accentWidth,
+    h: 2,
+    fill: { color: quoteConfig.accentColor }
+  });
+
+  // Quote text
+  if (slideData.quote || slideData.text) {
+    slide.addText(slideData.quote || slideData.text, {
+      x: quoteConfig.x,
+      y: quoteConfig.y + 1.5,
+      w: quoteConfig.w,
+      h: 2.5,
+      fontSize: quoteConfig.textFontSize,
+      fontFace: quoteConfig.textFontFace,
+      color: quoteConfig.textColor,
+      align: 'left',
+      valign: 'top',
+      italic: true
+    });
+  }
+
+  // Chart placeholder (right side)
+  const chartConfig = layout.elements.chart;
+  slide.addShape('rect', {
+    x: chartConfig.x,
+    y: chartConfig.y,
+    w: chartConfig.w,
+    h: chartConfig.h,
+    fill: { color: chartConfig.background }
+  });
+
+  // Chart label
+  slide.addText('Chart Placeholder', {
+    x: chartConfig.x,
+    y: chartConfig.y + (chartConfig.h / 2) - 0.25,
+    w: chartConfig.w,
+    h: 0.5,
+    fontSize: 14,
+    fontFace: FONTS.regular,
+    color: COLORS.darkGray,
+    align: 'center'
+  });
+
+  // Metrics row (bottom)
+  const metricsConfig = layout.elements.metrics;
+  const metrics = slideData.metrics || slideData.data || [];
+
+  metrics.slice(0, metricsConfig.maxMetrics).forEach((metric, i) => {
+    const x = metricsConfig.startX + (i * (metricsConfig.metricWidth + metricsConfig.gap));
+
+    // Metric value
+    if (metric.value !== undefined) {
+      slide.addText(String(metric.value), {
+        x: x,
+        y: metricsConfig.y,
+        w: metricsConfig.metricWidth,
+        h: 0.8,
+        fontSize: metricsConfig.valueFontSize,
+        fontFace: metricsConfig.valueFontFace,
+        color: metricsConfig.valueColor,
+        align: 'left'
+      });
+    }
+
+    // Metric label
+    if (metric.label || metric.title) {
+      slide.addText(metric.label || metric.title, {
+        x: x,
+        y: metricsConfig.y + 0.8,
+        w: metricsConfig.metricWidth,
+        h: 0.4,
+        fontSize: metricsConfig.labelFontSize,
+        fontFace: metricsConfig.labelFontFace,
+        color: metricsConfig.labelColor,
+        align: 'left'
       });
     }
   });

@@ -1327,6 +1327,83 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // QUOTE DATA B - Quote with pie chart and metrics (Slide 19)
+  // ============================================
+  quoteDataB: {
+    name: 'Quote with Data Visualization B',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Quote section (left half)
+      quote: {
+        x: 0.5,
+        y: 0.8,
+        w: 6,
+        h: 4,
+        titleFontSize: 24,
+        titleFontFace: FONTS.light,
+        titleColor: COLORS.navy,
+        textFontSize: 14,
+        textFontFace: FONTS.regular,
+        textColor: COLORS.navy,
+        accentColor: COLORS.red,
+        accentWidth: 0.05
+      },
+      // Chart placeholder (right side)
+      chart: {
+        x: 7,
+        y: 1,
+        w: 5.5,
+        h: 3.5,
+        background: COLORS.lightGray
+      },
+      // Metrics row (bottom)
+      metrics: {
+        y: 5.5,
+        startX: 0.5,
+        metricWidth: 3,
+        gap: 0.5,
+        maxMetrics: 4,
+        valueFontSize: 36,
+        valueFontFace: FONTS.light,
+        valueColor: COLORS.red,
+        labelFontSize: 10,
+        labelFontFace: FONTS.regular,
+        labelColor: COLORS.navy
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // QUOTE DATA A - Quote with data cards on the right (Slide 18)
   // ============================================
   quoteDataA: {
@@ -1765,7 +1842,8 @@ export const SLIDE_TYPE_MAP = {
   'ganttChart': 'ganttChart',
   'gantt': 'ganttChart',
   'rolloutDescription': 'rolloutDescription',
-  'quoteDataA': 'quoteDataA'
+  'quoteDataA': 'quoteDataA',
+  'quoteDataB': 'quoteDataB'
 };
 
 /**
