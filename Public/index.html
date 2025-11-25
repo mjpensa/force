@@ -24,7 +24,10 @@
       referrerpolicy="no-referrer"
     ></script>
 
-    <!-- 4. Load the original chart styles (must be loaded AFTER Tailwind for overrides) -->
+    <!-- 4. Load design system (includes glassmorphic styles) -->
+    <link rel="stylesheet" href="/styles/design-system.css" />
+
+    <!-- 5. Load the original chart styles (must be loaded AFTER design system) -->
     <link rel="stylesheet" href="/style.css" />
 
     <!-- 5. Configure Tailwind with custom theme (Extended for Glassmorphic Design) -->
@@ -165,9 +168,12 @@
         }
     </style>
 </head>
-<body class="bg-[#0c2340] font-sans relative min-h-screen overflow-hidden">
+<body class="font-sans relative min-h-screen overflow-hidden">
 
-    <!-- 
+    <!-- Skip Link for Accessibility -->
+    <a href="#gantt-form" class="skip-link-glass">Skip to main form</a>
+
+    <!--
       Dynamic Roadmap Background SVG
     -->
     <svg id="roadmap-svg" class="absolute w-full -z-10" preserveAspectRatio="none">
@@ -177,8 +183,8 @@
         <g id="roadmap-points"></g>
     </svg>
 
-    <!-- Main container -->
-    <div class="relative min-h-screen flex flex-col items-center justify-center p-6 md:p-12">
+    <!-- Main container with glassmorphic background -->
+    <div class="relative min-h-screen flex flex-col items-center justify-center p-6 md:p-12 bg-glass-gradient">
 
         <!-- Content -->
         <main class="w-full max-w-6xl z-10">
@@ -193,11 +199,10 @@
                 </p>
             </div>
 
-            <!-- 
-              Main Form
-              The form background is now set to very dark grey (#1B1A1A).
+            <!--
+              Main Form - Glassmorphic Panel
             -->
-            <form id="gantt-form" class="bg-[#1B1A1A] rounded-2xl shadow-xl p-8 md:p-12 w-full relative">
+            <form id="gantt-form" class="form-glass-panel glass-panel-animate">
                 
                 <!-- NEW LOGO HEADER ADDED HERE -->
                 <header class="absolute top-0 right-0 p-8 md:p-12">
@@ -211,8 +216,8 @@
                         Project Instructions
                     </h2>
 
-                    <!-- Added bg-gray-800 for dark field background and text-white for input text -->
-                    <textarea id="prompt-input" rows="6" class="w-full p-5 text-xl md:text-2xl leading-relaxed border border-gray-300 rounded-lg resize-none custom-placeholder custom-focus transition-shadow bg-gray-800 text-white border-gray-600"
+                    <!-- Glassmorphic textarea -->
+                    <textarea id="prompt-input" rows="6" class="textarea-glass text-xl md:text-2xl leading-relaxed"
                               placeholder="Describe your project goals, timeline preferences, key milestones, or any specific requirements for the roadmap generation..."></textarea>
                 </section>
                 
@@ -223,53 +228,52 @@
                     </h2>
 
                     <!--
-                      File Dropzone
+                      File Dropzone - Glassmorphic
                     -->
-                    <label for="upload-input" class="border-2 border-dashed border-custom-outline rounded-lg p-12 md:p-16 flex flex-col items-center justify-center text-center cursor-pointer transition-colors min-h-[350px] dropzone-container">
+                    <label for="upload-input" class="dropzone-glass flex flex-col items-center justify-center text-center" tabindex="0" role="button" aria-label="Upload files">
 
-                        <div id="dropzone-prompt" class="flex flex-col items-center justify-center dropzone-content transition-transform duration-300 ease-in-out">
-                            <!-- Upload Icon SVG -->
-                            <svg class="w-20 h-20 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                            </svg>
+                        <div id="dropzone-prompt" class="flex flex-col items-center justify-center dropzone-content">
+                            <!-- Upload Icon with Glass Container -->
+                            <div class="upload-icon-container">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                                </svg>
+                            </div>
 
-                            <p id="dropzone-title" class="text-2xl md:text-3xl font-medium mt-6">
+                            <p id="dropzone-title" class="text-2xl md:text-3xl font-medium text-glass-primary">
                                 Drop files here or click to browse
                             </p>
-                            <p class="text-lg md:text-xl opacity-60 mt-3">
+                            <p class="text-lg md:text-xl text-glass-muted mt-3">
                                 Supports .doc, .docx, .md, and .txt files
                             </p>
                         </div>
 
-                        <!-- Container for file/folder statistics -->
+                        <!-- Container for file/folder statistics - Glassmorphic -->
                         <div id="file-list-container" class="hidden w-full">
-                            <div id="folder-stats" class="hidden mb-6 p-4 bg-gray-700 rounded-lg">
-                                <p class="text-xl md:text-2xl font-semibold mb-2">Folder Statistics:</p>
-                                <div class="grid grid-cols-2 gap-4 text-left">
-                                    <div>
-                                        <p class="text-sm opacity-60">Total Files:</p>
-                                        <p id="total-files" class="text-lg font-semibold">0</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm opacity-60">Valid Files:</p>
-                                        <p id="valid-files" class="text-lg font-semibold text-green-400">0</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm opacity-60">Total Size:</p>
-                                        <p id="total-size" class="text-lg font-semibold">0 MB</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm opacity-60">File Types:</p>
-                                        <p id="file-types" class="text-lg font-semibold">.md, .txt, .docx</p>
-                                    </div>
+                            <div id="folder-stats" class="hidden mb-6 stats-grid-glass">
+                                <div class="stat-card-glass">
+                                    <p class="stat-value" id="total-files">0</p>
+                                    <p class="stat-label">Total Files</p>
+                                </div>
+                                <div class="stat-card-glass">
+                                    <p class="stat-value text-glass-success" id="valid-files">0</p>
+                                    <p class="stat-label">Valid Files</p>
+                                </div>
+                                <div class="stat-card-glass">
+                                    <p class="stat-value" id="total-size">0 MB</p>
+                                    <p class="stat-label">Total Size</p>
+                                </div>
+                                <div class="stat-card-glass">
+                                    <p class="stat-value" id="file-types">.md</p>
+                                    <p class="stat-label">File Types</p>
                                 </div>
                             </div>
 
-                            <p class="text-xl md:text-2xl font-semibold mb-4">Selected Files:</p>
-                            <ul id="file-list" class="list-none text-left text-lg md:text-xl space-y-3 max-h-64 overflow-y-auto bg-gray-800 rounded-lg p-4 border border-gray-600">
+                            <p class="text-xl md:text-2xl font-semibold mb-4 text-glass-primary">Selected Files:</p>
+                            <ul id="file-list" class="file-list-glass list-none text-left">
                                 <!-- File names will be injected here by JS -->
                             </ul>
-                            <p class="text-lg md:text-xl opacity-75 mt-5 font-light">Click again or drop to change selection</p>
+                            <p class="text-lg md:text-xl text-glass-muted mt-5 font-light">Click again or drop to change selection</p>
                         </div>
                     </label>
 
@@ -277,16 +281,16 @@
                     <input type="file" id="upload-input" multiple accept=".md, .txt, .docx, application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
                 </section>
 
-                <!-- Form Actions (Button & Loader) -->
+                <!-- Form Actions (Button & Loader) - Glassmorphic -->
                 <div class="form-actions mt-12">
                     <div class="flex items-center gap-6">
-                        <button type="submit" id="generate-btn" class="text-white bg-custom-button hover:bg-custom-button-hover focus:ring-4 focus:ring-custom-outline font-semibold rounded-lg text-xl md:text-2xl px-10 py-4 transition-colors disabled:opacity-50">
+                        <button type="submit" id="generate-btn" class="button-glass-primary text-xl md:text-2xl">
                             Generate Chart
                         </button>
 
                         <div id="loading-indicator" class="flex items-center gap-3" style="display: none;">
-                            <div class="spinner w-8 h-8 border-3 border-gray-200 border-t-custom-button rounded-full animate-spin"></div>
-                            <span class="text-xl md:text-2xl">Analyzing...</span>
+                            <div class="spinner-glass"></div>
+                            <span class="text-xl md:text-2xl text-glass-secondary">Analyzing...</span>
                         </div>
                     </div>
                 </div>
