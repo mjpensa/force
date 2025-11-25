@@ -252,6 +252,20 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       }
 
       console.log(`[Content GET] Job found with status: ${job.status}`);
+
+      // Edge case: If job is 'completed' but no content exists, something went wrong
+      // Treat this as an error so the frontend shows the retry UI
+      if (job.status === 'completed') {
+        console.error(`[Content GET] ANOMALY: Job marked as completed but no content found for ${viewType}`);
+        return res.json({
+          sessionId,
+          viewType,
+          status: 'error',
+          data: null,
+          error: formatUserError('Content generation completed but data was not saved. Please try regenerating.', viewType)
+        });
+      }
+
       return res.json({
         sessionId,
         viewType,

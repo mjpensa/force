@@ -372,8 +372,9 @@ class ContentViewer {
                             error.message.includes('being generated') ||
                             error.details?.processing === true;
 
-        const hasEmptyContent = error.details?.emptyContent === true;
-        const canRetry = error.details?.canRetry === true;
+        // Check for both emptyContent and emptyData flags (emptyData is thrown when data is null)
+        const hasEmptyContent = error.details?.emptyContent === true || error.details?.emptyData === true;
+        const canRetry = error.details?.canRetry === true || error.details?.emptyData === true;
         const isApiError = error.details?.apiError === true;
 
         console.log(`[Viewer] isProcessing=${isProcessing}, hasEmptyContent=${hasEmptyContent}, canRetry=${canRetry}, isApiError=${isApiError}`);
@@ -1075,7 +1076,7 @@ class ContentViewer {
    * Enhanced: Now caches content when ready for instant view switching
    */
   _startBackgroundStatusPolling() {
-    const views = ['roadmap', 'slides', 'document'];
+    const views = ['roadmap', 'slides', 'document', 'research-analysis'];
 
     // Initial state - all loading
     views.forEach(view => this._updateTabStatus(view, 'loading'));
