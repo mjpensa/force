@@ -57,6 +57,9 @@ export class GanttChart {
       return;
     }
 
+    // Sort tasks within swimlanes by start date (earliest first)
+    this._sortTasksWithinSwimlanes();
+
     // Clear container
     this.container.innerHTML = '';
 
@@ -738,6 +741,78 @@ export class GanttChart {
     legendLine.appendChild(list);
     this.legendElement.appendChild(legendLine);
     this.chartWrapper.appendChild(this.legendElement);
+  }
+
+  /**
+   * Sorts tasks within each swimlane by start date (earliest first)
+   * Tasks with the same start date are sorted alphabetically by title
+   * This ensures consistent chronological ordering within each swimlane
+   * @private
+   */
+  _sortTasksWithinSwimlanes() {
+    if (!this.ganttData || !this.ganttData.data || this.ganttData.data.length === 0) {
+      return;
+    }
+
+    const data = this.ganttData.data;
+    const sortedData = [];
+    let currentSwimlaneIndex = -1;
+    let currentSwimlaneTasks = [];
+
+    // Process data and group tasks by swimlane
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+
+      if (row.isSwimlane) {
+        // If we have accumulated tasks from a previous swimlane, sort and add them
+        if (currentSwimlaneTasks.length > 0) {
+          this._sortTasks(currentSwimlaneTasks);
+          sortedData.push(...currentSwimlaneTasks);
+          currentSwimlaneTasks = [];
+        }
+
+        // Add the swimlane row
+        sortedData.push(row);
+        currentSwimlaneIndex = sortedData.length - 1;
+      } else {
+        // Accumulate tasks for the current swimlane
+        currentSwimlaneTasks.push(row);
+      }
+    }
+
+    // Don't forget to sort and add tasks from the last swimlane
+    if (currentSwimlaneTasks.length > 0) {
+      this._sortTasks(currentSwimlaneTasks);
+      sortedData.push(...currentSwimlaneTasks);
+    }
+
+    // Replace the original data with sorted data
+    this.ganttData.data = sortedData;
+
+    console.log('✓ Tasks sorted within swimlanes by start date (earliest first)');
+  }
+
+  /**
+   * Sorts an array of tasks by startCol (ascending), then by title (alphabetically)
+   * Tasks with null startCol are placed at the end
+   * @param {Array} tasks - Array of task objects to sort in place
+   * @private
+   */
+  _sortTasks(tasks) {
+    tasks.sort((a, b) => {
+      const aStartCol = a.bar && a.bar.startCol != null ? a.bar.startCol : Infinity;
+      const bStartCol = b.bar && b.bar.startCol != null ? b.bar.startCol : Infinity;
+
+      // Primary sort: by startCol (ascending, null values last)
+      if (aStartCol !== bStartCol) {
+        return aStartCol - bStartCol;
+      }
+
+      // Secondary sort: by title (alphabetically A-Z) as tiebreaker
+      const aTitle = (a.title || '').toLowerCase();
+      const bTitle = (b.title || '').toLowerCase();
+      return aTitle.localeCompare(bTitle);
+    });
   }
 
   /**
