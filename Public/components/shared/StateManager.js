@@ -321,24 +321,47 @@ export class StateManager {
 
   /**
    * Prefetch other views in background
+   * Enhanced: Now runs prefetch in parallel for faster overall loading
    */
   async prefetchOtherViews(currentView) {
     const views = ['roadmap', 'slides', 'document'];
     const otherViews = views.filter(v => v !== currentView);
 
-    // Wait a bit, then prefetch
+    // Wait a bit for current view to finish loading, then prefetch others in parallel
     setTimeout(async () => {
-      for (const view of otherViews) {
-        if (!this.state.content[view]) {
+      // Filter to only views that aren't already cached
+      const viewsToFetch = otherViews.filter(view => !this.state.content[view]);
+
+      if (viewsToFetch.length === 0) {
+        console.log('✅ All views already cached, no prefetch needed');
+        return;
+      }
+
+      console.log(`🔄 Prefetching ${viewsToFetch.length} views in parallel: ${viewsToFetch.join(', ')}`);
+
+      // Fetch all views in parallel using Promise.allSettled
+      const results = await Promise.allSettled(
+        viewsToFetch.map(async (view) => {
           try {
             await this.loadView(view);
-            console.log(`✅ Prefetched ${view}`);
+            return { view, success: true };
           } catch (error) {
-            console.log(`⚠️ Failed to prefetch ${view}`);
+            return { view, success: false, error: error.message };
           }
+        })
+      );
+
+      // Log results
+      results.forEach((result, index) => {
+        const view = viewsToFetch[index];
+        if (result.status === 'fulfilled' && result.value.success) {
+          console.log(`✅ Prefetched ${view}`);
+        } else {
+          const errorMsg = result.status === 'rejected' ? result.reason : result.value?.error;
+          console.log(`⚠️ Failed to prefetch ${view}: ${errorMsg || 'unknown error'}`);
         }
-      }
-    }, 2000);
+      });
+    }, 1500); // Reduced delay since we're fetching in parallel
   }
 
   /**
