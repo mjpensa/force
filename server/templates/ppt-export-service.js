@@ -55,6 +55,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'title':
           addSectionSlide(pptx, slideData, slideNumber);
           break;
+        case 'titleWithImage':
+          addTitleWithImageSlide(pptx, slideData);
+          break;
         case 'bullets':
           addBulletsSlide(pptx, slideData, slideNumber);
           break;
@@ -66,6 +69,14 @@ export async function generatePptx(slidesData, options = {}) {
           break;
         case 'cardGrid':
           addCardGridSlide(pptx, slideData, slideNumber);
+          break;
+        case 'tableOfContents':
+        case 'toc':
+          addTableOfContentsSlide(pptx, slideData, slideNumber);
+          break;
+        case 'steps':
+        case 'process':
+          addProcessStepsSlide(pptx, slideData, slideNumber);
           break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
@@ -153,6 +164,101 @@ function addTitleSlide(pptx, slideData, presentationData) {
     align: layout.elements.tagline.align,
     bold: true
   });
+}
+
+/**
+ * Add title with image slide (split layout - Slide 2)
+ */
+function addTitleWithImageSlide(pptx, slideData) {
+  const layout = LAYOUTS.titleWithImage;
+  const slide = pptx.addSlide();
+
+  // Left navy panel
+  slide.addShape('rect', {
+    x: layout.elements.leftPanel.x,
+    y: layout.elements.leftPanel.y,
+    w: layout.elements.leftPanel.w,
+    h: layout.elements.leftPanel.h,
+    fill: { color: layout.elements.leftPanel.fill }
+  });
+
+  // Tagline (top of left panel)
+  if (slideData.tagline) {
+    slide.addText(slideData.tagline.toUpperCase(), {
+      x: layout.elements.tagline.x,
+      y: layout.elements.tagline.y,
+      w: layout.elements.tagline.w,
+      h: layout.elements.tagline.h,
+      fontSize: layout.elements.tagline.fontSize,
+      fontFace: layout.elements.tagline.fontFace,
+      color: layout.elements.tagline.color,
+      align: layout.elements.tagline.align
+    });
+  }
+
+  // Main title
+  slide.addText(slideData.title || 'Presentation Title', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align,
+    lineSpacing: layout.elements.title.lineSpacing
+  });
+
+  // Logo placeholder (bottom left)
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+
+  // Business Area
+  if (slideData.businessArea) {
+    slide.addText(slideData.businessArea, {
+      x: layout.elements.businessArea.x,
+      y: layout.elements.businessArea.y,
+      w: layout.elements.businessArea.w,
+      h: layout.elements.businessArea.h,
+      fontSize: layout.elements.businessArea.fontSize,
+      fontFace: layout.elements.businessArea.fontFace,
+      color: layout.elements.businessArea.color,
+      align: layout.elements.businessArea.align
+    });
+  }
+
+  // Date
+  const now = new Date();
+  const dateText = slideData.date || `${now.toLocaleString('en-US', { month: 'long' })} ${now.getFullYear()}`;
+  slide.addText(dateText, {
+    x: layout.elements.date.x,
+    y: layout.elements.date.y,
+    w: layout.elements.date.w,
+    h: layout.elements.date.h,
+    fontSize: layout.elements.date.fontSize,
+    fontFace: layout.elements.date.fontFace,
+    color: layout.elements.date.color,
+    align: layout.elements.date.align
+  });
+
+  // Right image placeholder (or actual image if provided)
+  if (slideData.image) {
+    slide.addImage({
+      path: slideData.image,
+      x: layout.elements.image.x,
+      y: layout.elements.image.y,
+      w: layout.elements.image.w,
+      h: layout.elements.image.h
+    });
+  } else {
+    // Gray placeholder for image
+    slide.addShape('rect', {
+      x: layout.elements.image.x,
+      y: layout.elements.image.y,
+      w: layout.elements.image.w,
+      h: layout.elements.image.h,
+      fill: { color: '4A5568' }
+    });
+  }
 }
 
 /**
@@ -494,6 +600,191 @@ function addThankYouSlide(pptx, slideData) {
 
   // Large logo placeholder
   addLogoPlaceholder(slide, layout.elements.logo, 'large');
+}
+
+/**
+ * Add table of contents slide (Slide 6)
+ */
+function addTableOfContentsSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.tableOfContents;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Logo (top left)
+  addLogoPlaceholder(slide, layout.elements.logo, 'medium');
+
+  // Large watermark text "Table of Contents"
+  slide.addText('Table of\nContents', {
+    x: layout.elements.watermark.x,
+    y: layout.elements.watermark.y,
+    w: layout.elements.watermark.w,
+    h: layout.elements.watermark.h,
+    fontSize: layout.elements.watermark.fontSize,
+    fontFace: layout.elements.watermark.fontFace,
+    color: layout.elements.watermark.color,
+    align: layout.elements.watermark.align,
+    valign: layout.elements.watermark.valign,
+    lineSpacingMultiple: layout.elements.watermark.lineSpacing / 100
+  });
+
+  // TOC items (right side)
+  const items = slideData.items || slideData.bullets || [];
+  const itemsConfig = layout.elements.items;
+
+  items.forEach((item, i) => {
+    const y = itemsConfig.y + (i * itemsConfig.itemSpacing);
+
+    // Number (red)
+    slide.addText(`${i + 1}`, {
+      x: itemsConfig.x,
+      y: y,
+      w: 0.5,
+      h: 0.4,
+      fontSize: itemsConfig.fontSize,
+      fontFace: FONTS.semibold,
+      color: COLORS.red,
+      align: 'left'
+    });
+
+    // Item title (navy)
+    slide.addText(item, {
+      x: itemsConfig.x + 0.6,
+      y: y,
+      w: itemsConfig.w - 0.6,
+      h: 0.4,
+      fontSize: itemsConfig.fontSize,
+      fontFace: itemsConfig.fontFace,
+      color: itemsConfig.color,
+      align: 'left'
+    });
+  });
+
+  // Logo (bottom right)
+  addLogoPlaceholder(slide, layout.elements.logoBottom, 'small');
+}
+
+/**
+ * Add process steps slide (Slide 15 - horizontal numbered steps)
+ */
+function addProcessStepsSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.steps;
+  const slide = pptx.addSlide();
+
+  // Set background (red)
+  slide.background = { color: layout.background };
+
+  // Main title (left side)
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align,
+      lineSpacingMultiple: layout.elements.title.lineSpacing / 100
+    });
+  }
+
+  // Description text (top right)
+  if (slideData.description) {
+    slide.addText(slideData.description, {
+      x: layout.elements.description.x,
+      y: layout.elements.description.y,
+      w: layout.elements.description.w,
+      h: layout.elements.description.h,
+      fontSize: layout.elements.description.fontSize,
+      fontFace: layout.elements.description.fontFace,
+      color: layout.elements.description.color,
+      lineSpacingMultiple: layout.elements.description.lineSpacing / 100
+    });
+  }
+
+  // Render steps (horizontal row)
+  const steps = slideData.steps || [];
+  const stepsConfig = layout.elements.stepsArea;
+  const totalSteps = steps.length;
+  const totalWidth = 12.33; // Available width
+  const startX = 0.5;
+
+  // Calculate dynamic step width based on number of steps
+  const dynamicStepWidth = totalSteps > 0
+    ? Math.min(stepsConfig.stepWidth, (totalWidth - (stepsConfig.stepGap * (totalSteps - 1))) / totalSteps)
+    : stepsConfig.stepWidth;
+
+  steps.forEach((step, i) => {
+    const x = startX + (i * (dynamicStepWidth + stepsConfig.stepGap));
+    const y = stepsConfig.y;
+
+    // Step number circle
+    slide.addShape('ellipse', {
+      x: x + (dynamicStepWidth / 2) - 0.4,
+      y: y - 0.5,
+      w: 0.8,
+      h: 0.8,
+      fill: { color: COLORS.white }
+    });
+
+    // Step number text
+    slide.addText(`${i + 1}`, {
+      x: x + (dynamicStepWidth / 2) - 0.4,
+      y: y - 0.5,
+      w: 0.8,
+      h: 0.8,
+      fontSize: stepsConfig.numberFontSize,
+      fontFace: FONTS.bold,
+      color: COLORS.red,
+      align: 'center',
+      valign: 'middle'
+    });
+
+    // Step title
+    if (step.title) {
+      slide.addText(step.title, {
+        x: x,
+        y: y + 0.5,
+        w: dynamicStepWidth,
+        h: 0.6,
+        fontSize: stepsConfig.titleFontSize,
+        fontFace: FONTS.semibold,
+        color: stepsConfig.color,
+        align: 'center'
+      });
+    }
+
+    // Step description
+    if (step.description) {
+      slide.addText(step.description, {
+        x: x,
+        y: y + 1.2,
+        w: dynamicStepWidth,
+        h: 1.2,
+        fontSize: stepsConfig.descFontSize,
+        fontFace: stepsConfig.fontFace,
+        color: stepsConfig.color,
+        align: 'center',
+        valign: 'top'
+      });
+    }
+
+    // Connecting line (except for last step)
+    if (i < totalSteps - 1) {
+      slide.addShape('line', {
+        x: x + dynamicStepWidth,
+        y: y - 0.1,
+        w: stepsConfig.stepGap,
+        h: 0,
+        line: { color: COLORS.white, width: 2 }
+      });
+    }
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
 }
 
 /**

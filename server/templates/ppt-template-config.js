@@ -692,6 +692,7 @@ export const LAYOUTS = {
  */
 export const SLIDE_TYPE_MAP = {
   'title': 'title',
+  'titleWithImage': 'titleWithImage',
   'bullets': 'bullets',
   'content': 'content',
   'quote': 'quote',
