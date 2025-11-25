@@ -246,6 +246,8 @@ export const slidesSchema = {
     },
     slides: {
       type: "array",
+      minItems: 3,
+      maxItems: 15,
       items: {
         type: "object",
         properties: {
@@ -1097,11 +1099,21 @@ ${presentationTemplates}
 
 ## OUTPUT REQUIREMENTS
 
+- **CRITICAL: Generate between 7-12 slides total. NEVER exceed 15 slides.**
 - Set totalSlides to the length of the slides array
 - Every slide must have at least a type and title
+- Every content slide must have content (bullets, cards, steps, etc.) - never leave slides empty
 - Use appropriate slide types based on content structure
 - Ensure smooth narrative progression
-- Include "section" labels for content slides`;
+- Include "section" labels for content slides
+
+## SLIDE COUNT GUIDELINES
+
+- Executive summaries: 6-8 slides
+- Standard presentations: 8-12 slides
+- Detailed presentations: 12-15 slides max
+- **NEVER generate more than 15 slides - consolidate information instead**
+- If you have too much content, prioritize and combine related topics into single slides`;
 
 /**
  * Generate the complete slides prompt with user context
