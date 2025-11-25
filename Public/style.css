@@ -245,10 +245,10 @@ select:focus-visible {
 }
 
 .gantt-row-label.swimlane {
-  font-weight: 700; /* Increased from 600 for better readability */
+  font-weight: 800; /* Increased from 700 for better readability */
   color: #FFFFFF; /* Text Color */
   background-color: #0C2340; /* Set swimlane title background */
-  font-size: 30px; /* Increased from 28px for better readability */
+  font-size: 32px; /* Increased from 30px for better readability */
   padding: 0; /* Padding moved to .label-content */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
 }
@@ -259,11 +259,11 @@ select:focus-visible {
 
 .gantt-row-label.task {
   padding: 0; /* Padding moved to .label-content */
-  font-weight: 500; /* Increased from 400 for better readability */
+  font-weight: 600; /* Increased from 500 for better readability */
   color: #FFFFFF; /* Text Color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   background-color: #354259; /* Set task title background - default blue */
-  font-size: 26px; /* Increased from 24px for better readability */
+  font-size: 28px; /* Increased from 26px for better readability */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
 }
 
