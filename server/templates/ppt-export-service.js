@@ -117,6 +117,10 @@ export async function generatePptx(slidesData, options = {}) {
         case 'rolloutTimeline':
           addRolloutTimelineSlide(pptx, slideData, slideNumber);
           break;
+        case 'ganttChart':
+        case 'gantt':
+          addGanttChartSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1646,6 +1650,123 @@ function addRolloutGridSlide(pptx, slideData, slideNumber) {
         color: textColor,
         align: 'left',
         valign: 'top'
+      });
+    }
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add Gantt chart slide (Slide 32 - schedule with Gantt bars)
+ */
+function addGanttChartSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.ganttChart;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Main title
+  slide.addText(slideData.title || 'Rollout Schedule', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align
+  });
+
+  const chartConfig = layout.elements.chart;
+  const activities = slideData.activities || slideData.items || [];
+
+  // Default months (can be overridden by data)
+  const months = slideData.months || ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May.', 'Jun.',
+                                       'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'];
+  const monthCount = months.length;
+  const monthWidth = chartConfig.chartWidth / monthCount;
+
+  // Draw month headers
+  months.forEach((month, i) => {
+    slide.addText(month, {
+      x: chartConfig.chartStartX + (i * monthWidth),
+      y: chartConfig.headerY,
+      w: monthWidth,
+      h: chartConfig.headerHeight,
+      fontSize: chartConfig.headerFontSize,
+      fontFace: chartConfig.headerFontFace,
+      color: chartConfig.headerColor,
+      align: 'center'
+    });
+  });
+
+  // Draw vertical grid lines
+  for (let i = 0; i <= monthCount; i++) {
+    const lineX = chartConfig.chartStartX + (i * monthWidth);
+    const gridHeight = Math.min(activities.length, chartConfig.maxRows) * chartConfig.rowHeight + 0.2;
+
+    slide.addShape('line', {
+      x: lineX,
+      y: chartConfig.headerY,
+      w: 0,
+      h: gridHeight,
+      line: { color: chartConfig.gridColor, width: chartConfig.gridWidth }
+    });
+  }
+
+  // Draw activity rows
+  activities.slice(0, chartConfig.maxRows).forEach((activity, i) => {
+    const y = chartConfig.rowStartY + (i * chartConfig.rowHeight);
+
+    // Activity name/label
+    slide.addText(activity.name || activity.title || '', {
+      x: chartConfig.labelsX,
+      y: y,
+      w: chartConfig.labelsWidth,
+      h: chartConfig.rowHeight,
+      fontSize: chartConfig.labelFontSize,
+      fontFace: chartConfig.labelFontFace,
+      color: chartConfig.labelColor,
+      align: 'left',
+      valign: 'middle'
+    });
+
+    // Horizontal grid line
+    slide.addShape('line', {
+      x: chartConfig.chartStartX,
+      y: y + chartConfig.rowHeight,
+      w: chartConfig.chartWidth,
+      h: 0,
+      line: { color: chartConfig.gridColor, width: chartConfig.gridWidth }
+    });
+
+    // Gantt bar
+    if (activity.startMonth !== undefined && activity.endMonth !== undefined) {
+      const barStartX = chartConfig.chartStartX + (activity.startMonth * monthWidth);
+      const barWidth = (activity.endMonth - activity.startMonth + 1) * monthWidth;
+      const barY = y + (chartConfig.rowHeight - chartConfig.barHeight) / 2;
+
+      slide.addShape('rect', {
+        x: barStartX,
+        y: barY,
+        w: barWidth,
+        h: chartConfig.barHeight,
+        fill: { color: activity.color || chartConfig.defaultBarColor }
       });
     }
   });

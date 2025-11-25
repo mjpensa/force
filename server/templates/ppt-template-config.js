@@ -1327,6 +1327,70 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // GANTT CHART - Schedule with Gantt bars (Slide 32)
+  // ============================================
+  ganttChart: {
+    name: 'Gantt Chart Schedule',
+    background: COLORS.white,
+    elements: {
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.3,
+        w: 4,
+        h: 0.8,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Chart configuration
+      chart: {
+        labelsX: 0.5,
+        labelsWidth: 2,
+        chartStartX: 2.7,
+        chartWidth: 10.3,
+        headerY: 1.2,
+        headerHeight: 0.35,
+        rowHeight: 0.4,
+        rowStartY: 1.6,
+        maxRows: 12,
+        // Fonts
+        headerFontSize: 9,
+        headerFontFace: FONTS.semibold,
+        headerColor: COLORS.navy,
+        labelFontSize: 10,
+        labelFontFace: FONTS.regular,
+        labelColor: COLORS.navy,
+        // Grid and bars
+        gridColor: COLORS.lightGray,
+        gridWidth: 0.5,
+        barHeight: 0.25,
+        defaultBarColor: COLORS.red
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // ROLLOUT TIMELINE - Horizontal timeline for rollout phases (Slide 31)
   // ============================================
   rolloutTimeline: {
@@ -1559,7 +1623,9 @@ export const SLIDE_TYPE_MAP = {
   'featureGrid': 'featureGrid',
   'featureGridRed': 'featureGrid',
   'rolloutGrid': 'rolloutGrid',
-  'rolloutTimeline': 'rolloutTimeline'
+  'rolloutTimeline': 'rolloutTimeline',
+  'ganttChart': 'ganttChart',
+  'gantt': 'ganttChart'
 };
 
 /**
