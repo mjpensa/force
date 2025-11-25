@@ -48,18 +48,21 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - A task in "2022" has \`startCol: 3, endCol: 4\` (if 2020 is col 1).
     - If a date is "Q1 2024" and the interval is "Years", map it to the "2024" column index.
     - If a date is unknown ("null"), the 'bar' object must be \`{ "startCol": null, "endCol": null, "color": "..." }\`.
-6.  **COLORS & LEGEND (DETERMINISTIC - SWIMLANE-BASED):** ALWAYS use swimlane-based coloring for consistency:
-    - Assign colors to swimlanes based on their ALPHABETICAL position using this EXACT mapping:
-      * 1st swimlane (alphabetically): "priority-red"
-      * 2nd swimlane: "medium-red"
-      * 3rd swimlane: "mid-grey"
-      * 4th swimlane: "light-grey"
-      * 5th swimlane: "white"
-      * 6th swimlane: "dark-blue"
-      * 7th+ swimlanes: cycle back starting with "priority-red"
-    - ALL tasks within a swimlane get that swimlane's color
-    - Populate the 'legend' array with swimlane names in ALPHABETICAL order: \`"legend": [{ "color": "priority-red", "label": "First Swimlane (A-Z)" }, ...]\`
-    - **CRITICAL:** The 'legend' array must NEVER be empty.
+6.  **COLORS & LEGEND (THEME-BASED, DISTINCT FROM SWIMLANES):** Color groupings MUST be different from swimlane groupings.
+    a.  **Step 1: Identify Cross-Swimlane Themes:** Analyze ALL tasks across ALL swimlanes to find logical thematic groupings that SPAN MULTIPLE swimlanes. Valid themes must:
+        - Appear in at least 2 different swimlanes
+        - Represent a distinct project phase, workstream, or category (e.g., "Planning", "Implementation", "Testing", "Regulatory Compliance", "Infrastructure", "Training")
+        - Have at least 2 tasks per theme
+        - Result in 2-6 total distinct themes
+    b.  **Step 2: Apply Coloring Strategy:**
+        * **IF valid cross-swimlane themes are found (PREFERRED):**
+          - Assign one unique color to each theme: "priority-red", "medium-red", "mid-grey", "light-grey", "white", "dark-blue"
+          - Color ALL tasks belonging to a theme with that theme's color (tasks in the SAME swimlane may have DIFFERENT colors based on their theme)
+          - Populate the 'legend' array with theme labels: \`"legend": [{ "color": "priority-red", "label": "Theme Name" }, ...]\`
+        * **IF NO valid cross-swimlane themes are found (FALLBACK):**
+          - Assign one unique color to each swimlane based on ALPHABETICAL position: 1st="priority-red", 2nd="medium-red", 3rd="mid-grey", 4th="light-grey", 5th="white", 6th="dark-blue", 7th+ cycle back
+          - All tasks within the same swimlane get that swimlane's color
+          - Set 'legend' to an EMPTY array: \`"legend": []\` (no legend displayed since colors just represent swimlanes which are already labeled)
 7.  **TASK TYPE CLASSIFICATION (DETERMINISTIC):** Classify each task using EXACT keyword matching (case-insensitive):
     - **"decision"** - Task title contains ANY of these EXACT words: "Approval", "Approve", "Decision", "Decide", "Gate", "Go/No-Go", "Review Board", "Steering Committee", "Sign-off", "Signoff"
     - **"milestone"** - Task title contains ANY of these EXACT words: "Launch", "Go Live", "Go-Live", "Complete", "Completion", "Deliver", "Delivery", "Milestone", "Release", "Deploy", "Deployment", "Rollout", "Roll-out", "Cutover", "Cut-over", "Phase Complete"
