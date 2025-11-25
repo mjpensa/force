@@ -20,9 +20,6 @@ let errorDisplayed = false; // Track if an error message has already been shown
 // Create TaskAnalyzer instance (shared across all task clicks)
 const taskAnalyzer = new TaskAnalyzer();
 
-// Router instance (will be initialized after chart is rendered)
-let router = null;
-
 /**
  * Main initialization function
  * Loads chart data from URL parameter or sessionStorage and renders the chart
