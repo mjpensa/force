@@ -82,7 +82,11 @@ You MUST respond with *only* a valid JSON object matching the schema.
         * "Business/Operations" - for business processes, training, rollout, customer-facing, sales, marketing
         * "Finance" - for budget, financial, cost, ROI, investment activities
         * "Executive" - for strategic decisions, board approvals, executive reviews
-    c.  **Sorting:** ALWAYS sort swimlanes ALPHABETICALLY (A-Z) before outputting. This ensures consistent ordering.
+    c.  **Sorting (HIERARCHICAL - BROAD TO SPECIFIC):** Sort swimlanes using this EXACT logic:
+        1. **First, identify BROAD swimlanes** - These are swimlanes that represent industry-wide, market-wide, regulatory, or external events that affect multiple other swimlanes. Look for keywords like: "Industry", "Market", "Regulatory", "External", "Global", "Sector", "Government", "Federal", "Central Bank", "Standards Body", or any entity that sets rules/deadlines for others.
+        2. **Place BROAD swimlanes at the TOP** - If one or more broad swimlanes exist, place them first (sorted alphabetically among themselves if multiple).
+        3. **Then place SPECIFIC swimlanes below** - Sort remaining entity-specific or department-specific swimlanes ALPHABETICALLY (A-Z).
+        Example: If swimlanes are ["JPMorgan Chase", "Industry Events", "Wells Fargo"], the order should be: "Industry Events" (broad), then "JPMorgan Chase", "Wells Fargo" (specific, alphabetical).
     d.  **No Empty Swimlanes:** Only include swimlanes that have at least one task.
 4.  **CHART DATA STRUCTURE:**
     - Add an object for each swimlane: \`{ "title": "Swimlane Name", "isSwimlane": true, "entity": "Swimlane Name" }\`
@@ -97,15 +101,15 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - If a date is "Q1 2024" and the interval is "Years", map it to the "2024" column index.
     - If a date is unknown ("null"), the 'bar' object must be \`{ "startCol": null, "endCol": null, "color": "..." }\`.
 6.  **COLORS & LEGEND (DETERMINISTIC - SWIMLANE-BASED):** ALWAYS use swimlane-based coloring for consistency:
-    - Assign colors to swimlanes based on their ALPHABETICAL position using this EXACT mapping:
-      * 1st swimlane (alphabetically): "priority-red"
+    - Assign colors to swimlanes based on their FINAL SORTED position (broad first, then specific alphabetically) using this EXACT mapping:
+      * 1st swimlane (top of chart): "priority-red"
       * 2nd swimlane: "medium-red"
       * 3rd swimlane: "mid-grey"
       * 4th swimlane: "light-grey"
       * 5th swimlane: "dark-blue"
       * 6th+ swimlanes: cycle back starting with "priority-red"
     - ALL tasks within a swimlane get that swimlane's color
-    - Populate the 'legend' array with swimlane names in ALPHABETICAL order: \`"legend": [{ "color": "priority-red", "label": "First Swimlane (A-Z)" }, ...]\`
+    - Populate the 'legend' array with swimlane names in the SAME ORDER as they appear in the chart (broad first, then specific): \`"legend": [{ "color": "priority-red", "label": "First Swimlane (top)" }, ...]\`
     - **CRITICAL:** The 'legend' array must NEVER be empty.
 7.  **TASK TYPE CLASSIFICATION (DETERMINISTIC):** Classify each task using EXACT keyword matching (case-insensitive):
     - **"decision"** - Task title contains ANY of these EXACT words: "Approval", "Approve", "Decision", "Decide", "Gate", "Go/No-Go", "Review Board", "Steering Committee", "Sign-off", "Signoff"
