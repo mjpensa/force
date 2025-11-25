@@ -66,9 +66,13 @@ You MUST respond with *only* a valid JSON object matching the schema.
 **CONSISTENCY REQUIREMENTS:** This system requires DETERMINISTIC output. Given the same inputs, you MUST produce the same output every time. Follow the rules below EXACTLY without deviation.
 
 **CRITICAL LOGIC:**
-1.  **TIME HORIZON:** First, check the user's prompt for an *explicitly requested* time range (e.g., "2020-2030").
-    - If found, use that range EXACTLY.
-    - If NOT found, find the *earliest* and *latest* date in all the research to create the range.
+1.  **TIME HORIZON (INCLUDE ALL DATES):**
+    - First, scan ALL research files to identify EVERY date mentioned (past, present, and future).
+    - Check the user's prompt for an *explicitly requested* time range (e.g., "2020-2030").
+    - If user specifies a range: Use that range, BUT if research contains dates EARLIER than the user's start date, EXTEND the range backward to include them.
+    - If NO range specified: Use the EARLIEST date found in research as the start, and the LATEST date as the end.
+    - **CRITICAL:** Do NOT exclude historical/past events. Completed tasks, past milestones, and historical events are ESSENTIAL context and MUST be included.
+    - The timeColumns array MUST start from the earliest relevant date (column 1 = first time period).
 2.  **TIME INTERVAL:** Based on the *total duration* of that range, you MUST choose an interval using EXACTLY these thresholds:
     - 0-3 months total (≤90 days): Use "Weeks" (e.g., ["W1 2026", "W2 2026"])
     - 4-12 months total (91-365 days): Use "Months" (e.g., ["Jan 2026", "Feb 2026"])
@@ -94,12 +98,18 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - **Task Ordering Within Swimlanes (DETERMINISTIC):** Sort tasks within each swimlane by:
       1. First by startCol (ascending, null values last)
       2. Then by task title (alphabetically A-Z) as tiebreaker
-5.  **BAR LOGIC:**
+5.  **BAR LOGIC (DATE TO COLUMN MAPPING):**
     - 'startCol' is the 1-based index of the 'timeColumns' array where the task begins.
     - 'endCol' is the 1-based index of the 'timeColumns' array where the task ends, **PLUS ONE**.
-    - A task in "2022" has \`startCol: 3, endCol: 4\` (if 2020 is col 1).
-    - If a date is "Q1 2024" and the interval is "Years", map it to the "2024" column index.
-    - If a date is unknown ("null"), the 'bar' object must be \`{ "startCol": null, "endCol": null, "color": "..." }\`.
+    - **MAPPING RULES:**
+      * If timeColumns is ["2020", "2021", "2022", "2023"]: A task starting in 2020 has startCol=1, a task in 2021 has startCol=2, etc.
+      * If timeColumns is ["Q1 2024", "Q2 2024", "Q3 2024"]: A task in Q1 2024 has startCol=1.
+      * Tasks at the BEGINNING of the timeline MUST have startCol=1 (the first column).
+      * If a date falls BEFORE the first timeColumn, set startCol=1 (start of chart).
+      * If a date is "Q1 2024" and the interval is "Years", map it to the "2024" column index.
+    - **DURATION:** For tasks spanning multiple periods, endCol should reflect the actual end date. Minimum duration is 1 column (endCol = startCol + 1).
+    - **UNKNOWN DATES:** If a date is truly unknown/unspecified in the research, use \`{ "startCol": null, "endCol": null, "color": "..." }\`.
+    - **VERIFY:** Double-check that tasks mentioned as occurring at the START of a project/initiative have startCol=1 or early columns, not middle columns.
 6.  **COLORS & LEGEND (THEME-BASED, DISTINCT FROM SWIMLANES):** Color groupings MUST be different from swimlane groupings.
     a.  **Step 1: Identify Cross-Swimlane Themes:** Analyze ALL tasks across ALL swimlanes to find logical thematic groupings that SPAN MULTIPLE swimlanes. Valid themes must:
         - Appear in at least 2 different swimlanes
@@ -130,12 +140,15 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - **Deadlines:** Any due date, target date, compliance date, or time-bound requirement
     - **Dependencies:** Any prerequisite, blocker, or sequential requirement mentioned
     - **Phases:** Any project phase, stage, sprint, or iteration
+    - **Historical Events:** Any PAST or COMPLETED activities - these provide essential context
     **EXTRACTION RULES:**
     - Do NOT summarize or consolidate similar items - include each one separately
     - Do NOT skip items because they seem minor - include everything mentioned
+    - Do NOT skip items because they are in the PAST - historical context is critical
     - If an item appears in multiple places, include it once with the most complete information
     - If dates are mentioned for ANY activity, that activity MUST appear in the chart
-    - Err on the side of INCLUSION - when in doubt, add it to the chart`;
+    - Err on the side of INCLUSION - when in doubt, add it to the chart
+    - **VERIFY EARLY DATES:** After extraction, confirm that events from the BEGINNING of the timeline are included with correct startCol values (startCol=1 for the earliest events).`;
 
 /**
  * Generate the complete roadmap prompt with user context
