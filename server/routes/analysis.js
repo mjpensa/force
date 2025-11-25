@@ -62,7 +62,10 @@ ${researchTextCache}
       temperature: CONFIG.API.TEMPERATURE_STRUCTURED,
       topP: CONFIG.API.TOP_P,
       topK: CONFIG.API.TOP_K,
-      seed: CONFIG.API.SEED // Fixed seed for deterministic output
+      seed: CONFIG.API.SEED, // Fixed seed for deterministic output
+      thinkingConfig: {
+        thinkingBudget: CONFIG.API.THINKING_BUDGET_ANALYSIS // Enable deep reasoning for sophisticated analysis
+      }
     }
   };
 
