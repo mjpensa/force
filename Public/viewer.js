@@ -374,12 +374,21 @@ class ContentViewer {
 
         const hasEmptyContent = error.details?.emptyContent === true;
         const canRetry = error.details?.canRetry === true;
+        const isApiError = error.details?.apiError === true;
 
-        console.log(`[Viewer] isProcessing=${isProcessing}, hasEmptyContent=${hasEmptyContent}, canRetry=${canRetry}`);
+        console.log(`[Viewer] isProcessing=${isProcessing}, hasEmptyContent=${hasEmptyContent}, canRetry=${canRetry}, isApiError=${isApiError}`);
 
         if (isProcessing) {
           console.log(`[Viewer] Showing processing state with automatic polling for ${viewName}`);
           this._showProcessing(viewName);
+          return;
+        }
+
+        // Handle API errors (generation failures) - show retry UI
+        if (isApiError) {
+          console.log(`[Viewer] Showing generation failed state for ${viewName} due to API error`);
+          this._updateTabStatus(viewName, 'failed');
+          this._showGenerationFailed(viewName, error.message);
           return;
         }
 
