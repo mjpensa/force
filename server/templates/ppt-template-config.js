@@ -754,6 +754,153 @@ export const LAYOUTS = {
         placeholder: true
       }
     }
+  },
+
+  // ============================================
+  // TWO-COLUMN QUOTE - Side by side quotes (Slide 16)
+  // ============================================
+  quoteTwoColumn: {
+    name: 'Two-Column Quote',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.5,
+        w: 12,
+        h: 0.8,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Left quote configuration
+      leftQuote: {
+        x: 0.5,
+        y: 1.5,
+        w: 5.8,
+        h: 4.5,
+        titleFontSize: 16,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        textFontSize: 12,
+        textFontFace: FONTS.regular,
+        textColor: COLORS.navy,
+        accentColor: COLORS.red,
+        accentWidth: 0.05
+      },
+      // Right quote configuration
+      rightQuote: {
+        x: 6.8,
+        y: 1.5,
+        w: 5.8,
+        h: 4.5,
+        titleFontSize: 16,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        textFontSize: 12,
+        textFontFace: FONTS.regular,
+        textColor: COLORS.navy,
+        accentColor: COLORS.red,
+        accentWidth: 0.05
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
+  // QUOTE WITH METRICS - Quote + data visualization (Slide 17)
+  // ============================================
+  quoteWithMetrics: {
+    name: 'Quote with Metrics',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Quote area (top)
+      quote: {
+        x: 0.5,
+        y: 0.8,
+        w: 12,
+        h: 3,
+        fontSize: 16,
+        fontFace: FONTS.regular,
+        color: COLORS.navy,
+        accentColor: COLORS.red,
+        accentWidth: 0.05
+      },
+      // Metrics row (bottom)
+      metrics: {
+        y: 4.5,
+        startX: 0.5,
+        metricWidth: 2.8,
+        gap: 0.5,
+        maxMetrics: 4,
+        valueFontSize: 48,
+        valueFontFace: FONTS.light,
+        valueColor: COLORS.red,
+        labelFontSize: 11,
+        labelFontFace: FONTS.regular,
+        labelColor: COLORS.navy
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
   }
 };
 
@@ -766,6 +913,8 @@ export const SLIDE_TYPE_MAP = {
   'bullets': 'bullets',
   'content': 'content',
   'quote': 'quote',
+  'quoteTwoColumn': 'quoteTwoColumn',
+  'quoteWithMetrics': 'quoteWithMetrics',
   'section': 'sectionDivider',
   'thankyou': 'thankYou',
   'toc': 'tableOfContents',

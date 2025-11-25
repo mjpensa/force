@@ -82,6 +82,12 @@ export async function generatePptx(slidesData, options = {}) {
         case 'featureGridRed':
           addFeatureGridSlide(pptx, slideData, slideNumber);
           break;
+        case 'quoteTwoColumn':
+          addQuoteTwoColumnSlide(pptx, slideData, slideNumber);
+          break;
+        case 'quoteWithMetrics':
+          addQuoteWithMetricsSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1023,6 +1029,236 @@ function addFeatureGridSlide(pptx, slideData, slideNumber) {
       align: layout.elements.pageNumber.align
     });
   }
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add two-column quote slide (Slide 16)
+ */
+function addQuoteTwoColumnSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.quoteTwoColumn;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  if (slideData.section) {
+    slide.addText(slideData.section.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  // Helper function to render a quote column
+  const renderQuoteColumn = (quoteData, config) => {
+    if (!quoteData) return;
+
+    // Red accent line
+    slide.addShape('rect', {
+      x: config.x - 0.1,
+      y: config.y,
+      w: config.accentWidth,
+      h: 2,
+      fill: { color: config.accentColor }
+    });
+
+    // Quote title
+    if (quoteData.title) {
+      slide.addText(quoteData.title, {
+        x: config.x + 0.1,
+        y: config.y,
+        w: config.w - 0.1,
+        h: 0.6,
+        fontSize: config.titleFontSize,
+        fontFace: config.titleFontFace,
+        color: config.titleColor,
+        align: 'left'
+      });
+    }
+
+    // Quote text
+    if (quoteData.text || quoteData.quote) {
+      slide.addText(`"${quoteData.text || quoteData.quote}"`, {
+        x: config.x + 0.1,
+        y: config.y + 0.7,
+        w: config.w - 0.1,
+        h: 2.5,
+        fontSize: config.textFontSize,
+        fontFace: config.textFontFace,
+        color: config.textColor,
+        align: 'left',
+        italic: true
+      });
+    }
+
+    // Attribution
+    if (quoteData.attribution) {
+      slide.addText(`— ${quoteData.attribution}`, {
+        x: config.x + 0.1,
+        y: config.y + 3.3,
+        w: config.w - 0.1,
+        h: 0.4,
+        fontSize: 11,
+        fontFace: FONTS.semibold,
+        color: config.titleColor,
+        align: 'left'
+      });
+    }
+  };
+
+  // Render left quote
+  renderQuoteColumn(slideData.leftQuote || slideData.quotes?.[0], layout.elements.leftQuote);
+
+  // Render right quote
+  renderQuoteColumn(slideData.rightQuote || slideData.quotes?.[1], layout.elements.rightQuote);
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add quote with metrics slide (Slide 17)
+ */
+function addQuoteWithMetricsSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.quoteWithMetrics;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  if (slideData.section) {
+    slide.addText(slideData.section.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Quote with red accent line
+  const quoteConfig = layout.elements.quote;
+  if (slideData.quote) {
+    // Red accent line
+    slide.addShape('rect', {
+      x: quoteConfig.x - 0.1,
+      y: quoteConfig.y,
+      w: quoteConfig.accentWidth,
+      h: 2.5,
+      fill: { color: quoteConfig.accentColor }
+    });
+
+    // Quote text
+    slide.addText(`"${slideData.quote}"`, {
+      x: quoteConfig.x + 0.1,
+      y: quoteConfig.y,
+      w: quoteConfig.w - 0.1,
+      h: 2.5,
+      fontSize: quoteConfig.fontSize,
+      fontFace: quoteConfig.fontFace,
+      color: quoteConfig.color,
+      align: 'left',
+      italic: true
+    });
+
+    // Attribution
+    if (slideData.attribution) {
+      slide.addText(`— ${slideData.attribution}`, {
+        x: quoteConfig.x + 0.1,
+        y: quoteConfig.y + 2.6,
+        w: quoteConfig.w - 0.1,
+        h: 0.4,
+        fontSize: 12,
+        fontFace: FONTS.semibold,
+        color: quoteConfig.color,
+        align: 'left'
+      });
+    }
+  }
+
+  // Metrics row
+  const metrics = slideData.metrics || [];
+  const metricsConfig = layout.elements.metrics;
+
+  metrics.slice(0, metricsConfig.maxMetrics).forEach((metric, i) => {
+    const x = metricsConfig.startX + (i * (metricsConfig.metricWidth + metricsConfig.gap));
+    const y = metricsConfig.y;
+
+    // Metric value (large red number)
+    slide.addText(metric.value || '', {
+      x: x,
+      y: y,
+      w: metricsConfig.metricWidth,
+      h: 1.2,
+      fontSize: metricsConfig.valueFontSize,
+      fontFace: metricsConfig.valueFontFace,
+      color: metricsConfig.valueColor,
+      align: 'left'
+    });
+
+    // Metric label
+    slide.addText(metric.label || '', {
+      x: x,
+      y: y + 1.2,
+      w: metricsConfig.metricWidth,
+      h: 0.8,
+      fontSize: metricsConfig.labelFontSize,
+      fontFace: metricsConfig.labelFontFace,
+      color: metricsConfig.labelColor,
+      align: 'left'
+    });
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
 
   // Logo placeholder
   addLogoPlaceholder(slide, layout.elements.logo, 'small');
