@@ -242,7 +242,7 @@ async function processFiles(files) {
 document.addEventListener("DOMContentLoaded", () => {
   const ganttForm = document.getElementById('gantt-form');
   const uploadInput = document.getElementById('upload-input');
-  const dropzoneLabel = document.querySelector('.dropzone-container');
+  const dropzoneLabel = document.querySelector('.dropzone-glass');
 
   // Check if all required elements exist
   if (!ganttForm || !uploadInput || !dropzoneLabel) {
