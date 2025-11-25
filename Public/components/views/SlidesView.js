@@ -247,10 +247,26 @@ export class SlidesView {
     fullscreenBtn.setAttribute('aria-label', 'Toggle fullscreen');
     fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
 
+    // Export to PowerPoint button
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'slide-export-button';
+    exportBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span>Download PPT</span>
+    `;
+    exportBtn.setAttribute('aria-label', 'Download as PowerPoint');
+    exportBtn.addEventListener('click', () => this.exportToPowerPoint());
+    this.exportButton = exportBtn;
+
     controls.appendChild(prevBtn);
     controls.appendChild(counter);
     controls.appendChild(nextBtn);
     controls.appendChild(fullscreenBtn);
+    controls.appendChild(exportBtn);
 
     // Store references for updates
     this.prevButton = prevBtn;
@@ -258,6 +274,73 @@ export class SlidesView {
     this.counterElement = counter;
 
     return controls;
+  }
+
+  /**
+   * Export slides to PowerPoint
+   */
+  async exportToPowerPoint() {
+    if (!this.sessionId) {
+      console.error('No session ID available for export');
+      return;
+    }
+
+    try {
+      // Disable button and show loading state
+      this.exportButton.disabled = true;
+      this.exportButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
+          <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="32"/>
+        </svg>
+        <span>Exporting...</span>
+      `;
+
+      // Fetch the PowerPoint file
+      const response = await fetch(`/api/content/${this.sessionId}/slides/export`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to export slides');
+      }
+
+      // Get the blob and create download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      // Extract filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'presentation.pptx';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match) filename = match[1];
+      }
+
+      // Create temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('Export error:', error);
+      alert(`Failed to export: ${error.message}`);
+    } finally {
+      // Restore button state
+      this.exportButton.disabled = false;
+      this.exportButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>Download PPT</span>
+      `;
+    }
   }
 
   /**
