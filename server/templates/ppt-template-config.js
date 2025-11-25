@@ -1327,6 +1327,71 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // ROLLOUT TIMELINE - Horizontal timeline for rollout phases (Slide 31)
+  // ============================================
+  rolloutTimeline: {
+    name: 'Rollout Plan Timeline',
+    background: COLORS.white,
+    elements: {
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.3,
+        w: 4,
+        h: 1,
+        fontSize: 36,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Timeline line
+      timeline: {
+        y: 3.0,
+        startX: 1,
+        endX: 12.5,
+        lineColor: COLORS.red,
+        lineWidth: 3,
+        markerSize: 0.8,
+        markerColor: COLORS.red,
+        numberFontSize: 14,
+        numberFontFace: FONTS.bold,
+        numberColor: COLORS.white
+      },
+      // Phase content configuration
+      phases: {
+        contentWidth: 2.2,
+        contentY: 4.0,
+        titleFontSize: 12,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        detailsFontSize: 10,
+        detailsFontFace: FONTS.regular,
+        detailsColor: COLORS.darkGray,
+        detailsHeight: 1.5
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // ROLLOUT GRID - Phase boxes in grid layout (Slide 30)
   // ============================================
   rolloutGrid: {
@@ -1493,7 +1558,8 @@ export const SLIDE_TYPE_MAP = {
   'cardGrid': 'cardGrid',
   'featureGrid': 'featureGrid',
   'featureGridRed': 'featureGrid',
-  'rolloutGrid': 'rolloutGrid'
+  'rolloutGrid': 'rolloutGrid',
+  'rolloutTimeline': 'rolloutTimeline'
 };
 
 /**

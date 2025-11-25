@@ -114,6 +114,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'rolloutGrid':
           addRolloutGridSlide(pptx, slideData, slideNumber);
           break;
+        case 'rolloutTimeline':
+          addRolloutTimelineSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1642,6 +1645,124 @@ function addRolloutGridSlide(pptx, slideData, slideNumber) {
         fontFace: phasesConfig.itemFontFace,
         color: textColor,
         align: 'left',
+        valign: 'top'
+      });
+    }
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add rollout timeline slide (Slide 31 - horizontal timeline for rollout phases)
+ */
+function addRolloutTimelineSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.rolloutTimeline;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  const timelineConfig = layout.elements.timeline;
+  const phasesConfig = layout.elements.phases;
+  const phases = slideData.phases || slideData.items || [];
+  const phaseCount = phases.length;
+
+  // Draw timeline line
+  slide.addShape('line', {
+    x: timelineConfig.startX,
+    y: timelineConfig.y,
+    w: timelineConfig.endX - timelineConfig.startX,
+    h: 0,
+    line: { color: timelineConfig.lineColor, width: timelineConfig.lineWidth }
+  });
+
+  // Calculate spacing
+  const totalWidth = timelineConfig.endX - timelineConfig.startX;
+  const spacing = phaseCount > 1 ? totalWidth / (phaseCount - 1) : totalWidth / 2;
+
+  phases.forEach((phase, i) => {
+    const markerX = timelineConfig.startX + (i * spacing);
+    const contentX = markerX - (phasesConfig.contentWidth / 2);
+
+    // Phase marker circle
+    slide.addShape('ellipse', {
+      x: markerX - (timelineConfig.markerSize / 2),
+      y: timelineConfig.y - (timelineConfig.markerSize / 2),
+      w: timelineConfig.markerSize,
+      h: timelineConfig.markerSize,
+      fill: { color: timelineConfig.markerColor }
+    });
+
+    // Phase number inside circle
+    slide.addText(`${i + 1}`, {
+      x: markerX - (timelineConfig.markerSize / 2),
+      y: timelineConfig.y - (timelineConfig.markerSize / 2),
+      w: timelineConfig.markerSize,
+      h: timelineConfig.markerSize,
+      fontSize: timelineConfig.numberFontSize,
+      fontFace: timelineConfig.numberFontFace,
+      color: timelineConfig.numberColor,
+      align: 'center',
+      valign: 'middle'
+    });
+
+    // Phase title (below marker)
+    if (phase.title || phase.name) {
+      slide.addText(phase.title || phase.name, {
+        x: contentX,
+        y: phasesConfig.contentY,
+        w: phasesConfig.contentWidth,
+        h: 0.5,
+        fontSize: phasesConfig.titleFontSize,
+        fontFace: phasesConfig.titleFontFace,
+        color: phasesConfig.titleColor,
+        align: 'center'
+      });
+    }
+
+    // Phase details (below title)
+    const details = phase.details || phase.description || phase.content;
+    if (details) {
+      const detailsText = Array.isArray(details) ? details.join('\n• ') : details;
+      const formattedText = Array.isArray(details) ? '• ' + detailsText : detailsText;
+
+      slide.addText(formattedText, {
+        x: contentX,
+        y: phasesConfig.contentY + 0.6,
+        w: phasesConfig.contentWidth,
+        h: phasesConfig.detailsHeight,
+        fontSize: phasesConfig.detailsFontSize,
+        fontFace: phasesConfig.detailsFontFace,
+        color: phasesConfig.detailsColor,
+        align: 'center',
         valign: 'top'
       });
     }
