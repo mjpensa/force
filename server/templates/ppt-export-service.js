@@ -46,134 +46,135 @@ export async function generatePptx(slidesData, options = {}) {
     const slideData = slidesData.slides[i];
     const slideNumber = i + 1;
     const isFirstSlide = i === 0;
-    const isLastSlide = i === slidesData.slides.length - 1;
 
-    // Determine which layout to use
+    // Special handling: First slide with type 'title' gets presentation title styling
+    // All other slides are handled by their explicit type - no position-based overrides
     if (isFirstSlide && slideData.type === 'title') {
       addTitleSlide(pptx, slideData, slidesData);
-    } else if (isLastSlide && (slideData.type === 'title' || slideData.title?.toLowerCase().includes('thank'))) {
-      addThankYouSlide(pptx, slideData);
-    } else {
-      switch (slideData.type) {
-        case 'title':
-          addSectionSlide(pptx, slideData, slideNumber);
-          break;
-        case 'titleWithImage':
-          addTitleWithImageSlide(pptx, slideData);
-          break;
-        case 'bullets':
-          addBulletsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'content':
-          addContentSlide(pptx, slideData, slideNumber);
-          break;
-        case 'quote':
-          addQuoteSlide(pptx, slideData, slideNumber);
-          break;
-        case 'cardGrid':
-          addCardGridSlide(pptx, slideData, slideNumber);
-          break;
-        case 'tableOfContents':
-        case 'toc':
-          addTableOfContentsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'steps':
-        case 'process':
-          addProcessStepsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'featureGrid':
-        case 'featureGridRed':
-          addFeatureGridSlide(pptx, slideData, slideNumber);
-          break;
-        case 'quoteTwoColumn':
-          addQuoteTwoColumnSlide(pptx, slideData, slideNumber);
-          break;
-        case 'quoteWithMetrics':
-          addQuoteWithMetricsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelineCards':
-        case 'timeline':
-          addTimelineCardsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelineCardsAlt':
-          addTimelineCardsAltSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelinePhases':
-          addTimelinePhasesSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelineNumberedMarkers':
-          addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
-          break;
-        case 'stepsVertical':
-        case 'processStepsVertical':
-          addStepsVerticalSlide(pptx, slideData, slideNumber);
-          break;
-        case 'processSteps5':
-          addProcessSteps5Slide(pptx, slideData, slideNumber);
-          break;
-        case 'processStepsAlt':
-          addProcessStepsAltSlide(pptx, slideData, slideNumber);
-          break;
-        case 'rolloutGrid':
-          addRolloutGridSlide(pptx, slideData, slideNumber);
-          break;
-        case 'rolloutTimeline':
-          addRolloutTimelineSlide(pptx, slideData, slideNumber);
-          break;
-        case 'ganttChart':
-        case 'gantt':
-          addGanttChartSlide(pptx, slideData, slideNumber);
-          break;
-        case 'rolloutDescription':
-          addRolloutDescriptionSlide(pptx, slideData, slideNumber);
-          break;
-        case 'quoteDataA':
-          addQuoteDataASlide(pptx, slideData, slideNumber);
-          break;
-        case 'quoteDataB':
-          addQuoteDataBSlide(pptx, slideData, slideNumber);
-          break;
-        case 'dualChart':
-          addDualChartSlide(pptx, slideData, slideNumber);
-          break;
-        case 'table':
-        case 'dataTable':
-          addTableSlide(pptx, slideData, slideNumber);
-          break;
-        case 'titleVariantA':
-          addTitleVariantASlide(pptx, slideData);
-          break;
-        case 'titleVariantB':
-          addTitleVariantBSlide(pptx, slideData);
-          break;
-        case 'contentsNav':
-          addContentsNavSlide(pptx, slideData, slideNumber);
-          break;
-        case 'thankYouAlt':
-          addThankYouAltSlide(pptx, slideData);
-          break;
-        case 'contentMultiColumn':
-          addContentMultiColumnSlide(pptx, slideData, slideNumber);
-          break;
-        case 'bulletsFull':
-          addBulletsFullSlide(pptx, slideData, slideNumber);
-          break;
-        case 'contentWithImage':
-          addContentWithImageSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelineNumbered':
-          addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
-          break;
-        case 'sectionDivider':
-        case 'section':
-          addSectionSlide(pptx, slideData, slideNumber);
-          break;
-        case 'thankYou':
-          addThankYouSlide(pptx, slideData);
-          break;
-        default:
-          addBulletsSlide(pptx, slideData, slideNumber);
-      }
+      continue;
+    }
+
+    // Handle all slides by their explicit type
+    switch (slideData.type) {
+      case 'title':
+        // Non-first title slides become section dividers
+        addSectionSlide(pptx, slideData, slideNumber);
+        break;
+      case 'titleWithImage':
+        addTitleWithImageSlide(pptx, slideData);
+        break;
+      case 'titleVariantA':
+        addTitleVariantASlide(pptx, slideData);
+        break;
+      case 'titleVariantB':
+        addTitleVariantBSlide(pptx, slideData);
+        break;
+      case 'sectionDivider':
+      case 'section':
+        addSectionSlide(pptx, slideData, slideNumber);
+        break;
+      case 'bullets':
+        addBulletsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'bulletsFull':
+        addBulletsFullSlide(pptx, slideData, slideNumber);
+        break;
+      case 'content':
+        addContentSlide(pptx, slideData, slideNumber);
+        break;
+      case 'contentMultiColumn':
+        addContentMultiColumnSlide(pptx, slideData, slideNumber);
+        break;
+      case 'contentWithImage':
+        addContentWithImageSlide(pptx, slideData, slideNumber);
+        break;
+      case 'quote':
+        addQuoteSlide(pptx, slideData, slideNumber);
+        break;
+      case 'quoteTwoColumn':
+        addQuoteTwoColumnSlide(pptx, slideData, slideNumber);
+        break;
+      case 'quoteWithMetrics':
+        addQuoteWithMetricsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'quoteDataA':
+        addQuoteDataASlide(pptx, slideData, slideNumber);
+        break;
+      case 'quoteDataB':
+        addQuoteDataBSlide(pptx, slideData, slideNumber);
+        break;
+      case 'cardGrid':
+        addCardGridSlide(pptx, slideData, slideNumber);
+        break;
+      case 'featureGrid':
+      case 'featureGridRed':
+        addFeatureGridSlide(pptx, slideData, slideNumber);
+        break;
+      case 'steps':
+      case 'process':
+        addProcessStepsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'stepsVertical':
+      case 'processStepsVertical':
+        addStepsVerticalSlide(pptx, slideData, slideNumber);
+        break;
+      case 'processSteps5':
+        addProcessSteps5Slide(pptx, slideData, slideNumber);
+        break;
+      case 'processStepsAlt':
+        addProcessStepsAltSlide(pptx, slideData, slideNumber);
+        break;
+      case 'timelineCards':
+      case 'timeline':
+        addTimelineCardsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'timelineCardsAlt':
+        addTimelineCardsAltSlide(pptx, slideData, slideNumber);
+        break;
+      case 'timelinePhases':
+        addTimelinePhasesSlide(pptx, slideData, slideNumber);
+        break;
+      case 'timelineNumberedMarkers':
+      case 'timelineNumbered':
+        addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
+        break;
+      case 'rolloutGrid':
+        addRolloutGridSlide(pptx, slideData, slideNumber);
+        break;
+      case 'rolloutTimeline':
+        addRolloutTimelineSlide(pptx, slideData, slideNumber);
+        break;
+      case 'rolloutDescription':
+        addRolloutDescriptionSlide(pptx, slideData, slideNumber);
+        break;
+      case 'ganttChart':
+      case 'gantt':
+        addGanttChartSlide(pptx, slideData, slideNumber);
+        break;
+      case 'table':
+      case 'dataTable':
+        addTableSlide(pptx, slideData, slideNumber);
+        break;
+      case 'dualChart':
+        addDualChartSlide(pptx, slideData, slideNumber);
+        break;
+      case 'tableOfContents':
+      case 'toc':
+        addTableOfContentsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'contentsNav':
+        addContentsNavSlide(pptx, slideData, slideNumber);
+        break;
+      case 'thankYou':
+        addThankYouSlide(pptx, slideData);
+        break;
+      case 'thankYouAlt':
+        addThankYouAltSlide(pptx, slideData);
+        break;
+      default:
+        // Fallback to bullets for unknown types
+        console.warn(`Unknown slide type '${slideData.type}' at slide ${slideNumber}, using bullets fallback`);
+        addBulletsSlide(pptx, slideData, slideNumber);
     }
   }
 

@@ -633,6 +633,8 @@ Choose the appropriate slide type based on your content structure:
 ### PROCESS & STEP SLIDES
 | Type | Use When | Required Data |
 |------|----------|---------------|
+| steps | Horizontal process flow (red bg) | title, description, steps[] ({title, description}) |
+| process | Alias for steps | title, description, steps[] ({title, description}) |
 | processSteps5 | Horizontal 5-step process (navy bg) | title, steps[] ({title, description}) |
 | processStepsAlt | Horizontal process (white bg) | title, section, steps[] |
 | stepsVertical | Vertical numbered steps | title, section, steps[] |
@@ -824,6 +826,20 @@ export const dataStructureExamples = `
     { "value": "45%", "label": "Cost Reduction" },
     { "value": "$2.5M", "label": "Annual Savings" },
     { "value": "3x", "label": "Productivity Gain" }
+  ]
+}
+
+### steps Example (horizontal process flow with red background):
+{
+  "type": "steps",
+  "title": "Our Approach",
+  "description": "A proven methodology for successful transformation",
+  "steps": [
+    { "title": "Assess", "description": "Evaluate current state" },
+    { "title": "Plan", "description": "Define strategy" },
+    { "title": "Execute", "description": "Implement solutions" },
+    { "title": "Measure", "description": "Track outcomes" },
+    { "title": "Refine", "description": "Optimize results" }
   ]
 }
 
