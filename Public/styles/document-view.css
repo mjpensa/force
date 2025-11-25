@@ -8,7 +8,7 @@
 
 .document-view {
   background: var(--color-background);
-  min-height: calc(100vh - var(--header-height));
+  min-height: 0; /* Allow proper scroll containment within app-main */
   animation: fadeIn var(--transition-base);
 }
 
