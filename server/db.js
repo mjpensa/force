@@ -30,7 +30,8 @@ db.pragma('journal_mode = WAL');
  * Initialize database schema
  */
 export function initializeDatabase() {
-  db.exec(`
+  try {
+    db.exec(`
     -- Sessions table: stores all generated content
     CREATE TABLE IF NOT EXISTS sessions (
       session_id TEXT PRIMARY KEY,
@@ -81,7 +82,12 @@ export function initializeDatabase() {
       ON jobs(status, created_at DESC);
   `);
 
-  console.log('✅ Database initialized successfully');
+    console.log('✅ Database initialized successfully');
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error.message);
+    console.error('Stack trace:', error.stack);
+    throw error; // Re-throw to prevent server from starting with broken database
+  }
 }
 
 /**
@@ -471,6 +477,18 @@ export function getDatabaseInfo() {
       path: DB_PATH,
       error: error.message
     };
+  }
+}
+
+/**
+ * Close database connection (call on server shutdown)
+ */
+export function closeDatabase() {
+  try {
+    db.close();
+    console.log('✅ Database connection closed');
+  } catch (error) {
+    console.error('❌ Error closing database:', error.message);
   }
 }
 
