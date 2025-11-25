@@ -1327,6 +1327,71 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // ROLLOUT GRID - Phase boxes in grid layout (Slide 30)
+  // ============================================
+  rolloutGrid: {
+    name: 'Rollout Plan Grid',
+    background: COLORS.white,
+    elements: {
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.3,
+        w: 4,
+        h: 1.2,
+        fontSize: 48,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Phase boxes configuration
+      phases: {
+        startX: 0.5,
+        startY: 1.8,
+        boxWidth: 4,
+        boxHeight: 2.5,
+        gapX: 0.3,
+        gapY: 0.3,
+        columns: 3,
+        maxRows: 2,
+        padding: 0.25,
+        // Default colors for phases (can be overridden by data)
+        colors: [
+          { bg: COLORS.navy, text: COLORS.white },
+          { bg: COLORS.red, text: COLORS.white },
+          { bg: COLORS.lightGray, text: COLORS.navy },
+          { bg: COLORS.navy, text: COLORS.white },
+          { bg: COLORS.red, text: COLORS.white },
+          { bg: COLORS.lightGray, text: COLORS.navy }
+        ],
+        titleFontSize: 16,
+        titleFontFace: FONTS.semibold,
+        itemFontSize: 10,
+        itemFontFace: FONTS.regular
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // TIMELINE CARDS - Horizontal timeline with cards (Slide 22)
   // ============================================
   timelineCards: {
@@ -1418,6 +1483,7 @@ export const SLIDE_TYPE_MAP = {
   'timelinePhases': 'timelinePhases',
   'timelineNumberedMarkers': 'timelineNumberedMarkers',
   'stepsVertical': 'stepsVertical',
+  'processStepsVertical': 'stepsVertical',  // Slide 29 alias
   'processSteps5': 'processSteps5',
   'processStepsAlt': 'processStepsAlt',
   'section': 'sectionDivider',
@@ -1426,7 +1492,8 @@ export const SLIDE_TYPE_MAP = {
   'steps': 'steps',
   'cardGrid': 'cardGrid',
   'featureGrid': 'featureGrid',
-  'featureGridRed': 'featureGrid'
+  'featureGridRed': 'featureGrid',
+  'rolloutGrid': 'rolloutGrid'
 };
 
 /**

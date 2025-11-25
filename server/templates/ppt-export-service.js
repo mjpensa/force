@@ -102,6 +102,7 @@ export async function generatePptx(slidesData, options = {}) {
           addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
           break;
         case 'stepsVertical':
+        case 'processStepsVertical':
           addStepsVerticalSlide(pptx, slideData, slideNumber);
           break;
         case 'processSteps5':
@@ -109,6 +110,9 @@ export async function generatePptx(slidesData, options = {}) {
           break;
         case 'processStepsAlt':
           addProcessStepsAltSlide(pptx, slideData, slideNumber);
+          break;
+        case 'rolloutGrid':
+          addRolloutGridSlide(pptx, slideData, slideNumber);
           break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
@@ -1535,6 +1539,109 @@ function addProcessStepsAltSlide(pptx, slideData, slideNumber) {
         fontFace: stepsConfig.descFontFace,
         color: stepsConfig.descColor,
         align: 'center',
+        valign: 'top'
+      });
+    }
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add rollout grid slide (Slide 30 - phase boxes in grid layout)
+ */
+function addRolloutGridSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.rolloutGrid;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  const phasesConfig = layout.elements.phases;
+  const phases = slideData.phases || slideData.items || [];
+
+  phases.forEach((phase, i) => {
+    const row = Math.floor(i / phasesConfig.columns);
+    const col = i % phasesConfig.columns;
+
+    // Skip if exceeding max rows
+    if (row >= phasesConfig.maxRows) return;
+
+    const x = phasesConfig.startX + (col * (phasesConfig.boxWidth + phasesConfig.gapX));
+    const y = phasesConfig.startY + (row * (phasesConfig.boxHeight + phasesConfig.gapY));
+
+    // Get colors for this phase (use data override or default from config)
+    const colorIndex = i % phasesConfig.colors.length;
+    const bgColor = phase.bgColor || phasesConfig.colors[colorIndex].bg;
+    const textColor = phase.textColor || phasesConfig.colors[colorIndex].text;
+
+    // Phase box background
+    slide.addShape('rect', {
+      x: x,
+      y: y,
+      w: phasesConfig.boxWidth,
+      h: phasesConfig.boxHeight,
+      fill: { color: bgColor }
+    });
+
+    // Phase title
+    if (phase.title || phase.name) {
+      slide.addText(phase.title || phase.name, {
+        x: x + phasesConfig.padding,
+        y: y + phasesConfig.padding,
+        w: phasesConfig.boxWidth - (phasesConfig.padding * 2),
+        h: 0.5,
+        fontSize: phasesConfig.titleFontSize,
+        fontFace: phasesConfig.titleFontFace,
+        color: textColor,
+        align: 'left',
+        bold: true
+      });
+    }
+
+    // Phase items/description
+    const items = phase.items || phase.bullets || (phase.description ? [phase.description] : []);
+    if (items.length > 0) {
+      const itemsText = Array.isArray(items)
+        ? items.map(item => `• ${item}`).join('\n')
+        : items;
+
+      slide.addText(itemsText, {
+        x: x + phasesConfig.padding,
+        y: y + phasesConfig.padding + 0.6,
+        w: phasesConfig.boxWidth - (phasesConfig.padding * 2),
+        h: phasesConfig.boxHeight - phasesConfig.padding - 0.8,
+        fontSize: phasesConfig.itemFontSize,
+        fontFace: phasesConfig.itemFontFace,
+        color: textColor,
+        align: 'left',
         valign: 'top'
       });
     }
