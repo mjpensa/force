@@ -580,16 +580,19 @@ function addContentMultiColumnSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  slide.addText(slideData.sectionLabel || 'SECTION', {
-    x: layout.elements.sectionLabel.x,
-    y: layout.elements.sectionLabel.y,
-    w: layout.elements.sectionLabel.w,
-    h: layout.elements.sectionLabel.h,
-    fontSize: layout.elements.sectionLabel.fontSize,
-    fontFace: layout.elements.sectionLabel.fontFace,
-    color: layout.elements.sectionLabel.color,
-    align: layout.elements.sectionLabel.align
-  });
+  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  if (sectionLabel) {
+    slide.addText(sectionLabel.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
 
   // Main title (large, left side)
   slide.addText(slideData.title || 'Slide Title', {
@@ -677,16 +680,19 @@ function addBulletsFullSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  slide.addText(slideData.sectionLabel || 'SECTION', {
-    x: layout.elements.sectionLabel.x,
-    y: layout.elements.sectionLabel.y,
-    w: layout.elements.sectionLabel.w,
-    h: layout.elements.sectionLabel.h,
-    fontSize: layout.elements.sectionLabel.fontSize,
-    fontFace: layout.elements.sectionLabel.fontFace,
-    color: layout.elements.sectionLabel.color,
-    align: layout.elements.sectionLabel.align
-  });
+  const sectionLabelText = slideData.section || slideData.sectionLabel || '';
+  if (sectionLabelText) {
+    slide.addText(sectionLabelText.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
 
   // Main title
   slide.addText(slideData.title || 'Slide Title', {
@@ -771,16 +777,19 @@ function addContentWithImageSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  slide.addText(slideData.sectionLabel || 'SECTION', {
-    x: layout.elements.sectionLabel.x,
-    y: layout.elements.sectionLabel.y,
-    w: layout.elements.sectionLabel.w,
-    h: layout.elements.sectionLabel.h,
-    fontSize: layout.elements.sectionLabel.fontSize,
-    fontFace: layout.elements.sectionLabel.fontFace,
-    color: layout.elements.sectionLabel.color,
-    align: layout.elements.sectionLabel.align
-  });
+  const sectionLabelImg = slideData.section || slideData.sectionLabel || '';
+  if (sectionLabelImg) {
+    slide.addText(sectionLabelImg.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
 
   // Main title
   slide.addText(slideData.title || 'Slide Title', {
