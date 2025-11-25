@@ -542,21 +542,208 @@ class ContentViewer {
   }
 
   /**
-   * Show processing state (content still being generated)
+   * Show processing state with automatic polling
+   * Instead of requiring manual refresh, automatically polls for completion
    */
   _showProcessing(viewName) {
+    // Clear any existing polling for this view
+    if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
+      clearTimeout(this._processingPollTimeouts[viewName]);
+    }
+    if (!this._processingPollTimeouts) {
+      this._processingPollTimeouts = {};
+    }
+
+    // Track start time for accurate elapsed time display
+    if (!this._processingStartTimes) {
+      this._processingStartTimes = {};
+    }
+    this._processingStartTimes[viewName] = Date.now();
+
+    const viewNameCapitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
+
     this.contentContainer.innerHTML = `
       <div class="loading-screen">
         <div class="loading-spinner"></div>
-        <h2>Content is being generated</h2>
+        <h2>Generating ${viewNameCapitalized}</h2>
         <p style="margin-top: 1rem; color: var(--color-text-secondary);">
-          The ${viewName} is still being generated. Please wait a moment and refresh the page.
+          Your ${viewName} content is being generated. This usually takes 30-60 seconds.
         </p>
-        <button onclick="window.location.reload()" style="margin-top: 2rem; padding: 0.75rem 1.5rem; background: var(--color-primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer;">
-          Refresh Page
-        </button>
+        <p id="processing-status" style="margin-top: 0.5rem; color: var(--color-text-tertiary); font-size: 0.875rem;">
+          Checking status...
+        </p>
+        <div id="processing-progress" style="margin-top: 1rem; width: 200px; height: 4px; background: var(--color-border); border-radius: 2px; overflow: hidden;">
+          <div id="progress-bar" style="width: 0%; height: 100%; background: var(--color-primary); transition: width 0.3s ease;"></div>
+        </div>
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center;">
+          <button id="cancel-generation-btn" style="padding: 0.75rem 1.5rem; background: transparent; color: var(--color-text-secondary); border: 1px solid var(--color-border); border-radius: 0.5rem; cursor: pointer;">
+            Cancel
+          </button>
+        </div>
       </div>
     `;
+
+    // Add cancel button handler
+    const cancelBtn = document.getElementById('cancel-generation-btn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        if (this._processingPollTimeouts[viewName]) {
+          clearTimeout(this._processingPollTimeouts[viewName]);
+          delete this._processingPollTimeouts[viewName];
+        }
+        window.location.href = '/';
+      });
+    }
+
+    // Start automatic polling
+    this._pollForProcessingComplete(viewName);
+  }
+
+  /**
+   * Poll for content generation completion
+   * Uses exponential backoff to reduce server load
+   */
+  async _pollForProcessingComplete(viewName, attempt = 0) {
+    const MAX_ATTEMPTS = 120; // 5 minutes with increasing intervals
+    const BASE_INTERVAL = 2000; // Start at 2 seconds
+    const MAX_INTERVAL = 10000; // Cap at 10 seconds
+    const EXPECTED_DURATION = 60000; // Expected 60 seconds for generation
+
+    // Calculate interval with exponential backoff (capped)
+    const interval = Math.min(BASE_INTERVAL * Math.pow(1.2, Math.floor(attempt / 5)), MAX_INTERVAL);
+
+    if (attempt >= MAX_ATTEMPTS) {
+      console.log(`[Viewer] Polling timeout for ${viewName} after ${MAX_ATTEMPTS} attempts`);
+      this._showGenerationTimeout(viewName);
+      return;
+    }
+
+    // Update status message with accurate elapsed time
+    const statusEl = document.getElementById('processing-status');
+    const progressBar = document.getElementById('progress-bar');
+    const startTime = this._processingStartTimes?.[viewName] || Date.now();
+    const elapsedMs = Date.now() - startTime;
+    const elapsedSeconds = Math.floor(elapsedMs / 1000);
+
+    if (statusEl) {
+      statusEl.textContent = `Checking status... (${elapsedSeconds}s elapsed)`;
+    }
+
+    // Update progress bar (estimate based on expected duration)
+    if (progressBar) {
+      const progress = Math.min((elapsedMs / EXPECTED_DURATION) * 100, 95); // Cap at 95% until complete
+      progressBar.style.width = `${progress}%`;
+    }
+
+    try {
+      const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
+      const data = await response.json();
+
+      console.log(`[Viewer] Poll attempt ${attempt + 1} for ${viewName}: status=${data.status}`);
+
+      if (data.status === 'completed' && data.data) {
+        // Content is ready! Clear polling and load the view
+        if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
+          delete this._processingPollTimeouts[viewName];
+        }
+
+        // Show completion in progress bar
+        const progressBar = document.getElementById('progress-bar');
+        const statusEl = document.getElementById('processing-status');
+        if (progressBar) {
+          progressBar.style.width = '100%';
+          progressBar.style.background = 'var(--color-success, #10b981)';
+        }
+        if (statusEl) {
+          statusEl.textContent = 'Generation complete! Loading...';
+        }
+
+        // Brief delay to show completion state
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Update cache in state manager
+        this.stateManager.setState({
+          content: { ...this.stateManager.state.content, [viewName]: data.data }
+        });
+
+        // Update tab status
+        this._updateTabStatus(viewName, 'ready');
+
+        // Re-load the view (will use cached data)
+        await this._loadView(viewName);
+        return;
+      }
+
+      if (data.status === 'error') {
+        // Generation failed
+        if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
+          delete this._processingPollTimeouts[viewName];
+        }
+        this._updateTabStatus(viewName, 'failed');
+        this._showGenerationFailed(viewName, data.error || 'Content generation failed. Please try again.');
+        return;
+      }
+
+      // Still processing - schedule next poll
+      this._processingPollTimeouts[viewName] = setTimeout(() => {
+        this._pollForProcessingComplete(viewName, attempt + 1);
+      }, interval);
+
+    } catch (error) {
+      console.error(`[Viewer] Error polling ${viewName}:`, error);
+
+      // On network error, retry with backoff
+      this._processingPollTimeouts[viewName] = setTimeout(() => {
+        this._pollForProcessingComplete(viewName, attempt + 1);
+      }, interval * 2);
+    }
+  }
+
+  /**
+   * Show timeout state when generation takes too long
+   */
+  _showGenerationTimeout(viewName) {
+    const viewNameCapitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
+
+    this.contentContainer.innerHTML = `
+      <div style="padding: 3rem; text-align: center; max-width: 600px; margin: 0 auto;">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color: var(--color-warning, #f59e0b); margin-bottom: 1.5rem;">
+          <circle cx="12" cy="12" r="10" stroke-width="2"/>
+          <polyline points="12 6 12 12 16 14" stroke-width="2"/>
+        </svg>
+        <h2 style="margin-bottom: 1rem; color: var(--color-text-primary);">
+          ${viewNameCapitalized} Generation Taking Too Long
+        </h2>
+        <p style="color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 2rem;">
+          The content is still being generated but it's taking longer than expected.
+          This could be due to complex source material or server load.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <button id="continue-waiting-btn"
+                  style="padding: 0.75rem 1.5rem; background: var(--color-primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+            Continue Waiting
+          </button>
+          <button id="retry-generation-btn"
+                  style="padding: 0.75rem 1.5rem; background: transparent; color: var(--color-text-primary); border: 2px solid var(--color-border); border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+            🔄 Retry Generation
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Add button handlers
+    const continueBtn = document.getElementById('continue-waiting-btn');
+    const retryBtn = document.getElementById('retry-generation-btn');
+
+    if (continueBtn) {
+      continueBtn.addEventListener('click', () => {
+        this._showProcessing(viewName);
+      });
+    }
+
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => this._retryGeneration(viewName));
+    }
   }
 
   /**
@@ -840,6 +1027,7 @@ class ContentViewer {
 
   /**
    * Start background polling to check status of all views
+   * Enhanced: Now caches content when ready for instant view switching
    */
   _startBackgroundStatusPolling() {
     const views = ['roadmap', 'slides', 'document'];
@@ -847,33 +1035,99 @@ class ContentViewer {
     // Initial state - all loading
     views.forEach(view => this._updateTabStatus(view, 'loading'));
 
-    // Poll each view
-    const pollView = async (viewName) => {
+    // Track active polling to avoid duplicates
+    if (!this._backgroundPollTimeouts) {
+      this._backgroundPollTimeouts = {};
+    }
+
+    // Poll each view with exponential backoff
+    const pollView = async (viewName, attempt = 0) => {
+      // Calculate polling interval with backoff
+      const BASE_INTERVAL = 3000; // 3 seconds
+      const MAX_INTERVAL = 15000; // 15 seconds max
+      const interval = Math.min(BASE_INTERVAL * Math.pow(1.3, Math.floor(attempt / 3)), MAX_INTERVAL);
+
       try {
         const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
         const data = await response.json();
 
         if (data.status === 'completed' && data.data) {
           this._updateTabStatus(viewName, 'ready');
+
+          // Cache the content in StateManager for instant view switching
+          // Only cache if not already cached
+          if (!this.stateManager.state.content[viewName]) {
+            console.log(`[Background Poll] Caching ${viewName} content for instant access`);
+            this.stateManager.setState({
+              content: { ...this.stateManager.state.content, [viewName]: data.data }
+            });
+          }
+
+          // Stop polling for this view - it's done
+          if (this._backgroundPollTimeouts[viewName]) {
+            delete this._backgroundPollTimeouts[viewName];
+          }
+
         } else if (data.status === 'error') {
           this._updateTabStatus(viewName, 'failed');
+          // Stop polling on error
+          if (this._backgroundPollTimeouts[viewName]) {
+            delete this._backgroundPollTimeouts[viewName];
+          }
+
         } else if (data.status === 'processing' || data.status === 'pending') {
           this._updateTabStatus(viewName, 'processing');
-          // Still processing, poll again in 3 seconds
-          setTimeout(() => pollView(viewName), 3000);
+          // Still processing, poll again with backoff
+          this._backgroundPollTimeouts[viewName] = setTimeout(() => {
+            pollView(viewName, attempt + 1);
+          }, interval);
+
         } else {
-          // Unknown status
+          // Unknown status - continue polling
           this._updateTabStatus(viewName, 'loading');
-          setTimeout(() => pollView(viewName), 3000);
+          this._backgroundPollTimeouts[viewName] = setTimeout(() => {
+            pollView(viewName, attempt + 1);
+          }, interval);
         }
+
       } catch (error) {
-        console.error(`Error polling ${viewName} status:`, error);
-        this._updateTabStatus(viewName, 'failed');
+        console.error(`[Background Poll] Error polling ${viewName}:`, error);
+        // On error, retry with longer interval
+        this._backgroundPollTimeouts[viewName] = setTimeout(() => {
+          pollView(viewName, attempt + 1);
+        }, interval * 2);
       }
     };
 
     // Start polling all views
-    views.forEach(view => pollView(view));
+    views.forEach(view => pollView(view, 0));
+  }
+
+  /**
+   * Cleanup polling on viewer destroy
+   */
+  destroy() {
+    // Clear all processing poll timeouts
+    if (this._processingPollTimeouts) {
+      Object.values(this._processingPollTimeouts).forEach(timeout => clearTimeout(timeout));
+      this._processingPollTimeouts = {};
+    }
+
+    // Clear all background poll timeouts
+    if (this._backgroundPollTimeouts) {
+      Object.values(this._backgroundPollTimeouts).forEach(timeout => clearTimeout(timeout));
+      this._backgroundPollTimeouts = {};
+    }
+
+    // Clear start time tracking
+    if (this._processingStartTimes) {
+      this._processingStartTimes = {};
+    }
+
+    // Remove keyboard shortcuts
+    if (this.removeShortcuts) {
+      this.removeShortcuts();
+    }
   }
 }
 

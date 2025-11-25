@@ -14,6 +14,30 @@ import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
 // Initialize Gemini API (using API_KEY from environment to match server/config.js)
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
+// Timeout configuration for AI generation
+const GENERATION_TIMEOUT_MS = 180000; // 3 minutes - generous but not infinite
+
+/**
+ * Execute a promise with timeout
+ * @param {Promise} promise - Promise to execute
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @param {string} operationName - Name of operation for error message
+ * @returns {Promise} Result or timeout error
+ */
+function withTimeout(promise, timeoutMs, operationName) {
+  let timeoutId;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${operationName} timed out after ${timeoutMs / 1000} seconds`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
+
 /**
  * Generate content using Gemini API with structured output
  * @param {string} prompt - The complete prompt
@@ -34,8 +58,15 @@ async function generateWithGemini(prompt, schema, contentType) {
       }
     });
 
-    console.log(`[${contentType}] Starting generation...`);
-    const result = await model.generateContent(prompt);
+    console.log(`[${contentType}] Starting generation (timeout: ${GENERATION_TIMEOUT_MS / 1000}s)...`);
+
+    // Wrap the API call with timeout to prevent indefinite hangs
+    const result = await withTimeout(
+      model.generateContent(prompt),
+      GENERATION_TIMEOUT_MS,
+      `${contentType} generation`
+    );
+
     const response = result.response;
     const text = response.text();
 
