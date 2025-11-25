@@ -78,6 +78,10 @@ export async function generatePptx(slidesData, options = {}) {
         case 'process':
           addProcessStepsSlide(pptx, slideData, slideNumber);
           break;
+        case 'featureGrid':
+        case 'featureGridRed':
+          addFeatureGridSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -888,6 +892,137 @@ function addCardGridSlide(pptx, slideData, slideNumber) {
     color: layout.elements.pageNumber.color,
     align: layout.elements.pageNumber.align
   });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add feature grid slide (Slides 13-14 - icon-based feature layout)
+ * Supports both white (default) and red background variants
+ */
+function addFeatureGridSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.featureGrid;
+  const slide = pptx.addSlide();
+
+  // Determine if this is the red variant
+  const isRedVariant = slideData.type === 'featureGridRed' || slideData.variant === 'red';
+  const bgColor = isRedVariant ? COLORS.red : layout.background;
+  const textColor = isRedVariant ? COLORS.white : layout.elements.title.color;
+  const iconBgColor = isRedVariant ? COLORS.white : layout.elements.features.iconBackground;
+  const iconTextColor = isRedVariant ? COLORS.red : COLORS.white;
+  const descColor = isRedVariant ? COLORS.white : layout.elements.features.descColor;
+
+  // Set background
+  slide.background = { color: bgColor };
+
+  // Section label (only on white variant)
+  if (!isRedVariant && slideData.section) {
+    slide.addText(slideData.section.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: textColor,
+      align: layout.elements.title.align
+    });
+  }
+
+  // Render features
+  const featuresConfig = layout.elements.features;
+  const features = slideData.features || [];
+
+  features.forEach((feature, i) => {
+    const row = Math.floor(i / featuresConfig.columns);
+    const col = i % featuresConfig.columns;
+
+    // Skip if exceeding max rows
+    if (row >= featuresConfig.maxRows) return;
+
+    const x = featuresConfig.startX + (col * (featuresConfig.featureWidth + featuresConfig.gapX));
+    const y = featuresConfig.startY + (row * (featuresConfig.featureHeight + featuresConfig.gapY));
+
+    // Icon circle placeholder
+    slide.addShape('ellipse', {
+      x: x + (featuresConfig.featureWidth - featuresConfig.iconSize) / 2,
+      y: y,
+      w: featuresConfig.iconSize,
+      h: featuresConfig.iconSize,
+      fill: { color: iconBgColor }
+    });
+
+    // Icon placeholder text (number or icon character)
+    slide.addText(feature.icon || `${i + 1}`, {
+      x: x + (featuresConfig.featureWidth - featuresConfig.iconSize) / 2,
+      y: y,
+      w: featuresConfig.iconSize,
+      h: featuresConfig.iconSize,
+      fontSize: 20,
+      fontFace: FONTS.bold,
+      color: iconTextColor,
+      align: 'center',
+      valign: 'middle'
+    });
+
+    // Feature title
+    if (feature.title) {
+      slide.addText(feature.title, {
+        x: x,
+        y: y + featuresConfig.iconSize + 0.2,
+        w: featuresConfig.featureWidth,
+        h: 0.4,
+        fontSize: featuresConfig.titleFontSize,
+        fontFace: featuresConfig.titleFontFace,
+        color: isRedVariant ? COLORS.white : featuresConfig.titleColor,
+        align: 'center'
+      });
+    }
+
+    // Feature description
+    if (feature.description) {
+      slide.addText(feature.description, {
+        x: x,
+        y: y + featuresConfig.iconSize + 0.6,
+        w: featuresConfig.featureWidth,
+        h: 1.0,
+        fontSize: featuresConfig.descFontSize,
+        fontFace: featuresConfig.descFontFace,
+        color: descColor,
+        align: 'center',
+        valign: 'top'
+      });
+    }
+  });
+
+  // Page number (only on white variant)
+  if (!isRedVariant) {
+    slide.addText(String(slideNumber), {
+      x: layout.elements.pageNumber.x,
+      y: layout.elements.pageNumber.y,
+      w: layout.elements.pageNumber.w,
+      h: layout.elements.pageNumber.h,
+      fontSize: layout.elements.pageNumber.fontSize,
+      fontFace: layout.elements.pageNumber.fontFace,
+      color: layout.elements.pageNumber.color,
+      align: layout.elements.pageNumber.align
+    });
+  }
 
   // Logo placeholder
   addLogoPlaceholder(slide, layout.elements.logo, 'small');

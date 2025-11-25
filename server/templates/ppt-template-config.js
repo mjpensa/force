@@ -684,6 +684,76 @@ export const LAYOUTS = {
         placeholder: true
       }
     }
+  },
+
+  // ============================================
+  // FEATURE GRID - Icon-based feature layout (Slides 13-14)
+  // ============================================
+  featureGrid: {
+    name: 'Feature Grid',
+    background: COLORS.white,  // Can be overridden for red variant
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Title row
+      title: {
+        x: 0.5,
+        y: 0.3,
+        w: 12,
+        h: 0.8,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Features configuration
+      features: {
+        startX: 0.5,
+        startY: 1.5,
+        featureWidth: 2.4,
+        featureHeight: 2.2,
+        gapX: 0.3,
+        gapY: 0.5,
+        columns: 5,
+        maxRows: 2,
+        iconSize: 0.8,
+        iconBackground: COLORS.navy,
+        titleFontSize: 12,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        descFontSize: 10,
+        descFontFace: FONTS.regular,
+        descColor: COLORS.darkGray
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
   }
 };
 
@@ -700,7 +770,9 @@ export const SLIDE_TYPE_MAP = {
   'thankyou': 'thankYou',
   'toc': 'tableOfContents',
   'steps': 'steps',
-  'cardGrid': 'cardGrid'
+  'cardGrid': 'cardGrid',
+  'featureGrid': 'featureGrid',
+  'featureGridRed': 'featureGrid'
 };
 
 /**
