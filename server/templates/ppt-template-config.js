@@ -39,6 +39,33 @@ export const SLIDE_SIZE = {
   height: 7.5
 };
 
+// Asset paths configuration
+// Logo files should be placed in server/templates/assets/
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export const ASSETS = {
+  logos: {
+    red: join(__dirname, 'assets', 'logo-red.png'),      // Red logo for light backgrounds
+    white: join(__dirname, 'assets', 'logo-white.png'),  // White logo for dark backgrounds
+    navy: join(__dirname, 'assets', 'logo-navy.png')     // Navy logo variant
+  },
+  patterns: {
+    banner: join(__dirname, 'assets', 'patterns', 'banner.png'),   // Geometric banner pattern
+    accent: join(__dirname, 'assets', 'patterns', 'accent.png')    // Accent pattern
+  }
+};
+
+// Logo size presets (in inches)
+export const LOGO_SIZES = {
+  small: { w: 0.69, h: 0.35 },
+  medium: { w: 0.69, h: 0.48 },
+  large: { w: 2.0, h: 1.0 }
+};
+
 /**
  * Layout configurations for each slide type
  * Coordinates extracted from PPTX XML
