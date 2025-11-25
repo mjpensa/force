@@ -104,6 +104,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'stepsVertical':
           addStepsVerticalSlide(pptx, slideData, slideNumber);
           break;
+        case 'processSteps5':
+          addProcessSteps5Slide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1417,6 +1420,112 @@ function addTimelineCardsSlide(pptx, slideData, slideNumber) {
     fontFace: layout.elements.pageNumber.fontFace,
     color: layout.elements.pageNumber.color,
     align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add horizontal process steps slide (Slide 27 - 5-step navy background process)
+ */
+function addProcessSteps5Slide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.processSteps5;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  const stepsConfig = layout.elements.steps;
+  const steps = slideData.steps || slideData.items || [];
+
+  steps.forEach((step, i) => {
+    const x = stepsConfig.startX + (i * (stepsConfig.boxWidth + stepsConfig.gap));
+    const y = stepsConfig.y;
+
+    // Step box with border
+    slide.addShape('rect', {
+      x: x,
+      y: y,
+      w: stepsConfig.boxWidth,
+      h: stepsConfig.boxHeight,
+      fill: { color: stepsConfig.boxBackground },
+      line: { color: stepsConfig.boxBorderColor, width: stepsConfig.boxBorderWidth }
+    });
+
+    // Step number (red)
+    slide.addText(`${i + 1}`, {
+      x: x,
+      y: y + 0.2,
+      w: stepsConfig.boxWidth,
+      h: 0.5,
+      fontSize: stepsConfig.numberFontSize,
+      fontFace: stepsConfig.numberFontFace,
+      color: stepsConfig.numberColor,
+      align: 'center'
+    });
+
+    // Step title (white)
+    if (step.title) {
+      slide.addText(step.title, {
+        x: x + 0.2,
+        y: y + 0.8,
+        w: stepsConfig.boxWidth - 0.4,
+        h: 0.6,
+        fontSize: stepsConfig.titleFontSize,
+        fontFace: stepsConfig.titleFontFace,
+        color: stepsConfig.titleColor,
+        align: 'center'
+      });
+    }
+
+    // Step description (white)
+    if (step.description || step.content) {
+      slide.addText(step.description || step.content, {
+        x: x + 0.2,
+        y: y + 1.5,
+        w: stepsConfig.boxWidth - 0.4,
+        h: 0.8,
+        fontSize: stepsConfig.descFontSize,
+        fontFace: stepsConfig.descFontFace,
+        color: stepsConfig.descColor,
+        align: 'center',
+        valign: 'top'
+      });
+    }
+
+    // Arrow between steps (except last)
+    if (i < steps.length - 1) {
+      const arrowX = x + stepsConfig.boxWidth;
+      const arrowY = y + (stepsConfig.boxHeight / 2);
+
+      // Simple arrow using triangle
+      slide.addText('→', {
+        x: arrowX,
+        y: arrowY - 0.2,
+        w: stepsConfig.gap,
+        h: 0.4,
+        fontSize: 16,
+        fontFace: FONTS.bold,
+        color: stepsConfig.arrowColor,
+        align: 'center',
+        valign: 'middle'
+      });
+    }
   });
 
   // Logo placeholder

@@ -904,6 +904,56 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // PROCESS STEPS 5 - Horizontal 5-step process (Slide 27)
+  // ============================================
+  processSteps5: {
+    name: 'Horizontal Process Steps (5)',
+    background: COLORS.navy,
+    elements: {
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.5,
+        w: 12,
+        h: 0.8,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.white,
+        align: 'left'
+      },
+      // Steps configuration
+      steps: {
+        startX: 0.5,
+        y: 2.5,
+        boxWidth: 2.4,
+        boxHeight: 2.5,
+        gap: 0.2,
+        boxBackground: '1a3a5c',
+        boxBorderColor: COLORS.red,
+        boxBorderWidth: 2,
+        numberFontSize: 18,
+        numberFontFace: FONTS.semibold,
+        numberColor: COLORS.red,
+        titleFontSize: 14,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.white,
+        descFontSize: 10,
+        descFontFace: FONTS.regular,
+        descColor: COLORS.white,
+        arrowColor: COLORS.white
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // STEPS VERTICAL - Vertical numbered steps layout (Slide 26)
   // ============================================
   stepsVertical: {
@@ -1297,6 +1347,7 @@ export const SLIDE_TYPE_MAP = {
   'timelinePhases': 'timelinePhases',
   'timelineNumberedMarkers': 'timelineNumberedMarkers',
   'stepsVertical': 'stepsVertical',
+  'processSteps5': 'processSteps5',
   'section': 'sectionDivider',
   'thankyou': 'thankYou',
   'toc': 'tableOfContents',
