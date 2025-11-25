@@ -1237,11 +1237,29 @@ export class SlidesView {
 
   /**
    * Intelligent fallback renderer based on available data
+   * Delegates to specific renderers when appropriate to avoid code duplication
    */
   _renderFallbackSlide(slide) {
+    // Delegate to specific renderers that include their own title handling
+    // This avoids duplicate titles
+    if (slide.steps && slide.steps.length > 0) {
+      return this._renderProcessStepsSlide(slide);
+    } else if (slide.cards && slide.cards.length > 0) {
+      return this._renderCardGridSlide(slide);
+    } else if (slide.features && slide.features.length > 0) {
+      return this._renderFeatureGridSlide(slide);
+    } else if (slide.phases && slide.phases.length > 0) {
+      return this._renderTimelinePhasesSlide(slide);
+    } else if (slide.items && slide.items.length > 0) {
+      return this._renderTimelineCardsSlide(slide);
+    } else if (slide.quote) {
+      return this._renderQuoteSlide(slide);
+    }
+
+    // For simple content types, render manually
     const fragment = document.createDocumentFragment();
 
-    // Always render title if present
+    // Render title if present
     if (slide.title) {
       const heading = document.createElement('h2');
       heading.className = 'slide-heading';
@@ -1249,7 +1267,7 @@ export class SlidesView {
       fragment.appendChild(heading);
     }
 
-    // Try to render based on available data
+    // Render content based on available data
     if (slide.bullets && slide.bullets.length > 0) {
       const ul = document.createElement('ul');
       ul.className = 'slide-bullets';
@@ -1266,18 +1284,6 @@ export class SlidesView {
       p.textContent = slide.content;
       contentDiv.appendChild(p);
       fragment.appendChild(contentDiv);
-    } else if (slide.steps && slide.steps.length > 0) {
-      fragment.appendChild(this._renderProcessStepsSlide(slide).cloneNode(true));
-    } else if (slide.cards && slide.cards.length > 0) {
-      fragment.appendChild(this._renderCardGridSlide(slide).cloneNode(true));
-    } else if (slide.features && slide.features.length > 0) {
-      fragment.appendChild(this._renderFeatureGridSlide(slide).cloneNode(true));
-    } else if (slide.phases && slide.phases.length > 0) {
-      fragment.appendChild(this._renderTimelinePhasesSlide(slide).cloneNode(true));
-    } else if (slide.items && slide.items.length > 0) {
-      fragment.appendChild(this._renderTimelineCardsSlide(slide).cloneNode(true));
-    } else if (slide.quote) {
-      fragment.appendChild(this._renderQuoteSlide(slide).cloneNode(true));
     } else if (slide.subtitle) {
       const subtitle = document.createElement('p');
       subtitle.className = 'slide-subtitle';
