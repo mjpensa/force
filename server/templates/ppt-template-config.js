@@ -901,6 +901,81 @@ export const LAYOUTS = {
         placeholder: true
       }
     }
+  },
+
+  // ============================================
+  // TIMELINE CARDS - Horizontal timeline with cards (Slide 22)
+  // ============================================
+  timelineCards: {
+    name: 'Timeline Cards',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.5,
+        w: 12,
+        h: 0.8,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Timeline line configuration
+      timeline: {
+        y: 3.5,
+        startX: 0.5,
+        endX: 12.83,
+        lineColor: COLORS.navy,
+        lineWidth: 3,
+        markerSize: 0.5,
+        markerColor: COLORS.red
+      },
+      // Cards configuration
+      cards: {
+        width: 2.5,
+        height: 1.8,
+        gap: 0.3,
+        background: COLORS.lightGray,
+        titleFontSize: 12,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        contentFontSize: 10,
+        contentFontFace: FONTS.regular,
+        contentColor: COLORS.darkGray,
+        padding: 0.15
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
   }
 };
 
@@ -915,6 +990,7 @@ export const SLIDE_TYPE_MAP = {
   'quote': 'quote',
   'quoteTwoColumn': 'quoteTwoColumn',
   'quoteWithMetrics': 'quoteWithMetrics',
+  'timelineCards': 'timelineCards',
   'section': 'sectionDivider',
   'thankyou': 'thankYou',
   'toc': 'tableOfContents',
