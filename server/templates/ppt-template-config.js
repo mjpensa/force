@@ -2411,49 +2411,76 @@ export const LAYOUTS = {
 };
 
 /**
- * Map current slide types to template layouts
+ * Map slide types to template layouts
+ * Organized by category with canonical types first, then aliases
  */
 export const SLIDE_TYPE_MAP = {
+  // ==================== TITLE SLIDES ====================
   'title': 'title',
   'titleWithImage': 'titleWithImage',
+  'titleVariantA': 'titleVariantA',
+  'titleVariantB': 'titleVariantB',
+
+  // ==================== SECTION DIVIDERS ====================
+  'sectionDivider': 'sectionDivider',
+  'section': 'sectionDivider',              // Alias
+
+  // ==================== NAVIGATION ====================
+  'tableOfContents': 'tableOfContents',
+  'toc': 'tableOfContents',                 // Alias
+  'contentsNav': 'contentsNav',
+
+  // ==================== CONTENT SLIDES ====================
   'bullets': 'bullets',
+  'bulletsFull': 'bulletsFull',
   'content': 'content',
+  'contentMultiColumn': 'contentMultiColumn',
+  'contentWithImage': 'contentWithImage',
+
+  // ==================== QUOTE SLIDES ====================
   'quote': 'quote',
   'quoteTwoColumn': 'quoteTwoColumn',
   'quoteWithMetrics': 'quoteWithMetrics',
+  'quoteDataA': 'quoteDataA',
+  'quoteDataB': 'quoteDataB',
+
+  // ==================== GRID SLIDES ====================
+  'cardGrid': 'cardGrid',
+  'featureGrid': 'featureGrid',
+  'featureGridRed': 'featureGrid',          // Maps to featureGrid with variant
+
+  // ==================== PROCESS/STEPS SLIDES ====================
+  'steps': 'steps',
+  'process': 'steps',                       // Alias
+  'stepsVertical': 'stepsVertical',
+  'processStepsVertical': 'stepsVertical',  // Alias
+  'processSteps5': 'processSteps5',
+  'processStepsAlt': 'processStepsAlt',
+
+  // ==================== TIMELINE SLIDES ====================
   'timelineCards': 'timelineCards',
+  'timeline': 'timelineCards',              // Alias
   'timelineCardsAlt': 'timelineCardsAlt',
   'timelinePhases': 'timelinePhases',
   'timelineNumberedMarkers': 'timelineNumberedMarkers',
-  'stepsVertical': 'stepsVertical',
-  'processStepsVertical': 'stepsVertical',  // Slide 29 alias
-  'processSteps5': 'processSteps5',
-  'processStepsAlt': 'processStepsAlt',
-  'section': 'sectionDivider',
-  'thankyou': 'thankYou',
-  'toc': 'tableOfContents',
-  'steps': 'steps',
-  'cardGrid': 'cardGrid',
-  'featureGrid': 'featureGrid',
-  'featureGridRed': 'featureGrid',
+  'timelineNumbered': 'timelineNumberedMarkers',  // Alias
+
+  // ==================== ROLLOUT/PLANNING SLIDES ====================
   'rolloutGrid': 'rolloutGrid',
   'rolloutTimeline': 'rolloutTimeline',
-  'ganttChart': 'ganttChart',
-  'gantt': 'ganttChart',
   'rolloutDescription': 'rolloutDescription',
-  'quoteDataA': 'quoteDataA',
-  'quoteDataB': 'quoteDataB',
-  'dualChart': 'dualChart',
+  'ganttChart': 'ganttChart',
+  'gantt': 'ganttChart',                    // Alias
+
+  // ==================== DATA SLIDES ====================
   'table': 'table',
-  'dataTable': 'table',
-  'titleVariantA': 'titleVariantA',
-  'titleVariantB': 'titleVariantB',
-  'contentsNav': 'contentsNav',
-  'thankYouAlt': 'thankYouAlt',
-  'contentMultiColumn': 'contentMultiColumn',
-  'bulletsFull': 'bulletsFull',
-  'contentWithImage': 'contentWithImage',
-  'timelineNumbered': 'timelineNumberedMarkers'  // Slide 15 alias to Slide 23
+  'dataTable': 'table',                     // Alias
+  'dualChart': 'dualChart',
+
+  // ==================== CLOSING SLIDES ====================
+  'thankYou': 'thankYou',
+  'thankyou': 'thankYou',                   // Lowercase alias
+  'thankYouAlt': 'thankYouAlt'
 };
 
 /**

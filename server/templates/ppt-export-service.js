@@ -17,6 +17,57 @@ import {
   LOGO_SIZES
 } from './ppt-template-config.js';
 
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get standardized section label text
+ * Handles both 'section' and 'sectionLabel' properties consistently
+ * @param {Object} slideData - The slide data object
+ * @returns {string|null} - Uppercase section label or null if not present
+ */
+function getSectionLabel(slideData) {
+  const label = slideData.section || slideData.sectionLabel;
+  return label ? String(label).toUpperCase() : null;
+}
+
+/**
+ * Safely get array property with fallbacks
+ * @param {Object} slideData - The slide data object
+ * @param {...string} propNames - Property names to check in order
+ * @returns {Array} - The first non-empty array found, or empty array
+ */
+function getArrayProp(slideData, ...propNames) {
+  for (const prop of propNames) {
+    const value = slideData[prop];
+    if (Array.isArray(value) && value.length > 0) {
+      return value;
+    }
+  }
+  return [];
+}
+
+/**
+ * Safely get string property with fallbacks
+ * @param {Object} slideData - The slide data object
+ * @param {...string} propNames - Property names to check in order
+ * @returns {string} - The first non-empty string found, or empty string
+ */
+function getStringProp(slideData, ...propNames) {
+  for (const prop of propNames) {
+    const value = slideData[prop];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+// ============================================================================
+// MAIN EXPORT FUNCTION
+// ============================================================================
+
 /**
  * Generate a branded PowerPoint presentation from slides data
  * @param {Object} slidesData - Slides data from the generator
@@ -46,134 +97,135 @@ export async function generatePptx(slidesData, options = {}) {
     const slideData = slidesData.slides[i];
     const slideNumber = i + 1;
     const isFirstSlide = i === 0;
-    const isLastSlide = i === slidesData.slides.length - 1;
 
-    // Determine which layout to use
+    // Special handling: First slide with type 'title' gets presentation title styling
+    // All other slides are handled by their explicit type - no position-based overrides
     if (isFirstSlide && slideData.type === 'title') {
       addTitleSlide(pptx, slideData, slidesData);
-    } else if (isLastSlide && (slideData.type === 'title' || slideData.title?.toLowerCase().includes('thank'))) {
-      addThankYouSlide(pptx, slideData);
-    } else {
-      switch (slideData.type) {
-        case 'title':
-          addSectionSlide(pptx, slideData, slideNumber);
-          break;
-        case 'titleWithImage':
-          addTitleWithImageSlide(pptx, slideData);
-          break;
-        case 'bullets':
-          addBulletsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'content':
-          addContentSlide(pptx, slideData, slideNumber);
-          break;
-        case 'quote':
-          addQuoteSlide(pptx, slideData, slideNumber);
-          break;
-        case 'cardGrid':
-          addCardGridSlide(pptx, slideData, slideNumber);
-          break;
-        case 'tableOfContents':
-        case 'toc':
-          addTableOfContentsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'steps':
-        case 'process':
-          addProcessStepsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'featureGrid':
-        case 'featureGridRed':
-          addFeatureGridSlide(pptx, slideData, slideNumber);
-          break;
-        case 'quoteTwoColumn':
-          addQuoteTwoColumnSlide(pptx, slideData, slideNumber);
-          break;
-        case 'quoteWithMetrics':
-          addQuoteWithMetricsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelineCards':
-        case 'timeline':
-          addTimelineCardsSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelineCardsAlt':
-          addTimelineCardsAltSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelinePhases':
-          addTimelinePhasesSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelineNumberedMarkers':
-          addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
-          break;
-        case 'stepsVertical':
-        case 'processStepsVertical':
-          addStepsVerticalSlide(pptx, slideData, slideNumber);
-          break;
-        case 'processSteps5':
-          addProcessSteps5Slide(pptx, slideData, slideNumber);
-          break;
-        case 'processStepsAlt':
-          addProcessStepsAltSlide(pptx, slideData, slideNumber);
-          break;
-        case 'rolloutGrid':
-          addRolloutGridSlide(pptx, slideData, slideNumber);
-          break;
-        case 'rolloutTimeline':
-          addRolloutTimelineSlide(pptx, slideData, slideNumber);
-          break;
-        case 'ganttChart':
-        case 'gantt':
-          addGanttChartSlide(pptx, slideData, slideNumber);
-          break;
-        case 'rolloutDescription':
-          addRolloutDescriptionSlide(pptx, slideData, slideNumber);
-          break;
-        case 'quoteDataA':
-          addQuoteDataASlide(pptx, slideData, slideNumber);
-          break;
-        case 'quoteDataB':
-          addQuoteDataBSlide(pptx, slideData, slideNumber);
-          break;
-        case 'dualChart':
-          addDualChartSlide(pptx, slideData, slideNumber);
-          break;
-        case 'table':
-        case 'dataTable':
-          addTableSlide(pptx, slideData, slideNumber);
-          break;
-        case 'titleVariantA':
-          addTitleVariantASlide(pptx, slideData);
-          break;
-        case 'titleVariantB':
-          addTitleVariantBSlide(pptx, slideData);
-          break;
-        case 'contentsNav':
-          addContentsNavSlide(pptx, slideData, slideNumber);
-          break;
-        case 'thankYouAlt':
-          addThankYouAltSlide(pptx, slideData);
-          break;
-        case 'contentMultiColumn':
-          addContentMultiColumnSlide(pptx, slideData, slideNumber);
-          break;
-        case 'bulletsFull':
-          addBulletsFullSlide(pptx, slideData, slideNumber);
-          break;
-        case 'contentWithImage':
-          addContentWithImageSlide(pptx, slideData, slideNumber);
-          break;
-        case 'timelineNumbered':
-          addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
-          break;
-        case 'sectionDivider':
-        case 'section':
-          addSectionSlide(pptx, slideData, slideNumber);
-          break;
-        case 'thankYou':
-          addThankYouSlide(pptx, slideData);
-          break;
-        default:
-          addBulletsSlide(pptx, slideData, slideNumber);
-      }
+      continue;
+    }
+
+    // Handle all slides by their explicit type
+    switch (slideData.type) {
+      case 'title':
+        // Non-first title slides become section dividers
+        addSectionSlide(pptx, slideData, slideNumber);
+        break;
+      case 'titleWithImage':
+        addTitleWithImageSlide(pptx, slideData);
+        break;
+      case 'titleVariantA':
+        addTitleVariantASlide(pptx, slideData);
+        break;
+      case 'titleVariantB':
+        addTitleVariantBSlide(pptx, slideData);
+        break;
+      case 'sectionDivider':
+      case 'section':
+        addSectionSlide(pptx, slideData, slideNumber);
+        break;
+      case 'bullets':
+        addBulletsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'bulletsFull':
+        addBulletsFullSlide(pptx, slideData, slideNumber);
+        break;
+      case 'content':
+        addContentSlide(pptx, slideData, slideNumber);
+        break;
+      case 'contentMultiColumn':
+        addContentMultiColumnSlide(pptx, slideData, slideNumber);
+        break;
+      case 'contentWithImage':
+        addContentWithImageSlide(pptx, slideData, slideNumber);
+        break;
+      case 'quote':
+        addQuoteSlide(pptx, slideData, slideNumber);
+        break;
+      case 'quoteTwoColumn':
+        addQuoteTwoColumnSlide(pptx, slideData, slideNumber);
+        break;
+      case 'quoteWithMetrics':
+        addQuoteWithMetricsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'quoteDataA':
+        addQuoteDataASlide(pptx, slideData, slideNumber);
+        break;
+      case 'quoteDataB':
+        addQuoteDataBSlide(pptx, slideData, slideNumber);
+        break;
+      case 'cardGrid':
+        addCardGridSlide(pptx, slideData, slideNumber);
+        break;
+      case 'featureGrid':
+      case 'featureGridRed':
+        addFeatureGridSlide(pptx, slideData, slideNumber);
+        break;
+      case 'steps':
+      case 'process':
+        addProcessStepsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'stepsVertical':
+      case 'processStepsVertical':
+        addStepsVerticalSlide(pptx, slideData, slideNumber);
+        break;
+      case 'processSteps5':
+        addProcessSteps5Slide(pptx, slideData, slideNumber);
+        break;
+      case 'processStepsAlt':
+        addProcessStepsAltSlide(pptx, slideData, slideNumber);
+        break;
+      case 'timelineCards':
+      case 'timeline':
+        addTimelineCardsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'timelineCardsAlt':
+        addTimelineCardsAltSlide(pptx, slideData, slideNumber);
+        break;
+      case 'timelinePhases':
+        addTimelinePhasesSlide(pptx, slideData, slideNumber);
+        break;
+      case 'timelineNumberedMarkers':
+      case 'timelineNumbered':
+        addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
+        break;
+      case 'rolloutGrid':
+        addRolloutGridSlide(pptx, slideData, slideNumber);
+        break;
+      case 'rolloutTimeline':
+        addRolloutTimelineSlide(pptx, slideData, slideNumber);
+        break;
+      case 'rolloutDescription':
+        addRolloutDescriptionSlide(pptx, slideData, slideNumber);
+        break;
+      case 'ganttChart':
+      case 'gantt':
+        addGanttChartSlide(pptx, slideData, slideNumber);
+        break;
+      case 'table':
+      case 'dataTable':
+        addTableSlide(pptx, slideData, slideNumber);
+        break;
+      case 'dualChart':
+        addDualChartSlide(pptx, slideData, slideNumber);
+        break;
+      case 'tableOfContents':
+      case 'toc':
+        addTableOfContentsSlide(pptx, slideData, slideNumber);
+        break;
+      case 'contentsNav':
+        addContentsNavSlide(pptx, slideData, slideNumber);
+        break;
+      case 'thankYou':
+        addThankYouSlide(pptx, slideData);
+        break;
+      case 'thankYouAlt':
+        addThankYouAltSlide(pptx, slideData);
+        break;
+      default:
+        // Fallback to bullets for unknown types
+        console.warn(`Unknown slide type '${slideData.type}' at slide ${slideNumber}, using bullets fallback`);
+        addBulletsSlide(pptx, slideData, slideNumber);
     }
   }
 
@@ -416,9 +468,9 @@ function addBulletsSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  const sectionLabel = getSectionLabel(slideData);
   if (sectionLabel) {
-    slide.addText(sectionLabel.toUpperCase(), {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -500,9 +552,9 @@ function addContentSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  const sectionLabel = getSectionLabel(slideData);
   if (sectionLabel) {
-    slide.addText(sectionLabel.toUpperCase(), {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -580,9 +632,9 @@ function addContentMultiColumnSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  const sectionLabel = getSectionLabel(slideData);
   if (sectionLabel) {
-    slide.addText(sectionLabel.toUpperCase(), {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -680,9 +732,9 @@ function addBulletsFullSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabelText = slideData.section || slideData.sectionLabel || '';
-  if (sectionLabelText) {
-    slide.addText(sectionLabelText.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -777,9 +829,9 @@ function addContentWithImageSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabelImg = slideData.section || slideData.sectionLabel || '';
-  if (sectionLabelImg) {
-    slide.addText(sectionLabelImg.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -904,9 +956,9 @@ function addQuoteSlide(pptx, slideData, slideNumber) {
   });
 
   // Section label
-  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  const sectionLabel = getSectionLabel(slideData);
   if (sectionLabel) {
-    slide.addText(sectionLabel.toUpperCase(), {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1216,8 +1268,9 @@ function addCardGridSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1331,8 +1384,9 @@ function addFeatureGridSlide(pptx, slideData, slideNumber) {
   slide.background = { color: bgColor };
 
   // Section label (only on white variant)
-  if (!isRedVariant && slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (!isRedVariant && sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1453,8 +1507,9 @@ function addQuoteTwoColumnSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1570,8 +1625,9 @@ function addQuoteWithMetricsSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1683,8 +1739,9 @@ function addTimelineCardsSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1826,8 +1883,9 @@ function addProcessStepsAltSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -2365,8 +2423,9 @@ function addQuoteDataBSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section || slideData.sectionLabel) {
-    slide.addText(slideData.section || slideData.sectionLabel, {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -2504,8 +2563,9 @@ function addQuoteDataASlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section || slideData.sectionLabel) {
-    slide.addText(slideData.section || slideData.sectionLabel, {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -3106,8 +3166,9 @@ function addStepsVerticalSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -3232,8 +3293,9 @@ function addTimelinePhasesSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -3339,8 +3401,9 @@ function addTimelineCardsAltSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -3489,8 +3552,9 @@ function addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,

@@ -7,6 +7,28 @@
  */
 
 // ============================================================================
+// CANONICAL PROPERTY NAMES
+// ============================================================================
+/**
+ * When generating slides, prefer these canonical property names over aliases:
+ *
+ * PROPERTY          | CANONICAL NAME | ALIASES (also accepted)
+ * ----------------- | -------------- | -----------------------
+ * Timeline items    | items          | timeline
+ * Process steps     | steps          | items
+ * Rollout phases    | phases         | items
+ * Table rows        | rows           | data
+ * Metrics/KPIs      | metrics        | data, cards
+ * Content text      | content        | text
+ * Quote text        | quote          | text
+ * Section label     | section        | sectionLabel
+ * Step description  | description    | content
+ *
+ * The renderers accept all aliases for flexibility, but the canonical names
+ * should be preferred for consistency and clarity.
+ */
+
+// ============================================================================
 // TYPE-SPECIFIC SUB-SCHEMAS
 // ============================================================================
 
@@ -633,6 +655,8 @@ Choose the appropriate slide type based on your content structure:
 ### PROCESS & STEP SLIDES
 | Type | Use When | Required Data |
 |------|----------|---------------|
+| steps | Horizontal process flow (red bg) | title, description, steps[] ({title, description}) |
+| process | Alias for steps | title, description, steps[] ({title, description}) |
 | processSteps5 | Horizontal 5-step process (navy bg) | title, steps[] ({title, description}) |
 | processStepsAlt | Horizontal process (white bg) | title, section, steps[] |
 | stepsVertical | Vertical numbered steps | title, section, steps[] |
@@ -824,6 +848,20 @@ export const dataStructureExamples = `
     { "value": "45%", "label": "Cost Reduction" },
     { "value": "$2.5M", "label": "Annual Savings" },
     { "value": "3x", "label": "Productivity Gain" }
+  ]
+}
+
+### steps Example (horizontal process flow with red background):
+{
+  "type": "steps",
+  "title": "Our Approach",
+  "description": "A proven methodology for successful transformation",
+  "steps": [
+    { "title": "Assess", "description": "Evaluate current state" },
+    { "title": "Plan", "description": "Define strategy" },
+    { "title": "Execute", "description": "Implement solutions" },
+    { "title": "Measure", "description": "Track outcomes" },
+    { "title": "Refine", "description": "Optimize results" }
   ]
 }
 
