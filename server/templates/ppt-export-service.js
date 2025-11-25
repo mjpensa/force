@@ -161,6 +161,13 @@ export async function generatePptx(slidesData, options = {}) {
         case 'timelineNumbered':
           addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
           break;
+        case 'sectionDivider':
+        case 'section':
+          addSectionSlide(pptx, slideData, slideNumber);
+          break;
+        case 'thankYou':
+          addThankYouSlide(pptx, slideData);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -406,16 +413,19 @@ function addBulletsSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  slide.addText('LOREM IPSUM', {
-    x: layout.elements.sectionLabel.x,
-    y: layout.elements.sectionLabel.y,
-    w: layout.elements.sectionLabel.w,
-    h: layout.elements.sectionLabel.h,
-    fontSize: layout.elements.sectionLabel.fontSize,
-    fontFace: layout.elements.sectionLabel.fontFace,
-    color: layout.elements.sectionLabel.color,
-    align: layout.elements.sectionLabel.align
-  });
+  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  if (sectionLabel) {
+    slide.addText(sectionLabel.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
 
   // Main title
   slide.addText(slideData.title || 'Slide Title', {
@@ -487,16 +497,19 @@ function addContentSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  slide.addText('LOREM IPSUM', {
-    x: layout.elements.sectionLabel.x,
-    y: layout.elements.sectionLabel.y,
-    w: layout.elements.sectionLabel.w,
-    h: layout.elements.sectionLabel.h,
-    fontSize: layout.elements.sectionLabel.fontSize,
-    fontFace: layout.elements.sectionLabel.fontFace,
-    color: layout.elements.sectionLabel.color,
-    align: layout.elements.sectionLabel.align
-  });
+  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  if (sectionLabel) {
+    slide.addText(sectionLabel.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
 
   // Main title
   slide.addText(slideData.title || 'Slide Title', {
@@ -879,16 +892,19 @@ function addQuoteSlide(pptx, slideData, slideNumber) {
   });
 
   // Section label
-  slide.addText('LOREM IPSUM', {
-    x: layout.elements.sectionLabel.x,
-    y: layout.elements.sectionLabel.y,
-    w: layout.elements.sectionLabel.w,
-    h: layout.elements.sectionLabel.h,
-    fontSize: layout.elements.sectionLabel.fontSize,
-    fontFace: layout.elements.sectionLabel.fontFace,
-    color: layout.elements.sectionLabel.color,
-    align: layout.elements.sectionLabel.align
-  });
+  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  if (sectionLabel) {
+    slide.addText(sectionLabel.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
 
   // Quote title
   slide.addText(slideData.title || 'Quote', {
