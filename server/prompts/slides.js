@@ -421,13 +421,8 @@ export const slidesSchema = {
           },
           items: {
             type: "array",
-            items: {
-              oneOf: [
-                { type: "string" },
-                timelineItemSchema
-              ]
-            },
-            description: "List items (TOC items, timeline items, etc.)"
+            items: timelineItemSchema,
+            description: "List items (TOC items, timeline items, etc.) - each item should have at least a 'title' field"
           },
           previewNumber: {
             type: "string",
