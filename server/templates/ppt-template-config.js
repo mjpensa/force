@@ -904,6 +904,80 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // STEPS VERTICAL - Vertical numbered steps layout (Slide 26)
+  // ============================================
+  stepsVertical: {
+    name: 'Vertical Numbered Steps',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.5,
+        w: 12,
+        h: 0.8,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Steps configuration
+      steps: {
+        startY: 1.6,
+        numberX: 0.5,
+        numberSize: 0.8,
+        numberFontSize: 18,
+        numberFontFace: FONTS.bold,
+        numberColor: COLORS.white,
+        numberBgColor: COLORS.red,
+        contentX: 1.6,
+        contentWidth: 10,
+        titleHeight: 0.5,
+        titleFontSize: 14,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        descHeight: 0.8,
+        descFontSize: 11,
+        descFontFace: FONTS.regular,
+        descColor: COLORS.darkGray,
+        stepGap: 0.3,
+        lineColor: COLORS.lightGray,
+        lineWidth: 2
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // TIMELINE PHASES - Horizontal timeline with phase labels and bars (Slide 25)
   // ============================================
   timelinePhases: {
@@ -1222,6 +1296,7 @@ export const SLIDE_TYPE_MAP = {
   'timelineCardsAlt': 'timelineCardsAlt',
   'timelinePhases': 'timelinePhases',
   'timelineNumberedMarkers': 'timelineNumberedMarkers',
+  'stepsVertical': 'stepsVertical',
   'section': 'sectionDivider',
   'thankyou': 'thankYou',
   'toc': 'tableOfContents',
