@@ -6,12 +6,15 @@
  */
 
 import PptxGenJS from 'pptxgenjs';
+import { existsSync } from 'fs';
 import {
   COLORS,
   FONTS,
   SLIDE_SIZE,
   LAYOUTS,
-  DEFAULT_METADATA
+  DEFAULT_METADATA,
+  ASSETS,
+  LOGO_SIZES
 } from './ppt-template-config.js';
 
 /**
@@ -3787,24 +3790,84 @@ function addThankYouAltSlide(pptx, slideData) {
 }
 
 /**
- * Add logo placeholder (will be replaced with actual logo when provided)
+ * Add logo to slide
+ * Uses actual logo image if available, falls back to text placeholder
+ *
+ * @param {Object} slide - pptxgenjs slide object
+ * @param {Object} position - { x, y, w, h } position in inches
+ * @param {string} size - 'small', 'medium', or 'large'
+ * @param {string} variant - 'red', 'white', or 'navy' (auto-detected from background if not specified)
+ * @param {string} background - slide background color (used for auto-detection)
  */
-function addLogoPlaceholder(slide, position, size = 'medium') {
-  // For now, add "bip." text as placeholder
-  // This will be replaced with actual SVG/PNG logo later
-  const fontSize = size === 'large' ? 48 : size === 'small' ? 18 : 24;
+function addLogoPlaceholder(slide, position, size = 'medium', variant = null, background = null) {
+  // Determine logo variant based on background if not specified
+  const isDarkBackground = background === COLORS.navy || background === COLORS.red;
+  const logoVariant = variant || (isDarkBackground ? 'white' : 'red');
 
-  slide.addText('bip.', {
-    x: position.x,
-    y: position.y,
-    w: position.w,
-    h: position.h,
-    fontSize: fontSize,
-    fontFace: FONTS.bold,
-    color: COLORS.red,
-    align: 'left',
-    valign: 'middle'
-  });
+  // Get logo path and dimensions
+  const logoPath = ASSETS?.logos?.[logoVariant];
+  const dimensions = LOGO_SIZES?.[size] || LOGO_SIZES?.medium || { w: 0.69, h: 0.48 };
+
+  // Check if logo file exists
+  if (logoPath && existsSync(logoPath)) {
+    // Use actual logo image
+    slide.addImage({
+      path: logoPath,
+      x: position.x,
+      y: position.y,
+      w: position.w || dimensions.w,
+      h: position.h || dimensions.h
+    });
+  } else {
+    // Fallback to text placeholder
+    const fontSize = size === 'large' ? 48 : size === 'small' ? 18 : 24;
+    const textColor = isDarkBackground ? COLORS.white : COLORS.red;
+
+    slide.addText('bip.', {
+      x: position.x,
+      y: position.y,
+      w: position.w || dimensions.w,
+      h: position.h || dimensions.h,
+      fontSize: fontSize,
+      fontFace: FONTS.bold,
+      color: textColor,
+      align: 'left',
+      valign: 'middle'
+    });
+  }
+}
+
+/**
+ * Add geometric pattern to slide
+ * Uses actual pattern image if available, falls back to solid color placeholder
+ *
+ * @param {Object} slide - pptxgenjs slide object
+ * @param {Object} position - { x, y, w, h } position in inches
+ * @param {string} patternType - 'banner' or 'accent'
+ * @param {string} fallbackColor - hex color to use as fallback (without #)
+ */
+function addPatternPlaceholder(slide, position, patternType = 'banner', fallbackColor = '4A5568') {
+  const patternPath = ASSETS?.patterns?.[patternType];
+
+  if (patternPath && existsSync(patternPath)) {
+    // Use actual pattern image
+    slide.addImage({
+      path: patternPath,
+      x: position.x,
+      y: position.y,
+      w: position.w,
+      h: position.h
+    });
+  } else {
+    // Fallback to solid color placeholder
+    slide.addShape('rect', {
+      x: position.x,
+      y: position.y,
+      w: position.w,
+      h: position.h,
+      fill: { color: fallbackColor }
+    });
+  }
 }
 
 export default {
