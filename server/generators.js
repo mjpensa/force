@@ -177,9 +177,64 @@ function validateDocumentStructure(data) {
  * @returns {boolean} True if valid
  */
 function validateSlidesStructure(data) {
-  if (!data) return false;
-  if (!data.slides || !Array.isArray(data.slides)) return false;
-  if (data.slides.length === 0) return false;
+  if (!data) {
+    console.warn('[Slides Validation] No data provided');
+    return false;
+  }
+  if (!data.slides || !Array.isArray(data.slides)) {
+    console.warn('[Slides Validation] slides is not an array');
+    return false;
+  }
+  if (data.slides.length === 0) {
+    console.warn('[Slides Validation] slides array is empty');
+    return false;
+  }
+
+  // CRITICAL: Reject unreasonably large numbers of slides (indicates AI error)
+  const MAX_SLIDES = 25; // Allow some buffer above the 15-slide guideline
+  const MIN_SLIDES = 3;
+
+  if (data.slides.length > MAX_SLIDES) {
+    console.error(`[Slides Validation] REJECTED: Too many slides (${data.slides.length}). Maximum allowed: ${MAX_SLIDES}`);
+    return false;
+  }
+
+  if (data.slides.length < MIN_SLIDES) {
+    console.warn(`[Slides Validation] Too few slides (${data.slides.length}). Minimum expected: ${MIN_SLIDES}`);
+    return false;
+  }
+
+  // Validate each slide has required properties
+  let validSlides = 0;
+  for (let i = 0; i < data.slides.length; i++) {
+    const slide = data.slides[i];
+
+    if (!slide || typeof slide !== 'object') {
+      console.warn(`[Slides Validation] Slide ${i} is not an object`);
+      continue;
+    }
+
+    if (!slide.type || typeof slide.type !== 'string') {
+      console.warn(`[Slides Validation] Slide ${i} missing type property`);
+      continue;
+    }
+
+    if (!slide.title || typeof slide.title !== 'string') {
+      console.warn(`[Slides Validation] Slide ${i} missing title property`);
+      continue;
+    }
+
+    validSlides++;
+  }
+
+  // At least 80% of slides should be valid
+  const validRatio = validSlides / data.slides.length;
+  if (validRatio < 0.8) {
+    console.error(`[Slides Validation] REJECTED: Too many invalid slides (${validSlides}/${data.slides.length} valid)`);
+    return false;
+  }
+
+  console.log(`[Slides Validation] Passed: ${data.slides.length} slides, ${validSlides} valid`);
   return true;
 }
 
