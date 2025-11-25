@@ -120,12 +120,14 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     const jobIds = {
       roadmap: uuidv4(),
       slides: uuidv4(),
-      document: uuidv4()
+      document: uuidv4(),
+      researchAnalysis: uuidv4()
     };
 
     JobDB.create(jobIds.roadmap, sessionId, 'roadmap');
     JobDB.create(jobIds.slides, sessionId, 'slides');
     JobDB.create(jobIds.document, sessionId, 'document');
+    JobDB.create(jobIds.researchAnalysis, sessionId, 'research-analysis');
 
     // Start parallel generation (non-blocking)
     generateAllContent(sessionId, prompt, researchFiles, jobIds)
@@ -139,7 +141,7 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
       sessionId,
       jobIds,
       status: 'processing',
-      message: 'Content generation started for all three views'
+      message: 'Content generation started for all four views'
     });
 
   } catch (error) {
@@ -157,7 +159,7 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
  *
  * Parameters:
  * - sessionId: Session identifier
- * - viewType: 'roadmap', 'slides', or 'document'
+ * - viewType: 'roadmap', 'slides', 'document', or 'research-analysis'
  *
  * Response:
  * {
@@ -175,7 +177,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
     console.log(`[Content GET] Request for sessionId: ${sessionId}, viewType: ${viewType}`);
 
     // Validate view type
-    const validViewTypes = ['roadmap', 'slides', 'document'];
+    const validViewTypes = ['roadmap', 'slides', 'document', 'research-analysis'];
     if (!validViewTypes.includes(viewType)) {
       return res.status(400).json({
         error: `Invalid view type. Must be one of: ${validViewTypes.join(', ')}`
@@ -197,8 +199,8 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       });
     }
 
-    // If legacy chartId but requesting slides/document, return not available
-    if (chart && (viewType === 'slides' || viewType === 'document')) {
+    // If legacy chartId but requesting slides/document/research-analysis, return not available
+    if (chart && (viewType === 'slides' || viewType === 'document' || viewType === 'research-analysis')) {
       return res.json({
         sessionId,
         viewType,
@@ -302,7 +304,7 @@ router.post('/:sessionId/:viewType/regenerate', async (req, res) => {
     console.log(`[Regenerate] Request for sessionId: ${sessionId}, viewType: ${viewType}`);
 
     // Validate view type
-    const validViewTypes = ['roadmap', 'slides', 'document'];
+    const validViewTypes = ['roadmap', 'slides', 'document', 'research-analysis'];
     if (!validViewTypes.includes(viewType)) {
       return res.status(400).json({
         error: `Invalid view type. Must be one of: ${validViewTypes.join(', ')}`
@@ -365,7 +367,8 @@ router.post('/:sessionId/:viewType/regenerate', async (req, res) => {
  *   content: {
  *     roadmap: { status, data, error },
  *     slides: { status, data, error },
- *     document: { status, data, error }
+ *     document: { status, data, error },
+ *     researchAnalysis: { status, data, error }
  *   }
  * }
  */
@@ -386,6 +389,7 @@ router.get('/:sessionId', async (req, res) => {
     const roadmap = ContentDB.get(sessionId, 'roadmap');
     const slides = ContentDB.get(sessionId, 'slides');
     const document = ContentDB.get(sessionId, 'document');
+    const researchAnalysis = ContentDB.get(sessionId, 'research-analysis');
 
     // Get job statuses for content that doesn't exist yet
     const jobs = JobDB.getBySession(sessionId);
@@ -425,6 +429,16 @@ router.get('/:sessionId', async (req, res) => {
           status: jobs.find(j => j.contentType === 'document')?.status || 'pending',
           data: null,
           error: jobs.find(j => j.contentType === 'document')?.errorMessage || null
+        },
+        researchAnalysis: researchAnalysis ? {
+          status: researchAnalysis.status,
+          data: researchAnalysis.data,
+          error: researchAnalysis.error_message,
+          generatedAt: researchAnalysis.generated_at
+        } : {
+          status: jobs.find(j => j.contentType === 'research-analysis')?.status || 'pending',
+          data: null,
+          error: jobs.find(j => j.contentType === 'research-analysis')?.errorMessage || null
         }
       }
     };

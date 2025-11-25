@@ -10,6 +10,7 @@ import { ContentDB, JobDB, SessionDB } from './db.js';
 import { generateRoadmapPrompt, roadmapSchema } from './prompts/roadmap.js';
 import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
 import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
+import { generateResearchAnalysisPrompt, researchAnalysisSchema, validateResearchAnalysisStructure } from './prompts/research-analysis.js';
 
 // Initialize Gemini API (using API_KEY from environment to match server/config.js)
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
@@ -320,11 +321,58 @@ async function generateDocument(sessionId, jobId, userPrompt, researchFiles) {
 }
 
 /**
- * Generate all three content types in parallel
+ * Generate research analysis content
+ * @param {string} sessionId - Session ID
+ * @param {string} jobId - Job ID for tracking
+ * @param {string} userPrompt - User's request
+ * @param {Array} researchFiles - Research files
+ */
+async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFiles) {
+  try {
+    console.log(`[ResearchAnalysis] Starting generation for session ${sessionId}`);
+    JobDB.updateStatus(jobId, 'processing');
+
+    const prompt = generateResearchAnalysisPrompt(userPrompt, researchFiles);
+    let data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis');
+
+    // Validate research analysis structure
+    if (!validateResearchAnalysisStructure(data)) {
+      console.warn('[ResearchAnalysis] Generated data has invalid structure, retrying once...');
+
+      // Retry generation once
+      data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis');
+
+      if (!validateResearchAnalysisStructure(data)) {
+        throw new Error('Research analysis generation produced empty or invalid content after retry. The AI may need more detailed source material.');
+      }
+    }
+
+    // Store in database
+    ContentDB.create(sessionId, 'research-analysis', data);
+    JobDB.updateStatus(jobId, 'completed');
+
+    console.log(`[ResearchAnalysis] Successfully generated and stored with ${data.themes.length} themes analyzed`);
+    return { success: true, data };
+
+  } catch (error) {
+    console.error('[ResearchAnalysis] Generation failed:', error);
+    // Wrap database operations in try-catch to prevent cascade failures
+    try {
+      JobDB.updateStatus(jobId, 'error', error.message);
+      ContentDB.create(sessionId, 'research-analysis', null, error.message);
+    } catch (dbError) {
+      console.error('[ResearchAnalysis] Failed to update error status in database:', dbError);
+    }
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Generate all four content types in parallel
  * @param {string} sessionId - Session ID
  * @param {string} userPrompt - User's request
  * @param {Array} researchFiles - Research files
- * @param {object} jobIds - Job IDs for tracking { roadmap, slides, document }
+ * @param {object} jobIds - Job IDs for tracking { roadmap, slides, document, researchAnalysis }
  * @returns {Promise<object>} Results of all generations
  */
 export async function generateAllContent(sessionId, userPrompt, researchFiles, jobIds) {
@@ -339,15 +387,16 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
       // Continue anyway - the session was already created
     }
 
-    // Generate all three in parallel
+    // Generate all four in parallel
     const results = await Promise.allSettled([
       generateRoadmap(sessionId, jobIds.roadmap, userPrompt, researchFiles),
       generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles),
-      generateDocument(sessionId, jobIds.document, userPrompt, researchFiles)
+      generateDocument(sessionId, jobIds.document, userPrompt, researchFiles),
+      generateResearchAnalysis(sessionId, jobIds.researchAnalysis, userPrompt, researchFiles)
     ]);
 
     // Check results
-    const [roadmapResult, slidesResult, documentResult] = results;
+    const [roadmapResult, slidesResult, documentResult, researchAnalysisResult] = results;
 
     const allSuccessful = results.every(r => r.status === 'fulfilled' && r.value.success);
     const anySuccessful = results.some(r => r.status === 'fulfilled' && r.value.success);
@@ -372,7 +421,8 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
       sessionId,
       roadmap: roadmapResult.status === 'fulfilled' ? roadmapResult.value : { success: false, error: roadmapResult.reason },
       slides: slidesResult.status === 'fulfilled' ? slidesResult.value : { success: false, error: slidesResult.reason },
-      document: documentResult.status === 'fulfilled' ? documentResult.value : { success: false, error: documentResult.reason }
+      document: documentResult.status === 'fulfilled' ? documentResult.value : { success: false, error: documentResult.reason },
+      researchAnalysis: researchAnalysisResult.status === 'fulfilled' ? researchAnalysisResult.value : { success: false, error: researchAnalysisResult.reason }
     };
 
   } catch (error) {
@@ -418,6 +468,9 @@ export async function regenerateContent(sessionId, viewType) {
         break;
       case 'document':
         result = await generateDocument(sessionId, jobId, prompt, researchFiles);
+        break;
+      case 'research-analysis':
+        result = await generateResearchAnalysis(sessionId, jobId, prompt, researchFiles);
         break;
       default:
         throw new Error(`Invalid view type: ${viewType}`);
