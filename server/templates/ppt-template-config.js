@@ -1327,6 +1327,77 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // DUAL CHART - Side by side charts (Slide 20)
+  // ============================================
+  dualChart: {
+    name: 'Dual Chart Layout',
+    background: COLORS.white,
+    elements: {
+      // Left chart configuration
+      leftChart: {
+        x: 0.5,
+        titleY: 0.5,
+        chartY: 1.2,
+        sourceY: 5.8,
+        w: 6,
+        chartH: 4.5,
+        titleFontSize: 14,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        sourceFontSize: 8,
+        sourceFontFace: FONTS.regular,
+        sourceColor: COLORS.darkGray,
+        chartBackground: COLORS.lightGray
+      },
+      // Right chart configuration
+      rightChart: {
+        x: 6.8,
+        titleY: 0.5,
+        chartY: 1.2,
+        sourceY: 5.8,
+        w: 6,
+        chartH: 4.5,
+        titleFontSize: 14,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        sourceFontSize: 8,
+        sourceFontFace: FONTS.regular,
+        sourceColor: COLORS.darkGray,
+        chartBackground: COLORS.lightGray
+      },
+      // Content text (bottom)
+      content: {
+        x: 0.5,
+        y: 6.3,
+        w: 12,
+        h: 0.7,
+        fontSize: 11,
+        fontFace: FONTS.regular,
+        color: COLORS.navy
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // QUOTE DATA B - Quote with pie chart and metrics (Slide 19)
   // ============================================
   quoteDataB: {
@@ -1843,7 +1914,8 @@ export const SLIDE_TYPE_MAP = {
   'gantt': 'ganttChart',
   'rolloutDescription': 'rolloutDescription',
   'quoteDataA': 'quoteDataA',
-  'quoteDataB': 'quoteDataB'
+  'quoteDataB': 'quoteDataB',
+  'dualChart': 'dualChart'
 };
 
 /**

@@ -130,6 +130,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'quoteDataB':
           addQuoteDataBSlide(pptx, slideData, slideNumber);
           break;
+        case 'dualChart':
+          addDualChartSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1662,6 +1665,106 @@ function addRolloutGridSlide(pptx, slideData, slideNumber) {
       });
     }
   });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add dual chart slide (Slide 20 - side by side charts)
+ */
+function addDualChartSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.dualChart;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Helper function to add chart section
+  const addChartSection = (config, chartData) => {
+    // Chart title
+    if (chartData.title) {
+      slide.addText(chartData.title, {
+        x: config.x,
+        y: config.titleY,
+        w: config.w,
+        h: 0.5,
+        fontSize: config.titleFontSize,
+        fontFace: config.titleFontFace,
+        color: config.titleColor,
+        align: 'left'
+      });
+    }
+
+    // Chart placeholder (or actual chart)
+    slide.addShape('rect', {
+      x: config.x,
+      y: config.chartY,
+      w: config.w,
+      h: config.chartH,
+      fill: { color: config.chartBackground }
+    });
+
+    // Chart placeholder label
+    slide.addText('Chart Placeholder', {
+      x: config.x,
+      y: config.chartY + (config.chartH / 2) - 0.25,
+      w: config.w,
+      h: 0.5,
+      fontSize: 14,
+      fontFace: FONTS.regular,
+      color: COLORS.darkGray,
+      align: 'center'
+    });
+
+    // Source text
+    if (chartData.source) {
+      slide.addText(`Source: ${chartData.source}`, {
+        x: config.x,
+        y: config.sourceY,
+        w: config.w,
+        h: 0.3,
+        fontSize: config.sourceFontSize,
+        fontFace: config.sourceFontFace,
+        color: config.sourceColor,
+        align: 'left'
+      });
+    }
+  };
+
+  // Left chart
+  const leftData = slideData.leftChart || slideData.charts?.[0] || {};
+  addChartSection(layout.elements.leftChart, leftData);
+
+  // Right chart
+  const rightData = slideData.rightChart || slideData.charts?.[1] || {};
+  addChartSection(layout.elements.rightChart, rightData);
+
+  // Content text (bottom)
+  if (slideData.content || slideData.text) {
+    slide.addText(slideData.content || slideData.text, {
+      x: layout.elements.content.x,
+      y: layout.elements.content.y,
+      w: layout.elements.content.w,
+      h: layout.elements.content.h,
+      fontSize: layout.elements.content.fontSize,
+      fontFace: layout.elements.content.fontFace,
+      color: layout.elements.content.color,
+      align: 'left'
+    });
+  }
 
   // Page number
   slide.addText(String(slideNumber), {
