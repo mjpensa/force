@@ -7,7 +7,8 @@
  */
 
 .document-view {
-  background: var(--color-background);
+  /* Transparent - inherits glassmorphic background from app-shell */
+  background: transparent;
   min-height: 0; /* Allow proper scroll containment within app-main */
   animation: fadeIn var(--transition-base);
 }
@@ -30,7 +31,14 @@
   height: fit-content;
   max-height: calc(100vh - var(--header-height) - var(--spacing-16));
   overflow-y: auto;
-  padding-right: var(--spacing-4);
+  padding: var(--spacing-4);
+  /* Glassmorphic glass panel */
+  background: var(--glass-white-8);
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  border: var(--border-glass);
+  border-radius: var(--radius-glass-lg);
+  box-shadow: var(--shadow-glass-2);
 }
 
 /* Custom scrollbar for TOC */
@@ -39,23 +47,23 @@
 }
 
 .document-toc::-webkit-scrollbar-track {
-  background: var(--color-background);
+  background: var(--glass-white-5);
   border-radius: var(--radius-full);
 }
 
 .document-toc::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: var(--glass-white-20);
   border-radius: var(--radius-full);
 }
 
 .document-toc::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-dark);
+  background: var(--glass-white-30);
 }
 
 .toc-title {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  color: var(--color-text-secondary);
+  color: var(--glass-text-secondary);
   margin: 0 0 var(--spacing-4) 0;
   text-transform: uppercase;
   letter-spacing: var(--tracking-wide);
@@ -74,8 +82,8 @@
 .toc-link {
   display: block;
   padding: var(--spacing-2) var(--spacing-3);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
+  border-radius: var(--radius-glass-sm);
+  color: var(--glass-text-secondary);
   text-decoration: none;
   font-size: var(--text-sm);
   transition: all var(--transition-fast);
@@ -84,15 +92,15 @@
 }
 
 .toc-link:hover {
-  background: var(--color-hover);
-  color: var(--color-text-primary);
+  background: var(--glass-white-15);
+  color: var(--glass-text-primary);
 }
 
 .toc-link.active {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
+  background: rgba(80, 175, 123, 0.20);
+  color: var(--color-glass-success);
   font-weight: var(--weight-medium);
-  border-left-color: var(--color-primary);
+  border-left-color: var(--color-glass-success);
 }
 
 .toc-sublist {
@@ -109,9 +117,13 @@
 /* ========== DOCUMENT CONTENT ========== */
 
 .document-content {
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  /* Glassmorphic glass panel */
+  background: var(--glass-white-8);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: var(--border-glass);
+  border-radius: var(--radius-glass-xl);
+  box-shadow: var(--shadow-glass-3);
   padding: var(--spacing-12);
   max-width: var(--content-width);
 }
@@ -120,20 +132,20 @@
 .document-header {
   margin-bottom: var(--spacing-12);
   padding-bottom: var(--spacing-8);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: var(--border-glass);
 }
 
-.document-title {
+.document-content .document-title {
   font-size: var(--text-4xl);
   font-weight: var(--weight-normal);
   line-height: var(--leading-tight);
-  color: var(--color-text-primary);
+  color: var(--glass-text-primary);
   margin: 0 0 var(--spacing-4) 0;
 }
 
 .document-subtitle {
   font-size: var(--text-xl);
-  color: var(--color-text-secondary);
+  color: var(--glass-text-secondary);
   margin: 0 0 var(--spacing-6) 0;
   font-weight: var(--weight-normal);
   line-height: var(--leading-normal);
@@ -144,7 +156,7 @@
   align-items: center;
   gap: var(--spacing-2);
   font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
+  color: var(--glass-text-muted);
 }
 
 .meta-item {
@@ -153,7 +165,7 @@
 }
 
 .meta-divider {
-  color: var(--color-border);
+  color: var(--glass-white-30);
   margin: 0 var(--spacing-1);
 }
 
@@ -167,7 +179,7 @@
   font-size: var(--text-3xl);
   font-weight: var(--weight-medium);
   line-height: var(--leading-tight);
-  color: var(--color-text-primary);
+  color: var(--glass-text-primary);
   margin: 0 0 var(--spacing-6) 0;
   scroll-margin-top: var(--spacing-8); /* Relative to scroll container (app-main), not body */
   position: relative;
@@ -182,7 +194,7 @@
   transform: translateY(-50%);
   width: 4px;
   height: 0;
-  background: var(--color-primary);
+  background: var(--color-accent-red);
   border-radius: var(--radius-full);
   transition: height var(--transition-base);
 }
@@ -194,7 +206,7 @@
 .section-subheading {
   font-size: var(--text-xl);
   font-weight: var(--weight-medium);
-  color: var(--color-text-primary);
+  color: var(--glass-text-primary);
   margin: var(--spacing-8) 0 var(--spacing-4) 0;
   line-height: var(--leading-tight);
 }
@@ -204,7 +216,7 @@
 .section-paragraph {
   font-size: var(--text-base);
   line-height: var(--leading-relaxed);
-  color: var(--color-text-primary);
+  color: var(--glass-text-primary);
   margin: 0 0 var(--spacing-4) 0;
   text-align: justify;
 }
@@ -216,7 +228,7 @@
 .section-list {
   margin: var(--spacing-4) 0;
   padding-left: var(--spacing-6);
-  color: var(--color-text-primary);
+  color: var(--glass-text-primary);
   line-height: var(--leading-relaxed);
 }
 
@@ -232,8 +244,9 @@
 .table-wrapper {
   overflow-x: auto;
   margin: var(--spacing-6) 0;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border-radius: var(--radius-glass-md);
+  border: var(--border-glass);
+  background: var(--glass-white-5);
 }
 
 .section-table {
@@ -243,18 +256,18 @@
 }
 
 .section-table th {
-  background: var(--color-background);
+  background: var(--glass-white-10);
   padding: var(--spacing-3) var(--spacing-4);
   text-align: left;
   font-weight: var(--weight-semibold);
-  color: var(--color-text-primary);
-  border-bottom: 2px solid var(--color-border);
+  color: var(--glass-text-primary);
+  border-bottom: var(--border-glass-strong);
 }
 
 .section-table td {
   padding: var(--spacing-3) var(--spacing-4);
-  border-bottom: 1px solid var(--color-border-light);
-  color: var(--color-text-primary);
+  border-bottom: var(--border-glass);
+  color: var(--glass-text-primary);
 }
 
 .section-table tr:last-child td {
@@ -262,19 +275,21 @@
 }
 
 .section-table tbody tr:hover {
-  background: var(--color-hover);
+  background: var(--glass-white-10);
 }
 
 /* Quotes */
 .section-quote {
   margin: var(--spacing-6) 0;
   padding: var(--spacing-4) var(--spacing-6);
-  border-left: 4px solid var(--color-primary);
-  background: var(--color-background);
-  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--color-accent-red);
+  background: var(--glass-white-8);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  border-radius: var(--radius-glass-sm);
   font-size: var(--text-lg);
   font-style: italic;
-  color: var(--color-text-secondary);
+  color: var(--glass-text-secondary);
   line-height: var(--leading-relaxed);
 }
 
@@ -283,13 +298,13 @@
 .appendix {
   margin-top: var(--spacing-8);
   padding-top: var(--spacing-6);
-  border-top: 1px solid var(--color-border-light);
+  border-top: var(--border-glass);
 }
 
 .appendix-title {
   font-size: var(--text-xl);
   font-weight: var(--weight-medium);
-  color: var(--color-text-primary);
+  color: var(--glass-text-primary);
   margin: 0 0 var(--spacing-4) 0;
 }
 
@@ -303,7 +318,7 @@
 
 .references-list li {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--glass-text-secondary);
   margin-bottom: var(--spacing-3);
   line-height: var(--leading-relaxed);
 }
@@ -320,9 +335,12 @@
     max-height: none;
     margin-bottom: var(--spacing-6);
     padding: var(--spacing-4);
-    background: var(--color-surface);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
+    background: var(--glass-white-8);
+    backdrop-filter: blur(var(--blur-lg));
+    -webkit-backdrop-filter: blur(var(--blur-lg));
+    border: var(--border-glass);
+    border-radius: var(--radius-glass-lg);
+    box-shadow: var(--shadow-glass-2);
   }
 }
 
@@ -333,10 +351,12 @@
 
   .document-content {
     padding: var(--spacing-6);
-    border-radius: 0;
+    border-radius: var(--radius-glass-lg);
+    backdrop-filter: blur(var(--blur-lg));
+    -webkit-backdrop-filter: blur(var(--blur-lg));
   }
 
-  .document-title {
+  .document-content .document-title {
     font-size: var(--text-3xl);
   }
 
