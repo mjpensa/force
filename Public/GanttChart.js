@@ -756,24 +756,25 @@ export class GanttChart {
 
     const data = this.ganttData.data;
     const sortedData = [];
-    let currentSwimlaneIndex = -1;
     let currentSwimlaneTasks = [];
 
     // Process data and group tasks by swimlane
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
 
-      if (row.isSwimlane) {
+      // Use strict boolean check to handle cases where isSwimlane might be string "false"
+      const isSwimlaneRow = row.isSwimlane === true || row.isSwimlane === 'true';
+
+      if (isSwimlaneRow) {
         // If we have accumulated tasks from a previous swimlane, sort and add them
         if (currentSwimlaneTasks.length > 0) {
-          this._sortTasks(currentSwimlaneTasks);
+          this._sortTasksByStartDate(currentSwimlaneTasks);
           sortedData.push(...currentSwimlaneTasks);
           currentSwimlaneTasks = [];
         }
 
         // Add the swimlane row
         sortedData.push(row);
-        currentSwimlaneIndex = sortedData.length - 1;
       } else {
         // Accumulate tasks for the current swimlane
         currentSwimlaneTasks.push(row);
@@ -782,7 +783,7 @@ export class GanttChart {
 
     // Don't forget to sort and add tasks from the last swimlane
     if (currentSwimlaneTasks.length > 0) {
-      this._sortTasks(currentSwimlaneTasks);
+      this._sortTasksByStartDate(currentSwimlaneTasks);
       sortedData.push(...currentSwimlaneTasks);
     }
 
@@ -794,14 +795,19 @@ export class GanttChart {
 
   /**
    * Sorts an array of tasks by startCol (ascending), then by title (alphabetically)
-   * Tasks with null startCol are placed at the end
+   * Tasks with null/undefined startCol are placed at the end
    * @param {Array} tasks - Array of task objects to sort in place
    * @private
    */
-  _sortTasks(tasks) {
+  _sortTasksByStartDate(tasks) {
+    if (!tasks || tasks.length <= 1) {
+      return; // Nothing to sort
+    }
+
     tasks.sort((a, b) => {
-      const aStartCol = a.bar && a.bar.startCol != null ? a.bar.startCol : Infinity;
-      const bStartCol = b.bar && b.bar.startCol != null ? b.bar.startCol : Infinity;
+      // Get startCol values, defaulting to Infinity for missing/null values
+      const aStartCol = this._getStartCol(a);
+      const bStartCol = this._getStartCol(b);
 
       // Primary sort: by startCol (ascending, null values last)
       if (aStartCol !== bStartCol) {
@@ -813,6 +819,27 @@ export class GanttChart {
       const bTitle = (b.title || '').toLowerCase();
       return aTitle.localeCompare(bTitle);
     });
+  }
+
+  /**
+   * Extracts the startCol value from a task, handling various data formats
+   * @param {Object} task - The task object
+   * @returns {number} The startCol value, or Infinity if not available
+   * @private
+   */
+  _getStartCol(task) {
+    if (!task || !task.bar) {
+      return Infinity;
+    }
+
+    const startCol = task.bar.startCol;
+
+    // Handle null, undefined, or non-numeric values
+    if (startCol == null || typeof startCol !== 'number' || isNaN(startCol)) {
+      return Infinity;
+    }
+
+    return startCol;
   }
 
   /**
