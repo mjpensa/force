@@ -107,6 +107,237 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // TITLE VARIANT A - Geometric pattern top stripe (Slide 3)
+  // ============================================
+  titleVariantA: {
+    name: 'Title Variant A',
+    background: COLORS.navy,
+    elements: {
+      // Geometric pattern stripe (top)
+      pattern: {
+        x: 0,
+        y: 0,
+        w: 13.33,
+        h: 2.5,
+        placeholder: true
+      },
+      // Main title (centered)
+      title: {
+        x: 0.5,
+        y: 3.0,
+        w: 12,
+        h: 2,
+        fontSize: 48,
+        fontFace: FONTS.light,
+        color: COLORS.white,
+        align: 'left'
+      },
+      // Date/subtitle
+      date: {
+        x: 0.5,
+        y: 5.5,
+        w: 4,
+        h: 0.5,
+        fontSize: 14,
+        fontFace: FONTS.regular,
+        color: COLORS.white,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12,
+        y: 6.78,
+        w: 1,
+        h: 0.5,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
+  // CONTENTS NAV - Interactive TOC with preview (Slide 5)
+  // ============================================
+  contentsNav: {
+    name: 'Contents with Navigation',
+    background: COLORS.white,
+    elements: {
+      // "Contents" title
+      title: {
+        x: 0.5,
+        y: 0.3,
+        w: 3,
+        h: 0.8,
+        fontSize: 36,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Section items (left side)
+      sections: {
+        x: 0.5,
+        y: 1.5,
+        w: 5,
+        h: 5.5,
+        itemHeight: 0.6,
+        fontSize: 14,
+        fontFace: FONTS.regular,
+        color: COLORS.navy,
+        numberColor: COLORS.red,
+        numberFontFace: FONTS.semibold
+      },
+      // Preview area (right side)
+      preview: {
+        x: 6,
+        y: 1,
+        w: 7,
+        h: 6,
+        background: COLORS.lightGray,
+        numberFontSize: 72,
+        numberFontFace: FONTS.thin,
+        numberColor: COLORS.navy,
+        titleFontSize: 24,
+        titleFontFace: FONTS.light,
+        titleColor: COLORS.navy
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
+  // THANK YOU ALT - Alternative closing slide (Slide 35)
+  // ============================================
+  thankYouAlt: {
+    name: 'Thank You Alternative',
+    background: COLORS.navy,
+    elements: {
+      // Geometric pattern (different arrangement)
+      pattern: {
+        x: 0,
+        y: 0,
+        w: 13.33,
+        h: 3.5,
+        placeholder: true
+      },
+      // "Thank You" text
+      title: {
+        x: 0.5,
+        y: 4.5,
+        w: 5,
+        h: 1.2,
+        fontSize: 48,
+        fontFace: FONTS.light,
+        color: COLORS.white,
+        align: 'left'
+      },
+      // Contact info row
+      contact: {
+        x: 0.5,
+        y: 6.0,
+        w: 6,
+        h: 0.5,
+        fontSize: 10,
+        fontFace: FONTS.regular,
+        color: COLORS.white,
+        align: 'left'
+      },
+      // QR code placeholder
+      qrCode: {
+        x: 10.5,
+        y: 5.5,
+        w: 1.5,
+        h: 1.5,
+        placeholder: true
+      },
+      // Large logo (right side)
+      logo: {
+        x: 7.5,
+        y: 4.0,
+        w: 2.5,
+        h: 1.8,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
+  // TITLE VARIANT B - Different geometric accent (Slide 4)
+  // ============================================
+  titleVariantB: {
+    name: 'Title Variant B',
+    background: COLORS.navy,
+    elements: {
+      // Geometric accent (diagonal)
+      pattern: {
+        x: 0,
+        y: 0,
+        w: 13.33,
+        h: 3,
+        placeholder: true
+      },
+      // Subtitle/date (upper area)
+      subtitle: {
+        x: 0.5,
+        y: 1.5,
+        w: 6,
+        h: 0.5,
+        fontSize: 14,
+        fontFace: FONTS.regular,
+        color: COLORS.white,
+        align: 'left'
+      },
+      // Main title (lower position)
+      title: {
+        x: 0.5,
+        y: 4.0,
+        w: 12,
+        h: 2,
+        fontSize: 48,
+        fontFace: FONTS.light,
+        color: COLORS.white,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12,
+        y: 6.78,
+        w: 1,
+        h: 0.5,
+        placeholder: true
+      },
+      // Tagline
+      tagline: {
+        x: 0.5,
+        y: 6.5,
+        w: 4,
+        h: 0.3,
+        fontSize: 12,
+        fontFace: FONTS.medium,
+        color: COLORS.white,
+        align: 'left',
+        text: 'Here to Dare.'
+      }
+    }
+  },
+
+  // ============================================
   // TITLE WITH IMAGE - Split layout
   // ============================================
   titleWithImage: {
@@ -1980,7 +2211,11 @@ export const SLIDE_TYPE_MAP = {
   'quoteDataB': 'quoteDataB',
   'dualChart': 'dualChart',
   'table': 'table',
-  'dataTable': 'table'
+  'dataTable': 'table',
+  'titleVariantA': 'titleVariantA',
+  'titleVariantB': 'titleVariantB',
+  'contentsNav': 'contentsNav',
+  'thankYouAlt': 'thankYouAlt'
 };
 
 /**

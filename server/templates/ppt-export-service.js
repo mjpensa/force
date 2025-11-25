@@ -137,6 +137,18 @@ export async function generatePptx(slidesData, options = {}) {
         case 'dataTable':
           addTableSlide(pptx, slideData, slideNumber);
           break;
+        case 'titleVariantA':
+          addTitleVariantASlide(pptx, slideData);
+          break;
+        case 'titleVariantB':
+          addTitleVariantBSlide(pptx, slideData);
+          break;
+        case 'contentsNav':
+          addContentsNavSlide(pptx, slideData, slideNumber);
+          break;
+        case 'thankYouAlt':
+          addThankYouAltSlide(pptx, slideData);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1782,6 +1794,120 @@ function addTableSlide(pptx, slideData, slideNumber) {
 }
 
 /**
+ * Add title variant A slide (Slide 3 - geometric pattern top stripe)
+ */
+function addTitleVariantASlide(pptx, slideData) {
+  const layout = LAYOUTS.titleVariantA;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Geometric pattern placeholder (top stripe)
+  slide.addShape('rect', {
+    x: layout.elements.pattern.x,
+    y: layout.elements.pattern.y,
+    w: layout.elements.pattern.w,
+    h: layout.elements.pattern.h,
+    fill: { color: '1a3a5c' }  // Slightly lighter navy for pattern
+  });
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  // Date
+  if (slideData.date) {
+    slide.addText(slideData.date, {
+      x: layout.elements.date.x,
+      y: layout.elements.date.y,
+      w: layout.elements.date.w,
+      h: layout.elements.date.h,
+      fontSize: layout.elements.date.fontSize,
+      fontFace: layout.elements.date.fontFace,
+      color: layout.elements.date.color,
+      align: layout.elements.date.align
+    });
+  }
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'medium');
+}
+
+/**
+ * Add title variant B slide (Slide 4 - different geometric accent placement)
+ */
+function addTitleVariantBSlide(pptx, slideData) {
+  const layout = LAYOUTS.titleVariantB;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Geometric pattern placeholder (diagonal accent)
+  slide.addShape('rect', {
+    x: layout.elements.pattern.x,
+    y: layout.elements.pattern.y,
+    w: layout.elements.pattern.w,
+    h: layout.elements.pattern.h,
+    fill: { color: '1a3a5c' }  // Slightly lighter navy for pattern
+  });
+
+  // Subtitle/date (upper area)
+  if (slideData.subtitle || slideData.date) {
+    slide.addText(slideData.subtitle || slideData.date, {
+      x: layout.elements.subtitle.x,
+      y: layout.elements.subtitle.y,
+      w: layout.elements.subtitle.w,
+      h: layout.elements.subtitle.h,
+      fontSize: layout.elements.subtitle.fontSize,
+      fontFace: layout.elements.subtitle.fontFace,
+      color: layout.elements.subtitle.color,
+      align: layout.elements.subtitle.align
+    });
+  }
+
+  // Main title (lower position)
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  // Tagline
+  slide.addText(slideData.tagline || layout.elements.tagline.text, {
+    x: layout.elements.tagline.x,
+    y: layout.elements.tagline.y,
+    w: layout.elements.tagline.w,
+    h: layout.elements.tagline.h,
+    fontSize: layout.elements.tagline.fontSize,
+    fontFace: layout.elements.tagline.fontFace,
+    color: layout.elements.tagline.color,
+    align: layout.elements.tagline.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'medium');
+}
+
+/**
  * Add dual chart slide (Slide 20 - side by side charts)
  */
 function addDualChartSlide(pptx, slideData, slideNumber) {
@@ -3131,6 +3257,198 @@ function addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber) {
 
   // Logo placeholder
   addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add contents navigation slide (Slide 5)
+ * Interactive TOC with section list and preview area
+ */
+function addContentsNavSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.contentsNav;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Title ("Contents")
+  slide.addText(slideData.title || 'Contents', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align
+  });
+
+  // Section items (left side)
+  const sectionsConfig = layout.elements.sections;
+  const sections = slideData.sections || slideData.items || [];
+
+  sections.forEach((section, index) => {
+    const itemY = sectionsConfig.y + (index * sectionsConfig.itemHeight);
+    const sectionNum = String(index + 1).padStart(2, '0');
+
+    // Section number (red)
+    slide.addText(sectionNum, {
+      x: sectionsConfig.x,
+      y: itemY,
+      w: 0.6,
+      h: sectionsConfig.itemHeight,
+      fontSize: sectionsConfig.fontSize,
+      fontFace: sectionsConfig.numberFontFace,
+      color: sectionsConfig.numberColor,
+      align: 'left',
+      valign: 'middle'
+    });
+
+    // Section title
+    slide.addText(section.title || section, {
+      x: sectionsConfig.x + 0.6,
+      y: itemY,
+      w: sectionsConfig.w - 0.6,
+      h: sectionsConfig.itemHeight,
+      fontSize: sectionsConfig.fontSize,
+      fontFace: sectionsConfig.fontFace,
+      color: sectionsConfig.color,
+      align: 'left',
+      valign: 'middle'
+    });
+  });
+
+  // Preview area (right side - gray box with number)
+  const previewConfig = layout.elements.preview;
+  slide.addShape('rect', {
+    x: previewConfig.x,
+    y: previewConfig.y,
+    w: previewConfig.w,
+    h: previewConfig.h,
+    fill: { color: previewConfig.background }
+  });
+
+  // Preview number (shows current/highlighted section)
+  const previewNumber = slideData.previewNumber || '01';
+  slide.addText(previewNumber, {
+    x: previewConfig.x,
+    y: previewConfig.y + 1.5,
+    w: previewConfig.w,
+    h: 1.5,
+    fontSize: previewConfig.numberFontSize,
+    fontFace: previewConfig.numberFontFace,
+    color: previewConfig.numberColor,
+    align: 'center',
+    valign: 'middle'
+  });
+
+  // Preview title
+  const previewTitle = slideData.previewTitle || (sections[0]?.title || sections[0] || 'Section Title');
+  slide.addText(previewTitle, {
+    x: previewConfig.x,
+    y: previewConfig.y + 3.5,
+    w: previewConfig.w,
+    h: 1,
+    fontSize: previewConfig.titleFontSize,
+    fontFace: previewConfig.titleFontFace,
+    color: previewConfig.titleColor,
+    align: 'center',
+    valign: 'top'
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add thank you alternative slide (Slide 35)
+ * Navy background with pattern and QR code option
+ */
+function addThankYouAltSlide(pptx, slideData) {
+  const layout = LAYOUTS.thankYouAlt;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Geometric pattern placeholder (top area)
+  slide.addShape('rect', {
+    x: layout.elements.pattern.x,
+    y: layout.elements.pattern.y,
+    w: layout.elements.pattern.w,
+    h: layout.elements.pattern.h,
+    fill: { color: '1a3a5c' }  // Slightly lighter navy as placeholder
+  });
+
+  // "Thank You" title
+  slide.addText(slideData.title || 'Thank You', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align
+  });
+
+  // Contact info
+  const contactText = slideData.contact || slideData.email || 'contact@company.com | www.company.com';
+  slide.addText(contactText, {
+    x: layout.elements.contact.x,
+    y: layout.elements.contact.y,
+    w: layout.elements.contact.w,
+    h: layout.elements.contact.h,
+    fontSize: layout.elements.contact.fontSize,
+    fontFace: layout.elements.contact.fontFace,
+    color: layout.elements.contact.color,
+    align: layout.elements.contact.align
+  });
+
+  // QR code placeholder
+  if (slideData.qrCode) {
+    slide.addImage({
+      path: slideData.qrCode,
+      x: layout.elements.qrCode.x,
+      y: layout.elements.qrCode.y,
+      w: layout.elements.qrCode.w,
+      h: layout.elements.qrCode.h
+    });
+  } else {
+    // QR code placeholder rectangle
+    slide.addShape('rect', {
+      x: layout.elements.qrCode.x,
+      y: layout.elements.qrCode.y,
+      w: layout.elements.qrCode.w,
+      h: layout.elements.qrCode.h,
+      fill: { color: COLORS.white }
+    });
+    slide.addText('QR', {
+      x: layout.elements.qrCode.x,
+      y: layout.elements.qrCode.y,
+      w: layout.elements.qrCode.w,
+      h: layout.elements.qrCode.h,
+      fontSize: 14,
+      fontFace: FONTS.semibold,
+      color: COLORS.navy,
+      align: 'center',
+      valign: 'middle'
+    });
+  }
+
+  // Large logo placeholder (right side)
+  addLogoPlaceholder(slide, layout.elements.logo, 'large');
 }
 
 /**
