@@ -30,15 +30,16 @@
     </script>
 
     <style>
-      /* Ensure full height layout */
+      /* Ensure full height layout with scroll containment */
       html, body {
         margin: 0;
         padding: 0;
-        min-height: 100%;
+        height: 100%;
+        overflow: hidden; /* Prevent body scroll - scroll happens in .app-main */
       }
 
       #app-root {
-        min-height: 100%;
+        height: 100%;
         display: flex;
         flex-direction: column;
       }
