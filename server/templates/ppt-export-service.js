@@ -124,6 +124,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'rolloutDescription':
           addRolloutDescriptionSlide(pptx, slideData, slideNumber);
           break;
+        case 'quoteDataA':
+          addQuoteDataASlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1653,6 +1656,150 @@ function addRolloutGridSlide(pptx, slideData, slideNumber) {
         color: textColor,
         align: 'left',
         valign: 'top'
+      });
+    }
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add quote with data visualization slide A (Slide 18 - quote with data cards)
+ */
+function addQuoteDataASlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.quoteDataA;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  if (slideData.section || slideData.sectionLabel) {
+    slide.addText(slideData.section || slideData.sectionLabel, {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  const quoteConfig = layout.elements.quote;
+
+  // Quote title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: quoteConfig.x,
+      y: quoteConfig.y,
+      w: quoteConfig.w,
+      h: 1.2,
+      fontSize: quoteConfig.titleFontSize,
+      fontFace: quoteConfig.titleFontFace,
+      color: quoteConfig.titleColor,
+      align: 'left'
+    });
+  }
+
+  // Red accent line
+  slide.addShape('rect', {
+    x: quoteConfig.x - 0.1,
+    y: quoteConfig.y + 1.5,
+    w: quoteConfig.accentWidth,
+    h: 2,
+    fill: { color: quoteConfig.accentColor }
+  });
+
+  // Quote text
+  if (slideData.quote || slideData.text) {
+    slide.addText(slideData.quote || slideData.text, {
+      x: quoteConfig.x,
+      y: quoteConfig.y + 1.5,
+      w: quoteConfig.w,
+      h: 3,
+      fontSize: quoteConfig.textFontSize,
+      fontFace: quoteConfig.textFontFace,
+      color: quoteConfig.textColor,
+      align: 'left',
+      valign: 'top',
+      italic: true
+    });
+  }
+
+  // Attribution
+  if (slideData.attribution) {
+    slide.addText(`— ${slideData.attribution}`, {
+      x: quoteConfig.x,
+      y: quoteConfig.y + 4.8,
+      w: quoteConfig.w,
+      h: 0.5,
+      fontSize: 12,
+      fontFace: FONTS.semibold,
+      color: quoteConfig.titleColor,
+      align: 'left'
+    });
+  }
+
+  // Data cards
+  const cardsConfig = layout.elements.dataCards;
+  const metrics = slideData.metrics || slideData.data || slideData.cards || [];
+
+  metrics.slice(0, cardsConfig.maxCards).forEach((metric, i) => {
+    const row = Math.floor(i / cardsConfig.columns);
+    const col = i % cardsConfig.columns;
+
+    const x = cardsConfig.startX + (col * (cardsConfig.cardWidth + cardsConfig.gapX));
+    const y = cardsConfig.startY + (row * (cardsConfig.cardHeight + cardsConfig.gapY));
+
+    // Card background
+    slide.addShape('rect', {
+      x: x,
+      y: y,
+      w: cardsConfig.cardWidth,
+      h: cardsConfig.cardHeight,
+      fill: { color: cardsConfig.cardBackground }
+    });
+
+    // Metric value
+    if (metric.value !== undefined) {
+      slide.addText(String(metric.value), {
+        x: x + cardsConfig.padding,
+        y: y + cardsConfig.padding,
+        w: cardsConfig.cardWidth - (cardsConfig.padding * 2),
+        h: 0.8,
+        fontSize: cardsConfig.valueFontSize,
+        fontFace: cardsConfig.valueFontFace,
+        color: cardsConfig.valueColor,
+        align: 'left'
+      });
+    }
+
+    // Metric label
+    if (metric.label || metric.title) {
+      slide.addText(metric.label || metric.title, {
+        x: x + cardsConfig.padding,
+        y: y + cardsConfig.cardHeight - cardsConfig.padding - 0.5,
+        w: cardsConfig.cardWidth - (cardsConfig.padding * 2),
+        h: 0.5,
+        fontSize: cardsConfig.labelFontSize,
+        fontFace: cardsConfig.labelFontFace,
+        color: cardsConfig.labelColor,
+        align: 'left'
       });
     }
   });

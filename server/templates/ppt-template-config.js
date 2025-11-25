@@ -1327,6 +1327,80 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // QUOTE DATA A - Quote with data cards on the right (Slide 18)
+  // ============================================
+  quoteDataA: {
+    name: 'Quote with Data Visualization A',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Quote section (left half)
+      quote: {
+        x: 0.5,
+        y: 0.8,
+        w: 6,
+        h: 5.5,
+        titleFontSize: 24,
+        titleFontFace: FONTS.light,
+        titleColor: COLORS.navy,
+        textFontSize: 14,
+        textFontFace: FONTS.regular,
+        textColor: COLORS.navy,
+        accentColor: COLORS.red,
+        accentWidth: 0.05
+      },
+      // Data cards section (right half)
+      dataCards: {
+        startX: 7,
+        startY: 1.5,
+        cardWidth: 2.8,
+        cardHeight: 1.5,
+        gapX: 0.2,
+        gapY: 0.2,
+        columns: 2,
+        maxCards: 4,
+        cardBackground: COLORS.lightGray,
+        valueFontSize: 32,
+        valueFontFace: FONTS.light,
+        valueColor: COLORS.red,
+        labelFontSize: 10,
+        labelFontFace: FONTS.regular,
+        labelColor: COLORS.navy,
+        padding: 0.2
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // ROLLOUT DESCRIPTION - Phase cards with descriptions (Slide 33)
   // ============================================
   rolloutDescription: {
@@ -1690,7 +1764,8 @@ export const SLIDE_TYPE_MAP = {
   'rolloutTimeline': 'rolloutTimeline',
   'ganttChart': 'ganttChart',
   'gantt': 'ganttChart',
-  'rolloutDescription': 'rolloutDescription'
+  'rolloutDescription': 'rolloutDescription',
+  'quoteDataA': 'quoteDataA'
 };
 
 /**
