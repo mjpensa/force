@@ -65,7 +65,8 @@ export const CONFIG = {
     TEMPERATURE_STRUCTURED: 0,
     TEMPERATURE_QA: 0.1,
     TOP_P: 1,
-    TOP_K: 1
+    TOP_K: 1,
+    SEED: 42 // Fixed seed for deterministic output - same inputs produce same outputs
   },
 
   // File upload limits
