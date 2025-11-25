@@ -49,15 +49,15 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - If a date is "Q1 2024" and the interval is "Years", map it to the "2024" column index.
     - If a date is unknown ("null"), the 'bar' object must be \`{ "startCol": null, "endCol": null, "color": "..." }\`.
 6.  **COLORS & LEGEND (DETERMINISTIC - SWIMLANE-BASED):** ALWAYS use swimlane-based coloring for consistency:
-    - Assign colors to swimlanes based on their FINAL SORTED position (broad first, then specific alphabetically) using this EXACT mapping:
-      * 1st swimlane (top of chart): "priority-red"
+    - Assign colors to swimlanes based on their ALPHABETICAL position using this EXACT mapping:
+      * 1st swimlane (alphabetically): "priority-red"
       * 2nd swimlane: "medium-red"
       * 3rd swimlane: "mid-grey"
       * 4th swimlane: "light-grey"
       * 5th swimlane: "dark-blue"
       * 6th+ swimlanes: cycle back starting with "priority-red"
     - ALL tasks within a swimlane get that swimlane's color
-    - Populate the 'legend' array with swimlane names in the SAME ORDER as they appear in the chart (broad first, then specific): \`"legend": [{ "color": "priority-red", "label": "First Swimlane (top)" }, ...]\`
+    - Populate the 'legend' array with swimlane names in ALPHABETICAL order: \`"legend": [{ "color": "priority-red", "label": "First Swimlane (A-Z)" }, ...]\`
     - **CRITICAL:** The 'legend' array must NEVER be empty.
 7.  **TASK TYPE CLASSIFICATION (DETERMINISTIC):** Classify each task using EXACT keyword matching (case-insensitive):
     - **"decision"** - Task title contains ANY of these EXACT words: "Approval", "Approve", "Decision", "Decide", "Gate", "Go/No-Go", "Review Board", "Steering Committee", "Sign-off", "Signoff"
