@@ -133,7 +133,10 @@ router.post('/ask-question', apiLimiter, async (req, res) => {
       maxOutputTokens: CONFIG.API.MAX_OUTPUT_TOKENS_QA,
       temperature: CONFIG.API.TEMPERATURE_QA,
       topP: CONFIG.API.TOP_P,
-      topK: CONFIG.API.TOP_K
+      topK: CONFIG.API.TOP_K,
+      thinkingConfig: {
+        thinkingBudget: CONFIG.API.THINKING_BUDGET_ANALYSIS // Enable deep reasoning for Q&A
+      }
     }
   };
 

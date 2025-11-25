@@ -27,7 +27,10 @@ async function generateWithGemini(prompt, schema, contentType) {
       model: 'gemini-2.5-flash-preview-09-2025',
       generationConfig: {
         responseMimeType: 'application/json',
-        responseSchema: schema
+        responseSchema: schema,
+        thinkingConfig: {
+          thinkingBudget: 24576 // Enable deep reasoning for sophisticated analysis
+        }
       }
     });
 
