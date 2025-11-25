@@ -372,8 +372,9 @@ class ContentViewer {
                             error.message.includes('being generated') ||
                             error.details?.processing === true;
 
-        const hasEmptyContent = error.details?.emptyContent === true;
-        const canRetry = error.details?.canRetry === true;
+        // Check for both emptyContent and emptyData flags (emptyData is thrown when data is null)
+        const hasEmptyContent = error.details?.emptyContent === true || error.details?.emptyData === true;
+        const canRetry = error.details?.canRetry === true || error.details?.emptyData === true;
         const isApiError = error.details?.apiError === true;
 
         console.log(`[Viewer] isProcessing=${isProcessing}, hasEmptyContent=${hasEmptyContent}, canRetry=${canRetry}, isApiError=${isApiError}`);
@@ -887,6 +888,12 @@ class ContentViewer {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
+
+        // Handle HTTP errors (404, 500, etc.)
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+
         const data = await response.json();
 
         if (data.status === 'completed' && data.data) {
@@ -1075,7 +1082,7 @@ class ContentViewer {
    * Enhanced: Now caches content when ready for instant view switching
    */
   _startBackgroundStatusPolling() {
-    const views = ['roadmap', 'slides', 'document'];
+    const views = ['roadmap', 'slides', 'document', 'research-analysis'];
 
     // Initial state - all loading
     views.forEach(view => this._updateTabStatus(view, 'loading'));
@@ -1090,10 +1097,33 @@ class ContentViewer {
       // Calculate polling interval with backoff
       const BASE_INTERVAL = 3000; // 3 seconds
       const MAX_INTERVAL = 15000; // 15 seconds max
+      const MAX_ATTEMPTS = 100; // Stop polling after ~5 minutes
       const interval = Math.min(BASE_INTERVAL * Math.pow(1.3, Math.floor(attempt / 3)), MAX_INTERVAL);
+
+      // Stop polling if we've exceeded max attempts
+      if (attempt >= MAX_ATTEMPTS) {
+        console.warn(`[Background Poll] Max attempts reached for ${viewName}, stopping poll`);
+        this._updateTabStatus(viewName, 'failed');
+        if (this._backgroundPollTimeouts[viewName]) {
+          delete this._backgroundPollTimeouts[viewName];
+        }
+        return;
+      }
 
       try {
         const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
+
+        // Handle HTTP errors (404, 500, etc.)
+        if (!response.ok) {
+          console.error(`[Background Poll] HTTP error ${response.status} for ${viewName}`);
+          this._updateTabStatus(viewName, 'failed');
+          // Stop polling on HTTP errors - session may not exist
+          if (this._backgroundPollTimeouts[viewName]) {
+            delete this._backgroundPollTimeouts[viewName];
+          }
+          return;
+        }
+
         const data = await response.json();
 
         if (data.status === 'completed' && data.data) {
