@@ -1327,6 +1327,69 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // TABLE - Data table layout (Slide 21)
+  // ============================================
+  table: {
+    name: 'Table Layout',
+    background: COLORS.white,
+    elements: {
+      // Main title
+      title: {
+        x: 0.5,
+        y: 0.3,
+        w: 12,
+        h: 0.6,
+        fontSize: 28,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Table configuration
+      table: {
+        x: 0.5,
+        y: 1.2,
+        w: 12,
+        maxHeight: 5.5,
+        rowHeight: 0.5,
+        // Header styling
+        headerFontSize: 11,
+        headerFontFace: FONTS.semibold,
+        headerColor: COLORS.white,
+        headerBackground: COLORS.navy,
+        // Data row styling
+        dataFontSize: 10,
+        dataFontFace: FONTS.regular,
+        dataColor: COLORS.navy,
+        // Alternating row colors
+        evenRowBackground: COLORS.white,
+        oddRowBackground: COLORS.lightGray,
+        // Border
+        borderColor: COLORS.lightGray,
+        borderWidth: 0.5
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // DUAL CHART - Side by side charts (Slide 20)
   // ============================================
   dualChart: {
@@ -1915,7 +1978,9 @@ export const SLIDE_TYPE_MAP = {
   'rolloutDescription': 'rolloutDescription',
   'quoteDataA': 'quoteDataA',
   'quoteDataB': 'quoteDataB',
-  'dualChart': 'dualChart'
+  'dualChart': 'dualChart',
+  'table': 'table',
+  'dataTable': 'table'
 };
 
 /**

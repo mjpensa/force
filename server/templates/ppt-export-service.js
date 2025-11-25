@@ -133,6 +133,10 @@ export async function generatePptx(slidesData, options = {}) {
         case 'dualChart':
           addDualChartSlide(pptx, slideData, slideNumber);
           break;
+        case 'table':
+        case 'dataTable':
+          addTableSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -1665,6 +1669,101 @@ function addRolloutGridSlide(pptx, slideData, slideNumber) {
       });
     }
   });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add table slide (Slide 21 - data table layout)
+ */
+function addTableSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.table;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  const tableConfig = layout.elements.table;
+  const headers = slideData.headers || [];
+  const rows = slideData.rows || slideData.data || [];
+
+  if (headers.length > 0 || rows.length > 0) {
+    // Build table data array
+    const tableData = [];
+
+    // Add header row if present
+    if (headers.length > 0) {
+      tableData.push(headers.map(h => ({
+        text: String(h),
+        options: {
+          fill: { color: tableConfig.headerBackground },
+          color: tableConfig.headerColor,
+          bold: true,
+          fontFace: tableConfig.headerFontFace,
+          fontSize: tableConfig.headerFontSize
+        }
+      })));
+    }
+
+    // Add data rows with alternating colors
+    rows.forEach((row, rowIndex) => {
+      const rowData = Array.isArray(row) ? row : Object.values(row);
+      const bgColor = rowIndex % 2 === 0 ? tableConfig.evenRowBackground : tableConfig.oddRowBackground;
+
+      tableData.push(rowData.map(cell => ({
+        text: String(cell ?? ''),
+        options: {
+          fill: { color: bgColor },
+          color: tableConfig.dataColor,
+          fontFace: tableConfig.dataFontFace,
+          fontSize: tableConfig.dataFontSize
+        }
+      })));
+    });
+
+    // Calculate column widths
+    const colCount = Math.max(headers.length, rows[0]?.length || 0);
+    const colWidths = slideData.colWidths || Array(colCount).fill(tableConfig.w / colCount);
+
+    // Add the table
+    slide.addTable(tableData, {
+      x: tableConfig.x,
+      y: tableConfig.y,
+      w: tableConfig.w,
+      colW: colWidths,
+      rowH: tableConfig.rowHeight,
+      border: { pt: tableConfig.borderWidth, color: tableConfig.borderColor },
+      align: 'left',
+      valign: 'middle'
+    });
+  }
 
   // Page number
   slide.addText(String(slideNumber), {
