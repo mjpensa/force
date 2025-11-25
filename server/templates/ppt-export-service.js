@@ -149,6 +149,18 @@ export async function generatePptx(slidesData, options = {}) {
         case 'thankYouAlt':
           addThankYouAltSlide(pptx, slideData);
           break;
+        case 'contentMultiColumn':
+          addContentMultiColumnSlide(pptx, slideData, slideNumber);
+          break;
+        case 'bulletsFull':
+          addBulletsFullSlide(pptx, slideData, slideNumber);
+          break;
+        case 'contentWithImage':
+          addContentWithImageSlide(pptx, slideData, slideNumber);
+          break;
+        case 'timelineNumbered':
+          addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -523,6 +535,313 @@ function addContentSlide(pptx, slideData, slideNumber) {
     h: layout.elements.accent.h,
     fill: { color: '4A5568' }
   });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add content multi-column slide (Slide 8)
+ * Large title left, 2-column content right
+ */
+function addContentMultiColumnSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.contentMultiColumn;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  slide.addText(slideData.sectionLabel || 'SECTION', {
+    x: layout.elements.sectionLabel.x,
+    y: layout.elements.sectionLabel.y,
+    w: layout.elements.sectionLabel.w,
+    h: layout.elements.sectionLabel.h,
+    fontSize: layout.elements.sectionLabel.fontSize,
+    fontFace: layout.elements.sectionLabel.fontFace,
+    color: layout.elements.sectionLabel.color,
+    align: layout.elements.sectionLabel.align
+  });
+
+  // Main title (large, left side)
+  slide.addText(slideData.title || 'Slide Title', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align,
+    lineSpacing: layout.elements.title.lineSpacing
+  });
+
+  // Content (right side, simulated 2-column layout)
+  const contentConfig = layout.elements.content;
+  const content = slideData.content || '';
+
+  // For 2-column layout, split content or use provided columns
+  if (slideData.columns && slideData.columns.length === 2) {
+    // Left column
+    slide.addText(slideData.columns[0], {
+      x: contentConfig.x,
+      y: contentConfig.y,
+      w: (contentConfig.w - contentConfig.columnGap) / 2,
+      h: contentConfig.h,
+      fontSize: contentConfig.fontSize,
+      fontFace: contentConfig.fontFace,
+      color: contentConfig.color,
+      align: 'left',
+      valign: 'top'
+    });
+    // Right column
+    slide.addText(slideData.columns[1], {
+      x: contentConfig.x + (contentConfig.w + contentConfig.columnGap) / 2,
+      y: contentConfig.y,
+      w: (contentConfig.w - contentConfig.columnGap) / 2,
+      h: contentConfig.h,
+      fontSize: contentConfig.fontSize,
+      fontFace: contentConfig.fontFace,
+      color: contentConfig.color,
+      align: 'left',
+      valign: 'top'
+    });
+  } else {
+    // Single content block
+    slide.addText(content, {
+      x: contentConfig.x,
+      y: contentConfig.y,
+      w: contentConfig.w,
+      h: contentConfig.h,
+      fontSize: contentConfig.fontSize,
+      fontFace: contentConfig.fontFace,
+      color: contentConfig.color,
+      align: 'left',
+      valign: 'top'
+    });
+  }
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add bullets full-width slide (Slide 9)
+ * Title at top, full-width bullets below
+ */
+function addBulletsFullSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.bulletsFull;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  slide.addText(slideData.sectionLabel || 'SECTION', {
+    x: layout.elements.sectionLabel.x,
+    y: layout.elements.sectionLabel.y,
+    w: layout.elements.sectionLabel.w,
+    h: layout.elements.sectionLabel.h,
+    fontSize: layout.elements.sectionLabel.fontSize,
+    fontFace: layout.elements.sectionLabel.fontFace,
+    color: layout.elements.sectionLabel.color,
+    align: layout.elements.sectionLabel.align
+  });
+
+  // Main title
+  slide.addText(slideData.title || 'Slide Title', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align
+  });
+
+  // Bullets (full width)
+  const bulletsConfig = layout.elements.bullets;
+  const bullets = slideData.bullets || slideData.content || [];
+
+  if (Array.isArray(bullets)) {
+    const bulletItems = bullets.map(b => ({
+      text: typeof b === 'string' ? b : b.text || b,
+      options: { bullet: { color: bulletsConfig.bulletColor } }
+    }));
+    slide.addText(bulletItems, {
+      x: bulletsConfig.x,
+      y: bulletsConfig.y,
+      w: bulletsConfig.w,
+      h: bulletsConfig.h,
+      fontSize: bulletsConfig.fontSize,
+      fontFace: bulletsConfig.fontFace,
+      color: bulletsConfig.color,
+      align: 'left',
+      valign: 'top'
+    });
+  } else {
+    slide.addText(bullets, {
+      x: bulletsConfig.x,
+      y: bulletsConfig.y,
+      w: bulletsConfig.w,
+      h: bulletsConfig.h,
+      fontSize: bulletsConfig.fontSize,
+      fontFace: bulletsConfig.fontFace,
+      color: bulletsConfig.color,
+      align: 'left',
+      valign: 'top'
+    });
+  }
+
+  // Geometric accent (red shape)
+  slide.addShape('rect', {
+    x: layout.elements.accent.x,
+    y: layout.elements.accent.y,
+    w: layout.elements.accent.w,
+    h: layout.elements.accent.h,
+    fill: { color: COLORS.red }
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add content with image slide (Slide 12)
+ * Content on left, image placeholder on right
+ */
+function addContentWithImageSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.contentWithImage;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  slide.addText(slideData.sectionLabel || 'SECTION', {
+    x: layout.elements.sectionLabel.x,
+    y: layout.elements.sectionLabel.y,
+    w: layout.elements.sectionLabel.w,
+    h: layout.elements.sectionLabel.h,
+    fontSize: layout.elements.sectionLabel.fontSize,
+    fontFace: layout.elements.sectionLabel.fontFace,
+    color: layout.elements.sectionLabel.color,
+    align: layout.elements.sectionLabel.align
+  });
+
+  // Main title
+  slide.addText(slideData.title || 'Slide Title', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align
+  });
+
+  // Content text (left side)
+  const contentConfig = layout.elements.content;
+  const content = slideData.content || '';
+
+  if (Array.isArray(content)) {
+    const bulletItems = content.map(b => ({
+      text: typeof b === 'string' ? b : b.text || b,
+      options: { bullet: { color: COLORS.red } }
+    }));
+    slide.addText(bulletItems, {
+      x: contentConfig.x,
+      y: contentConfig.y,
+      w: contentConfig.w,
+      h: contentConfig.h,
+      fontSize: contentConfig.fontSize,
+      fontFace: contentConfig.fontFace,
+      color: contentConfig.color,
+      align: 'left',
+      valign: 'top'
+    });
+  } else {
+    slide.addText(content, {
+      x: contentConfig.x,
+      y: contentConfig.y,
+      w: contentConfig.w,
+      h: contentConfig.h,
+      fontSize: contentConfig.fontSize,
+      fontFace: contentConfig.fontFace,
+      color: contentConfig.color,
+      align: 'left',
+      valign: 'top'
+    });
+  }
+
+  // Image placeholder or actual image (right side)
+  const imageConfig = layout.elements.image;
+  if (slideData.image) {
+    slide.addImage({
+      path: slideData.image,
+      x: imageConfig.x,
+      y: imageConfig.y,
+      w: imageConfig.w,
+      h: imageConfig.h
+    });
+  } else {
+    // Gray placeholder for image
+    slide.addShape('rect', {
+      x: imageConfig.x,
+      y: imageConfig.y,
+      w: imageConfig.w,
+      h: imageConfig.h,
+      fill: { color: COLORS.lightGray }
+    });
+    slide.addText('IMAGE', {
+      x: imageConfig.x,
+      y: imageConfig.y + imageConfig.h / 2 - 0.25,
+      w: imageConfig.w,
+      h: 0.5,
+      fontSize: 14,
+      fontFace: FONTS.semibold,
+      color: COLORS.darkGray,
+      align: 'center'
+    });
+  }
 
   // Page number
   slide.addText(String(slideNumber), {

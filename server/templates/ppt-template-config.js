@@ -630,6 +630,213 @@ export const LAYOUTS = {
   },
 
   // ============================================
+  // CONTENT MULTI-COLUMN - Title + 2-column text (Slide 8)
+  // ============================================
+  contentMultiColumn: {
+    name: 'Content with Multi-Column Text',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title (large, left side)
+      title: {
+        x: 0.33,
+        y: 0.5,
+        w: 4.5,
+        h: 2.5,
+        fontSize: 48,
+        fontFace: FONTS.thin,
+        color: COLORS.navy,
+        align: 'left',
+        lineSpacing: 85
+      },
+      // Content (right side, 2 columns)
+      content: {
+        x: 5.5,
+        y: 1.5,
+        w: 7.5,
+        h: 5.0,
+        fontSize: 10,
+        fontFace: FONTS.regular,
+        color: COLORS.navy,
+        lineSpacing: 150,
+        columns: 2,
+        columnGap: 0.3
+      },
+      // Page number
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
+  // BULLETS FULL - Full-width bullets (Slide 9)
+  // ============================================
+  bulletsFull: {
+    name: 'Content with Full-Width Bullets',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title
+      title: {
+        x: 0.33,
+        y: 0.42,
+        w: 12,
+        h: 1,
+        fontSize: 32,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Bullets (full width)
+      bullets: {
+        x: 0.33,
+        y: 2.0,
+        w: 12.5,
+        h: 4.5,
+        fontSize: 11,
+        fontFace: FONTS.regular,
+        color: COLORS.navy,
+        bulletColor: COLORS.red,
+        lineSpacing: 180
+      },
+      // Geometric accent (top right corner)
+      accent: {
+        x: 11.33,
+        y: 0,
+        w: 2,
+        h: 1.5,
+        fill: COLORS.red,
+        placeholder: true
+      },
+      // Page number
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
+  // CONTENT WITH IMAGE - Split layout (Slide 12)
+  // ============================================
+  contentWithImage: {
+    name: 'Content with Image',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title (left side)
+      title: {
+        x: 0.5,
+        y: 0.5,
+        w: 6,
+        h: 1,
+        fontSize: 32,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Content text (left side)
+      content: {
+        x: 0.5,
+        y: 1.8,
+        w: 6,
+        h: 4.5,
+        fontSize: 11,
+        fontFace: FONTS.regular,
+        color: COLORS.navy,
+        lineSpacing: 150
+      },
+      // Image placeholder (right side)
+      image: {
+        x: 7,
+        y: 1,
+        w: 5.5,
+        h: 5.5,
+        placeholder: true
+      },
+      // Page number
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
   // QUOTE - Large quote with attribution
   // ============================================
   quote: {
@@ -2215,7 +2422,11 @@ export const SLIDE_TYPE_MAP = {
   'titleVariantA': 'titleVariantA',
   'titleVariantB': 'titleVariantB',
   'contentsNav': 'contentsNav',
-  'thankYouAlt': 'thankYouAlt'
+  'thankYouAlt': 'thankYouAlt',
+  'contentMultiColumn': 'contentMultiColumn',
+  'bulletsFull': 'bulletsFull',
+  'contentWithImage': 'contentWithImage',
+  'timelineNumbered': 'timelineNumberedMarkers'  // Slide 15 alias to Slide 23
 };
 
 /**
