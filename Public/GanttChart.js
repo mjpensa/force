@@ -87,9 +87,6 @@ export class GanttChart {
     // Add footer stripe
     this._addFooterSVG();
 
-    // Add research analysis section (if available)
-    this._addResearchAnalysis();
-
     // Add export and edit mode toggle buttons
     const exportContainer = document.createElement('div');
     exportContainer.className = 'export-container';
@@ -133,6 +130,9 @@ export class GanttChart {
     // Append to container
     this.container.appendChild(this.chartWrapper);
     this.container.appendChild(exportContainer);
+
+    // Add research analysis section (if available) - below everything, collapsible
+    this._addResearchAnalysis();
 
     // Add hamburger menu for navigation
     this._addHamburgerMenu();
@@ -938,7 +938,7 @@ export class GanttChart {
 
   /**
    * Adds the research analysis section below the Gantt chart
-   * Shows topic fitness ratings and recommendations
+   * Shows topic fitness ratings and recommendations in a collapsible panel
    * @private
    */
   _addResearchAnalysis() {
@@ -950,37 +950,35 @@ export class GanttChart {
 
     const analysis = this.ganttData.researchAnalysis;
 
-    // Create analysis container
-    const analysisContainer = document.createElement('div');
-    analysisContainer.className = 'research-analysis-container';
-    analysisContainer.id = 'research-analysis';
+    // Create outer wrapper for the collapsible section
+    const analysisWrapper = document.createElement('div');
+    analysisWrapper.className = 'research-analysis-wrapper';
+    analysisWrapper.id = 'research-analysis';
 
-    // Create header with overall score
-    const header = document.createElement('div');
-    header.className = 'research-analysis-header';
+    // Create collapsible header (always visible)
+    const collapseHeader = document.createElement('button');
+    collapseHeader.className = 'research-analysis-collapse-header';
+    collapseHeader.setAttribute('aria-expanded', 'false');
+    collapseHeader.setAttribute('aria-controls', 'research-analysis-content');
 
-    const title = document.createElement('h3');
-    title.className = 'research-analysis-title';
-    title.textContent = 'Research Quality Analysis';
-
-    const overallScore = document.createElement('div');
-    overallScore.className = 'research-analysis-overall-score';
     const scoreClass = this._getScoreClass(analysis.overallScore);
-    overallScore.innerHTML = `
-      <span class="score-label">Overall Fitness Score:</span>
-      <span class="score-value ${scoreClass}">${analysis.overallScore}/10</span>
+    collapseHeader.innerHTML = `
+      <span class="collapse-icon">&#9654;</span>
+      <span class="collapse-title">Research Quality Analysis</span>
+      <span class="collapse-score ${scoreClass}">${analysis.overallScore}/10</span>
     `;
 
-    header.appendChild(title);
-    header.appendChild(overallScore);
-    analysisContainer.appendChild(header);
+    // Create collapsible content container
+    const analysisContent = document.createElement('div');
+    analysisContent.className = 'research-analysis-content collapsed';
+    analysisContent.id = 'research-analysis-content';
 
     // Add summary
     if (analysis.summary) {
       const summary = document.createElement('div');
       summary.className = 'research-analysis-summary';
       summary.textContent = analysis.summary;
-      analysisContainer.appendChild(summary);
+      analysisContent.appendChild(summary);
     }
 
     // Create topics table
@@ -1009,7 +1007,7 @@ export class GanttChart {
       const tbody = document.createElement('tbody');
       analysis.topics.forEach(topic => {
         const row = document.createElement('tr');
-        const scoreClass = this._getScoreClass(topic.fitnessScore);
+        const topicScoreClass = this._getScoreClass(topic.fitnessScore);
         const includedClass = topic.includedinChart ? 'included-yes' : 'included-no';
         const includedText = topic.includedinChart ? 'Yes' : 'No';
 
@@ -1020,7 +1018,7 @@ export class GanttChart {
 
         row.innerHTML = `
           <td class="topic-name">${this._escapeHtml(topic.name)}</td>
-          <td class="topic-score"><span class="score-badge ${scoreClass}">${topic.fitnessScore}/10</span></td>
+          <td class="topic-score"><span class="score-badge ${topicScoreClass}">${topic.fitnessScore}/10</span></td>
           <td class="topic-task-count">${topic.taskCount}</td>
           <td class="topic-included ${includedClass}">${includedText}</td>
           <td class="topic-issues"><ul>${issuesList}</ul></td>
@@ -1031,7 +1029,7 @@ export class GanttChart {
       table.appendChild(tbody);
 
       tableContainer.appendChild(table);
-      analysisContainer.appendChild(tableContainer);
+      analysisContent.appendChild(tableContainer);
     }
 
     // Add legend explaining the scores
@@ -1047,12 +1045,24 @@ export class GanttChart {
         <span class="legend-item"><span class="score-badge score-inadequate">1-2</span> Inadequate - No timeline data</span>
       </div>
     `;
-    analysisContainer.appendChild(legend);
+    analysisContent.appendChild(legend);
 
-    // Append to container (after chart wrapper)
-    this.container.appendChild(analysisContainer);
+    // Add toggle functionality
+    collapseHeader.addEventListener('click', () => {
+      const isExpanded = collapseHeader.getAttribute('aria-expanded') === 'true';
+      collapseHeader.setAttribute('aria-expanded', !isExpanded);
+      analysisContent.classList.toggle('collapsed');
+      collapseHeader.classList.toggle('expanded');
+    });
 
-    console.log('✓ Research analysis section rendered');
+    // Assemble the wrapper
+    analysisWrapper.appendChild(collapseHeader);
+    analysisWrapper.appendChild(analysisContent);
+
+    // Append to container (after chart wrapper and export buttons)
+    this.container.appendChild(analysisWrapper);
+
+    console.log('✓ Research analysis section rendered (collapsible)');
   }
 
   /**

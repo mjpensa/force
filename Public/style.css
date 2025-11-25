@@ -2531,51 +2531,81 @@ body.dragging {
 /* ===========================================
    RESEARCH ANALYSIS SECTION
    Shows topic fitness ratings and recommendations
+   Collapsible panel below the Gantt chart
    =========================================== */
 
-.research-analysis-container {
+.research-analysis-wrapper {
   margin-top: 32px;
-  padding: 24px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
   font-family: 'Work Sans', sans-serif;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #d0d0d0;
+  background: #f8f9fa;
 }
 
-.research-analysis-header {
+/* Collapsible header - always visible */
+.research-analysis-collapse-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e0e0e0;
-  flex-wrap: wrap;
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(to right, #e8ecef, #f4f6f7);
+  border: none;
+  cursor: pointer;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 0.95rem;
+  color: #0c2340;
+  transition: background 0.2s ease;
   gap: 12px;
 }
 
-.research-analysis-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #0c2340;
-  margin: 0;
+.research-analysis-collapse-header:hover {
+  background: linear-gradient(to right, #dde3e7, #eef1f3);
 }
 
-.research-analysis-overall-score {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.research-analysis-collapse-header:focus {
+  outline: 3px solid #50AF7B;
+  outline-offset: -3px;
 }
 
-.research-analysis-overall-score .score-label {
-  font-size: 0.9rem;
+.research-analysis-collapse-header .collapse-icon {
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
   color: #666;
 }
 
-.research-analysis-overall-score .score-value {
-  font-size: 1.25rem;
+.research-analysis-collapse-header.expanded .collapse-icon {
+  transform: rotate(90deg);
+}
+
+.research-analysis-collapse-header .collapse-title {
+  font-weight: 600;
+  flex: 1;
+  text-align: left;
+}
+
+.research-analysis-collapse-header .collapse-score {
   font-weight: 600;
   padding: 4px 12px;
   border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+/* Collapsible content */
+.research-analysis-content {
+  padding: 20px 24px;
+  background: #fff;
+  max-height: 2000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.2s ease;
+  opacity: 1;
+}
+
+.research-analysis-content.collapsed {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
 }
 
 .research-analysis-summary {
@@ -2584,7 +2614,7 @@ body.dragging {
   line-height: 1.6;
   margin-bottom: 20px;
   padding: 12px 16px;
-  background: #fff;
+  background: #f8f9fa;
   border-radius: 6px;
   border-left: 4px solid #0c2340;
 }
@@ -2749,14 +2779,17 @@ body.dragging {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .research-analysis-container {
-    padding: 16px;
+  .research-analysis-wrapper {
     margin-top: 24px;
   }
 
-  .research-analysis-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .research-analysis-collapse-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  .research-analysis-content {
+    padding: 16px;
   }
 
   .research-analysis-table {
