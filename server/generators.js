@@ -124,13 +124,25 @@ async function generateSlides(sessionId, jobId, userPrompt, researchFiles) {
     JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateSlidesPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, slidesSchema, 'Slides');
+    let data = await generateWithGemini(prompt, slidesSchema, 'Slides');
+
+    // Validate slides structure
+    if (!validateSlidesStructure(data)) {
+      console.warn('[Slides] Generated data has invalid structure, retrying once...');
+
+      // Retry generation once
+      data = await generateWithGemini(prompt, slidesSchema, 'Slides');
+
+      if (!validateSlidesStructure(data)) {
+        throw new Error('Slides generation produced empty or invalid content after retry. The AI may need more detailed source material.');
+      }
+    }
 
     // Store in database
     ContentDB.create(sessionId, 'slides', data);
     JobDB.updateStatus(jobId, 'completed');
 
-    console.log(`[Slides] Successfully generated and stored`);
+    console.log(`[Slides] Successfully generated and stored with ${data.slides.length} slides`);
     return { success: true, data };
 
   } catch (error) {
@@ -147,6 +159,31 @@ async function generateSlides(sessionId, jobId, userPrompt, researchFiles) {
 }
 
 /**
+ * Validate document structure
+ * @param {object} data - Generated document data
+ * @returns {boolean} True if valid
+ */
+function validateDocumentStructure(data) {
+  if (!data) return false;
+  if (!data.sections || !Array.isArray(data.sections)) return false;
+  if (data.sections.length === 0) return false;
+  if (!data.title) return false;
+  return true;
+}
+
+/**
+ * Validate slides structure
+ * @param {object} data - Generated slides data
+ * @returns {boolean} True if valid
+ */
+function validateSlidesStructure(data) {
+  if (!data) return false;
+  if (!data.slides || !Array.isArray(data.slides)) return false;
+  if (data.slides.length === 0) return false;
+  return true;
+}
+
+/**
  * Generate document content
  * @param {string} sessionId - Session ID
  * @param {string} jobId - Job ID for tracking
@@ -159,13 +196,25 @@ async function generateDocument(sessionId, jobId, userPrompt, researchFiles) {
     JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateDocumentPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, documentSchema, 'Document');
+    let data = await generateWithGemini(prompt, documentSchema, 'Document');
+
+    // Validate document structure
+    if (!validateDocumentStructure(data)) {
+      console.warn('[Document] Generated data has invalid structure, retrying once...');
+
+      // Retry generation once
+      data = await generateWithGemini(prompt, documentSchema, 'Document');
+
+      if (!validateDocumentStructure(data)) {
+        throw new Error('Document generation produced empty or invalid content after retry. The AI may need more detailed source material.');
+      }
+    }
 
     // Store in database
     ContentDB.create(sessionId, 'document', data);
     JobDB.updateStatus(jobId, 'completed');
 
-    console.log(`[Document] Successfully generated and stored`);
+    console.log(`[Document] Successfully generated and stored with ${data.sections.length} sections`);
     return { success: true, data };
 
   } catch (error) {

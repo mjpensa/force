@@ -103,6 +103,9 @@ class ContentViewer {
       // Load initial view
       await this._handleRouteChange();
 
+      // Start background polling for all view statuses
+      this._startBackgroundStatusPolling();
+
       markPerformance('viewer-init-end');
       const initTime = measurePerformance('viewer-initialization', 'viewer-init-start', 'viewer-init-end');
       console.log(`[Performance] Viewer initialized in ${initTime.toFixed(2)}ms`);
@@ -137,18 +140,24 @@ class ContentViewer {
           <button class="view-tab" data-view="roadmap" aria-label="Roadmap view">
             <span class="tab-icon">📊</span>
             <span class="tab-label">Roadmap</span>
+            <span class="tab-status" id="status-roadmap" title="Loading..."></span>
           </button>
           <button class="view-tab" data-view="slides" aria-label="Slides view">
             <span class="tab-icon">📽️</span>
             <span class="tab-label">Slides</span>
+            <span class="tab-status" id="status-slides" title="Loading..."></span>
           </button>
           <button class="view-tab" data-view="document" aria-label="Document view">
             <span class="tab-icon">📄</span>
             <span class="tab-label">Document</span>
+            <span class="tab-status" id="status-document" title="Loading..."></span>
           </button>
         </nav>
       </div>
     `;
+
+    // Add status indicator styles
+    this._addStatusIndicatorStyles();
 
     // Main content area
     const main = document.createElement('main');
@@ -343,12 +352,24 @@ class ContentViewer {
         const apiTime = measurePerformance(`api-${viewName}`, `api-${viewName}-start`, `api-${viewName}-end`);
         console.log(`[Performance] API call for ${viewName}: ${apiTime.toFixed(2)}ms`);
       } catch (error) {
-        // Check if it's a "still processing" error
-        // Match both "processing" and "being generated" messages from StateManager
-        if (error.message.includes('processing') || error.message.includes('being generated')) {
+        // Check error type and route to appropriate UI
+        const isProcessing = error.message.includes('processing') ||
+                            error.message.includes('being generated') ||
+                            error.details?.processing === true;
+
+        const hasEmptyContent = error.details?.emptyContent === true;
+        const canRetry = error.details?.canRetry === true;
+
+        if (isProcessing) {
           this._showProcessing(viewName);
           return;
         }
+
+        if (hasEmptyContent && canRetry) {
+          this._showGenerationFailed(viewName, error.message);
+          return;
+        }
+
         throw error;
       }
 
@@ -539,6 +560,126 @@ class ContentViewer {
   }
 
   /**
+   * Show generation failed state with retry option
+   */
+  _showGenerationFailed(viewName, errorMessage) {
+    const viewNameCapitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
+
+    this.contentContainer.innerHTML = `
+      <div style="padding: 3rem; text-align: center; max-width: 600px; margin: 0 auto;">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color: var(--color-error, #ef4444); margin-bottom: 1.5rem;">
+          <circle cx="12" cy="12" r="10" stroke-width="2"/>
+          <line x1="15" y1="9" x2="9" y2="15" stroke-width="2"/>
+          <line x1="9" y1="9" x2="15" y2="15" stroke-width="2"/>
+        </svg>
+        <h2 style="margin-bottom: 1rem; color: var(--color-text-primary);">
+          ${viewNameCapitalized} Generation Failed
+        </h2>
+        <p style="color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 2rem;">
+          ${errorMessage}
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <button id="retry-generation-btn"
+                  style="padding: 0.75rem 1.5rem; background: var(--color-primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+            🔄 Retry Generation
+          </button>
+          <button onclick="window.location.href='/'"
+                  style="padding: 0.75rem 1.5rem; background: transparent; color: var(--color-text-primary); border: 2px solid var(--color-border); border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+            Generate New Content
+          </button>
+        </div>
+        <p style="margin-top: 2rem; font-size: 0.875rem; color: var(--color-text-tertiary);">
+          If the problem persists, try generating new content with different source files.
+        </p>
+      </div>
+    `;
+
+    // Add click handler for retry button
+    const retryBtn = document.getElementById('retry-generation-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => this._retryGeneration(viewName));
+    }
+  }
+
+  /**
+   * Retry content generation for a specific view
+   */
+  async _retryGeneration(viewName) {
+    const viewNameCapitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
+
+    // Show loading state
+    this.contentContainer.innerHTML = `
+      <div class="loading-screen">
+        <div class="loading-spinner"></div>
+        <h2>Regenerating ${viewNameCapitalized}</h2>
+        <p style="margin-top: 1rem; color: var(--color-text-secondary);">
+          Please wait while we regenerate the content...
+        </p>
+      </div>
+    `;
+
+    try {
+      // Call regeneration API
+      const response = await fetch(`/api/content/${this.sessionId}/${viewName}/regenerate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to start regeneration: ${response.statusText}`);
+      }
+
+      // Poll for completion
+      await this._pollForRegeneration(viewName);
+
+      // Clear state cache and reload view
+      this.stateManager.setState({
+        content: { ...this.stateManager.state.content, [viewName]: null }
+      });
+
+      await this._loadView(viewName);
+
+    } catch (error) {
+      console.error(`Error regenerating ${viewName}:`, error);
+      this._showGenerationFailed(viewName, `Regeneration failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Poll for regeneration completion
+   */
+  async _pollForRegeneration(viewName, maxAttempts = 120, intervalMs = 2000) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
+        const data = await response.json();
+
+        if (data.status === 'completed' && data.data) {
+          return data;
+        }
+
+        if (data.status === 'error') {
+          throw new Error(data.error || 'Generation failed');
+        }
+
+        // Still processing, wait and try again
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+
+      } catch (error) {
+        if (attempt === maxAttempts - 1) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+      }
+    }
+
+    throw new Error('Regeneration timed out. Please try again.');
+  }
+
+  /**
    * Show legacy chart limitation message
    * For charts generated before the three-view system
    */
@@ -598,6 +739,141 @@ class ContentViewer {
   _getSessionIdFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('sessionId');
+  }
+
+  /**
+   * Add CSS styles for status indicators
+   */
+  _addStatusIndicatorStyles() {
+    if (document.getElementById('status-indicator-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'status-indicator-styles';
+    style.textContent = `
+      .tab-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        margin-left: 6px;
+        font-size: 12px;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+      }
+
+      .tab-status.loading {
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      .tab-status.ready {
+        color: #10b981;
+      }
+
+      .tab-status.failed {
+        color: #ef4444;
+      }
+
+      .tab-status.processing {
+        color: #f59e0b;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      .tab-status.loading::after {
+        content: '';
+        width: 12px;
+        height: 12px;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  /**
+   * Update status indicator for a specific tab
+   */
+  _updateTabStatus(viewName, status) {
+    const statusEl = document.getElementById(`status-${viewName}`);
+    if (!statusEl) return;
+
+    // Remove all status classes
+    statusEl.classList.remove('loading', 'ready', 'failed', 'processing');
+
+    switch (status) {
+      case 'loading':
+        statusEl.classList.add('loading');
+        statusEl.textContent = '';
+        statusEl.title = 'Checking status...';
+        break;
+      case 'processing':
+        statusEl.classList.add('processing');
+        statusEl.textContent = '🔄';
+        statusEl.title = 'Generating...';
+        break;
+      case 'ready':
+        statusEl.classList.add('ready');
+        statusEl.textContent = '✓';
+        statusEl.title = 'Ready';
+        break;
+      case 'failed':
+        statusEl.classList.add('failed');
+        statusEl.textContent = '!';
+        statusEl.title = 'Failed - click to retry';
+        break;
+      default:
+        statusEl.textContent = '';
+        statusEl.title = '';
+    }
+  }
+
+  /**
+   * Start background polling to check status of all views
+   */
+  _startBackgroundStatusPolling() {
+    const views = ['roadmap', 'slides', 'document'];
+
+    // Initial state - all loading
+    views.forEach(view => this._updateTabStatus(view, 'loading'));
+
+    // Poll each view
+    const pollView = async (viewName) => {
+      try {
+        const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
+        const data = await response.json();
+
+        if (data.status === 'completed' && data.data) {
+          this._updateTabStatus(viewName, 'ready');
+        } else if (data.status === 'error') {
+          this._updateTabStatus(viewName, 'failed');
+        } else if (data.status === 'processing' || data.status === 'pending') {
+          this._updateTabStatus(viewName, 'processing');
+          // Still processing, poll again in 3 seconds
+          setTimeout(() => pollView(viewName), 3000);
+        } else {
+          // Unknown status
+          this._updateTabStatus(viewName, 'loading');
+          setTimeout(() => pollView(viewName), 3000);
+        }
+      } catch (error) {
+        console.error(`Error polling ${viewName} status:`, error);
+        this._updateTabStatus(viewName, 'failed');
+      }
+    };
+
+    // Start polling all views
+    views.forEach(view => pollView(view));
   }
 }
 
