@@ -51,6 +51,94 @@
   --color-overlay: rgba(0, 0, 0, 0.32);
   --color-overlay-light: rgba(0, 0, 0, 0.08);
 
+  /* ========== GLASSMORPHIC DESIGN TOKENS ========== */
+
+  /* Navy Color Palette (Primary Base: #0c2340) */
+  --color-navy-deep: #0c2340;
+  --color-navy-mid: #143052;
+  --color-navy-light: #1d4168;
+  --color-navy-pale: #2a5580;
+
+  /* Accent Colors (Glassmorphic) */
+  --color-accent-red: #da291c;
+  --color-accent-red-hover: #b82317;
+  --color-glass-success: #50AF7B;
+  --color-glass-success-light: #6BC492;
+
+  /* Glass Effect Colors (RGBA - White) */
+  --glass-white-5: rgba(255, 255, 255, 0.05);
+  --glass-white-6: rgba(255, 255, 255, 0.06);
+  --glass-white-8: rgba(255, 255, 255, 0.08);
+  --glass-white-10: rgba(255, 255, 255, 0.10);
+  --glass-white-12: rgba(255, 255, 255, 0.12);
+  --glass-white-15: rgba(255, 255, 255, 0.15);
+  --glass-white-20: rgba(255, 255, 255, 0.20);
+  --glass-white-25: rgba(255, 255, 255, 0.25);
+  --glass-white-30: rgba(255, 255, 255, 0.30);
+  --glass-white-40: rgba(255, 255, 255, 0.40);
+
+  /* Glass Effect Colors (RGBA - Navy) */
+  --glass-navy-10: rgba(12, 35, 64, 0.10);
+  --glass-navy-15: rgba(12, 35, 64, 0.15);
+  --glass-navy-20: rgba(12, 35, 64, 0.20);
+  --glass-navy-25: rgba(12, 35, 64, 0.25);
+  --glass-navy-30: rgba(12, 35, 64, 0.30);
+  --glass-navy-50: rgba(12, 35, 64, 0.50);
+
+  /* Glass Text Colors */
+  --glass-text-primary: #FFFFFF;
+  --glass-text-secondary: rgba(255, 255, 255, 0.80);
+  --glass-text-muted: rgba(255, 255, 255, 0.60);
+  --glass-text-disabled: rgba(255, 255, 255, 0.40);
+
+  /* Blur Values */
+  --blur-xs: 4px;
+  --blur-sm: 8px;
+  --blur-md: 12px;
+  --blur-lg: 16px;
+  --blur-xl: 20px;
+  --blur-2xl: 32px;
+
+  /* Glass Border Radius */
+  --radius-glass-sm: 8px;
+  --radius-glass-md: 12px;
+  --radius-glass-lg: 16px;
+  --radius-glass-xl: 24px;
+  --radius-glass-2xl: 32px;
+  --radius-glass-full: 9999px;
+
+  /* Glass Shadows (4 Elevation Levels) */
+  --shadow-glass-1:
+    0 4px 16px rgba(12, 35, 64, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --shadow-glass-2:
+    0 8px 32px rgba(12, 35, 64, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  --shadow-glass-3:
+    0 12px 48px rgba(12, 35, 64, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --shadow-glass-4:
+    0 24px 64px rgba(12, 35, 64, 0.30),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15);
+
+  /* Glass Borders */
+  --border-glass: 1px solid rgba(255, 255, 255, 0.15);
+  --border-glass-strong: 1px solid rgba(255, 255, 255, 0.25);
+  --border-glass-active: 1px solid rgba(255, 255, 255, 0.40);
+  --border-glass-dashed: 2px dashed rgba(255, 255, 255, 0.30);
+  --border-glass-success: 2px solid rgba(80, 175, 123, 0.60);
+
+  /* Transition Timing Functions (Glassmorphic) */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Glass Transition Presets */
+  --transition-glass-fast: 0.15s ease;
+  --transition-glass-normal: 0.2s ease;
+  --transition-glass-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
   /* ========== TYPOGRAPHY ========== */
 
   /* Font Families */
@@ -356,6 +444,112 @@ body {
 /* Cursor */
 .cursor-pointer { cursor: pointer; }
 .cursor-not-allowed { cursor: not-allowed; }
+
+/* ========== GLASSMORPHIC UTILITY CLASSES ========== */
+
+/* Glass Background Utilities */
+.bg-glass-subtle { background: var(--glass-white-5); }
+.bg-glass-light { background: var(--glass-white-8); }
+.bg-glass-medium { background: var(--glass-white-10); }
+.bg-glass-strong { background: var(--glass-white-15); }
+
+/* Glass Blur Utilities */
+.blur-glass-xs {
+  backdrop-filter: blur(var(--blur-xs));
+  -webkit-backdrop-filter: blur(var(--blur-xs));
+}
+.blur-glass-sm {
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+}
+.blur-glass {
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+}
+.blur-glass-lg {
+  backdrop-filter: blur(var(--blur-lg));
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+}
+.blur-glass-xl {
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+}
+.blur-glass-2xl {
+  backdrop-filter: blur(var(--blur-2xl));
+  -webkit-backdrop-filter: blur(var(--blur-2xl));
+}
+
+/* Glass Border Utilities */
+.border-glass { border: var(--border-glass); }
+.border-glass-strong { border: var(--border-glass-strong); }
+.border-glass-active { border: var(--border-glass-active); }
+.border-glass-dashed { border: var(--border-glass-dashed); }
+
+/* Glass Border Radius Utilities */
+.rounded-glass-sm { border-radius: var(--radius-glass-sm); }
+.rounded-glass { border-radius: var(--radius-glass-md); }
+.rounded-glass-lg { border-radius: var(--radius-glass-lg); }
+.rounded-glass-xl { border-radius: var(--radius-glass-xl); }
+.rounded-glass-2xl { border-radius: var(--radius-glass-2xl); }
+
+/* Glass Shadow Utilities */
+.shadow-glass-1 { box-shadow: var(--shadow-glass-1); }
+.shadow-glass-2 { box-shadow: var(--shadow-glass-2); }
+.shadow-glass-3 { box-shadow: var(--shadow-glass-3); }
+.shadow-glass-4 { box-shadow: var(--shadow-glass-4); }
+
+/* Glass Text Utilities */
+.text-glass-primary { color: var(--glass-text-primary); }
+.text-glass-secondary { color: var(--glass-text-secondary); }
+.text-glass-muted { color: var(--glass-text-muted); }
+.text-glass-disabled { color: var(--glass-text-disabled); }
+
+/* Combined Glass Effect Classes */
+.glass {
+  background: var(--glass-white-8);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border: var(--border-glass);
+  box-shadow: var(--shadow-glass-1);
+}
+
+.glass-panel {
+  background: var(--glass-white-8);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: var(--border-glass);
+  border-radius: var(--radius-glass-xl);
+  box-shadow: var(--shadow-glass-3);
+}
+
+.glass-card {
+  background: var(--glass-white-10);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  border: var(--border-glass);
+  border-radius: var(--radius-glass-md);
+  box-shadow: var(--shadow-glass-1);
+}
+
+/* Glass Focus Styles */
+.glass-focusable:focus {
+  outline: none;
+}
+
+.glass-focusable:focus-visible {
+  outline: 3px solid var(--color-glass-success);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(80, 175, 123, 0.15);
+}
+
+/* Glass Browser Fallback */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass,
+  .glass-panel,
+  .glass-card {
+    background: rgba(20, 48, 82, 0.95);
+  }
+}
 
 /* ========== COMMON COMPONENT STYLES ========== */
 
