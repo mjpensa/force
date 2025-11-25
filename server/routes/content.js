@@ -12,6 +12,7 @@ import { SessionDB, ContentDB, JobDB } from '../db.js';
 import { generateAllContent } from '../generators.js';
 import { getChart } from '../storage.js'; // Import legacy chart getter for compatibility
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js'; // Phase 6: File upload support
+import { generatePptx } from '../templates/ppt-export-service.js'; // PPT export service
 
 const router = express.Router();
 
@@ -329,6 +330,71 @@ router.get('/:sessionId', async (req, res) => {
     console.error('Get session content error:', error);
     res.status(500).json({
       error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/content/:sessionId/slides/export
+ * Exports slides as a branded PowerPoint file
+ *
+ * Response: PowerPoint file (.pptx) download
+ */
+router.get('/:sessionId/slides/export', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    console.log(`[PPT Export] Request for sessionId: ${sessionId}`);
+
+    // Check if session exists
+    const session = SessionDB.get(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        error: 'Session not found',
+        sessionId
+      });
+    }
+
+    // Get slides content
+    const slides = ContentDB.get(sessionId, 'slides');
+
+    if (!slides || slides.status !== 'completed' || !slides.data) {
+      return res.status(400).json({
+        error: 'Slides not available for export',
+        message: slides?.status === 'processing'
+          ? 'Slides are still being generated. Please wait and try again.'
+          : 'Slides have not been generated for this session.',
+        status: slides?.status || 'not_found'
+      });
+    }
+
+    console.log(`[PPT Export] Generating PPTX for session: ${sessionId}`);
+
+    // Generate the PowerPoint file
+    const pptxBuffer = await generatePptx(slides.data, {
+      author: 'BIP',
+      company: 'BIP'
+    });
+
+    // Create filename from presentation title or session ID
+    const title = slides.data.title || 'Presentation';
+    const safeTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
+    const filename = `${safeTitle}_${sessionId.substring(0, 8)}.pptx`;
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pptxBuffer.length);
+
+    console.log(`[PPT Export] Sending PPTX file: ${filename} (${pptxBuffer.length} bytes)`);
+
+    res.send(pptxBuffer);
+
+  } catch (error) {
+    console.error('PPT Export error:', error);
+    res.status(500).json({
+      error: 'Failed to generate PowerPoint file',
       details: error.message
     });
   }
