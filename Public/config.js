@@ -72,9 +72,10 @@ export const CONFIG = {
       'text/markdown',
       'text/plain',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/octet-stream' // Some browsers send .md files with this MIME type
+      'application/octet-stream', // Some browsers send .md files with this MIME type
+      'application/pdf' // PDF files
     ],
-    SUPPORTED_EXTENSIONS: ['md', 'txt', 'docx']
+    SUPPORTED_EXTENSIONS: ['md', 'txt', 'docx', 'pdf']
   },
 
   // UI text constants

@@ -140,12 +140,23 @@ export class StateManager {
   /**
    * Load content for a specific view
    * Enhanced with retry logic and better error handling
+   * @param {string} viewName - Name of view to load
+   * @param {boolean} forceRefresh - If true, bypasses cache and fetches fresh data
    */
-  async loadView(viewName) {
-    // Check if already loaded
-    if (this.state.content[viewName]) {
+  async loadView(viewName, forceRefresh = false) {
+    // Check if already loaded (skip if force refresh)
+    if (!forceRefresh && this.state.content[viewName]) {
       console.log(`✅ ${viewName} already loaded from cache`);
       return this.state.content[viewName];
+    }
+
+    // Clear cached content and errors if force refreshing
+    if (forceRefresh) {
+      console.log(`🔄 Force refreshing ${viewName}...`);
+      this.setState({
+        content: { ...this.state.content, [viewName]: null },
+        errors: { ...this.state.errors, [viewName]: null }
+      });
     }
 
     // Set loading state
@@ -223,10 +234,10 @@ export class StateManager {
       if (viewName === 'document') {
         if (!data.sections || !Array.isArray(data.sections) || data.sections.length === 0) {
           throw new AppError(
-            `Document is still being generated. Please wait...`,
-            ErrorTypes.API,
-            ErrorSeverity.LOW,
-            { viewName, processing: true, incompleteData: true }
+            `Document generation completed but produced empty content. Please try regenerating.`,
+            ErrorTypes.VALIDATION,
+            ErrorSeverity.MEDIUM,
+            { viewName, emptyContent: true, canRetry: true }
           );
         }
       }
@@ -235,10 +246,10 @@ export class StateManager {
       if (viewName === 'slides') {
         if (!data.slides || !Array.isArray(data.slides) || data.slides.length === 0) {
           throw new AppError(
-            `Slides are still being generated. Please wait...`,
-            ErrorTypes.API,
-            ErrorSeverity.LOW,
-            { viewName, processing: true, incompleteData: true }
+            `Slides generation completed but produced empty content. Please try regenerating.`,
+            ErrorTypes.VALIDATION,
+            ErrorSeverity.MEDIUM,
+            { viewName, emptyContent: true, canRetry: true }
           );
         }
       }

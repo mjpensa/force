@@ -9,12 +9,43 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import mammoth from 'mammoth';
 import { SessionDB, ContentDB, JobDB } from '../db.js';
-import { generateAllContent } from '../generators.js';
+import { generateAllContent, regenerateContent } from '../generators.js';
 import { getChart } from '../storage.js'; // Import legacy chart getter for compatibility
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js'; // Phase 6: File upload support
 import { generatePptx } from '../templates/ppt-export-service.js'; // PPT export service
 
 const router = express.Router();
+
+/**
+ * Format raw error messages into user-friendly text
+ * @param {string} rawError - Raw error message
+ * @param {string} viewType - Content type (roadmap, slides, document)
+ * @returns {string} User-friendly error message
+ */
+function formatUserError(rawError, viewType) {
+  if (!rawError) return `Failed to generate ${viewType}. Please try again.`;
+
+  // Map common error patterns to user-friendly messages
+  const errorMappings = [
+    { pattern: /JSON.*parse.*position/i, message: 'The AI response was malformed. Please try again.' },
+    { pattern: /timeout|timed out/i, message: 'Generation took too long. Please try again with simpler content.' },
+    { pattern: /rate limit/i, message: 'Too many requests. Please wait a moment and try again.' },
+    { pattern: /empty.*content|no.*section|invalid.*content/i, message: 'The AI could not generate valid content. Try providing more detailed source material.' },
+    { pattern: /network|connection|ECONNREFUSED/i, message: 'Network error occurred. Please check your connection and try again.' },
+    { pattern: /quota|exceeded/i, message: 'API quota exceeded. Please try again later.' },
+    { pattern: /invalid.*schema|validation.*failed/i, message: 'Generated content did not match expected format. Please try again.' }
+  ];
+
+  for (const mapping of errorMappings) {
+    if (mapping.pattern.test(rawError)) {
+      return mapping.message;
+    }
+  }
+
+  // Default: Return sanitized version of original error (limit length)
+  const sanitized = rawError.substring(0, 150);
+  return `Failed to generate ${viewType}: ${sanitized}${rawError.length > 150 ? '...' : ''}`;
+}
 
 /**
  * POST /api/content/generate
@@ -224,7 +255,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
         viewType,
         status: job.status,
         data: null,
-        error: job.errorMessage
+        error: job.errorMessage ? formatUserError(job.errorMessage, viewType) : null
       });
     }
 
@@ -235,7 +266,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       viewType,
       status: content.status,
       data: content.data,
-      error: content.error_message,
+      error: content.error_message ? formatUserError(content.error_message, viewType) : null,
       generatedAt: content.generated_at
     });
 
@@ -243,6 +274,80 @@ router.get('/:sessionId/:viewType', async (req, res) => {
     console.error('Get content error:', error);
     res.status(500).json({
       error: 'Internal server error',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/content/:sessionId/:viewType/regenerate
+ * Regenerates content for a specific view type
+ *
+ * Parameters:
+ * - sessionId: Session identifier
+ * - viewType: 'roadmap', 'slides', or 'document'
+ *
+ * Response:
+ * {
+ *   sessionId: string,
+ *   viewType: string,
+ *   status: 'processing',
+ *   message: string
+ * }
+ */
+router.post('/:sessionId/:viewType/regenerate', async (req, res) => {
+  try {
+    const { sessionId, viewType } = req.params;
+
+    console.log(`[Regenerate] Request for sessionId: ${sessionId}, viewType: ${viewType}`);
+
+    // Validate view type
+    const validViewTypes = ['roadmap', 'slides', 'document'];
+    if (!validViewTypes.includes(viewType)) {
+      return res.status(400).json({
+        error: `Invalid view type. Must be one of: ${validViewTypes.join(', ')}`
+      });
+    }
+
+    // Check if session exists
+    const session = SessionDB.get(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        error: 'Session not found',
+        message: 'Cannot regenerate content for a non-existent session.',
+        sessionId
+      });
+    }
+
+    // Delete existing content for this view type (if any)
+    ContentDB.delete(sessionId, viewType);
+    console.log(`[Regenerate] Cleared existing ${viewType} content for session ${sessionId}`);
+
+    // Start regeneration in background (non-blocking)
+    regenerateContent(sessionId, viewType)
+      .then(result => {
+        if (result.success) {
+          console.log(`[Regenerate] ${viewType} regeneration completed successfully for session ${sessionId}`);
+        } else {
+          console.error(`[Regenerate] ${viewType} regeneration failed for session ${sessionId}:`, result.error);
+        }
+      })
+      .catch(error => {
+        console.error(`[Regenerate] ${viewType} regeneration error for session ${sessionId}:`, error);
+      });
+
+    // Return immediately with processing status
+    res.json({
+      sessionId,
+      viewType,
+      status: 'processing',
+      message: `${viewType} regeneration started. Poll the GET endpoint to check for completion.`
+    });
+
+  } catch (error) {
+    console.error('Regenerate content error:', error);
+    res.status(500).json({
+      error: 'Failed to start regeneration',
       details: error.message
     });
   }

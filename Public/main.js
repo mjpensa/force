@@ -159,7 +159,7 @@ async function processFiles(files) {
         // Create subtitle paragraph
         const subtitle = document.createElement('p');
         subtitle.className = 'text-lg md:text-xl opacity-60 mt-3';
-        subtitle.textContent = 'Supports .doc, .docx, .md, and .txt files';
+        subtitle.textContent = 'Supports .docx, .md, .txt, and .pdf files';
 
         // Append all elements
         dropzonePrompt.appendChild(svg);
@@ -199,6 +199,7 @@ async function processFiles(files) {
         if (ext === 'md') icon = '📝';
         else if (ext === 'txt') icon = '📃';
         else if (ext === 'docx' || ext === 'doc') icon = '📘';
+        else if (ext === 'pdf') icon = '📕';
 
         filenameSpan.textContent = `${icon} ${displayName}`;
         li.appendChild(filenameSpan);
