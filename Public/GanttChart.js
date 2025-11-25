@@ -87,6 +87,9 @@ export class GanttChart {
     // Add footer stripe
     this._addFooterSVG();
 
+    // Add research analysis section (if available)
+    this._addResearchAnalysis();
+
     // Add export and edit mode toggle buttons
     const exportContainer = document.createElement('div');
     exportContainer.className = 'export-container';
@@ -931,6 +934,152 @@ export class GanttChart {
     footerSvgEl.style.backgroundSize = 'auto 30px';
 
     this.chartWrapper.appendChild(footerSvgEl);
+  }
+
+  /**
+   * Adds the research analysis section below the Gantt chart
+   * Shows topic fitness ratings and recommendations
+   * @private
+   */
+  _addResearchAnalysis() {
+    // Check if research analysis data exists
+    if (!this.ganttData.researchAnalysis) {
+      console.log('No research analysis data available');
+      return;
+    }
+
+    const analysis = this.ganttData.researchAnalysis;
+
+    // Create analysis container
+    const analysisContainer = document.createElement('div');
+    analysisContainer.className = 'research-analysis-container';
+    analysisContainer.id = 'research-analysis';
+
+    // Create header with overall score
+    const header = document.createElement('div');
+    header.className = 'research-analysis-header';
+
+    const title = document.createElement('h3');
+    title.className = 'research-analysis-title';
+    title.textContent = 'Research Quality Analysis';
+
+    const overallScore = document.createElement('div');
+    overallScore.className = 'research-analysis-overall-score';
+    const scoreClass = this._getScoreClass(analysis.overallScore);
+    overallScore.innerHTML = `
+      <span class="score-label">Overall Fitness Score:</span>
+      <span class="score-value ${scoreClass}">${analysis.overallScore}/10</span>
+    `;
+
+    header.appendChild(title);
+    header.appendChild(overallScore);
+    analysisContainer.appendChild(header);
+
+    // Add summary
+    if (analysis.summary) {
+      const summary = document.createElement('div');
+      summary.className = 'research-analysis-summary';
+      summary.textContent = analysis.summary;
+      analysisContainer.appendChild(summary);
+    }
+
+    // Create topics table
+    if (analysis.topics && analysis.topics.length > 0) {
+      const tableContainer = document.createElement('div');
+      tableContainer.className = 'research-analysis-table-container';
+
+      const table = document.createElement('table');
+      table.className = 'research-analysis-table';
+
+      // Table header
+      const thead = document.createElement('thead');
+      thead.innerHTML = `
+        <tr>
+          <th>Topic</th>
+          <th>Fitness Score</th>
+          <th>Tasks Found</th>
+          <th>In Chart</th>
+          <th>Issues</th>
+          <th>Recommendation</th>
+        </tr>
+      `;
+      table.appendChild(thead);
+
+      // Table body
+      const tbody = document.createElement('tbody');
+      analysis.topics.forEach(topic => {
+        const row = document.createElement('tr');
+        const scoreClass = this._getScoreClass(topic.fitnessScore);
+        const includedClass = topic.includedinChart ? 'included-yes' : 'included-no';
+        const includedText = topic.includedinChart ? 'Yes' : 'No';
+
+        // Format issues as a list
+        const issuesList = topic.issues && topic.issues.length > 0
+          ? topic.issues.map(issue => `<li>${this._escapeHtml(issue)}</li>`).join('')
+          : '<li>None</li>';
+
+        row.innerHTML = `
+          <td class="topic-name">${this._escapeHtml(topic.name)}</td>
+          <td class="topic-score"><span class="score-badge ${scoreClass}">${topic.fitnessScore}/10</span></td>
+          <td class="topic-task-count">${topic.taskCount}</td>
+          <td class="topic-included ${includedClass}">${includedText}</td>
+          <td class="topic-issues"><ul>${issuesList}</ul></td>
+          <td class="topic-recommendation">${this._escapeHtml(topic.recommendation)}</td>
+        `;
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+
+      tableContainer.appendChild(table);
+      analysisContainer.appendChild(tableContainer);
+    }
+
+    // Add legend explaining the scores
+    const legend = document.createElement('div');
+    legend.className = 'research-analysis-legend';
+    legend.innerHTML = `
+      <div class="legend-title">Score Guide:</div>
+      <div class="legend-items">
+        <span class="legend-item"><span class="score-badge score-excellent">9-10</span> Excellent - Clear dates & milestones</span>
+        <span class="legend-item"><span class="score-badge score-good">7-8</span> Good - Some gaps in timeline</span>
+        <span class="legend-item"><span class="score-badge score-adequate">5-6</span> Adequate - Vague dates</span>
+        <span class="legend-item"><span class="score-badge score-poor">3-4</span> Poor - Lacks specific dates</span>
+        <span class="legend-item"><span class="score-badge score-inadequate">1-2</span> Inadequate - No timeline data</span>
+      </div>
+    `;
+    analysisContainer.appendChild(legend);
+
+    // Append to container (after chart wrapper)
+    this.container.appendChild(analysisContainer);
+
+    console.log('✓ Research analysis section rendered');
+  }
+
+  /**
+   * Gets the CSS class for a fitness score
+   * @param {number} score - The fitness score (1-10)
+   * @returns {string} CSS class name
+   * @private
+   */
+  _getScoreClass(score) {
+    if (score >= 9) return 'score-excellent';
+    if (score >= 7) return 'score-good';
+    if (score >= 5) return 'score-adequate';
+    if (score >= 3) return 'score-poor';
+    return 'score-inadequate';
+  }
+
+  /**
+   * Escapes HTML to prevent XSS
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   * @private
+   */
+  _escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   /**

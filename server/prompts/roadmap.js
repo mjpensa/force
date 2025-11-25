@@ -51,9 +51,37 @@ export const roadmapSchema = {
         },
         required: ["color", "label"]
       }
+    },
+    researchAnalysis: {
+      type: "object",
+      description: "Analysis of research quality for Gantt chart creation",
+      properties: {
+        topics: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Name of the topic/theme identified" },
+              fitnessScore: { type: "number", description: "Score from 1-10 rating research fitness for Gantt chart" },
+              taskCount: { type: "number", description: "Number of tasks identified for this topic" },
+              includedinChart: { type: "boolean", description: "Whether this topic was included as a swimlane" },
+              issues: {
+                type: "array",
+                items: { type: "string" },
+                description: "List of specific issues with the research for this topic"
+              },
+              recommendation: { type: "string", description: "Suggestion for improving research quality" }
+            },
+            required: ["name", "fitnessScore", "taskCount", "includedinChart", "issues", "recommendation"]
+          }
+        },
+        overallScore: { type: "number", description: "Overall research fitness score (1-10)" },
+        summary: { type: "string", description: "Brief summary of research quality and recommendations" }
+      },
+      required: ["topics", "overallScore", "summary"]
     }
   },
-  required: ["title", "timeColumns", "data", "legend"]
+  required: ["title", "timeColumns", "data", "legend", "researchAnalysis"]
 };
 
 /**
@@ -149,7 +177,30 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - If dates are mentioned for ANY activity, that activity MUST appear in the chart
     - Err on the side of INCLUSION - when in doubt, add it to the chart
     - **VERIFY EARLY DATES:** After extraction, confirm that events from the BEGINNING of the timeline are included with correct startCol values (startCol=1 for the earliest events).
-    - **VERIFY SWIMLANE COMPLETENESS:** After identifying all tasks, review to ensure EVERY distinct topic, entity, organization, or category that has 3 or more tasks is represented as its own swimlane. Do not merge or consolidate distinct topics into broader categories if they independently qualify for their own swimlane.`;
+    - **VERIFY SWIMLANE COMPLETENESS:** After identifying all tasks, review to ensure EVERY distinct topic, entity, organization, or category that has 3 or more tasks is represented as its own swimlane. Do not merge or consolidate distinct topics into broader categories if they independently qualify for their own swimlane.
+10. **RESEARCH ANALYSIS (REQUIRED):** You MUST generate a comprehensive analysis of the research quality in the "researchAnalysis" object. This helps users understand if their research inputs are fit for purpose.
+    a.  **Topic Identification:** Identify ALL major topics, themes, entities, or focus areas discussed in the research, whether or not they were included as swimlanes.
+    b.  **Fitness Scoring (1-10 scale):** For each topic, rate how well the research supports Gantt chart creation:
+        - **9-10 (Excellent):** Multiple specific events with clear dates, well-defined milestones, concrete deadlines
+        - **7-8 (Good):** Several events with dates, some milestones identified, minor gaps in timeline data
+        - **5-6 (Adequate):** Some events mentioned but dates are vague (e.g., "Q1 2024", "early next year"), limited milestone detail
+        - **3-4 (Poor):** Topic discussed but lacks specific dates, mostly narrative/descriptive content, few actionable items
+        - **1-2 (Inadequate):** Topic mentioned briefly, no dates or timelines, purely conceptual discussion
+    c.  **Issue Identification:** For each topic, list specific issues such as:
+        - "Missing specific dates for key activities"
+        - "No milestones or deadlines identified"
+        - "Only narrative discussion, no event-based data"
+        - "Dates are too vague (e.g., 'sometime next year')"
+        - "Fewer than 3 tasks could be extracted"
+        - "No clear timeline or sequencing information"
+    d.  **Recommendations:** Provide actionable suggestions for improving research, such as:
+        - "Add specific dates for [topic] activities"
+        - "Include milestone deadlines and deliverables"
+        - "Research could benefit from timeline-focused sources"
+        - "Consider adding regulatory deadline information"
+    e.  **Overall Score:** Calculate an overall fitness score (weighted average, with topics having more potential tasks weighted higher).
+    f.  **Summary:** Write a 1-2 sentence summary explaining the overall research quality and key recommendations.
+    g.  **IMPORTANT:** Topics that were NOT included as swimlanes (due to <3 tasks or lack of date data) MUST still appear in this analysis with includedinChart=false and explanation of why.`;
 
 /**
  * Generate the complete roadmap prompt with user context
