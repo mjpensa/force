@@ -888,6 +888,12 @@ class ContentViewer {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
+
+        // Handle HTTP errors (404, 500, etc.)
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+
         const data = await response.json();
 
         if (data.status === 'completed' && data.data) {
