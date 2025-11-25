@@ -127,9 +127,9 @@ select:focus-visible {
 
 /* 9. Grid Header (Weeks) */
 .gantt-header {
-  font-size: 26px; /* Increased from 24px for better readability */
-  font-weight: 600; /* Increased from 500 for better readability */
-  padding: 16px 10px; /* Increased padding to match larger text */
+  font-size: 6px; /* Reduced by additional 50% */
+  font-weight: 600;
+  padding: 4px 3px; /* Further reduced padding */
   text-align: center;
   background-color: #0c2340; /* CHANGED to new color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color (Correctly not white) */
@@ -144,15 +144,15 @@ select:focus-visible {
 /* 10. Row Label (Swimlane or Task) */
 .gantt-row-label {
   padding: 0; /* Remove padding from parent - will be applied to children */
-  font-size: 13px; /* Base size */
+  font-size: 6px; /* Reduced by additional 50% */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   white-space: nowrap; /* Prevent text wrapping - column will auto-expand */
   overflow: visible; /* Allow text to be fully visible */
   display: grid; /* Changed to grid for better html2canvas alignment support */
   grid-template-columns: 1fr auto; /* Label content takes available space, actions auto-size */
   align-items: center; /* Grid align-items may work better than flex in html2canvas */
-  gap: 12px;
-  min-height: 40px; /* Ensure minimum height for proper centering */
+  gap: 4px;
+  min-height: 14px; /* Further reduced minimum height */
 }
 
 /* Phase 3: Label content wrapper */
@@ -160,8 +160,8 @@ select:focus-visible {
   /* Grid item - no flex properties needed */
   min-width: 0;
   transition: all 0.2s;
-  border-radius: 4px;
-  padding: 10px 12px;
+  border-radius: 2px;
+  padding: 2px 4px;
   display: block;
   line-height: 1.2; /* Explicit line-height */
 }
@@ -187,11 +187,11 @@ select:focus-visible {
 }
 
 .row-action-btn {
-  width: 32px; /* Increased from 24px for better visibility */
-  height: 32px; /* Increased from 24px for better visibility */
-  border: 2px solid rgba(255, 255, 255, 0.3); /* Add border for emphasis */
-  border-radius: 6px;
-  font-size: 22px; /* Increased from 18px */
+  width: 18px; /* Reduced for compact display */
+  height: 18px; /* Reduced for compact display */
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Add border for emphasis */
+  border-radius: 4px;
+  font-size: 12px; /* Reduced for compact display */
   font-weight: bold;
   cursor: pointer;
   display: flex;
@@ -200,7 +200,7 @@ select:focus-visible {
   transition: all 0.2s;
   line-height: 1;
   padding: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3); /* Add shadow for depth */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* Reduced shadow */
 }
 
 .row-action-btn.add-task {
@@ -245,30 +245,30 @@ select:focus-visible {
 }
 
 .gantt-row-label.swimlane {
-  font-weight: 800; /* Increased from 700 for better readability */
+  font-weight: 700;
   color: #FFFFFF; /* Text Color */
   background-color: #0C2340; /* Set swimlane title background */
-  font-size: 32px; /* Increased from 30px for better readability */
+  font-size: 7px; /* Reduced by additional 50% */
   padding: 0; /* Padding moved to .label-content */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
 }
 
 .gantt-row-label.swimlane .label-content {
-  padding: 16px 18px; /* Swimlane-specific padding */
+  padding: 3px 5px; /* Further reduced padding */
 }
 
 .gantt-row-label.task {
   padding: 0; /* Padding moved to .label-content */
-  font-weight: 600; /* Increased from 500 for better readability */
+  font-weight: 500;
   color: #FFFFFF; /* Text Color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   background-color: #354259; /* Set task title background - default blue */
-  font-size: 28px; /* Increased from 26px for better readability */
+  font-size: 6px; /* Reduced by additional 50% */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
 }
 
 .gantt-row-label.task .label-content {
-  padding: 14px 16px 14px 36px; /* Task-specific padding with left indent */
+  padding: 2px 4px 2px 8px; /* Further reduced padding */
 }
 
 .gantt-row-label.task:hover {
