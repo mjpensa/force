@@ -2,6 +2,7 @@
  * Unified Content Viewer
  * Phase 5: Integrates all three views (Roadmap, Slides, Document)
  * Phase 6: Enhanced with performance monitoring and lazy loading
+ * Phase 7: Automatic polling for processing content (v2)
  *
  * Handles:
  * - Session loading from URL
@@ -10,7 +11,11 @@
  * - Component lifecycle
  * - Performance monitoring
  * - Lazy loading for optimal performance
+ * - Automatic polling when content is processing
  */
+
+// Version identifier for debugging cache issues
+console.log('[Viewer] Version 2 - Automatic polling enabled');
 
 import { StateManager } from './components/shared/StateManager.js';
 import { SlidesView } from './components/views/SlidesView.js';
@@ -353,6 +358,9 @@ class ContentViewer {
         console.log(`[Performance] API call for ${viewName}: ${apiTime.toFixed(2)}ms`);
       } catch (error) {
         // Check error type and route to appropriate UI
+        console.log(`[Viewer] _loadView error for ${viewName}:`, error.message);
+        console.log(`[Viewer] Error details:`, error.details);
+
         const isProcessing = error.message.includes('processing') ||
                             error.message.includes('being generated') ||
                             error.details?.processing === true;
@@ -360,7 +368,10 @@ class ContentViewer {
         const hasEmptyContent = error.details?.emptyContent === true;
         const canRetry = error.details?.canRetry === true;
 
+        console.log(`[Viewer] isProcessing=${isProcessing}, hasEmptyContent=${hasEmptyContent}, canRetry=${canRetry}`);
+
         if (isProcessing) {
+          console.log(`[Viewer] Showing processing state with automatic polling for ${viewName}`);
           this._showProcessing(viewName);
           return;
         }

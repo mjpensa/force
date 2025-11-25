@@ -200,7 +200,8 @@ export class StateManager {
       const result = await response.json();
 
       // Check status from Phase 2 API
-      if (result.status === 'processing') {
+      // Handle both 'processing' (generation in progress) and 'pending' (queued but not started)
+      if (result.status === 'processing' || result.status === 'pending') {
         throw new AppError(
           `${viewName} is still being generated. Please wait...`,
           ErrorTypes.API,
