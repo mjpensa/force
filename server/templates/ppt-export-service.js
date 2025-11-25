@@ -64,6 +64,9 @@ export async function generatePptx(slidesData, options = {}) {
         case 'quote':
           addQuoteSlide(pptx, slideData, slideNumber);
           break;
+        case 'cardGrid':
+          addCardGridSlide(pptx, slideData, slideNumber);
+          break;
         default:
           addBulletsSlide(pptx, slideData, slideNumber);
       }
@@ -491,6 +494,112 @@ function addThankYouSlide(pptx, slideData) {
 
   // Large logo placeholder
   addLogoPlaceholder(slide, layout.elements.logo, 'large');
+}
+
+/**
+ * Add card grid slide (3x3 grid of content cards)
+ */
+function addCardGridSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.cardGrid;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  if (slideData.section) {
+    slide.addText(slideData.section.toUpperCase(), {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Main title
+  if (slideData.title) {
+    slide.addText(slideData.title, {
+      x: layout.elements.title.x,
+      y: layout.elements.title.y,
+      w: layout.elements.title.w,
+      h: layout.elements.title.h,
+      fontSize: layout.elements.title.fontSize,
+      fontFace: layout.elements.title.fontFace,
+      color: layout.elements.title.color,
+      align: layout.elements.title.align
+    });
+  }
+
+  // Render cards
+  const cardsConfig = layout.elements.cards;
+  const cards = slideData.cards || [];
+
+  cards.forEach((card, i) => {
+    const row = Math.floor(i / cardsConfig.columns);
+    const col = i % cardsConfig.columns;
+
+    // Skip if exceeding max rows
+    if (row >= cardsConfig.maxRows) return;
+
+    const x = cardsConfig.startX + (col * (cardsConfig.cardWidth + cardsConfig.gapX));
+    const y = cardsConfig.startY + (row * (cardsConfig.cardHeight + cardsConfig.gapY));
+
+    // Card background
+    slide.addShape('rect', {
+      x: x,
+      y: y,
+      w: cardsConfig.cardWidth,
+      h: cardsConfig.cardHeight,
+      fill: { color: cardsConfig.cardBackground }
+    });
+
+    // Card title
+    if (card.title) {
+      slide.addText(card.title, {
+        x: x + cardsConfig.padding,
+        y: y + cardsConfig.padding,
+        w: cardsConfig.cardWidth - (cardsConfig.padding * 2),
+        h: 0.4,
+        fontSize: cardsConfig.titleFontSize,
+        fontFace: cardsConfig.titleFontFace,
+        color: cardsConfig.titleColor,
+        bold: true
+      });
+    }
+
+    // Card content
+    if (card.content) {
+      slide.addText(card.content, {
+        x: x + cardsConfig.padding,
+        y: y + cardsConfig.padding + 0.5,
+        w: cardsConfig.cardWidth - (cardsConfig.padding * 2),
+        h: cardsConfig.cardHeight - cardsConfig.padding - 0.6,
+        fontSize: cardsConfig.contentFontSize,
+        fontFace: cardsConfig.contentFontFace,
+        color: cardsConfig.contentColor,
+        valign: 'top'
+      });
+    }
+  });
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
 }
 
 /**

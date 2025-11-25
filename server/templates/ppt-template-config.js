@@ -614,6 +614,76 @@ export const LAYOUTS = {
         placeholder: true
       }
     }
+  },
+
+  // ============================================
+  // CARD GRID - 3x3 card layout (Slide 11)
+  // ============================================
+  cardGrid: {
+    name: 'Card Grid Layout',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Title row
+      title: {
+        x: 0.5,
+        y: 0.5,
+        w: 12.5,
+        h: 0.5,
+        fontSize: 18,
+        fontFace: FONTS.light,
+        color: COLORS.navy,
+        align: 'left'
+      },
+      // Cards configuration
+      cards: {
+        startX: 0.5,
+        startY: 1.2,
+        cardWidth: 4,
+        cardHeight: 1.8,
+        gapX: 0.2,
+        gapY: 0.2,
+        columns: 3,
+        maxRows: 3,
+        cardBackground: COLORS.lightGray,
+        titleFontSize: 14,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        contentFontSize: 10,
+        contentFontFace: FONTS.regular,
+        contentColor: COLORS.navy,
+        padding: 0.2
+      },
+      // Page number (bottom left)
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo (bottom right)
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
   }
 };
 
@@ -628,7 +698,8 @@ export const SLIDE_TYPE_MAP = {
   'section': 'sectionDivider',
   'thankyou': 'thankYou',
   'toc': 'tableOfContents',
-  'steps': 'steps'
+  'steps': 'steps',
+  'cardGrid': 'cardGrid'
 };
 
 /**
