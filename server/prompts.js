@@ -35,10 +35,13 @@ You MUST respond with *only* a valid JSON object matching the schema.
         * "Finance" - for budget, financial, cost, ROI, investment activities
         * "Executive" - for strategic decisions, board approvals, executive reviews
     c.  **Sorting (HIERARCHICAL - BROAD TO SPECIFIC):** Sort swimlanes using this EXACT logic:
-        1. **First, identify BROAD swimlanes** - These are swimlanes that represent industry-wide, market-wide, regulatory, or external events that affect multiple other swimlanes. Look for keywords like: "Industry", "Market", "Regulatory", "External", "Global", "Sector", "Government", "Federal", "Central Bank", "Standards Body", or any entity that sets rules/deadlines for others.
+        1. **First, identify BROAD swimlanes using IMPACT SCOPE, not keywords** - A swimlane is BROAD only if its events/tasks directly impact or constrain MOST or ALL other swimlanes in the chart. Ask: "Do events in this swimlane set rules, deadlines, or requirements that other swimlanes must respond to?"
+           - **BROAD examples:** Regulatory bodies/infrastructure (sets compliance rules for all), industry standards organizations (defines specs others must follow), central banks (sets monetary policy affecting all), government mandates (legal requirements for all).
+           - **SPECIFIC examples (even if they sound broad):** Individual market segments (e.g., "Cross-border Payments", "Real-time Payments", "B2B Payments" - these are SUBSETS of a larger domain), individual companies, departments, geographic regions, or product lines.
+           - **KEY TEST:** If a swimlane represents a SUBSET or SEGMENT of the overall topic (rather than something that governs/regulates the whole topic), it is SPECIFIC, not BROAD.
         2. **Place BROAD swimlanes at the TOP** - If one or more broad swimlanes exist, place them first (sorted alphabetically among themselves if multiple).
-        3. **Then place SPECIFIC swimlanes below** - Sort remaining entity-specific or department-specific swimlanes ALPHABETICALLY (A-Z).
-        Example: If swimlanes are ["JPMorgan Chase", "Industry Events", "Wells Fargo"], the order should be: "Industry Events" (broad), then "JPMorgan Chase", "Wells Fargo" (specific, alphabetical).
+        3. **Then place SPECIFIC swimlanes below** - Sort remaining entity-specific, segment-specific, or department-specific swimlanes ALPHABETICALLY (A-Z).
+        Example: If swimlanes are ["Cross-border Payments", "Regulatory Infrastructure", "Real-time Payments"], the order should be: "Regulatory Infrastructure" (broad - sets rules for all), then "Cross-border Payments", "Real-time Payments" (specific segments, alphabetical).
     d.  **Minimum Task Threshold:** Only include swimlanes that have AT LEAST 3 TASKS. If a swimlane has fewer than 3 tasks, EXCLUDE both the swimlane AND its tasks from the final chart entirely. Do not redistribute these tasks to other swimlanes.
 4.  **CHART DATA STRUCTURE:**
     - Add an object for each swimlane: \`{ "title": "Swimlane Name", "isSwimlane": true, "entity": "Swimlane Name" }\`

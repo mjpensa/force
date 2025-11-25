@@ -64,7 +64,7 @@ export const CONFIG = {
     THINKING_BUDGET_ANALYSIS: 24576, // Maximum thinking tokens for task analysis (complex reasoning)
     TEMPERATURE_STRUCTURED: 0,
     TEMPERATURE_QA: 0.1,
-    TOP_P: 1,
+    TOP_P: 0.1,
     TOP_K: 1,
     SEED: 42 // Fixed seed for deterministic output - same inputs produce same outputs
   },
