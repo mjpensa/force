@@ -17,6 +17,57 @@ import {
   LOGO_SIZES
 } from './ppt-template-config.js';
 
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get standardized section label text
+ * Handles both 'section' and 'sectionLabel' properties consistently
+ * @param {Object} slideData - The slide data object
+ * @returns {string|null} - Uppercase section label or null if not present
+ */
+function getSectionLabel(slideData) {
+  const label = slideData.section || slideData.sectionLabel;
+  return label ? String(label).toUpperCase() : null;
+}
+
+/**
+ * Safely get array property with fallbacks
+ * @param {Object} slideData - The slide data object
+ * @param {...string} propNames - Property names to check in order
+ * @returns {Array} - The first non-empty array found, or empty array
+ */
+function getArrayProp(slideData, ...propNames) {
+  for (const prop of propNames) {
+    const value = slideData[prop];
+    if (Array.isArray(value) && value.length > 0) {
+      return value;
+    }
+  }
+  return [];
+}
+
+/**
+ * Safely get string property with fallbacks
+ * @param {Object} slideData - The slide data object
+ * @param {...string} propNames - Property names to check in order
+ * @returns {string} - The first non-empty string found, or empty string
+ */
+function getStringProp(slideData, ...propNames) {
+  for (const prop of propNames) {
+    const value = slideData[prop];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
+// ============================================================================
+// MAIN EXPORT FUNCTION
+// ============================================================================
+
 /**
  * Generate a branded PowerPoint presentation from slides data
  * @param {Object} slidesData - Slides data from the generator
@@ -417,9 +468,9 @@ function addBulletsSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  const sectionLabel = getSectionLabel(slideData);
   if (sectionLabel) {
-    slide.addText(sectionLabel.toUpperCase(), {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -501,9 +552,9 @@ function addContentSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  const sectionLabel = getSectionLabel(slideData);
   if (sectionLabel) {
-    slide.addText(sectionLabel.toUpperCase(), {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -581,9 +632,9 @@ function addContentMultiColumnSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  const sectionLabel = getSectionLabel(slideData);
   if (sectionLabel) {
-    slide.addText(sectionLabel.toUpperCase(), {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -681,9 +732,9 @@ function addBulletsFullSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabelText = slideData.section || slideData.sectionLabel || '';
-  if (sectionLabelText) {
-    slide.addText(sectionLabelText.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -778,9 +829,9 @@ function addContentWithImageSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  const sectionLabelImg = slideData.section || slideData.sectionLabel || '';
-  if (sectionLabelImg) {
-    slide.addText(sectionLabelImg.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -905,9 +956,9 @@ function addQuoteSlide(pptx, slideData, slideNumber) {
   });
 
   // Section label
-  const sectionLabel = slideData.section || slideData.sectionLabel || '';
+  const sectionLabel = getSectionLabel(slideData);
   if (sectionLabel) {
-    slide.addText(sectionLabel.toUpperCase(), {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1217,8 +1268,9 @@ function addCardGridSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1332,8 +1384,9 @@ function addFeatureGridSlide(pptx, slideData, slideNumber) {
   slide.background = { color: bgColor };
 
   // Section label (only on white variant)
-  if (!isRedVariant && slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (!isRedVariant && sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1454,8 +1507,9 @@ function addQuoteTwoColumnSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1571,8 +1625,9 @@ function addQuoteWithMetricsSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1684,8 +1739,9 @@ function addTimelineCardsSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -1827,8 +1883,9 @@ function addProcessStepsAltSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -2366,8 +2423,9 @@ function addQuoteDataBSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section || slideData.sectionLabel) {
-    slide.addText(slideData.section || slideData.sectionLabel, {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -2505,8 +2563,9 @@ function addQuoteDataASlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section || slideData.sectionLabel) {
-    slide.addText(slideData.section || slideData.sectionLabel, {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -3107,8 +3166,9 @@ function addStepsVerticalSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -3233,8 +3293,9 @@ function addTimelinePhasesSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -3340,8 +3401,9 @@ function addTimelineCardsAltSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,
@@ -3490,8 +3552,9 @@ function addTimelineNumberedMarkersSlide(pptx, slideData, slideNumber) {
   slide.background = { color: layout.background };
 
   // Section label
-  if (slideData.section) {
-    slide.addText(slideData.section.toUpperCase(), {
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
       x: layout.elements.sectionLabel.x,
       y: layout.elements.sectionLabel.y,
       w: layout.elements.sectionLabel.w,

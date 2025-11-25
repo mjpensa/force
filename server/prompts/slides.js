@@ -7,6 +7,28 @@
  */
 
 // ============================================================================
+// CANONICAL PROPERTY NAMES
+// ============================================================================
+/**
+ * When generating slides, prefer these canonical property names over aliases:
+ *
+ * PROPERTY          | CANONICAL NAME | ALIASES (also accepted)
+ * ----------------- | -------------- | -----------------------
+ * Timeline items    | items          | timeline
+ * Process steps     | steps          | items
+ * Rollout phases    | phases         | items
+ * Table rows        | rows           | data
+ * Metrics/KPIs      | metrics        | data, cards
+ * Content text      | content        | text
+ * Quote text        | quote          | text
+ * Section label     | section        | sectionLabel
+ * Step description  | description    | content
+ *
+ * The renderers accept all aliases for flexibility, but the canonical names
+ * should be preferred for consistency and clarity.
+ */
+
+// ============================================================================
 // TYPE-SPECIFIC SUB-SCHEMAS
 // ============================================================================
 
