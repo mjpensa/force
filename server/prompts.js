@@ -35,7 +35,7 @@ You MUST respond with *only* a valid JSON object matching the schema.
         2. **Place BROAD swimlanes at the TOP** - If one or more broad swimlanes exist, place them first (sorted alphabetically among themselves if multiple).
         3. **Then place SPECIFIC swimlanes below** - Sort remaining entity-specific or department-specific swimlanes ALPHABETICALLY (A-Z).
         Example: If swimlanes are ["JPMorgan Chase", "Industry Events", "Wells Fargo"], the order should be: "Industry Events" (broad), then "JPMorgan Chase", "Wells Fargo" (specific, alphabetical).
-    d.  **No Empty Swimlanes:** Only include swimlanes that have at least one task.
+    d.  **Minimum Task Threshold:** Only include swimlanes that have AT LEAST 3 TASKS. If a swimlane has fewer than 3 tasks, EXCLUDE both the swimlane AND its tasks from the final chart entirely. Do not redistribute these tasks to other swimlanes.
 4.  **CHART DATA STRUCTURE:**
     - Add an object for each swimlane: \`{ "title": "Swimlane Name", "isSwimlane": true, "entity": "Swimlane Name" }\`
     - Immediately after each swimlane, add all tasks belonging to it
