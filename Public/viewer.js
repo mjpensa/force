@@ -344,7 +344,8 @@ class ContentViewer {
         console.log(`[Performance] API call for ${viewName}: ${apiTime.toFixed(2)}ms`);
       } catch (error) {
         // Check if it's a "still processing" error
-        if (error.message.includes('processing')) {
+        // Match both "processing" and "being generated" messages from StateManager
+        if (error.message.includes('processing') || error.message.includes('being generated')) {
           this._showProcessing(viewName);
           return;
         }
