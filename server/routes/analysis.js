@@ -61,7 +61,8 @@ ${researchTextCache}
       maxOutputTokens: CONFIG.API.MAX_OUTPUT_TOKENS_ANALYSIS,
       temperature: CONFIG.API.TEMPERATURE_STRUCTURED,
       topP: CONFIG.API.TOP_P,
-      topK: CONFIG.API.TOP_K
+      topK: CONFIG.API.TOP_K,
+      seed: CONFIG.API.SEED // Fixed seed for deterministic output
     }
   };
 
