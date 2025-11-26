@@ -129,13 +129,13 @@ const RESEARCH_ANALYSIS_CONFIG = {
  * Slides generation config - optimized for schema compliance + visual variety
  * - Lower temperature for reliable JSON structure
  * - Moderate exploration for slide type variety
- * - Reduced thinking budget (prompt optimized from 35 to 15 types)
+ * - Full thinking budget for complex multi-slide planning
  */
 const SLIDES_CONFIG = {
   temperature: 0.2,      // Low: prioritize schema adherence over creativity
   topP: 0.5,             // Moderate: allows variety in slide type selection
-  topK: 10,              // Constrained: reliable type choices from 15 options
-  thinkingBudget: 16384  // Reduced: simpler prompt with fewer slide types
+  topK: 10,              // Constrained: reliable type choices from 35 options
+  thinkingBudget: 24576  // Maximum: complex multi-slide narrative planning
 };
 
 /**
