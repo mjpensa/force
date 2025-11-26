@@ -88,7 +88,7 @@ select:focus-visible {
 /* Chart Title */
 .gantt-title {
   text-align: center;
-  font-size: 40px; /* Increased from 36px for better readability */
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: 700; /* Increased from 600 for better readability */
   color: #FFFFFF; /* Text Color */
   transition: all 0.2s;
@@ -127,7 +127,7 @@ select:focus-visible {
 
 /* 9. Grid Header (Weeks) */
 .gantt-header {
-  font-size: 6px; /* Reduced by additional 50% */
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: 600;
   padding: 4px 3px; /* Further reduced padding */
   text-align: center;
@@ -144,7 +144,7 @@ select:focus-visible {
 /* 10. Row Label (Swimlane or Task) */
 .gantt-row-label {
   padding: 0; /* Remove padding from parent - will be applied to children */
-  font-size: 6px; /* Reduced by additional 50% */
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   white-space: nowrap; /* Prevent text wrapping - column will auto-expand */
   overflow: visible; /* Allow text to be fully visible */
@@ -191,7 +191,7 @@ select:focus-visible {
   height: 18px; /* Reduced for compact display */
   border: 1px solid rgba(255, 255, 255, 0.3); /* Add border for emphasis */
   border-radius: 4px;
-  font-size: 12px; /* Reduced for compact display */
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: bold;
   cursor: pointer;
   display: flex;
@@ -248,7 +248,7 @@ select:focus-visible {
   font-weight: 700;
   color: #FFFFFF; /* Text Color */
   background-color: #0C2340; /* Set swimlane title background */
-  font-size: 7px; /* Reduced by additional 50% */
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   padding: 0; /* Padding moved to .label-content */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
 }
@@ -263,7 +263,7 @@ select:focus-visible {
   color: #FFFFFF; /* Text Color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   background-color: #354259; /* Set task title background - default blue */
-  font-size: 6px; /* Reduced by additional 50% */
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
 }
 
@@ -396,7 +396,7 @@ select:focus-visible {
 }
 .export-button {
   font-family: 'Work Sans', sans-serif; /* CHANGED */
-  font-size: 20px; /* Increased from 14px */
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: 700; /* Increased from 600 for more prominence */
   color: #ffffff;
   background-color: #50AF7B; /* Use one of the old dark mode colors (Green) */
@@ -421,7 +421,7 @@ select:focus-visible {
 /* Edit Mode Toggle Button */
 .edit-mode-toggle-button {
   font-family: 'Work Sans', sans-serif;
-  font-size: 20px;
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: 700;
   color: #ffffff;
   background-color: #BA3930; /* Red for locked/disabled state */
@@ -441,7 +441,7 @@ select:focus-visible {
 /* Copy Share URL Button */
 .copy-url-button {
   font-family: 'Work Sans', sans-serif;
-  font-size: 20px;
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: 700;
   color: #ffffff;
   background-color: #1976D2; /* Blue for sharing/link action */
@@ -1537,7 +1537,7 @@ select:focus-visible {
 }
 
 .legend-title {
-  font-size: 44px; /* Increased from 40px for better visibility */
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: 700; /* Increased from 600 for more prominence */
   margin: 0;
   color: #FFFFFF;
@@ -1579,7 +1579,7 @@ select:focus-visible {
 }
 
 .legend-label {
-  font-size: 32px; /* Increased from 28px for better readability */
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: 600; /* Added weight for better visibility */
   color: #FFFFFF; /* Changed from #CCCCCC for maximum contrast */
   line-height: 1.2; /* Better line spacing */
@@ -2569,7 +2569,7 @@ body.dragging {
 }
 
 .research-analysis-collapse-header .collapse-icon {
-  font-size: 0.75rem;
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   transition: transform 0.2s ease;
   color: #666;
 }
@@ -2588,7 +2588,7 @@ body.dragging {
   font-weight: 600;
   padding: 4px 12px;
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 0.95rem; /* Normalized to match all text on screen */
 }
 
 /* Collapsible content */
@@ -2627,7 +2627,7 @@ body.dragging {
 .research-analysis-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   background: #fff;
   border-radius: 6px;
   overflow: hidden;
@@ -2711,7 +2711,7 @@ body.dragging {
   padding: 4px 10px;
   border-radius: 4px;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   text-align: center;
   min-width: 50px;
 }
@@ -2754,7 +2754,7 @@ body.dragging {
   font-weight: 600;
   color: #0c2340;
   margin-bottom: 8px;
-  font-size: 0.9rem;
+  font-size: 0.95rem; /* Normalized to match all text on screen */
 }
 
 .research-analysis-legend .legend-items {
@@ -2767,13 +2767,13 @@ body.dragging {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.8rem;
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   color: #666;
 }
 
 .research-analysis-legend .legend-item .score-badge {
   padding: 2px 8px;
-  font-size: 0.75rem;
+  font-size: 0.95rem; /* Normalized to match all text on screen */
   min-width: 40px;
 }
 
@@ -2793,7 +2793,7 @@ body.dragging {
   }
 
   .research-analysis-table {
-    font-size: 0.8rem;
+    font-size: 0.95rem; /* Normalized to match all text on screen */
   }
 
   .research-analysis-table th,
