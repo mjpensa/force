@@ -248,7 +248,7 @@ select:focus-visible {
   font-weight: 700;
   color: #FFFFFF; /* Text Color */
   background-color: #0C2340; /* Set swimlane title background */
-  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
+  font-size: 0.85rem; /* Slightly larger than task labels for visual hierarchy */
   padding: 0; /* Padding moved to .label-content */
   line-height: 1.5; /* Increased line-height for better text spacing */
 }
@@ -1539,8 +1539,8 @@ select:focus-visible {
 }
 
 .legend-title {
-  font-size: 0.95rem; /* Normalized to match all text on screen */
-  font-weight: 700; /* Increased from 600 for more prominence */
+  font-size: 0.85rem; /* Match swimlane label size */
+  font-weight: 700; /* Match swimlane label weight */
   margin: 0;
   color: #FFFFFF;
   flex-shrink: 0; /* Prevent title from shrinking */
@@ -1581,8 +1581,8 @@ select:focus-visible {
 }
 
 .legend-label {
-  font-size: 0.95rem; /* Normalized to match all text on screen */
-  font-weight: 600; /* Added weight for better visibility */
+  font-size: 0.85rem; /* Match swimlane label size */
+  font-weight: 700; /* Match swimlane label weight */
   color: #FFFFFF; /* Changed from #CCCCCC for maximum contrast */
   line-height: 1.2; /* Better line spacing */
   transition: all 0.2s;
