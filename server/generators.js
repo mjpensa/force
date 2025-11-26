@@ -1159,8 +1159,9 @@ async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFi
 }
 
 /**
- * Generate all four content types with controlled concurrency
- * Uses APIQueue to limit concurrent requests to 2, preventing API overload
+ * Generate all four content types sequentially
+ * Each artifact must complete before the next begins
+ * Order: 1) Roadmap (Gantt) 2) Document (Executive Summary) 3) Slides 4) Research Analysis
  *
  * @param {string} sessionId - Session ID
  * @param {string} userPrompt - User's request
@@ -1172,65 +1173,93 @@ async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFi
 export async function generateAllContent(sessionId, userPrompt, researchFiles, jobIds, options = {}) {
   const { enterpriseMode = false } = options;
 
+  const results = {
+    roadmap: null,
+    document: null,
+    slides: null,
+    researchAnalysis: null
+  };
+
   try {
-    console.log(`[Session ${sessionId}] Starting content generation (max 2 concurrent)`);
+    console.log(`[Session ${sessionId}] Starting SEQUENTIAL content generation`);
     if (enterpriseMode) {
       console.log(`[Session ${sessionId}] Enterprise mode ENABLED for document and slides generation`);
     }
 
-    // Update session status - wrapped in try-catch to prevent early failures
+    // Update session status
     try {
       SessionDB.updateStatus(sessionId, 'processing');
     } catch (dbError) {
       console.error(`[Session ${sessionId}] Failed to update initial status:`, dbError);
     }
 
-    // Define generation tasks with priority order
-    // Roadmap and Slides first (users typically view these first)
-    // Document and Research Analysis second
-    const tasks = [
-      {
-        name: 'Roadmap',
-        task: () => generateRoadmap(sessionId, jobIds.roadmap, userPrompt, researchFiles)
-      },
-      {
-        name: enterpriseMode ? 'Slides-Enterprise' : 'Slides',
-        task: () => enterpriseMode
-          ? generateSlidesEnterprise(sessionId, jobIds.slides, userPrompt, researchFiles)
-          : generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles)
-      },
-      {
-        name: enterpriseMode ? 'Document-Enterprise' : 'Document',
-        task: () => enterpriseMode
-          ? generateDocumentEnterprise(sessionId, jobIds.document, userPrompt, researchFiles)
-          : generateDocument(sessionId, jobIds.document, userPrompt, researchFiles)
-      },
-      {
-        name: 'ResearchAnalysis',
-        task: () => generateResearchAnalysis(sessionId, jobIds.researchAnalysis, userPrompt, researchFiles)
-      }
-    ];
+    // ========================================
+    // STEP 1: Generate Roadmap (Gantt Chart)
+    // ========================================
+    console.log(`[Session ${sessionId}] Step 1/4: Generating Roadmap...`);
+    try {
+      results.roadmap = await generateRoadmap(sessionId, jobIds.roadmap, userPrompt, researchFiles);
+      console.log(`[Session ${sessionId}] Step 1/4: Roadmap ${results.roadmap.success ? 'COMPLETED' : 'FAILED'}`);
+    } catch (error) {
+      console.error(`[Session ${sessionId}] Step 1/4: Roadmap ERROR:`, error.message);
+      results.roadmap = { success: false, error: error.message };
+    }
 
-    // Run all tasks through the queue (max 2 concurrent)
-    // Promise.allSettled ensures all complete even if some fail
-    const results = await Promise.allSettled(
-      tasks.map(({ task, name }) => apiQueue.add(task, name))
-    );
+    // ========================================
+    // STEP 2: Generate Document (Executive Summary)
+    // ========================================
+    console.log(`[Session ${sessionId}] Step 2/4: Generating Document...`);
+    try {
+      results.document = enterpriseMode
+        ? await generateDocumentEnterprise(sessionId, jobIds.document, userPrompt, researchFiles)
+        : await generateDocument(sessionId, jobIds.document, userPrompt, researchFiles);
+      console.log(`[Session ${sessionId}] Step 2/4: Document ${results.document.success ? 'COMPLETED' : 'FAILED'}`);
+    } catch (error) {
+      console.error(`[Session ${sessionId}] Step 2/4: Document ERROR:`, error.message);
+      results.document = { success: false, error: error.message };
+    }
 
-    // Check results
-    const [roadmapResult, slidesResult, documentResult, researchAnalysisResult] = results;
+    // ========================================
+    // STEP 3: Generate Slides
+    // ========================================
+    console.log(`[Session ${sessionId}] Step 3/4: Generating Slides...`);
+    try {
+      results.slides = enterpriseMode
+        ? await generateSlidesEnterprise(sessionId, jobIds.slides, userPrompt, researchFiles)
+        : await generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles);
+      console.log(`[Session ${sessionId}] Step 3/4: Slides ${results.slides.success ? 'COMPLETED' : 'FAILED'}`);
+    } catch (error) {
+      console.error(`[Session ${sessionId}] Step 3/4: Slides ERROR:`, error.message);
+      results.slides = { success: false, error: error.message };
+    }
 
-    const allSuccessful = results.every(r => r.status === 'fulfilled' && r.value?.success);
-    const anySuccessful = results.some(r => r.status === 'fulfilled' && r.value?.success);
+    // ========================================
+    // STEP 4: Generate Research Analysis (QA)
+    // ========================================
+    console.log(`[Session ${sessionId}] Step 4/4: Generating Research Analysis...`);
+    try {
+      results.researchAnalysis = await generateResearchAnalysis(sessionId, jobIds.researchAnalysis, userPrompt, researchFiles);
+      console.log(`[Session ${sessionId}] Step 4/4: Research Analysis ${results.researchAnalysis.success ? 'COMPLETED' : 'FAILED'}`);
+    } catch (error) {
+      console.error(`[Session ${sessionId}] Step 4/4: Research Analysis ERROR:`, error.message);
+      results.researchAnalysis = { success: false, error: error.message };
+    }
 
-    // Update session status based on results
+    // ========================================
+    // Update final session status
+    // ========================================
+    const allSuccessful = results.roadmap?.success && results.document?.success &&
+                          results.slides?.success && results.researchAnalysis?.success;
+    const anySuccessful = results.roadmap?.success || results.document?.success ||
+                          results.slides?.success || results.researchAnalysis?.success;
+
     try {
       if (allSuccessful) {
         SessionDB.updateStatus(sessionId, 'completed');
-        console.log(`[Session ${sessionId}] All content generated successfully`);
+        console.log(`[Session ${sessionId}] All 4 artifacts generated successfully`);
       } else if (anySuccessful) {
         SessionDB.updateStatus(sessionId, 'partial');
-        console.log(`[Session ${sessionId}] Some content generated, some failed`);
+        console.log(`[Session ${sessionId}] Some artifacts generated, some failed`);
       } else {
         SessionDB.updateStatus(sessionId, 'error', 'All content generation failed');
         console.log(`[Session ${sessionId}] All content generation failed`);
@@ -1239,13 +1268,7 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
       console.error(`[Session ${sessionId}] Failed to update final status:`, dbError);
     }
 
-    return {
-      sessionId,
-      roadmap: roadmapResult.status === 'fulfilled' ? roadmapResult.value : { success: false, error: roadmapResult.reason?.message || 'Generation failed' },
-      slides: slidesResult.status === 'fulfilled' ? slidesResult.value : { success: false, error: slidesResult.reason?.message || 'Generation failed' },
-      document: documentResult.status === 'fulfilled' ? documentResult.value : { success: false, error: documentResult.reason?.message || 'Generation failed' },
-      researchAnalysis: researchAnalysisResult.status === 'fulfilled' ? researchAnalysisResult.value : { success: false, error: researchAnalysisResult.reason?.message || 'Generation failed' }
-    };
+    return { sessionId, ...results };
 
   } catch (error) {
     console.error(`[Session ${sessionId}] Fatal error in generation:`, error);
