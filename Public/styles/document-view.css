@@ -249,6 +249,25 @@
   background: var(--glass-white-5);
 }
 
+/* Glassmorphic scrollbar for table wrapper */
+.table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: var(--glass-white-5);
+  border-radius: var(--radius-full);
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20);
+  border-radius: var(--radius-full);
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30);
+}
+
 .section-table {
   width: 100%;
   border-collapse: collapse;

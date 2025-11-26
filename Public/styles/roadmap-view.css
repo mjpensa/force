@@ -101,6 +101,25 @@
   border-radius: var(--radius-glass-md);
 }
 
+/* Glassmorphic scrollbar for gantt chart */
+#gantt-chart::-webkit-scrollbar {
+  height: 6px;
+}
+
+#gantt-chart::-webkit-scrollbar-track {
+  background: var(--glass-white-5);
+  border-radius: var(--radius-full);
+}
+
+#gantt-chart::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20);
+  border-radius: var(--radius-full);
+}
+
+#gantt-chart::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30);
+}
+
 /* Enhance existing Gantt chart with design system */
 .gantt-container {
   font-family: var(--font-primary);
@@ -282,6 +301,25 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-6);
+}
+
+/* Glassmorphic scrollbar for task analyzer */
+.task-analyzer-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.task-analyzer-content::-webkit-scrollbar-track {
+  background: var(--glass-white-5);
+  border-radius: var(--radius-full);
+}
+
+.task-analyzer-content::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20);
+  border-radius: var(--radius-full);
+}
+
+.task-analyzer-content::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30);
 }
 
 .task-analyzer-section {

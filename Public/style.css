@@ -105,6 +105,30 @@ select:focus-visible {
   box-sizing: border-box; /* Include border in width calculation */
 }
 
+/* Glassmorphic scrollbar for gantt chart */
+#gantt-chart-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+#gantt-chart-container::-webkit-scrollbar-track {
+  background: var(--glass-white-5, rgba(255, 255, 255, 0.05));
+  border-radius: 9999px;
+}
+
+#gantt-chart-container::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20, rgba(255, 255, 255, 0.20));
+  border-radius: 9999px;
+}
+
+#gantt-chart-container::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30, rgba(255, 255, 255, 0.30));
+}
+
+#gantt-chart-container::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* 7. Chart Title Container (holds title text and logo) */
 .gantt-title-container {
   /* Flexbox properties are set inline in JavaScript for dynamic alignment */
@@ -593,6 +617,25 @@ select:focus-visible {
   color: #FFFFFF;
 }
 
+/* Glassmorphic scrollbar for modal body */
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: var(--glass-white-5, rgba(255, 255, 255, 0.05));
+  border-radius: 9999px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20, rgba(255, 255, 255, 0.20));
+  border-radius: 9999px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30, rgba(255, 255, 255, 0.30));
+}
+
 .modal-spinner {
   width: 32px;
   height: 32px;
@@ -726,6 +769,25 @@ select:focus-visible {
   padding: 12px;
   background-color: #0c2340; /* Match chart background */
   margin-bottom: 12px;
+}
+
+/* Glassmorphic scrollbar for chat history */
+.chat-history::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-history::-webkit-scrollbar-track {
+  background: var(--glass-white-5, rgba(255, 255, 255, 0.05));
+  border-radius: 9999px;
+}
+
+.chat-history::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20, rgba(255, 255, 255, 0.20));
+  border-radius: 9999px;
+}
+
+.chat-history::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30, rgba(255, 255, 255, 0.30));
 }
 
 .chat-message {
@@ -1402,6 +1464,25 @@ select:focus-visible {
     align-self: flex-start;
     max-height: calc(90vh - 140px);
     overflow-y: auto;
+  }
+
+  /* Glassmorphic scrollbar for analysis sidebar */
+  .analysis-sidebar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .analysis-sidebar::-webkit-scrollbar-track {
+    background: var(--glass-white-5, rgba(255, 255, 255, 0.05));
+    border-radius: 9999px;
+  }
+
+  .analysis-sidebar::-webkit-scrollbar-thumb {
+    background: var(--glass-white-20, rgba(255, 255, 255, 0.20));
+    border-radius: 9999px;
+  }
+
+  .analysis-sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--glass-white-30, rgba(255, 255, 255, 0.30));
   }
 
   .analysis-main {
@@ -2406,6 +2487,25 @@ body.dragging {
 .research-analysis-table-container {
   overflow-x: auto;
   margin-bottom: 20px;
+}
+
+/* Glassmorphic scrollbar for research table */
+.research-analysis-table-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.research-analysis-table-container::-webkit-scrollbar-track {
+  background: var(--glass-white-5, rgba(255, 255, 255, 0.05));
+  border-radius: 9999px;
+}
+
+.research-analysis-table-container::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20, rgba(255, 255, 255, 0.20));
+  border-radius: 9999px;
+}
+
+.research-analysis-table-container::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30, rgba(255, 255, 255, 0.30));
 }
 
 .research-analysis-table {

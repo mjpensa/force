@@ -442,6 +442,25 @@
   box-shadow: var(--shadow-glass-1);
 }
 
+/* Glassmorphic scrollbar for thumbnails */
+.slide-thumbnails::-webkit-scrollbar {
+  height: 6px;
+}
+
+.slide-thumbnails::-webkit-scrollbar-track {
+  background: var(--glass-white-5);
+  border-radius: var(--radius-full);
+}
+
+.slide-thumbnails::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20);
+  border-radius: var(--radius-full);
+}
+
+.slide-thumbnails::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30);
+}
+
 .thumbnail {
   flex: 0 0 auto;
   width: 120px;
@@ -817,6 +836,25 @@
   padding-bottom: 0.5rem;
 }
 
+/* Glassmorphic scrollbar for timeline */
+.slide-timeline::-webkit-scrollbar {
+  height: 6px;
+}
+
+.slide-timeline::-webkit-scrollbar-track {
+  background: var(--glass-white-5, rgba(255, 255, 255, 0.05));
+  border-radius: 9999px;
+}
+
+.slide-timeline::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20, rgba(255, 255, 255, 0.20));
+  border-radius: 9999px;
+}
+
+.slide-timeline::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30, rgba(255, 255, 255, 0.30));
+}
+
 .slide-timeline-card {
   flex: 0 0 180px;
   background: #F5F5F5;
@@ -1077,6 +1115,25 @@
 .slide-table-container {
   overflow-x: auto;
   margin-top: 1rem;
+}
+
+/* Glassmorphic scrollbar for table container */
+.slide-table-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.slide-table-container::-webkit-scrollbar-track {
+  background: var(--glass-white-5, rgba(255, 255, 255, 0.05));
+  border-radius: 9999px;
+}
+
+.slide-table-container::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20, rgba(255, 255, 255, 0.20));
+  border-radius: 9999px;
+}
+
+.slide-table-container::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30, rgba(255, 255, 255, 0.30));
 }
 
 .slide-table {
