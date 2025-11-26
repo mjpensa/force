@@ -640,11 +640,15 @@ class ContentViewer {
    * Instead of requiring manual refresh, automatically polls for completion
    */
   _showProcessing(viewName) {
-    // Clear any existing polling for this view
-    if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
-      clearTimeout(this._processingPollTimeouts[viewName]);
-    }
-    if (!this._processingPollTimeouts) {
+    // Clear ALL existing processing polls to prevent multiple polls updating the same progress bar
+    // This fixes the issue where switching between processing views causes progress to jump
+    // (e.g., from 30% to 90%) due to polls from different views with different start times
+    if (this._processingPollTimeouts) {
+      Object.keys(this._processingPollTimeouts).forEach(key => {
+        clearTimeout(this._processingPollTimeouts[key]);
+        delete this._processingPollTimeouts[key];
+      });
+    } else {
       this._processingPollTimeouts = {};
     }
 
