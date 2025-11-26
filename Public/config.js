@@ -37,9 +37,9 @@ export const CONFIG = {
   // Size constants
   SIZES: {
     // Chart element sizes
-    BAR_HEIGHT: 20,
+    BAR_HEIGHT: 14, // SCALED: Was 20
     POINT_RADIUS: 5,
-    LOGO_HEIGHT: 70,
+    LOGO_HEIGHT: 40, // SCALED: Was 70
 
     // File upload limits (in MB)
     MAX_FILE_SIZE_MB: 10,
