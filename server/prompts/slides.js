@@ -189,8 +189,8 @@ const activitySchema = {
   properties: {
     name: { type: "string", description: "Activity name" },
     title: { type: "string", description: "Activity title (alias for name)" },
-    startMonth: { type: "number", minimum: 0, maximum: 11, description: "Start month (0=Jan, 11=Dec)" },
-    endMonth: { type: "number", minimum: 0, maximum: 11, description: "End month (0=Jan, 11=Dec)" },
+    startMonth: { type: "number", description: "Start month (0=Jan, 11=Dec)" },
+    endMonth: { type: "number", description: "End month (0=Jan, 11=Dec)" },
     color: { type: "string", description: "Bar color (hex without #)" }
   },
   required: ["name", "startMonth", "endMonth"]
@@ -246,8 +246,6 @@ export const slidesSchema = {
     },
     slides: {
       type: "array",
-      minItems: 3,
-      maxItems: 15,
       items: {
         type: "object",
         properties: {
@@ -406,8 +404,6 @@ export const slidesSchema = {
           columns: {
             type: "array",
             items: { type: "string" },
-            minItems: 2,
-            maxItems: 2,
             description: "Array of 2 column contents for multi-column layout"
           },
 
@@ -439,7 +435,6 @@ export const slidesSchema = {
           cards: {
             type: "array",
             items: cardSchema,
-            maxItems: 9,
             description: "Array of cards for card grid layout (max 9, 3x3 grid)"
           },
 
@@ -449,7 +444,6 @@ export const slidesSchema = {
           features: {
             type: "array",
             items: featureSchema,
-            maxItems: 10,
             description: "Array of features for feature grid (max 10)"
           },
           variant: {
@@ -472,8 +466,6 @@ export const slidesSchema = {
           quotes: {
             type: "array",
             items: quoteItemSchema,
-            minItems: 2,
-            maxItems: 2,
             description: "Array of 2 quotes for quoteTwoColumn layout"
           },
 
@@ -483,7 +475,6 @@ export const slidesSchema = {
           metrics: {
             type: "array",
             items: metricSchema,
-            maxItems: 4,
             description: "Array of metrics/KPIs (max 4)"
           },
           data: {
@@ -569,8 +560,6 @@ export const slidesSchema = {
           charts: {
             type: "array",
             items: chartConfigSchema,
-            minItems: 2,
-            maxItems: 2,
             description: "Array of 2 charts for dual chart layout"
           },
 
