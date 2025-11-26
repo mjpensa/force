@@ -289,65 +289,27 @@ export class SlidesView {
   }
 
   /**
-   * Fallback renderer for unknown types
+   * Fallback renderer for unknown types - attempts to detect type from data
    */
   _renderFallback(slide) {
-    const fragment = document.createDocumentFragment();
+    if (slide.paragraphs?.length > 0) return this._renderTextTwoColumn(slide);
+    if (slide.columns?.length > 0) return this._renderTextThreeColumn(slide);
+    if (slide.cards?.length > 0) return this._renderTextWithCards(slide);
 
-    // Section label
+    // Minimal fallback
+    const fragment = document.createDocumentFragment();
     if (slide.section) {
       const section = document.createElement('div');
       section.className = 'slide-section-label';
       section.textContent = slide.section;
       fragment.appendChild(section);
     }
-
-    // Title
     if (slide.title) {
       const title = document.createElement('h1');
       title.className = 'slide-large-title';
       title.textContent = slide.title;
       fragment.appendChild(title);
     }
-
-    // Try to render any available content
-    if (slide.paragraphs && slide.paragraphs.length > 0) {
-      return this._renderTextTwoColumn(slide);
-    } else if (slide.columns && slide.columns.length > 0) {
-      return this._renderTextThreeColumn(slide);
-    } else if (slide.cards && slide.cards.length > 0) {
-      return this._renderTextWithCards(slide);
-    } else if (slide.content) {
-      const content = document.createElement('p');
-      content.className = 'slide-body-text';
-      content.textContent = slide.content;
-      fragment.appendChild(content);
-    } else if (slide.bullets && slide.bullets.length > 0) {
-      // Legacy support for bullets
-      const layout = document.createElement('div');
-      layout.className = 'slide-two-column-layout';
-
-      const leftCol = document.createElement('div');
-      leftCol.className = 'slide-left-column';
-      const title = document.createElement('h1');
-      title.className = 'slide-large-title';
-      title.textContent = slide.title || '';
-      leftCol.appendChild(title);
-      layout.appendChild(leftCol);
-
-      const rightCol = document.createElement('div');
-      rightCol.className = 'slide-right-column';
-      slide.bullets.forEach(bullet => {
-        const p = document.createElement('p');
-        p.className = 'slide-paragraph';
-        p.textContent = bullet;
-        rightCol.appendChild(p);
-      });
-      layout.appendChild(rightCol);
-
-      return layout;
-    }
-
     return fragment;
   }
 

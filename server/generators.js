@@ -352,156 +352,44 @@ function validateDocumentStructure(data) {
 }
 
 /**
- * Check if a slide has appropriate body content based on its type
- * @param {object} slide - The slide object
- * @returns {boolean} True if slide has body content
+ * Check if a slide has valid body content (3 types only)
  */
 function slideHasBodyContent(slide) {
-  const type = slide.type;
-
-  // ============================================
-  // NEW SLIDE TYPES (3 types only)
-  // ============================================
-
-  // textTwoColumn - needs paragraphs array
-  if (type === 'textTwoColumn') {
-    return Array.isArray(slide.paragraphs) && slide.paragraphs.length > 0;
+  switch (slide.type) {
+    case 'textTwoColumn':
+      return Array.isArray(slide.paragraphs) && slide.paragraphs.length > 0;
+    case 'textThreeColumn':
+      return Array.isArray(slide.columns) && slide.columns.length === 3;
+    case 'textWithCards':
+      return slide.content && Array.isArray(slide.cards) && slide.cards.length === 6;
+    default:
+      return false;
   }
-
-  // textThreeColumn - needs columns array (exactly 3)
-  if (type === 'textThreeColumn') {
-    return Array.isArray(slide.columns) && slide.columns.length > 0;
-  }
-
-  // textWithCards - needs content and cards array
-  if (type === 'textWithCards') {
-    return !!(slide.content) && Array.isArray(slide.cards) && slide.cards.length > 0;
-  }
-
-  // ============================================
-  // LEGACY SUPPORT (for backwards compatibility)
-  // ============================================
-
-  // Title slides, section dividers, and closing slides don't need body content
-  const titleOnlyTypes = [
-    'title', 'titleVariantA', 'titleVariantB', 'sectionDivider', 'section',
-    'thankYou', 'thankYouAlt'
-  ];
-
-  if (titleOnlyTypes.includes(type)) {
-    return true; // These types are valid with just a title
-  }
-
-  // Bullet slides (legacy)
-  if (type === 'bullets' || type === 'bulletsFull') {
-    return Array.isArray(slide.bullets) && slide.bullets.length > 0;
-  }
-
-  // Content slides (legacy)
-  if (type === 'content' || type === 'contentWithImage') {
-    return !!(slide.content || slide.text);
-  }
-
-  // Multi-column content (legacy)
-  if (type === 'contentMultiColumn') {
-    return Array.isArray(slide.columns) && slide.columns.length > 0;
-  }
-
-  // Card grid (legacy)
-  if (type === 'cardGrid') {
-    return Array.isArray(slide.cards) && slide.cards.length > 0;
-  }
-
-  // Feature grid (legacy)
-  if (type === 'featureGrid' || type === 'featureGridRed') {
-    return Array.isArray(slide.features) && slide.features.length > 0;
-  }
-
-  // Unknown type - be lenient but log it
-  console.warn(`[Slides Validation] Unknown slide type: ${type}`);
-  return true;
 }
 
 /**
- * Validate slides structure
- * @param {object} data - Generated slides data
- * @returns {boolean} True if valid
+ * Validate slides structure (3 types only)
  */
 function validateSlidesStructure(data) {
-  if (!data) {
-    console.warn('[Slides Validation] No data provided');
-    return false;
-  }
-  if (!data.slides || !Array.isArray(data.slides)) {
-    console.warn('[Slides Validation] slides is not an array');
-    return false;
-  }
-  if (data.slides.length === 0) {
-    console.warn('[Slides Validation] slides array is empty');
-    return false;
+  if (!data?.slides?.length) return false;
+  if (data.slides.length < 3 || data.slides.length > 20) return false;
+
+  const validTypes = ['textTwoColumn', 'textThreeColumn', 'textWithCards'];
+  let validCount = 0;
+
+  for (const slide of data.slides) {
+    if (!slide.type || !slide.title || !slide.section) continue;
+    if (!validTypes.includes(slide.type)) continue;
+    if (slideHasBodyContent(slide)) validCount++;
   }
 
-  // CRITICAL: Reject unreasonably large numbers of slides (indicates AI error)
-  const MAX_SLIDES = 25; // Allow some buffer above the 15-slide guideline
-  const MIN_SLIDES = 3;
-
-  if (data.slides.length > MAX_SLIDES) {
-    console.error(`[Slides Validation] REJECTED: Too many slides (${data.slides.length}). Maximum allowed: ${MAX_SLIDES}`);
+  const ratio = validCount / data.slides.length;
+  if (ratio < 0.7) {
+    console.error(`[Slides] Validation failed: ${validCount}/${data.slides.length} valid`);
     return false;
   }
 
-  if (data.slides.length < MIN_SLIDES) {
-    console.warn(`[Slides Validation] Too few slides (${data.slides.length}). Minimum expected: ${MIN_SLIDES}`);
-    return false;
-  }
-
-  // Validate each slide has required properties AND body content
-  let validSlides = 0;
-  let slidesWithContent = 0;
-  for (let i = 0; i < data.slides.length; i++) {
-    const slide = data.slides[i];
-
-    if (!slide || typeof slide !== 'object') {
-      console.warn(`[Slides Validation] Slide ${i} is not an object`);
-      continue;
-    }
-
-    if (!slide.type || typeof slide.type !== 'string') {
-      console.warn(`[Slides Validation] Slide ${i} missing type property`);
-      continue;
-    }
-
-    if (!slide.title || typeof slide.title !== 'string') {
-      console.warn(`[Slides Validation] Slide ${i} missing title property`);
-      continue;
-    }
-
-    validSlides++;
-
-    // Check for body content
-    if (slideHasBodyContent(slide)) {
-      slidesWithContent++;
-    } else {
-      console.warn(`[Slides Validation] Slide ${i} (${slide.type}: "${slide.title}") is missing body content`);
-    }
-  }
-
-  // At least 80% of slides should be valid (have type and title)
-  const validRatio = validSlides / data.slides.length;
-  if (validRatio < 0.8) {
-    console.error(`[Slides Validation] REJECTED: Too many invalid slides (${validSlides}/${data.slides.length} valid)`);
-    return false;
-  }
-
-  // CRITICAL: At least 70% of slides should have body content
-  // This catches the "titles only" bug
-  const contentRatio = slidesWithContent / data.slides.length;
-  if (contentRatio < 0.7) {
-    console.error(`[Slides Validation] REJECTED: Too many slides missing body content (${slidesWithContent}/${data.slides.length} have content, ${(contentRatio * 100).toFixed(0)}%)`);
-    return false;
-  }
-
-  console.log(`[Slides Validation] Passed: ${data.slides.length} slides, ${validSlides} valid structure, ${slidesWithContent} with body content`);
+  console.log(`[Slides] Validated: ${data.slides.length} slides, ${validCount} with content`);
   return true;
 }
 
