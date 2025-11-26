@@ -44,22 +44,22 @@ export class SidebarNav {
         shortcut: '1'
       },
       {
-        id: 'slides',
-        title: 'Slides',
-        subtitle: 'Presentation View',
-        icon: this._getSlidesIcon(),
-        shortcut: '2'
-      },
-      {
         id: 'document',
         title: 'Document',
         subtitle: 'Article View',
         icon: this._getDocumentIcon(),
+        shortcut: '2'
+      },
+      {
+        id: 'slides',
+        title: 'Slides',
+        subtitle: 'Presentation View',
+        icon: this._getSlidesIcon(),
         shortcut: '3'
       },
       {
         id: 'research-analysis',
-        title: 'Analysis',
+        title: 'Research QA',
         subtitle: 'Research Quality',
         icon: this._getAnalysisIcon(),
         shortcut: '4'
