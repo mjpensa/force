@@ -191,50 +191,6 @@ export function logError(error, context = {}) {
 
   // Log to console
   console.error('[Error]', errorEntry);
-
-  // In production, you might want to send this to a logging service
-  if (shouldSendToServer(error)) {
-    sendErrorToServer(errorEntry).catch(e => {
-      console.error('Failed to send error to server:', e);
-    });
-  }
-
-  // Store in localStorage for debugging
-  try {
-    localStorage.setItem('app_last_error', JSON.stringify(errorEntry));
-  } catch (e) {
-    // Ignore localStorage errors
-  }
-}
-
-/**
- * Determine if error should be sent to server
- * @private
- */
-function shouldSendToServer(error) {
-  // Only send high and critical severity errors
-  return (
-    error.severity === ErrorSeverity.HIGH ||
-    error.severity === ErrorSeverity.CRITICAL
-  );
-}
-
-/**
- * Send error to server for logging
- * @private
- */
-async function sendErrorToServer(errorEntry) {
-  try {
-    await fetch('/api/errors', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(errorEntry)
-    });
-  } catch (e) {
-    // Silently fail - don't want error logging to break the app
-  }
 }
 
 /**
@@ -252,11 +208,6 @@ export function getErrorLog(limit = 50) {
  */
 export function clearErrorLog() {
   errorLog.length = 0;
-  try {
-    localStorage.removeItem('app_last_error');
-  } catch (e) {
-    // Ignore
-  }
 }
 
 /**

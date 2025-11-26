@@ -1,56 +1,44 @@
 /**
  * Chart Routes Module
- * Phase 4 Enhancement: Extracted from server.js
- * Phase 5 Enhancement: Added drag-to-edit task date update endpoint
- * Handles chart generation and retrieval endpoints
+ * Handles chart generation endpoints
+ *
+ * Note: No persistence - charts are generated and returned directly
  */
 
 import express from 'express';
+import crypto from 'crypto';
 import mammoth from 'mammoth';
 import { CONFIG } from '../config.js';
-import { sanitizePrompt, isValidChartId, isValidJobId } from '../utils.js';
-import { createSession, storeChart, getChart, createJob, updateJob, getJob, completeJob, failJob } from '../storage.js';
+import { sanitizePrompt } from '../utils.js';
 import { callGeminiForJson } from '../gemini.js';
 import { CHART_GENERATION_SYSTEM_PROMPT, GANTT_CHART_SCHEMA } from '../prompts.js';
-import { strictLimiter, apiLimiter, uploadMiddleware } from '../middleware.js';
+import { strictLimiter, uploadMiddleware } from '../middleware.js';
 
 const router = express.Router();
 
 /**
- * Processes chart generation asynchronously in the background
- * @param {string} jobId - The job ID
- * @param {Object} reqBody - Request body containing the prompt
- * @param {Array} files - Uploaded files
- * @returns {Promise<void>}
+ * POST /generate-chart
+ * Generates a chart synchronously and returns it directly
  */
-async function processChartGeneration(jobId, reqBody, files) {
-  try {
-    // Update job status to processing
-    updateJob(jobId, {
-      status: 'processing',
-      progress: 'Analyzing your request...'
-    });
+router.post('/generate-chart', uploadMiddleware.array('researchFiles'), strictLimiter, async (req, res) => {
+  const requestId = crypto.randomBytes(8).toString('hex');
 
-    const userPrompt = reqBody.prompt;
+  try {
+    console.log(`[Chart ${requestId}] Starting generation with ${req.files?.length || 0} files`);
+
+    const userPrompt = req.body.prompt;
 
     // Sanitize user prompt to prevent prompt injection attacks
     const sanitizedPrompt = sanitizePrompt(userPrompt);
 
-    // Create request-scoped storage (fixes global cache memory leak)
-    let researchTextCache = "";
-    let researchFilesCache = [];
+    // Process files
+    let researchText = "";
+    let researchFiles = [];
 
-    // Update progress
-    updateJob(jobId, {
-      status: 'processing',
-      progress: `Processing ${files?.length || 0} uploaded file(s)...`
-    });
+    if (req.files && req.files.length > 0) {
+      const sortedFiles = req.files.sort((a, b) => a.originalname.localeCompare(b.originalname));
 
-    // Extract text from uploaded files (Sort for determinism, process in parallel)
-    if (files && files.length > 0) {
-      const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
-
-      // Process files in parallel for better performance with large folders
+      // Process files in parallel
       const fileProcessingPromises = sortedFiles.map(async (file) => {
         let content = '';
 
@@ -67,25 +55,17 @@ async function processChartGeneration(jobId, reqBody, files) {
         };
       });
 
-      // Wait for all files to be processed
       const processedFiles = await Promise.all(fileProcessingPromises);
 
-      // Combine all file contents in order
       for (const processedFile of processedFiles) {
-        researchTextCache += `\n\n--- Start of file: ${processedFile.name} ---\n`;
-        researchFilesCache.push(processedFile.name);
-        researchTextCache += processedFile.content;
-        researchTextCache += `\n--- End of file: ${processedFile.name} ---\n`;
+        researchText += `\n\n--- Start of file: ${processedFile.name} ---\n`;
+        researchFiles.push(processedFile.name);
+        researchText += processedFile.content;
+        researchText += `\n--- End of file: ${processedFile.name} ---\n`;
       }
 
-      console.log(`Job ${jobId}: Processed ${processedFiles.length} files (${researchTextCache.length} characters total)`);
+      console.log(`[Chart ${requestId}] Processed ${processedFiles.length} files (${researchText.length} characters total)`);
     }
-
-    // Update progress
-    updateJob(jobId, {
-      status: 'processing',
-      progress: 'Generating chart data with AI...'
-    });
 
     // Build user query
     const geminiUserQuery = `${sanitizedPrompt}
@@ -93,7 +73,7 @@ async function processChartGeneration(jobId, reqBody, files) {
 **CRITICAL REMINDER:** You MUST escape all newlines (\\n) and double-quotes (\") found in the research content before placing them into the final JSON string values.
 
 Research Content:
-${researchTextCache}`;
+${researchText}`;
 
     // Define the payload
     const payload = {
@@ -106,43 +86,33 @@ ${researchTextCache}`;
         temperature: CONFIG.API.TEMPERATURE_STRUCTURED,
         topP: CONFIG.API.TOP_P,
         topK: CONFIG.API.TOP_K,
-        seed: CONFIG.API.SEED, // Fixed seed for deterministic output
+        seed: CONFIG.API.SEED,
         thinkingConfig: {
-          thinkingBudget: CONFIG.API.THINKING_BUDGET_ANALYSIS // Enable deep reasoning for comprehensive extraction
+          thinkingBudget: CONFIG.API.THINKING_BUDGET_ANALYSIS
         }
       }
     };
 
-    // Call the API with retry callback to update job status
+    // Call the API
+    console.log(`[Chart ${requestId}] Calling Gemini API...`);
     const ganttData = await callGeminiForJson(
       payload,
       CONFIG.API.RETRY_COUNT,
       (attemptNum, error) => {
-        // Update job status to show retry attempt
-        updateJob(jobId, {
-          status: 'processing',
-          progress: `Retrying AI request (attempt ${attemptNum + 1}/${CONFIG.API.RETRY_COUNT})...`
-        });
-        console.log(`Job ${jobId}: Retrying due to error: ${error.message}`);
+        console.log(`[Chart ${requestId}] Retrying due to error: ${error.message}`);
       }
     );
 
-    // Debug: Log what we received from AI
-    console.log(`Job ${jobId}: Received ganttData from AI with keys:`, Object.keys(ganttData || {}));
-    console.log(`Job ${jobId}: Has timeColumns:`, !!ganttData?.timeColumns, 'Has data:', !!ganttData?.data);
-
-    // Validate data structure before proceeding
+    // Validate data structure
     if (!ganttData || typeof ganttData !== 'object') {
       throw new Error('AI returned invalid data structure (not an object)');
     }
 
     if (!ganttData.timeColumns || !Array.isArray(ganttData.timeColumns)) {
-      console.error(`Job ${jobId}: Invalid timeColumns. Type:`, typeof ganttData.timeColumns, 'Value:', ganttData.timeColumns);
       throw new Error('AI returned invalid timeColumns (not an array)');
     }
 
     if (!ganttData.data || !Array.isArray(ganttData.data)) {
-      console.error(`Job ${jobId}: Invalid data. Type:`, typeof ganttData.data, 'Value:', ganttData.data);
       throw new Error('AI returned invalid data array (not an array)');
     }
 
@@ -154,260 +124,45 @@ ${researchTextCache}`;
       throw new Error('AI returned empty data array');
     }
 
-    console.log(`Job ${jobId}: Data validation passed - timeColumns: ${ganttData.timeColumns.length} items, data: ${ganttData.data.length} tasks`);
-    // Update progress
-    updateJob(jobId, {
-      status: 'processing',
-      progress: 'Finalizing chart...'
+    console.log(`[Chart ${requestId}] Successfully generated - timeColumns: ${ganttData.timeColumns.length}, data: ${ganttData.data.length} tasks`);
+
+    // Return chart data directly
+    res.json({
+      status: 'complete',
+      data: ganttData
     });
-
-    // Create session to store research data for future requests
-    const sessionId = createSession(researchTextCache, researchFilesCache);
-
-    // Store chart data with unique ID for URL-based sharing
-    const chartDataWithEnhancements = {
-      ...ganttData
-    };
-    const chartId = storeChart(chartDataWithEnhancements, sessionId);
-
-    // Update job status to complete
-    const completeData = {
-      ...ganttData,
-      sessionId,
-      chartId
-    };
-    console.log(`Job ${jobId}: Setting complete status with data keys:`, Object.keys(completeData));
-
-    // Verify completeData before storing
-    if (!completeData.timeColumns || !completeData.data) {
-      console.error(`Job ${jobId}: Data corruption detected in completeData!`, {
-        hasTimeColumns: !!completeData.timeColumns,
-        hasData: !!completeData.data,
-        keys: Object.keys(completeData)
-      });
-      throw new Error('Data corruption detected when creating completeData');
-    }
-
-    completeJob(jobId, completeData);
-
-    console.log(`Job ${jobId}: Successfully completed`);
 
   } catch (error) {
-    console.error(`Job ${jobId} failed:`, error);
-
-    failJob(jobId, error.message);
-  }
-}
-
-/**
- * POST /generate-chart
- * Starts an async chart generation job
- */
-router.post('/generate-chart', uploadMiddleware.array('researchFiles'), strictLimiter, async (req, res) => {
-  // Generate unique job ID
-  const jobId = createJob();
-
-  console.log(`Creating new job ${jobId} with ${req.files?.length || 0} files`);
-  console.log(`Request body:`, {
-    prompt: req.body.prompt ? '(present)' : '(missing)'
-  });
-
-  // Return job ID immediately (< 100ms response time)
-  res.json({
-    jobId,
-    status: 'processing',
-    message: 'Chart generation started. Poll /job/:id for status updates.'
-  });
-
-  console.log(`Job ${jobId} queued, starting background processing...`);
-
-  // Process the chart generation asynchronously in the background
-  processChartGeneration(jobId, req.body, req.files)
-    .catch(error => {
-      console.error(`Background job ${jobId} encountered error:`, error);
-    });
-});
-
-/**
- * GET /job/:id
- * Retrieves the status of a chart generation job
- * Note: No rate limiting applied since this is a lightweight status check
- * and clients poll frequently (every 1 second) during job processing
- */
-router.get('/job/:id', (req, res) => {
-  const jobId = req.params.id;
-
-  // Validate job ID format
-  if (!isValidJobId(jobId)) {
-    console.log(`Invalid job ID format: ${jobId}`);
-    return res.status(400).json({ error: CONFIG.ERRORS.INVALID_JOB_ID });
-  }
-
-  const job = getJob(jobId);
-  if (!job) {
-    console.log(`Job not found: ${jobId}`);
-    return res.status(404).json({
-      error: CONFIG.ERRORS.JOB_NOT_FOUND
+    console.error(`[Chart ${requestId}] Failed:`, error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message
     });
   }
-
-  console.log(`Job ${jobId} status check: ${job.status}`);
-
-  // Return job status
-  if (job.status === 'complete') {
-    console.log(`Job ${jobId} complete, returning data with keys:`, Object.keys(job.data || {}));
-
-    // Verify data integrity before sending to client
-    if (!job.data || typeof job.data !== 'object') {
-      console.error(`Job ${jobId}: Invalid job.data structure. Type:`, typeof job.data);
-      return res.status(500).json({ error: 'Internal server error: Invalid job data structure' });
-    }
-
-    if (!job.data.timeColumns || !Array.isArray(job.data.timeColumns)) {
-      console.error(`Job ${jobId}: Invalid timeColumns in job.data. Type:`, typeof job.data.timeColumns);
-      return res.status(500).json({ error: 'Internal server error: Invalid timeColumns' });
-    }
-
-    if (!job.data.data || !Array.isArray(job.data.data)) {
-      console.error(`Job ${jobId}: Invalid data array in job.data. Type:`, typeof job.data.data);
-      return res.status(500).json({ error: 'Internal server error: Invalid data array' });
-    }
-
-    console.log(`Job ${jobId}: Data validation passed before sending - timeColumns: ${job.data.timeColumns.length}, data: ${job.data.data.length}`);
-
-    // Log the exact response structure being sent
-    const response = {
-      status: job.status,
-      progress: job.progress,
-      data: job.data
-    };
-    console.log(`Job ${jobId}: Sending response with structure:`, {
-      status: response.status,
-      progress: response.progress,
-      dataKeys: Object.keys(response.data),
-      dataHasTimeColumns: Array.isArray(response.data.timeColumns),
-      dataHasData: Array.isArray(response.data.data),
-      timeColumnsLength: response.data.timeColumns?.length,
-      dataLength: response.data.data?.length
-    });
-
-    res.json(response);
-  } else if (job.status === 'error') {
-    console.log(`Job ${jobId} error: ${job.error}`);
-    res.json({
-      status: job.status,
-      error: job.error
-    });
-  } else {
-    // Processing or queued
-    console.log(`Job ${jobId} still ${job.status}: ${job.progress}`);
-    res.json({
-      status: job.status,
-      progress: job.progress
-    });
-  }
-});
-
-/**
- * GET /chart/:id
- * Retrieves a chart by its ID (in-memory only)
- */
-router.get('/chart/:id', (req, res) => {
-  const chartId = req.params.id;
-  console.log(`📊 Chart request received for ID: ${chartId}`);
-
-  // Validate chart ID format
-  if (!isValidChartId(chartId)) {
-    console.log(`❌ Invalid chart ID format: ${chartId}`);
-    return res.status(400).json({ error: CONFIG.ERRORS.INVALID_CHART_ID });
-  }
-
-  // Get chart from in-memory storage
-  const chart = getChart(chartId);
-
-  if (!chart) {
-    console.log(`❌ Chart not found in memory: ${chartId}`);
-    return res.status(404).json({
-      error: CONFIG.ERRORS.CHART_NOT_FOUND
-    });
-  }
-
-  // Validate the chart data structure before sending
-  if (!chart.data) {
-    console.error(`❌ Chart ${chartId} has no data property`);
-    return res.status(500).json({ error: 'Chart data is corrupted' });
-  }
-
-  if (!chart.data.timeColumns || !Array.isArray(chart.data.timeColumns)) {
-    console.error(`❌ Chart ${chartId} has invalid timeColumns. Type:`, typeof chart.data.timeColumns);
-    return res.status(500).json({ error: 'Chart data structure is invalid' });
-  }
-
-  if (!chart.data.data || !Array.isArray(chart.data.data)) {
-    console.error(`❌ Chart ${chartId} has invalid data array. Type:`, typeof chart.data.data);
-    return res.status(500).json({ error: 'Chart data structure is invalid' });
-  }
-
-  console.log(`✅ Chart ${chartId} found - returning ${chart.data.timeColumns.length} timeColumns and ${chart.data.data.length} tasks`);
-
-  // Return chart data along with sessionId for subsequent requests
-  const responseData = {
-    ...chart.data,
-    sessionId: chart.sessionId,
-    chartId: chartId
-  };
-
-  console.log(`📤 Sending chart data with keys:`, Object.keys(responseData));
-
-  res.json(responseData);
 });
 
 /**
  * POST /update-task-dates
- * Phase 5 Enhancement: Updates task dates when dragged in the Gantt chart
+ * Acknowledges task date updates (client-side only)
  */
 router.post('/update-task-dates', express.json(), (req, res) => {
   try {
     const {
       taskName,
-      entity,
-      sessionId,
-      oldStartCol,
-      oldEndCol,
       newStartCol,
       newEndCol,
       startDate,
       endDate
     } = req.body;
 
-    console.log(`🔄 Task date update request:`, {
-      taskName,
-      entity,
-      sessionId,
-      oldStartCol,
-      oldEndCol,
-      newStartCol,
-      newEndCol,
-      startDate,
-      endDate
-    });
-
     // Validate required fields
-    if (!taskName || !sessionId || newStartCol === undefined || newEndCol === undefined) {
-      console.log('❌ Missing required fields for task update');
+    if (!taskName || newStartCol === undefined || newEndCol === undefined) {
       return res.status(400).json({
-        error: 'Missing required fields: taskName, sessionId, newStartCol, newEndCol'
+        error: 'Missing required fields: taskName, newStartCol, newEndCol'
       });
     }
 
-    // Note: In this implementation, we're acknowledging the update but not persisting it
-    // to a database. The chart data is already updated in memory on the client side.
-    // For production use, you would:
-    // 1. Update the chart data in the chartStore
-    // 2. Persist to a database if needed
-    // 3. Trigger any necessary recalculations or notifications
-
-    console.log(`✅ Task "${taskName}" dates updated successfully (client-side only)`);
+    console.log(`Task "${taskName}" dates updated (client-side only)`);
 
     res.json({
       success: true,
@@ -419,7 +174,7 @@ router.post('/update-task-dates', express.json(), (req, res) => {
       endDate
     });
   } catch (error) {
-    console.error('❌ Error updating task dates:', error);
+    console.error('Error updating task dates:', error);
     res.status(500).json({
       error: 'Failed to update task dates',
       details: error.message
@@ -429,35 +184,24 @@ router.post('/update-task-dates', express.json(), (req, res) => {
 
 /**
  * POST /update-task-color
- * Phase 6 Enhancement: Updates task bar color via context menu
+ * Acknowledges task color updates (client-side only)
  */
 router.post('/update-task-color', express.json(), (req, res) => {
   try {
     const {
       taskName,
-      entity,
-      sessionId,
       taskIndex,
-      oldColor,
       newColor
     } = req.body;
 
-    console.log(`🎨 Task color update request:`, {
-      taskName,
-      taskIndex,
-      oldColor,
-      newColor
-    });
-
     // Validate required fields
-    if (!taskName || !sessionId || taskIndex === undefined || !newColor) {
-      console.log('❌ Missing required fields for color update');
+    if (!taskName || taskIndex === undefined || !newColor) {
       return res.status(400).json({
-        error: 'Missing required fields: taskName, sessionId, taskIndex, newColor'
+        error: 'Missing required fields: taskName, taskIndex, newColor'
       });
     }
 
-    console.log(`✅ Task "${taskName}" color updated successfully`);
+    console.log(`Task "${taskName}" color updated`);
 
     res.json({
       success: true,
@@ -466,7 +210,7 @@ router.post('/update-task-color', express.json(), (req, res) => {
       newColor
     });
   } catch (error) {
-    console.error('❌ Error updating task color:', error);
+    console.error('Error updating task color:', error);
     res.status(500).json({
       error: 'Failed to update task color',
       details: error.message

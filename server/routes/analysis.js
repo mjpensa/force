@@ -1,12 +1,12 @@
 /**
  * Analysis Routes Module
- * Phase 4 Enhancement: Extracted from server.js
  * Handles task analysis and Q&A endpoints
+ *
+ * Note: No persistence - research content must be provided in each request
  */
 
 import express from 'express';
 import { CONFIG } from '../config.js';
-import { getSession } from '../storage.js';
 import { callGeminiForJson, callGeminiForText } from '../gemini.js';
 import { TASK_ANALYSIS_SYSTEM_PROMPT, TASK_ANALYSIS_SCHEMA, getQASystemPrompt } from '../prompts.js';
 import { apiLimiter } from '../middleware.js';
@@ -17,25 +17,22 @@ const router = express.Router();
 /**
  * POST /get-task-analysis
  * Generates detailed analysis for a specific task
+ *
+ * Request body:
+ * - taskName: string
+ * - entity: string
+ * - researchText: string (the research content to analyze)
  */
 router.post('/get-task-analysis', apiLimiter, async (req, res) => {
-  const { taskName, entity, sessionId } = req.body;
+  const { taskName, entity, researchText } = req.body;
 
   if (!taskName || !entity) {
     return res.status(400).json({ error: CONFIG.ERRORS.MISSING_TASK_NAME });
   }
 
-  if (!sessionId) {
-    return res.status(400).json({ error: CONFIG.ERRORS.MISSING_SESSION_ID });
+  if (!researchText) {
+    return res.status(400).json({ error: 'Research text is required for analysis' });
   }
-
-  // Retrieve session data
-  const session = getSession(sessionId);
-  if (!session) {
-    return res.status(404).json({ error: CONFIG.ERRORS.SESSION_NOT_FOUND });
-  }
-
-  const researchTextCache = session.researchText;
 
   // Sanitize user inputs to prevent prompt injection
   const sanitizedEntity = sanitizePrompt(entity);
@@ -45,7 +42,7 @@ router.post('/get-task-analysis', apiLimiter, async (req, res) => {
   const geminiUserQuery = `**CRITICAL REMINDER:** You MUST escape all newlines (\\n) and double-quotes (\") found in the research content before placing them into the final JSON string values.
 
 Research Content:
-${researchTextCache}
+${researchText}
 
 **YOUR TASK:** Provide a full, detailed analysis for this specific task:
   - Entity: ${sanitizedEntity}
@@ -62,9 +59,9 @@ ${researchTextCache}
       temperature: CONFIG.API.TEMPERATURE_STRUCTURED,
       topP: CONFIG.API.TOP_P,
       topK: CONFIG.API.TOP_K,
-      seed: CONFIG.API.SEED, // Fixed seed for deterministic output
+      seed: CONFIG.API.SEED,
       thinkingConfig: {
-        thinkingBudget: CONFIG.API.THINKING_BUDGET_ANALYSIS // Enable deep reasoning for sophisticated analysis
+        thinkingBudget: CONFIG.API.THINKING_BUDGET_ANALYSIS
       }
     }
   };
@@ -72,7 +69,6 @@ ${researchTextCache}
   // Call the API
   try {
     const analysisData = await callGeminiForJson(payload);
-
     res.json(analysisData);
   } catch (e) {
     console.error("Task Analysis API error:", e);
@@ -83,9 +79,15 @@ ${researchTextCache}
 /**
  * POST /ask-question
  * Answers a user's question about a specific task
+ *
+ * Request body:
+ * - taskName: string
+ * - entity: string
+ * - question: string
+ * - researchText: string (the research content for context)
  */
 router.post('/ask-question', apiLimiter, async (req, res) => {
-  const { taskName, entity, question, sessionId } = req.body;
+  const { taskName, entity, question, researchText } = req.body;
 
   // Enhanced input validation
   if (!question || typeof question !== 'string' || !question.trim()) {
@@ -100,8 +102,8 @@ router.post('/ask-question', apiLimiter, async (req, res) => {
     return res.status(400).json({ error: CONFIG.ERRORS.TASK_NAME_REQUIRED });
   }
 
-  if (!sessionId) {
-    return res.status(400).json({ error: CONFIG.ERRORS.MISSING_SESSION_ID });
+  if (!researchText) {
+    return res.status(400).json({ error: 'Research text is required for Q&A' });
   }
 
   // Limit question length to prevent abuse
@@ -109,21 +111,13 @@ router.post('/ask-question', apiLimiter, async (req, res) => {
     return res.status(400).json({ error: CONFIG.ERRORS.QUESTION_TOO_LONG });
   }
 
-  // Retrieve session data
-  const session = getSession(sessionId);
-  if (!session) {
-    return res.status(404).json({ error: CONFIG.ERRORS.SESSION_NOT_FOUND });
-  }
-
-  const researchTextCache = session.researchText;
-
   // Sanitize user inputs to prevent prompt injection
   const sanitizedQuestion = sanitizePrompt(question);
   const sanitizedTaskName = sanitizePrompt(taskName);
   const sanitizedEntity = sanitizePrompt(entity);
 
   // Build user query
-  const geminiUserQuery = `Research Content:\n${researchTextCache}\n\n**User Question:** ${sanitizedQuestion}`;
+  const geminiUserQuery = `Research Content:\n${researchText}\n\n**User Question:** ${sanitizedQuestion}`;
 
   // Define the payload (no schema, simple text generation)
   const payload = {
@@ -135,7 +129,7 @@ router.post('/ask-question', apiLimiter, async (req, res) => {
       topP: CONFIG.API.TOP_P,
       topK: CONFIG.API.TOP_K,
       thinkingConfig: {
-        thinkingBudget: CONFIG.API.THINKING_BUDGET_ANALYSIS // Enable deep reasoning for Q&A
+        thinkingBudget: CONFIG.API.THINKING_BUDGET_ANALYSIS
       }
     }
   };
@@ -143,7 +137,6 @@ router.post('/ask-question', apiLimiter, async (req, res) => {
   // Call the API
   try {
     const textResponse = await callGeminiForText(payload);
-
     res.json({ answer: textResponse });
   } catch (e) {
     console.error("Q&A API error:", e);

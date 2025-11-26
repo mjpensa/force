@@ -5,8 +5,6 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { jsonrepair } from 'jsonrepair';
-import { v4 as uuidv4 } from 'uuid';
-import { ContentDB, JobDB, SessionDB } from './db.js';
 import { generateRoadmapPrompt, roadmapSchema } from './prompts/roadmap.js';
 import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
 import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
@@ -254,36 +252,22 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
  * Generate roadmap content (Gantt chart)
  * Uses ROADMAP_CONFIG for maximum determinism - prompt requires DETERMINISTIC output
  *
- * @param {string} sessionId - Session ID
- * @param {string} jobId - Job ID for tracking
  * @param {string} userPrompt - User's request
  * @param {Array} researchFiles - Research files
  */
-async function generateRoadmap(sessionId, jobId, userPrompt, researchFiles) {
+async function generateRoadmap(userPrompt, researchFiles) {
   try {
-    console.log(`[Roadmap] Starting generation for session ${sessionId}`);
+    console.log(`[Roadmap] Starting generation`);
     console.log(`[Roadmap] Using config: temp=${ROADMAP_CONFIG.temperature}, topP=${ROADMAP_CONFIG.topP}, topK=${ROADMAP_CONFIG.topK}, thinkingBudget=${ROADMAP_CONFIG.thinkingBudget}`);
-    JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateRoadmapPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG);
 
-    // Store in database
-    ContentDB.create(sessionId, 'roadmap', data);
-    JobDB.updateStatus(jobId, 'completed');
-
-    console.log(`[Roadmap] Successfully generated and stored`);
+    console.log(`[Roadmap] Successfully generated`);
     return { success: true, data };
 
   } catch (error) {
     console.error('[Roadmap] Generation failed:', error);
-    // Wrap database operations in try-catch to prevent cascade failures
-    try {
-      JobDB.updateStatus(jobId, 'error', error.message);
-      ContentDB.create(sessionId, 'roadmap', null, error.message);
-    } catch (dbError) {
-      console.error('[Roadmap] Failed to update error status in database:', dbError);
-    }
     return { success: false, error: error.message };
   }
 }
@@ -291,23 +275,17 @@ async function generateRoadmap(sessionId, jobId, userPrompt, researchFiles) {
 /**
  * Generate slides - simplified MVP
  */
-async function generateSlides(sessionId, jobId, userPrompt, researchFiles) {
+async function generateSlides(userPrompt, researchFiles) {
   try {
     console.log(`[Slides] Starting...`);
-    JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateSlidesPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG);
-
-    ContentDB.create(sessionId, 'slides', data);
-    JobDB.updateStatus(jobId, 'completed');
 
     console.log(`[Slides] Done: ${data?.slides?.length || 0} slides`);
     return { success: true, data };
   } catch (error) {
     console.error('[Slides] Failed:', error.message);
-    JobDB.updateStatus(jobId, 'error', error.message);
-    ContentDB.create(sessionId, 'slides', null, error.message);
     return { success: false, error: error.message };
   }
 }
@@ -331,16 +309,13 @@ function validateDocumentStructure(data) {
  * Uses DOCUMENT_CREATIVE_CONFIG for captivating, insightful narratives
  * while staying grounded through high thinking budget
  *
- * @param {string} sessionId - Session ID
- * @param {string} jobId - Job ID for tracking
  * @param {string} userPrompt - User's request
  * @param {Array} researchFiles - Research files
  */
-async function generateDocument(sessionId, jobId, userPrompt, researchFiles) {
+async function generateDocument(userPrompt, researchFiles) {
   try {
-    console.log(`[Document] Starting generation for session ${sessionId}`);
+    console.log(`[Document] Starting generation`);
     console.log(`[Document] Using creative config: temp=${DOCUMENT_CREATIVE_CONFIG.temperature}, topP=${DOCUMENT_CREATIVE_CONFIG.topP}, topK=${DOCUMENT_CREATIVE_CONFIG.topK}, thinkingBudget=${DOCUMENT_CREATIVE_CONFIG.thinkingBudget}`);
-    JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateDocumentPrompt(userPrompt, researchFiles);
     let data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CREATIVE_CONFIG);
@@ -357,22 +332,11 @@ async function generateDocument(sessionId, jobId, userPrompt, researchFiles) {
       }
     }
 
-    // Store in database
-    ContentDB.create(sessionId, 'document', data);
-    JobDB.updateStatus(jobId, 'completed');
-
-    console.log(`[Document] Successfully generated and stored with ${data.sections.length} sections`);
+    console.log(`[Document] Successfully generated with ${data.sections.length} sections`);
     return { success: true, data };
 
   } catch (error) {
     console.error('[Document] Generation failed:', error);
-    // Wrap database operations in try-catch to prevent cascade failures
-    try {
-      JobDB.updateStatus(jobId, 'error', error.message);
-      ContentDB.create(sessionId, 'document', null, error.message);
-    } catch (dbError) {
-      console.error('[Document] Failed to update error status in database:', dbError);
-    }
     return { success: false, error: error.message };
   }
 }
@@ -383,16 +347,13 @@ async function generateDocument(sessionId, jobId, userPrompt, researchFiles) {
  * - Requires judgment for quality scoring and gap identification
  * - Needs some creativity for insightful recommendations
  *
- * @param {string} sessionId - Session ID
- * @param {string} jobId - Job ID for tracking
  * @param {string} userPrompt - User's request
  * @param {Array} researchFiles - Research files
  */
-async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFiles) {
+async function generateResearchAnalysis(userPrompt, researchFiles) {
   try {
-    console.log(`[ResearchAnalysis] Starting generation for session ${sessionId}`);
+    console.log(`[ResearchAnalysis] Starting generation`);
     console.log(`[ResearchAnalysis] Using config: temp=${RESEARCH_ANALYSIS_CONFIG.temperature}, topP=${RESEARCH_ANALYSIS_CONFIG.topP}, topK=${RESEARCH_ANALYSIS_CONFIG.topK}, thinkingBudget=${RESEARCH_ANALYSIS_CONFIG.thinkingBudget}`);
-    JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateResearchAnalysisPrompt(userPrompt, researchFiles);
     let data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG);
@@ -409,22 +370,11 @@ async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFi
       }
     }
 
-    // Store in database
-    ContentDB.create(sessionId, 'research-analysis', data);
-    JobDB.updateStatus(jobId, 'completed');
-
-    console.log(`[ResearchAnalysis] Successfully generated and stored with ${data.themes.length} themes analyzed`);
+    console.log(`[ResearchAnalysis] Successfully generated with ${data.themes.length} themes analyzed`);
     return { success: true, data };
 
   } catch (error) {
     console.error('[ResearchAnalysis] Generation failed:', error);
-    // Wrap database operations in try-catch to prevent cascade failures
-    try {
-      JobDB.updateStatus(jobId, 'error', error.message);
-      ContentDB.create(sessionId, 'research-analysis', null, error.message);
-    } catch (dbError) {
-      console.error('[ResearchAnalysis] Failed to update error status in database:', dbError);
-    }
     return { success: false, error: error.message };
   }
 }
@@ -433,7 +383,7 @@ async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFi
  * Generate all content types sequentially
  * Order: 1) Roadmap 2) Slides (fast) 3) Document 4) Research Analysis
  */
-export async function generateAllContent(sessionId, userPrompt, researchFiles, jobIds) {
+export async function generateAllContent(userPrompt, researchFiles) {
   const results = {
     roadmap: null,
     document: null,
@@ -442,36 +392,30 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
   };
 
   try {
-    console.log(`[Session ${sessionId}] Starting generation`);
-    SessionDB.updateStatus(sessionId, 'processing');
+    console.log(`[Generation] Starting all content generation`);
 
     // STEP 1: Roadmap
-    console.log(`[Session ${sessionId}] 1/4: Roadmap`);
-    results.roadmap = await generateRoadmap(sessionId, jobIds.roadmap, userPrompt, researchFiles);
+    console.log(`[Generation] 1/4: Roadmap`);
+    results.roadmap = await generateRoadmap(userPrompt, researchFiles);
 
     // STEP 2: Slides (fast - no thinking)
-    console.log(`[Session ${sessionId}] 2/4: Slides`);
-    results.slides = await generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles);
+    console.log(`[Generation] 2/4: Slides`);
+    results.slides = await generateSlides(userPrompt, researchFiles);
 
     // STEP 3: Document
-    console.log(`[Session ${sessionId}] 3/4: Document`);
-    results.document = await generateDocument(sessionId, jobIds.document, userPrompt, researchFiles);
+    console.log(`[Generation] 3/4: Document`);
+    results.document = await generateDocument(userPrompt, researchFiles);
 
     // STEP 4: Research Analysis
-    console.log(`[Session ${sessionId}] 4/4: Research Analysis`);
-    results.researchAnalysis = await generateResearchAnalysis(sessionId, jobIds.researchAnalysis, userPrompt, researchFiles);
+    console.log(`[Generation] 4/4: Research Analysis`);
+    results.researchAnalysis = await generateResearchAnalysis(userPrompt, researchFiles);
 
-    // Update final status
-    const anySuccess = results.roadmap?.success || results.slides?.success ||
-                       results.document?.success || results.researchAnalysis?.success;
-    SessionDB.updateStatus(sessionId, anySuccess ? 'completed' : 'error');
-    console.log(`[Session ${sessionId}] Done`);
+    console.log(`[Generation] Done`);
 
-    return { sessionId, ...results };
+    return results;
 
   } catch (error) {
-    console.error(`[Session ${sessionId}] Error:`, error.message);
-    SessionDB.updateStatus(sessionId, 'error', error.message);
+    console.error(`[Generation] Error:`, error.message);
     throw error;
   }
 }
@@ -480,37 +424,25 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
  * Regenerate a single content type
  * Uses APIQueue to respect concurrency limits
  *
- * @param {string} sessionId - Session ID
  * @param {string} viewType - 'roadmap', 'slides', 'document', or 'research-analysis'
+ * @param {string} prompt - User prompt
+ * @param {Array} researchFiles - Research files
  * @returns {Promise<object>} Generation result
  */
-export async function regenerateContent(sessionId, viewType) {
+export async function regenerateContent(viewType, prompt, researchFiles) {
   try {
-    // Get session
-    const session = SessionDB.get(sessionId);
-    if (!session) {
-      throw new Error('Session not found');
-    }
-
-    // Note: SessionDB.get() already parses researchFiles, so use it directly
-    const { prompt, researchFiles } = session;
-
-    // Create new job (uuidv4 is imported at module level)
-    const jobId = uuidv4();
-    JobDB.create(jobId, sessionId, viewType);
-
     // Define the generation task
     const taskName = `Regenerate-${viewType}`;
     const task = async () => {
       switch (viewType) {
         case 'roadmap':
-          return generateRoadmap(sessionId, jobId, prompt, researchFiles);
+          return generateRoadmap(prompt, researchFiles);
         case 'slides':
-          return generateSlides(sessionId, jobId, prompt, researchFiles);
+          return generateSlides(prompt, researchFiles);
         case 'document':
-          return generateDocument(sessionId, jobId, prompt, researchFiles);
+          return generateDocument(prompt, researchFiles);
         case 'research-analysis':
-          return generateResearchAnalysis(sessionId, jobId, prompt, researchFiles);
+          return generateResearchAnalysis(prompt, researchFiles);
         default:
           throw new Error(`Invalid view type: ${viewType}`);
       }

@@ -97,12 +97,6 @@ export const CONFIG = {
     STRICT_MAX_REQUESTS: 20 // For resource-intensive endpoints
   },
 
-  // Session/Storage expiration
-  STORAGE: {
-    EXPIRATION_MS: 60 * 60 * 1000, // 1 hour
-    CLEANUP_INTERVAL_MS: 5 * 60 * 1000 // 5 minutes
-  },
-
   // Cache control
   CACHE: {
     STATIC_ASSETS_MAX_AGE: 86400 // 1 day in seconds
@@ -170,7 +164,6 @@ Object.freeze(CONFIG.API);
 Object.freeze(CONFIG.FILES);
 Object.freeze(CONFIG.TIMEOUTS);
 Object.freeze(CONFIG.RATE_LIMIT);
-Object.freeze(CONFIG.STORAGE);
 Object.freeze(CONFIG.CACHE);
 Object.freeze(CONFIG.SECURITY);
 Object.freeze(CONFIG.SECURITY.PATTERNS);
