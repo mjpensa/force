@@ -19,6 +19,30 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 const GENERATION_TIMEOUT_MS = 180000; // 3 minutes - generous but not infinite
 
 /**
+ * Generation config presets for different content types
+ *
+ * DOCUMENT_CREATIVE_CONFIG: Optimized for executive summaries
+ * - Balanced creativity for captivating narratives
+ * - Grounded through high thinking budget for fact-checking
+ * - No seed to allow natural variation between generations
+ */
+const DOCUMENT_CREATIVE_CONFIG = {
+  temperature: 0.4,      // Low-moderate: creative phrasing without hallucination risk
+  topP: 0.6,             // Moderate: explores synonyms/phrasings while staying coherent
+  topK: 15,              // Relaxed: allows richer vocabulary than greedy decoding
+  thinkingBudget: 32768  // High: deeper analysis, better insights, stronger fact-checking
+};
+
+/**
+ * Default config for structured outputs (roadmap, slides, research-analysis)
+ * - Deterministic for consistent, reproducible results
+ * - Lower thinking budget sufficient for structured extraction
+ */
+const STRUCTURED_DEFAULT_CONFIG = {
+  thinkingBudget: 24576  // Standard deep reasoning
+};
+
+/**
  * Execute a promise with timeout
  * @param {Promise} promise - Promise to execute
  * @param {number} timeoutMs - Timeout in milliseconds
@@ -44,19 +68,36 @@ function withTimeout(promise, timeoutMs, operationName) {
  * @param {string} prompt - The complete prompt
  * @param {object} schema - JSON schema for response
  * @param {string} contentType - Type of content being generated
+ * @param {object} configOverrides - Optional config overrides (temperature, topP, topK, thinkingBudget)
  * @returns {Promise<object>} Generated content
  */
-async function generateWithGemini(prompt, schema, contentType) {
+async function generateWithGemini(prompt, schema, contentType, configOverrides = {}) {
   try {
+    // Merge default config with any overrides
+    const {
+      temperature,
+      topP,
+      topK,
+      thinkingBudget = STRUCTURED_DEFAULT_CONFIG.thinkingBudget
+    } = configOverrides;
+
+    // Build generation config - only include optional params if specified
+    const generationConfig = {
+      responseMimeType: 'application/json',
+      responseSchema: schema,
+      thinkingConfig: {
+        thinkingBudget
+      }
+    };
+
+    // Add optional creativity parameters if provided
+    if (temperature !== undefined) generationConfig.temperature = temperature;
+    if (topP !== undefined) generationConfig.topP = topP;
+    if (topK !== undefined) generationConfig.topK = topK;
+
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash-preview-09-2025',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: schema,
-        thinkingConfig: {
-          thinkingBudget: 24576 // Enable deep reasoning for sophisticated analysis
-        }
-      }
+      generationConfig
     });
 
     console.log(`[${contentType}] Starting generation (timeout: ${GENERATION_TIMEOUT_MS / 1000}s)...`);
@@ -274,7 +315,10 @@ function validateSlidesStructure(data) {
 }
 
 /**
- * Generate document content
+ * Generate document content (executive summary)
+ * Uses DOCUMENT_CREATIVE_CONFIG for captivating, insightful narratives
+ * while staying grounded through high thinking budget
+ *
  * @param {string} sessionId - Session ID
  * @param {string} jobId - Job ID for tracking
  * @param {string} userPrompt - User's request
@@ -283,17 +327,18 @@ function validateSlidesStructure(data) {
 async function generateDocument(sessionId, jobId, userPrompt, researchFiles) {
   try {
     console.log(`[Document] Starting generation for session ${sessionId}`);
+    console.log(`[Document] Using creative config: temp=${DOCUMENT_CREATIVE_CONFIG.temperature}, topP=${DOCUMENT_CREATIVE_CONFIG.topP}, topK=${DOCUMENT_CREATIVE_CONFIG.topK}, thinkingBudget=${DOCUMENT_CREATIVE_CONFIG.thinkingBudget}`);
     JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateDocumentPrompt(userPrompt, researchFiles);
-    let data = await generateWithGemini(prompt, documentSchema, 'Document');
+    let data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CREATIVE_CONFIG);
 
     // Validate document structure
     if (!validateDocumentStructure(data)) {
       console.warn('[Document] Generated data has invalid structure, retrying once...');
 
-      // Retry generation once
-      data = await generateWithGemini(prompt, documentSchema, 'Document');
+      // Retry generation once with same creative config
+      data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CREATIVE_CONFIG);
 
       if (!validateDocumentStructure(data)) {
         throw new Error('Document generation produced empty or invalid content after retry. The AI may need more detailed source material.');
