@@ -142,6 +142,7 @@ export class SlidesView {
       // Process/Steps
       case 'steps':
       case 'process':
+      case 'processSteps':
       case 'processSteps5':
       case 'processStepsAlt':
         content.appendChild(this._renderProcessStepsSlide(slide));
@@ -1157,7 +1158,7 @@ export class SlidesView {
     const tocList = document.createElement('ol');
     tocList.className = 'slide-toc';
 
-    const sections = slide.sections || slide.items || [];
+    const sections = slide.tocItems || slide.sections || slide.items || [];
     sections.forEach(section => {
       const li = document.createElement('li');
       li.className = 'slide-toc-item';
