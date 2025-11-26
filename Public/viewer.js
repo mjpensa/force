@@ -136,7 +136,7 @@ class ContentViewer {
     const appShell = document.createElement('div');
     appShell.className = 'app-shell';
 
-    // Main content area
+    // Main content area (no header - sidebar handles navigation)
     const main = document.createElement('main');
     main.className = 'app-main';
     main.id = 'main-content';
