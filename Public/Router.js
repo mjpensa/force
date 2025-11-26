@@ -8,7 +8,6 @@ class Router {
         };
         this.currentRoute = null;
         this.ganttChart = null;
-        this.hamburgerMenu = null;
 
         // Bind event handlers
         this.handleHashChange = this.handleHashChange.bind(this);
@@ -23,7 +22,6 @@ class Router {
         });
 
         this.ganttChart = ganttChart;
-        this.hamburgerMenu = ganttChart?.hamburgerMenu;
 
         // Listen for hash changes
         window.addEventListener('hashchange', this.handleHashChange);
@@ -69,11 +67,6 @@ class Router {
      */
     showSection(section) {
         console.log('🔄 Router.showSection called with section:', section);
-
-        // Update hamburger menu active item
-        if (this.hamburgerMenu) {
-            this.hamburgerMenu.updateActiveItem(section);
-        }
 
         // Get container elements
         const ganttGrid = document.querySelector('.gantt-grid');
