@@ -126,17 +126,15 @@ const RESEARCH_ANALYSIS_CONFIG = {
 };
 
 /**
- * Slides generation config - optimized for determinism with 3 slide types
- * - Very low temperature for consistent, reliable output
- * - Constrained exploration since only 3 slide types exist
- * - Reduced thinking budget since slide types are now simplified
- * - No seed parameter (not well supported by preview models)
+ * Slides generation config - optimized for speed with 3 simple slide types
+ * - Minimal thinking budget since output structure is trivial
+ * - Low temperature for consistent schema adherence
  */
 const SLIDES_CONFIG = {
-  temperature: 0.1,      // Very low: maximum schema adherence (like Gantt chart)
-  topP: 0.3,             // Constrained: follow rules exactly
-  topK: 5,               // Minimal: only 3 slide types to choose from
-  thinkingBudget: 8192   // Reduced: 3 simple slide types don't need max thinking
+  temperature: 0.1,
+  topP: 0.3,
+  topK: 5,
+  thinkingBudget: 1024   // Minimal: simple JSON output needs no deep reasoning
 };
 
 
@@ -304,18 +302,11 @@ async function generateSlides(sessionId, jobId, userPrompt, researchFiles) {
     JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateSlidesPrompt(userPrompt, researchFiles);
-    let data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG);
+    const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG);
 
-    // Validate slides structure
+    // Validate slides structure - fail fast, no retry
     if (!validateSlidesStructure(data)) {
-      console.warn('[Slides] Generated data has invalid structure, retrying once...');
-
-      // Retry generation once with same config
-      data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG);
-
-      if (!validateSlidesStructure(data)) {
-        throw new Error('Slides generation produced empty or invalid content after retry. The AI may need more detailed source material.');
-      }
+      throw new Error('Slides generation produced invalid content. Check source material.');
     }
 
     // Store in database
@@ -352,44 +343,11 @@ function validateDocumentStructure(data) {
 }
 
 /**
- * Check if a slide has valid body content (3 types only)
- */
-function slideHasBodyContent(slide) {
-  switch (slide.type) {
-    case 'textTwoColumn':
-      return Array.isArray(slide.paragraphs) && slide.paragraphs.length > 0;
-    case 'textThreeColumn':
-      return Array.isArray(slide.columns) && slide.columns.length === 3;
-    case 'textWithCards':
-      return slide.content && Array.isArray(slide.cards) && slide.cards.length === 6;
-    default:
-      return false;
-  }
-}
-
-/**
- * Validate slides structure (3 types only)
+ * Validate slides structure - minimal check
  */
 function validateSlidesStructure(data) {
   if (!data?.slides?.length) return false;
-  if (data.slides.length < 3 || data.slides.length > 20) return false;
-
-  const validTypes = ['textTwoColumn', 'textThreeColumn', 'textWithCards'];
-  let validCount = 0;
-
-  for (const slide of data.slides) {
-    if (!slide.type || !slide.title || !slide.section) continue;
-    if (!validTypes.includes(slide.type)) continue;
-    if (slideHasBodyContent(slide)) validCount++;
-  }
-
-  const ratio = validCount / data.slides.length;
-  if (ratio < 0.7) {
-    console.error(`[Slides] Validation failed: ${validCount}/${data.slides.length} valid`);
-    return false;
-  }
-
-  console.log(`[Slides] Validated: ${data.slides.length} slides, ${validCount} with content`);
+  console.log(`[Slides] Validated: ${data.slides.length} slides`);
   return true;
 }
 
