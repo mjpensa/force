@@ -1086,7 +1086,48 @@ ${presentationTemplates}
 - **CRITICAL: Generate between 7-12 slides total. NEVER exceed 15 slides.**
 - Set totalSlides to the length of the slides array
 - Every slide must have at least a type and title
-- Every content slide must have content (bullets, cards, steps, etc.) - never leave slides empty
+
+### CRITICAL: BODY CONTENT IS MANDATORY
+
+**EVERY content slide MUST include body content - slides with only a title will be REJECTED.**
+
+For each slide type, you MUST include the appropriate body content:
+| Slide Type | REQUIRED Body Content |
+|------------|----------------------|
+| bullets, bulletsFull | bullets[] array with 3-6 items |
+| content, contentWithImage | content (string with actual text) |
+| contentMultiColumn | columns[] array with 2 column objects |
+| quote | quote (string with the quote text) |
+| quoteTwoColumn | leftQuote{} and rightQuote{} OR quotes[] array |
+| quoteWithMetrics, quoteDataA, quoteDataB | quote (string) AND metrics[] array |
+| cardGrid | cards[] array with card objects |
+| featureGrid, featureGridRed | features[] array with feature objects |
+| steps, process, processSteps5, stepsVertical | steps[] array with step objects |
+| timelineCards, timeline | items[] array with timeline items |
+| timelinePhases | phases[] array with phase objects |
+| rolloutGrid, rolloutTimeline, rolloutDescription | phases[] array with phase objects |
+| ganttChart | activities[] array with activity objects |
+| table | headers[] and rows[][] arrays |
+| tableOfContents | items[] array with section titles |
+| contentsNav | sections[] array with section objects |
+
+**ONLY these types can have just a title (no body content required):**
+- title, titleVariantA, titleVariantB, titleWithImage
+- sectionDivider
+- thankYou, thankYouAlt
+
+**EXAMPLE OF CORRECT vs INCORRECT:**
+
+INCORRECT (will be rejected):
+```json
+{ "type": "bullets", "title": "Key Points" }
+```
+
+CORRECT:
+```json
+{ "type": "bullets", "title": "Key Points", "section": "OVERVIEW", "bullets": ["First key point with detail", "Second key point with detail", "Third key point with detail"] }
+```
+
 - Use appropriate slide types based on content structure
 - Ensure smooth narrative progression
 - Include "section" labels for content slides
@@ -1125,6 +1166,15 @@ Create a compelling slide deck that presents the key insights from this research
 - DO NOT use any external knowledge, training data, or information not present in the research
 - ALL statistics, insights, and claims MUST come directly from the uploaded research
 - If the research lacks sufficient content, create fewer slides rather than inventing information
+
+**ABSOLUTE REQUIREMENT - BODY CONTENT:**
+- EVERY slide (except title/thankYou types) MUST have body content
+- A slide with only "type" and "title" is INVALID and will be REJECTED
+- For bullets slides: include 3-6 bullet points in the "bullets" array
+- For content slides: include actual text in the "content" field
+- For cardGrid: include cards in the "cards" array
+- For steps/process slides: include steps in the "steps" array
+- NEVER generate empty slides - every slide must have meaningful content
 
 Respond with ONLY the JSON object.`;
 }
