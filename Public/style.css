@@ -127,7 +127,7 @@ select:focus-visible {
 
 /* 9. Grid Header (Weeks) */
 .gantt-header {
-  font-size: 0.95rem; /* Normalized to match all text on screen */
+  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
   font-weight: 600;
   padding: 3px 2px; /* SCALED: Was 4px 3px */
   text-align: center;
@@ -144,7 +144,7 @@ select:focus-visible {
 /* 10. Row Label (Swimlane or Task) */
 .gantt-row-label {
   padding: 0; /* Remove padding from parent - will be applied to children */
-  font-size: 0.95rem; /* Normalized to match all text on screen */
+  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   white-space: nowrap; /* Prevent text wrapping - column will auto-expand */
   overflow: visible; /* Allow text to be fully visible */
@@ -248,7 +248,7 @@ select:focus-visible {
   font-weight: 700;
   color: #FFFFFF; /* Text Color */
   background-color: #0C2340; /* Set swimlane title background */
-  font-size: 0.95rem; /* Normalized to match all text on screen */
+  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
   padding: 0; /* Padding moved to .label-content */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
 }
@@ -263,7 +263,7 @@ select:focus-visible {
   color: #FFFFFF; /* Text Color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   background-color: #354259; /* Set task title background - default blue */
-  font-size: 0.95rem; /* Normalized to match all text on screen */
+  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
   line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
 }
 
@@ -281,7 +281,7 @@ select:focus-visible {
   position: relative;
   display: grid;
   align-items: center; /* Center bars vertically */
-  min-height: 32px; /* Ensure minimum height for rows */
+  min-height: 20px; /* SCALED: Was 32px - reduced for compact display */
 }
 
 .gantt-bar-area.task {
