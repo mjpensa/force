@@ -728,8 +728,8 @@ body {
 .textarea-glass:focus {
   outline: none;
   background: var(--glass-white-10);
-  border-color: rgba(80, 175, 123, 0.60);
-  box-shadow: 0 0 0 3px rgba(80, 175, 123, 0.15);
+  border-color: rgba(208, 32, 16, 0.60);
+  box-shadow: 0 0 0 3px rgba(208, 32, 16, 0.15);
 }
 
 /* Dropzone Glass Component */
@@ -1048,6 +1048,13 @@ body {
   outline: 3px solid var(--color-glass-success);
   outline-offset: 2px;
   box-shadow: 0 0 0 6px rgba(80, 175, 123, 0.15);
+}
+
+/* Override textarea focus-visible with custom red outline */
+.textarea-glass:focus-visible {
+  outline: 3px solid #d02010;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(208, 32, 16, 0.15);
 }
 
 /* Ensure dropzone is focusable via keyboard */
