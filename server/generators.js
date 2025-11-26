@@ -130,14 +130,14 @@ const RESEARCH_ANALYSIS_CONFIG = {
  * - Very low temperature for consistent, reliable output
  * - Fixed seed for reproducibility
  * - Constrained exploration since only 3 slide types exist
- * - Full thinking budget for complex multi-slide planning
+ * - Reduced thinking budget since slide types are now simplified
  */
 const SLIDES_CONFIG = {
   temperature: 0.1,      // Very low: maximum schema adherence (like Gantt chart)
   topP: 0.3,             // Constrained: follow rules exactly
   topK: 5,               // Minimal: only 3 slide types to choose from
   seed: 42,              // Fixed seed for deterministic output
-  thinkingBudget: 24576  // Maximum: complex multi-slide narrative planning
+  thinkingBudget: 8192   // Reduced: 3 simple slide types don't need max thinking
 };
 
 /**
