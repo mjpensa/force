@@ -156,9 +156,9 @@ class ContentViewer {
             <span class="tab-label">Document</span>
             <span class="tab-status" id="status-document" title="Loading..."></span>
           </button>
-          <button class="view-tab" data-view="research-analysis" aria-label="Research Analysis view">
+          <button class="view-tab" data-view="research-analysis" aria-label="Research QA view">
             <span class="tab-icon">🔍</span>
-            <span class="tab-label">Analysis</span>
+            <span class="tab-label">Research QA</span>
             <span class="tab-status" id="status-research-analysis" title="Loading..."></span>
           </button>
         </nav>
@@ -260,7 +260,7 @@ class ContentViewer {
         <h2 style="margin-top: 0;">Keyboard Shortcuts</h2>
         <dl style="line-height: 2;">
           <dt style="font-weight: 600;">1, 2, 3, 4</dt>
-          <dd style="margin-left: 2rem; color: #666;">Navigate to Roadmap, Slides, Document, or Analysis view</dd>
+          <dd style="margin-left: 2rem; color: #666;">Navigate to Roadmap, Slides, Document, or Research QA view</dd>
 
           <dt style="font-weight: 600;">← →</dt>
           <dd style="margin-left: 2rem; color: #666;">Navigate between views</dd>
