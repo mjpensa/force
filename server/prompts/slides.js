@@ -1,6 +1,6 @@
 /**
- * Slides Generation - Simplified
- * 3 slide types: textTwoColumn, textThreeColumn, textWithCards
+ * Slides Generation - Extremely Simplified
+ * 3 slide types with strict character limits
  */
 
 const cardSchema = {
@@ -39,34 +39,32 @@ export const slidesSchema = {
 export function generateSlidesPrompt(userPrompt, researchFiles) {
   const research = researchFiles.map(f => `=== ${f.filename} ===\n${f.content}`).join('\n\n');
 
-  return `Create a slide deck from the research content below. Output valid JSON only.
+  return `Generate a JSON slide deck. Be EXTREMELY BRIEF - this is for slides, not a document.
 
-SLIDE TYPES (use only these 3):
+THREE SLIDE TYPES:
 
-1. textTwoColumn: title left, paragraphs right
-   {"type":"textTwoColumn", "section":"OVERVIEW", "title":"Main point here", "paragraphs":["First paragraph.", "Second paragraph."]}
+TYPE 1 - textTwoColumn:
+{"type":"textTwoColumn","section":"TOPIC","title":"Short title","paragraphs":["One brief sentence.","Another brief sentence."]}
 
-2. textThreeColumn: title left, 3 text columns right
-   {"type":"textThreeColumn", "section":"ANALYSIS", "title":"Detailed findings", "columns":["Column 1 text.", "Column 2 text.", "Column 3 text."]}
+TYPE 2 - textThreeColumn:
+{"type":"textThreeColumn","section":"TOPIC","title":"Short title","columns":["Point one.","Point two.","Point three."]}
 
-3. textWithCards: title+content left, 6 cards right
-   {"type":"textWithCards", "section":"CAPABILITIES", "title":"Key features", "content":"Overview paragraph.", "cards":[{"title":"Card 1","content":"Description"},{"title":"Card 2","content":"Description"},{"title":"Card 3","content":"Description"},{"title":"Card 4","content":"Description"},{"title":"Card 5","content":"Description"},{"title":"Card 6","content":"Description"}]}
+TYPE 3 - textWithCards:
+{"type":"textWithCards","section":"TOPIC","title":"Short title","content":"Brief intro.","cards":[{"title":"A","content":"Few words"},{"title":"B","content":"Few words"},{"title":"C","content":"Few words"},{"title":"D","content":"Few words"},{"title":"E","content":"Few words"},{"title":"F","content":"Few words"}]}
 
-RULES:
-- Generate 8-12 slides
-- section: UPPERCASE (e.g., "MARKET ANALYSIS")
-- title: sentence case, under 8 words
-- textTwoColumn: 1-3 paragraphs
-- textThreeColumn: exactly 3 columns
-- textWithCards: exactly 6 cards
-- Use ONLY information from the research content below - no external knowledge
+STRICT LIMITS:
+- 8-12 slides total
+- Each paragraph/column: 1-2 sentences MAX
+- Each card content: 5 words MAX
+- section: UPPERCASE
+- title: under 6 words
 
-USER REQUEST: ${userPrompt}
+Topic: ${userPrompt}
 
-RESEARCH CONTENT:
+Source material:
 ${research}
 
-Output JSON: {"title":"...", "slides":[...]}`;
+Output ONLY valid JSON: {"title":"...","slides":[...]}`;
 }
 
 export default { slidesSchema, generateSlidesPrompt };
