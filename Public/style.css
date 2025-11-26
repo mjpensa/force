@@ -152,7 +152,7 @@ select:focus-visible {
   grid-template-columns: 1fr auto; /* Label content takes available space, actions auto-size */
   align-items: center; /* Grid align-items may work better than flex in html2canvas */
   gap: 3px; /* SCALED: Was 4px */
-  min-height: 10px; /* SCALED: Was 14px */
+  min-height: 22px; /* Increased from 10px to accommodate better label spacing */
 }
 
 /* Phase 3: Label content wrapper */
@@ -161,9 +161,9 @@ select:focus-visible {
   min-width: 0;
   transition: all 0.2s;
   border-radius: 2px;
-  padding: 1px 3px; /* SCALED: Was 2px 4px */
+  padding: 4px 3px; /* Increased vertical padding for better spacing */
   display: block;
-  line-height: 1.2; /* Explicit line-height */
+  line-height: 1.5; /* Increased line-height for better text spacing */
 }
 
 /* Show outline on label hover when in edit mode (for both tasks and swimlanes) */
@@ -250,11 +250,11 @@ select:focus-visible {
   background-color: #0C2340; /* Set swimlane title background */
   font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
   padding: 0; /* Padding moved to .label-content */
-  line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
+  line-height: 1.5; /* Increased line-height for better text spacing */
 }
 
 .gantt-row-label.swimlane .label-content {
-  padding: 2px 4px; /* SCALED: Was 3px 5px */
+  padding: 5px 4px; /* Increased vertical padding for better spacing */
 }
 
 .gantt-row-label.task {
@@ -264,11 +264,11 @@ select:focus-visible {
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   background-color: #354259; /* Set task title background - default blue */
   font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
-  line-height: 1.2; /* Explicit line-height for consistent html2canvas rendering */
+  line-height: 1.5; /* Increased line-height for better text spacing */
 }
 
 .gantt-row-label.task .label-content {
-  padding: 2px 3px 2px 6px; /* SCALED: Was 2px 4px 2px 8px */
+  padding: 5px 3px 5px 6px; /* Increased vertical padding for better spacing */
 }
 
 .gantt-row-label.task:hover {
@@ -281,7 +281,7 @@ select:focus-visible {
   position: relative;
   display: grid;
   align-items: center; /* Center bars vertically */
-  min-height: 20px; /* SCALED: Was 32px - reduced for compact display */
+  min-height: 22px; /* Increased from 20px to match expanded row labels */
 }
 
 .gantt-bar-area.task {
