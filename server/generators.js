@@ -34,12 +34,38 @@ const DOCUMENT_CREATIVE_CONFIG = {
 };
 
 /**
- * Default config for structured outputs (roadmap, research-analysis)
+ * Default config for structured outputs
  * - Deterministic for consistent, reproducible results
- * - Lower thinking budget sufficient for structured extraction
+ * - Used as fallback when no specific config is provided
  */
 const STRUCTURED_DEFAULT_CONFIG = {
   thinkingBudget: 24576  // Standard deep reasoning
+};
+
+/**
+ * Roadmap (Gantt chart) generation config - maximum determinism
+ * - Prompt explicitly requires DETERMINISTIC output
+ * - Complex rule-based logic for swimlanes, dates, colors
+ * - Lowest temperature to ensure consistent rule following
+ */
+const ROADMAP_CONFIG = {
+  temperature: 0.1,      // Lowest: maximum determinism for rule-based output
+  topP: 0.3,             // Very constrained: follow explicit rules exactly
+  topK: 5,               // Minimal exploration: pick most likely tokens
+  thinkingBudget: 24576  // Maximum: complex date mapping and swimlane logic
+};
+
+/**
+ * Research Analysis generation config - balanced for analytical tasks
+ * - Requires judgment for quality scoring and gap identification
+ * - Needs some creativity for recommendations
+ * - Still schema-constrained output
+ */
+const RESEARCH_ANALYSIS_CONFIG = {
+  temperature: 0.2,      // Low: reliable analysis without hallucination
+  topP: 0.5,             // Moderate: allows varied recommendations
+  topK: 10,              // Some exploration for insightful suggestions
+  thinkingBudget: 24576  // Maximum: deep analysis of research quality
 };
 
 /**
@@ -717,7 +743,9 @@ async function generateDocumentEnterprise(sessionId, jobId, userPrompt, research
 }
 
 /**
- * Generate roadmap content
+ * Generate roadmap content (Gantt chart)
+ * Uses ROADMAP_CONFIG for maximum determinism - prompt requires DETERMINISTIC output
+ *
  * @param {string} sessionId - Session ID
  * @param {string} jobId - Job ID for tracking
  * @param {string} userPrompt - User's request
@@ -726,10 +754,11 @@ async function generateDocumentEnterprise(sessionId, jobId, userPrompt, research
 async function generateRoadmap(sessionId, jobId, userPrompt, researchFiles) {
   try {
     console.log(`[Roadmap] Starting generation for session ${sessionId}`);
+    console.log(`[Roadmap] Using config: temp=${ROADMAP_CONFIG.temperature}, topP=${ROADMAP_CONFIG.topP}, topK=${ROADMAP_CONFIG.topK}, thinkingBudget=${ROADMAP_CONFIG.thinkingBudget}`);
     JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateRoadmapPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap');
+    const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG);
 
     // Store in database
     ContentDB.create(sessionId, 'roadmap', data);
@@ -934,6 +963,10 @@ async function generateDocument(sessionId, jobId, userPrompt, researchFiles) {
 
 /**
  * Generate research analysis content
+ * Uses RESEARCH_ANALYSIS_CONFIG for balanced analytical output
+ * - Requires judgment for quality scoring and gap identification
+ * - Needs some creativity for insightful recommendations
+ *
  * @param {string} sessionId - Session ID
  * @param {string} jobId - Job ID for tracking
  * @param {string} userPrompt - User's request
@@ -942,17 +975,18 @@ async function generateDocument(sessionId, jobId, userPrompt, researchFiles) {
 async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFiles) {
   try {
     console.log(`[ResearchAnalysis] Starting generation for session ${sessionId}`);
+    console.log(`[ResearchAnalysis] Using config: temp=${RESEARCH_ANALYSIS_CONFIG.temperature}, topP=${RESEARCH_ANALYSIS_CONFIG.topP}, topK=${RESEARCH_ANALYSIS_CONFIG.topK}, thinkingBudget=${RESEARCH_ANALYSIS_CONFIG.thinkingBudget}`);
     JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateResearchAnalysisPrompt(userPrompt, researchFiles);
-    let data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis');
+    let data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG);
 
     // Validate research analysis structure
     if (!validateResearchAnalysisStructure(data)) {
       console.warn('[ResearchAnalysis] Generated data has invalid structure, retrying once...');
 
-      // Retry generation once
-      data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis');
+      // Retry generation once with same config
+      data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG);
 
       if (!validateResearchAnalysisStructure(data)) {
         throw new Error('Research analysis generation produced empty or invalid content after retry. The AI may need more detailed source material.');
