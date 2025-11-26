@@ -10,8 +10,6 @@ import { safeGetElement, findTodayColumnPosition, buildLegend, PerformanceTimer 
 import { DraggableGantt } from './DraggableGantt.js';
 import { ResizableGantt } from './ResizableGantt.js';
 import { ContextMenu } from './ContextMenu.js';
-import { HamburgerMenu } from './HamburgerMenu.js';
-
 // Import Router (loaded as global from Router.js)
 // Note: Router.js is loaded via script tag in chart.html and exposed as window.Router
 
@@ -40,8 +38,6 @@ export class GanttChart {
     this.isEditMode = false; // Edit mode toggle - default is read-only
     this.titleElement = null; // Reference to the title element for edit mode
     this.legendElement = null; // Reference to the legend element for edit mode
-    this.hamburgerMenu = null; // Hamburger menu for section navigation
-    this.router = null; // Router for navigation between sections
   }
 
   /**
@@ -137,9 +133,6 @@ export class GanttChart {
     // Add research analysis section (if available) - below everything, collapsible
     this._addResearchAnalysis();
 
-    // Add hamburger menu for navigation
-    this._addHamburgerMenu();
-
     // Add listeners
     this._addEditModeToggleListener();
     this._addExportListener(); // PNG export
@@ -230,40 +223,6 @@ export class GanttChart {
 
     this.titleContainer.appendChild(this.titleElement);
     this.chartWrapper.appendChild(this.titleContainer);
-  }
-
-  /**
-   * Adds the hamburger menu for navigation
-   * @private
-   */
-  _addHamburgerMenu() {
-    // Remove any existing hamburger menu first to prevent duplicates
-    const existingMenu = document.querySelector('.hamburger-menu-container');
-    if (existingMenu) {
-      existingMenu.remove();
-    }
-
-    // Create Router instance if not already created
-    if (!this.router && window.Router) {
-      this.router = new window.Router();
-    }
-
-    // Determine content availability
-    const contentAvailability = {};
-
-    console.log('Content availability for hamburger menu:', contentAvailability);
-
-    // Create hamburger menu instance with router and content availability
-    this.hamburgerMenu = new HamburgerMenu(this.router, contentAvailability);
-    const menuElement = this.hamburgerMenu.render();
-
-    // Append directly to the document body so it stays fixed on screen
-    document.body.appendChild(menuElement);
-
-    // Initialize the router with component references
-    if (this.router) {
-      this.router.init(this, null);
-    }
   }
 
   /**
