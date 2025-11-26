@@ -139,390 +139,6 @@ const SLIDES_CONFIG = {
   thinkingBudget: 8192   // Reduced: 3 simple slide types don't need max thinking
 };
 
-/**
- * Enterprise tier configuration
- * - Multiple candidates with LLM ranking for highest quality output
- */
-const ENTERPRISE_CONFIG = {
-  candidateCount: 3,     // Generate 3 candidates for comparison
-  rankingThinkingBudget: 24576  // Maximum thinking budget for thorough candidate evaluation
-};
-
-/**
- * Ranking evaluation schema for comparing document candidates
- */
-const RANKING_SCHEMA = {
-  type: "object",
-  properties: {
-    scores: {
-      type: "object",
-      properties: {
-        A: {
-          type: "object",
-          properties: {
-            grounded: { type: "number", description: "Score 1-10: Every claim traceable to source material" },
-            narrative: { type: "number", description: "Score 1-10: Clear story arc, not a list of facts" },
-            executive: { type: "number", description: "Score 1-10: Would a busy CEO find this worth their time" },
-            actionable: { type: "number", description: "Score 1-10: Reader knows what to do after reading" },
-            memorable: { type: "number", description: "Score 1-10: Key concepts will stick with reader" },
-            total: { type: "number", description: "Sum of all scores" }
-          },
-          required: ["grounded", "narrative", "executive", "actionable", "memorable", "total"]
-        },
-        B: {
-          type: "object",
-          properties: {
-            grounded: { type: "number" },
-            narrative: { type: "number" },
-            executive: { type: "number" },
-            actionable: { type: "number" },
-            memorable: { type: "number" },
-            total: { type: "number" }
-          },
-          required: ["grounded", "narrative", "executive", "actionable", "memorable", "total"]
-        },
-        C: {
-          type: "object",
-          properties: {
-            grounded: { type: "number" },
-            narrative: { type: "number" },
-            executive: { type: "number" },
-            actionable: { type: "number" },
-            memorable: { type: "number" },
-            total: { type: "number" }
-          },
-          required: ["grounded", "narrative", "executive", "actionable", "memorable", "total"]
-        }
-      },
-      required: ["A", "B", "C"]
-    },
-    winner: { type: "string", enum: ["A", "B", "C"], description: "The best candidate" },
-    reasoning: { type: "string", description: "1-2 sentence explanation of why the winner was chosen" }
-  },
-  required: ["scores", "winner", "reasoning"]
-};
-
-/**
- * Build the ranking prompt for evaluating document candidates
- * @param {Array} candidates - Array of document candidate objects
- * @returns {string} The ranking prompt
- */
-function buildRankingPrompt(candidates) {
-  const candidateLabels = ['A', 'B', 'C'];
-
-  const candidateSections = candidates.map((candidate, index) => {
-    // Serialize the document structure for evaluation
-    const sections = candidate.sections.map(s => `### ${s.title}\n${s.content}`).join('\n\n');
-    return `## Candidate ${candidateLabels[index]}:\n\n**Title:** ${candidate.title}\n\n${sections}`;
-  }).join('\n\n---\n\n');
-
-  return `You are an expert editor evaluating executive summaries for a Fortune 500 audience.
-
-## Evaluation Criteria (in order of importance):
-
-1. **Grounded in Research (Weight: Critical)**
-   - Every claim must be traceable to source material
-   - No fabricated statistics or unsupported assertions
-   - Quotes and data points must feel authentic to the source
-
-2. **Compelling Narrative (Weight: High)**
-   - Clear story arc with beginning, middle, end
-   - Not a bullet-point list disguised as prose
-   - Logical flow that builds understanding
-
-3. **Executive Value (Weight: High)**
-   - Would a busy CEO find this worth their 5 minutes?
-   - Focuses on strategic implications, not operational details
-   - Highlights decisions and trade-offs clearly
-
-4. **Actionable Insights (Weight: Medium)**
-   - Reader knows what to do or decide after reading
-   - Clear next steps or recommendations emerge
-   - Connects analysis to concrete actions
-
-5. **Memorable (Weight: Medium)**
-   - 2-3 key concepts will stick with the reader
-   - Uses vivid language or frameworks
-   - Creates mental anchors for retention
-
----
-
-## Candidates to Evaluate:
-
-${candidateSections}
-
----
-
-## Your Task:
-
-1. Score each candidate 1-10 on each criterion (be discriminating - use the full range)
-2. Calculate total score for each (sum of 5 criteria, max 50)
-3. Select the BEST candidate overall
-4. Explain your choice in 1-2 sentences focusing on the key differentiator
-
-Be rigorous. A score of 7+ should be reserved for genuinely excellent work on that criterion.`;
-}
-
-/**
- * Ranking evaluation schema for comparing slides candidates
- */
-const SLIDES_RANKING_SCHEMA = {
-  type: "object",
-  properties: {
-    scores: {
-      type: "object",
-      properties: {
-        A: {
-          type: "object",
-          properties: {
-            schema: { type: "number", description: "Score 1-10: Valid JSON, correct slide types, proper data structures" },
-            variety: { type: "number", description: "Score 1-10: Good mix of slide types, not repetitive" },
-            balance: { type: "number", description: "Score 1-10: Visual balance, appropriate data density per slide" },
-            flow: { type: "number", description: "Score 1-10: Logical narrative progression from start to end" },
-            fidelity: { type: "number", description: "Score 1-10: Content grounded in source research" },
-            total: { type: "number", description: "Sum of all scores" }
-          },
-          required: ["schema", "variety", "balance", "flow", "fidelity", "total"]
-        },
-        B: {
-          type: "object",
-          properties: {
-            schema: { type: "number" },
-            variety: { type: "number" },
-            balance: { type: "number" },
-            flow: { type: "number" },
-            fidelity: { type: "number" },
-            total: { type: "number" }
-          },
-          required: ["schema", "variety", "balance", "flow", "fidelity", "total"]
-        },
-        C: {
-          type: "object",
-          properties: {
-            schema: { type: "number" },
-            variety: { type: "number" },
-            balance: { type: "number" },
-            flow: { type: "number" },
-            fidelity: { type: "number" },
-            total: { type: "number" }
-          },
-          required: ["schema", "variety", "balance", "flow", "fidelity", "total"]
-        }
-      },
-      required: ["A", "B", "C"]
-    },
-    winner: { type: "string", enum: ["A", "B", "C"], description: "The best candidate" },
-    reasoning: { type: "string", description: "1-2 sentence explanation of why the winner was chosen" }
-  },
-  required: ["scores", "winner", "reasoning"]
-};
-
-/**
- * Build the ranking prompt for evaluating slides candidates
- * @param {Array} candidates - Array of slides candidate objects
- * @returns {string} The ranking prompt
- */
-function buildSlidesRankingPrompt(candidates) {
-  const candidateLabels = ['A', 'B', 'C'];
-
-  const candidateSections = candidates.map((candidate, index) => {
-    // Summarize each slide deck for evaluation
-    const slidesSummary = candidate.slides.map((slide, i) => {
-      const dataKeys = Object.keys(slide).filter(k => !['type', 'title', 'section'].includes(k));
-      return `  ${i + 1}. [${slide.type}] "${slide.title}" ${slide.section ? `(${slide.section})` : ''} - data: ${dataKeys.join(', ')}`;
-    }).join('\n');
-
-    return `## Candidate ${candidateLabels[index]}:
-
-**Title:** ${candidate.title}
-**Subtitle:** ${candidate.subtitle || 'N/A'}
-**Total Slides:** ${candidate.slides.length}
-
-**Slide Structure:**
-${slidesSummary}`;
-  }).join('\n\n---\n\n');
-
-  return `You are an expert presentation designer evaluating slide decks for a Fortune 500 audience.
-
-## Evaluation Criteria (in order of importance):
-
-1. **Schema Compliance (Weight: Critical)**
-   - Valid JSON structure with no errors
-   - Correct slide types used appropriately
-   - Required fields present for each slide type
-   - Data structures match expected formats (arrays, objects, strings)
-
-2. **Type Variety (Weight: High)**
-   - Good mix of different slide types (not all bullets)
-   - Appropriate type selection for content
-   - No more than 3 consecutive slides of same type
-   - Uses visual slides (cards, grids, timelines) where appropriate
-
-3. **Visual Balance (Weight: High)**
-   - Appropriate amount of content per slide
-   - Not too text-heavy (bullets limited to 3-6 per slide)
-   - Data density appropriate (not overloaded)
-   - Good use of whitespace principles
-
-4. **Narrative Flow (Weight: Medium)**
-   - Logical progression from opening to closing
-   - Clear story arc: intro → body → conclusion
-   - Smooth transitions between topics
-   - Strong opening and closing slides
-
-5. **Source Fidelity (Weight: Medium)**
-   - Content appears grounded in research
-   - Statistics and claims feel authentic
-   - No apparent fabricated data
-   - Appropriate depth without over-extension
-
----
-
-## Candidates to Evaluate:
-
-${candidateSections}
-
----
-
-## Your Task:
-
-1. Score each candidate 1-10 on each criterion (be discriminating - use the full range)
-2. Calculate total score for each (sum of 5 criteria, max 50)
-3. Select the BEST candidate overall
-4. Explain your choice in 1-2 sentences focusing on the key differentiator
-
-Be rigorous. A score of 7+ should be reserved for genuinely excellent work on that criterion.
-Pay special attention to schema compliance - a deck with invalid structure should score low.`;
-}
-
-/**
- * Rank slides candidates using LLM meta-evaluation
- * Evaluates candidates on: schema, variety, balance, flow, fidelity
- *
- * @param {Array} candidates - Array of slides candidate objects
- * @returns {Promise<object>} Ranking result with winner and scores
- */
-async function rankSlidesCandidates(candidates) {
-  if (candidates.length === 0) {
-    throw new Error('No valid candidates to rank');
-  }
-
-  if (candidates.length === 1) {
-    console.log('[Enterprise-Slides] Only 1 candidate available, skipping ranking');
-    return {
-      winner: 'A',
-      winnerIndex: 0,
-      reasoning: 'Only one valid candidate was generated',
-      scores: { A: { total: 'N/A' } }
-    };
-  }
-
-  console.log(`[Enterprise-Slides] Ranking ${candidates.length} candidates...`);
-  const startTime = Date.now();
-
-  // Build ranking prompt
-  const rankingPrompt = buildSlidesRankingPrompt(candidates);
-
-  // Use deterministic settings for consistent evaluation
-  const rankingConfig = {
-    temperature: 0,
-    thinkingBudget: ENTERPRISE_CONFIG.rankingThinkingBudget
-  };
-
-  const ranking = await generateWithGemini(
-    rankingPrompt,
-    SLIDES_RANKING_SCHEMA,
-    'SlidesRanking',
-    rankingConfig
-  );
-
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  const winnerIndex = ranking.winner.charCodeAt(0) - 65; // 'A'->0, 'B'->1, 'C'->2
-
-  console.log(`[Enterprise-Slides] Ranking complete in ${elapsed}s`);
-  console.log(`[Enterprise-Slides] Winner: Candidate ${ranking.winner} (score: ${ranking.scores[ranking.winner].total}/50)`);
-  console.log(`[Enterprise-Slides] Reasoning: ${ranking.reasoning}`);
-
-  // Log all scores for transparency
-  Object.entries(ranking.scores).forEach(([label, scores]) => {
-    console.log(`[Enterprise-Slides] Candidate ${label}: schema=${scores.schema}, variety=${scores.variety}, balance=${scores.balance}, flow=${scores.flow}, fidelity=${scores.fidelity}, total=${scores.total}`);
-  });
-
-  return {
-    ...ranking,
-    winnerIndex
-  };
-}
-
-/**
- * Generate slides content with enterprise tier LLM ranking
- * Generates multiple candidates and uses meta-evaluation to select the best
- *
- * @param {string} sessionId - Session ID
- * @param {string} jobId - Job ID for tracking
- * @param {string} userPrompt - User's request
- * @param {Array} researchFiles - Research files
- * @returns {Promise<object>} Generation result with ranking metadata
- */
-async function generateSlidesEnterprise(sessionId, jobId, userPrompt, researchFiles) {
-  try {
-    console.log(`[Slides-Enterprise] Starting enterprise generation for session ${sessionId}`);
-    console.log(`[Slides-Enterprise] Config: ${ENTERPRISE_CONFIG.candidateCount} candidates, temp=${SLIDES_CONFIG.temperature}`);
-    JobDB.updateStatus(jobId, 'processing');
-
-    const prompt = generateSlidesPrompt(userPrompt, researchFiles);
-
-    // Step 1: Generate multiple candidates in parallel
-    const candidates = await generateMultipleCandidates(
-      prompt,
-      slidesSchema,
-      ENTERPRISE_CONFIG.candidateCount,
-      SLIDES_CONFIG
-    );
-
-    // Filter to only valid slides structures
-    const validCandidates = candidates.filter(c => validateSlidesStructure(c));
-
-    if (validCandidates.length === 0) {
-      throw new Error('All slides candidates failed validation. Please try again with different source material.');
-    }
-
-    console.log(`[Slides-Enterprise] ${validCandidates.length}/${candidates.length} candidates passed validation`);
-
-    // Step 2: Rank candidates using LLM meta-evaluation
-    const ranking = await rankSlidesCandidates(validCandidates);
-
-    // Step 3: Select winning candidate
-    const winningSlides = validCandidates[ranking.winnerIndex];
-
-    // Add ranking metadata to the slides
-    winningSlides._enterprise = {
-      candidatesGenerated: ENTERPRISE_CONFIG.candidateCount,
-      candidatesValid: validCandidates.length,
-      selectedCandidate: ranking.winner,
-      score: ranking.scores[ranking.winner].total,
-      reasoning: ranking.reasoning,
-      allScores: ranking.scores
-    };
-
-    // Store in database
-    ContentDB.create(sessionId, 'slides', winningSlides);
-    JobDB.updateStatus(jobId, 'completed');
-
-    console.log(`[Slides-Enterprise] Successfully generated and stored (winner: ${ranking.winner}, score: ${ranking.scores[ranking.winner].total}/50, ${winningSlides.slides.length} slides)`);
-    return { success: true, data: winningSlides, ranking };
-
-  } catch (error) {
-    console.error('[Slides-Enterprise] Generation failed:', error);
-    try {
-      JobDB.updateStatus(jobId, 'error', error.message);
-      ContentDB.create(sessionId, 'slides', null, error.message);
-    } catch (dbError) {
-      console.error('[Slides-Enterprise] Failed to update error status in database:', dbError);
-    }
-    return { success: false, error: error.message };
-  }
-}
 
 /**
  * Execute a promise with timeout
@@ -631,172 +247,6 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
   } catch (error) {
     console.error(`[${contentType}] Generation error:`, error);
     throw new Error(`Failed to generate ${contentType}: ${error.message}`);
-  }
-}
-
-/**
- * Generate multiple document candidates in parallel
- * Used for enterprise tier to enable LLM ranking
- *
- * @param {string} prompt - The document generation prompt
- * @param {object} schema - JSON schema for response
- * @param {number} count - Number of candidates to generate
- * @param {object} config - Generation config
- * @returns {Promise<Array>} Array of generated document candidates
- */
-async function generateMultipleCandidates(prompt, schema, count, config) {
-  console.log(`[Enterprise] Generating ${count} candidates in parallel...`);
-  const startTime = Date.now();
-
-  // Generate all candidates in parallel
-  const promises = Array.from({ length: count }, (_, i) =>
-    generateWithGemini(prompt, schema, `Document-Candidate-${i + 1}`, config)
-      .then(data => ({ success: true, data, index: i }))
-      .catch(error => ({ success: false, error: error.message, index: i }))
-  );
-
-  const results = await Promise.all(promises);
-
-  // Filter successful candidates
-  const successfulCandidates = results
-    .filter(r => r.success && validateDocumentStructure(r.data))
-    .map(r => r.data);
-
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`[Enterprise] Generated ${successfulCandidates.length}/${count} valid candidates in ${elapsed}s`);
-
-  // Log any failures
-  const failures = results.filter(r => !r.success);
-  if (failures.length > 0) {
-    failures.forEach(f => {
-      console.warn(`[Enterprise] Candidate ${f.index + 1} failed: ${f.error}`);
-    });
-  }
-
-  return successfulCandidates;
-}
-
-/**
- * Rank document candidates using LLM meta-evaluation
- * Evaluates candidates on: grounded, narrative, executive, actionable, memorable
- *
- * @param {Array} candidates - Array of document candidate objects
- * @returns {Promise<object>} Ranking result with winner and scores
- */
-async function rankDocumentCandidates(candidates) {
-  if (candidates.length === 0) {
-    throw new Error('No valid candidates to rank');
-  }
-
-  if (candidates.length === 1) {
-    console.log('[Enterprise] Only 1 candidate available, skipping ranking');
-    return {
-      winner: 'A',
-      winnerIndex: 0,
-      reasoning: 'Only one valid candidate was generated',
-      scores: { A: { total: 'N/A' } }
-    };
-  }
-
-  console.log(`[Enterprise] Ranking ${candidates.length} candidates...`);
-  const startTime = Date.now();
-
-  // Build ranking prompt
-  const rankingPrompt = buildRankingPrompt(candidates);
-
-  // Use deterministic settings for consistent evaluation
-  const rankingConfig = {
-    temperature: 0,
-    thinkingBudget: ENTERPRISE_CONFIG.rankingThinkingBudget
-  };
-
-  const ranking = await generateWithGemini(
-    rankingPrompt,
-    RANKING_SCHEMA,
-    'DocumentRanking',
-    rankingConfig
-  );
-
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  const winnerIndex = ranking.winner.charCodeAt(0) - 65; // 'A'->0, 'B'->1, 'C'->2
-
-  console.log(`[Enterprise] Ranking complete in ${elapsed}s`);
-  console.log(`[Enterprise] Winner: Candidate ${ranking.winner} (score: ${ranking.scores[ranking.winner].total}/50)`);
-  console.log(`[Enterprise] Reasoning: ${ranking.reasoning}`);
-
-  // Log all scores for transparency
-  Object.entries(ranking.scores).forEach(([label, scores]) => {
-    console.log(`[Enterprise] Candidate ${label}: grounded=${scores.grounded}, narrative=${scores.narrative}, executive=${scores.executive}, actionable=${scores.actionable}, memorable=${scores.memorable}, total=${scores.total}`);
-  });
-
-  return {
-    ...ranking,
-    winnerIndex
-  };
-}
-
-/**
- * Generate document content with enterprise tier LLM ranking
- * Generates multiple candidates and uses meta-evaluation to select the best
- *
- * @param {string} sessionId - Session ID
- * @param {string} jobId - Job ID for tracking
- * @param {string} userPrompt - User's request
- * @param {Array} researchFiles - Research files
- * @returns {Promise<object>} Generation result with ranking metadata
- */
-async function generateDocumentEnterprise(sessionId, jobId, userPrompt, researchFiles) {
-  try {
-    console.log(`[Document-Enterprise] Starting enterprise generation for session ${sessionId}`);
-    console.log(`[Document-Enterprise] Config: ${ENTERPRISE_CONFIG.candidateCount} candidates, creative temp=${DOCUMENT_CREATIVE_CONFIG.temperature}`);
-    JobDB.updateStatus(jobId, 'processing');
-
-    const prompt = generateDocumentPrompt(userPrompt, researchFiles);
-
-    // Step 1: Generate multiple candidates in parallel
-    const candidates = await generateMultipleCandidates(
-      prompt,
-      documentSchema,
-      ENTERPRISE_CONFIG.candidateCount,
-      DOCUMENT_CREATIVE_CONFIG
-    );
-
-    if (candidates.length === 0) {
-      throw new Error('All document candidates failed to generate. Please try again with different source material.');
-    }
-
-    // Step 2: Rank candidates using LLM meta-evaluation
-    const ranking = await rankDocumentCandidates(candidates);
-
-    // Step 3: Select winning candidate
-    const winningDocument = candidates[ranking.winnerIndex];
-
-    // Add ranking metadata to the document
-    winningDocument._enterprise = {
-      candidatesGenerated: ENTERPRISE_CONFIG.candidateCount,
-      candidatesValid: candidates.length,
-      selectedCandidate: ranking.winner,
-      score: ranking.scores[ranking.winner].total,
-      reasoning: ranking.reasoning,
-      allScores: ranking.scores
-    };
-
-    // Store in database
-    ContentDB.create(sessionId, 'document', winningDocument);
-    JobDB.updateStatus(jobId, 'completed');
-
-    console.log(`[Document-Enterprise] Successfully generated and stored (winner: ${ranking.winner}, score: ${ranking.scores[ranking.winner].total}/50)`);
-    return { success: true, data: winningDocument, ranking };
-
-  } catch (error) {
-    console.error('[Document-Enterprise] Generation failed:', error);
-    try {
-      JobDB.updateStatus(jobId, 'error', error.message);
-      ContentDB.create(sessionId, 'document', null, error.message);
-    } catch (dbError) {
-      console.error('[Document-Enterprise] Failed to update error status in database:', dbError);
-    }
-    return { success: false, error: error.message };
   }
 }
 
@@ -1167,12 +617,9 @@ async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFi
  * @param {string} userPrompt - User's request
  * @param {Array} researchFiles - Research files
  * @param {object} jobIds - Job IDs for tracking { roadmap, slides, document, researchAnalysis }
- * @param {object} options - Optional settings { enterpriseMode: boolean }
  * @returns {Promise<object>} Results of all generations
  */
-export async function generateAllContent(sessionId, userPrompt, researchFiles, jobIds, options = {}) {
-  const { enterpriseMode = false } = options;
-
+export async function generateAllContent(sessionId, userPrompt, researchFiles, jobIds) {
   const results = {
     roadmap: null,
     document: null,
@@ -1182,9 +629,6 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
 
   try {
     console.log(`[Session ${sessionId}] Starting SEQUENTIAL content generation`);
-    if (enterpriseMode) {
-      console.log(`[Session ${sessionId}] Enterprise mode ENABLED for document and slides generation`);
-    }
 
     // Update session status
     try {
@@ -1210,9 +654,7 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
     // ========================================
     console.log(`[Session ${sessionId}] Step 2/4: Generating Document...`);
     try {
-      results.document = enterpriseMode
-        ? await generateDocumentEnterprise(sessionId, jobIds.document, userPrompt, researchFiles)
-        : await generateDocument(sessionId, jobIds.document, userPrompt, researchFiles);
+      results.document = await generateDocument(sessionId, jobIds.document, userPrompt, researchFiles);
       console.log(`[Session ${sessionId}] Step 2/4: Document ${results.document.success ? 'COMPLETED' : 'FAILED'}`);
     } catch (error) {
       console.error(`[Session ${sessionId}] Step 2/4: Document ERROR:`, error.message);
@@ -1224,9 +666,7 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
     // ========================================
     console.log(`[Session ${sessionId}] Step 3/4: Generating Slides...`);
     try {
-      results.slides = enterpriseMode
-        ? await generateSlidesEnterprise(sessionId, jobIds.slides, userPrompt, researchFiles)
-        : await generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles);
+      results.slides = await generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles);
       console.log(`[Session ${sessionId}] Step 3/4: Slides ${results.slides.success ? 'COMPLETED' : 'FAILED'}`);
     } catch (error) {
       console.error(`[Session ${sessionId}] Step 3/4: Slides ERROR:`, error.message);
@@ -1287,12 +727,9 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
  *
  * @param {string} sessionId - Session ID
  * @param {string} viewType - 'roadmap', 'slides', 'document', or 'research-analysis'
- * @param {object} options - Optional settings { enterpriseMode: boolean }
  * @returns {Promise<object>} Generation result
  */
-export async function regenerateContent(sessionId, viewType, options = {}) {
-  const { enterpriseMode = false } = options;
-
+export async function regenerateContent(sessionId, viewType) {
   try {
     // Get session
     const session = SessionDB.get(sessionId);
@@ -1308,22 +745,14 @@ export async function regenerateContent(sessionId, viewType, options = {}) {
     JobDB.create(jobId, sessionId, viewType);
 
     // Define the generation task
-    const taskName = `Regenerate-${viewType}${enterpriseMode ? '-Enterprise' : ''}`;
+    const taskName = `Regenerate-${viewType}`;
     const task = async () => {
       switch (viewType) {
         case 'roadmap':
           return generateRoadmap(sessionId, jobId, prompt, researchFiles);
         case 'slides':
-          if (enterpriseMode) {
-            console.log(`[Regenerate] Using enterprise mode for slides regeneration`);
-            return generateSlidesEnterprise(sessionId, jobId, prompt, researchFiles);
-          }
           return generateSlides(sessionId, jobId, prompt, researchFiles);
         case 'document':
-          if (enterpriseMode) {
-            console.log(`[Regenerate] Using enterprise mode for document regeneration`);
-            return generateDocumentEnterprise(sessionId, jobId, prompt, researchFiles);
-          }
           return generateDocument(sessionId, jobId, prompt, researchFiles);
         case 'research-analysis':
           return generateResearchAnalysis(sessionId, jobId, prompt, researchFiles);
