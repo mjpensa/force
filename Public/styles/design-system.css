@@ -760,9 +760,9 @@ body.view-roadmap .app-shell {
     inset 0 2px 4px var(--glass-navy-10),
     0 4px 16px var(--glass-navy-10);
 
-  /* Layout - reduced for better fit at 100% zoom */
-  min-height: 200px;
-  padding: 32px;
+  /* Layout - reduced to approximately half size */
+  min-height: 100px;
+  padding: 16px;
 
   /* Smooth Transitions */
   transition: all 0.3s var(--ease-out-quad);
@@ -809,23 +809,23 @@ body.view-roadmap .app-shell {
 
 /* Upload Icon Container */
 .upload-icon-container {
-  width: 56px;
-  height: 56px;
+  width: 32px;
+  height: 32px;
   background: var(--glass-white-8);
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
   border: var(--border-glass);
-  border-radius: 14px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   transition: all 0.3s ease;
 }
 
 .upload-icon-container svg {
-  width: 28px;
-  height: 28px;
+  width: 16px;
+  height: 16px;
   color: var(--glass-text-secondary);
   transition: all 0.3s ease;
 }
@@ -844,8 +844,8 @@ body.view-roadmap .app-shell {
 .stats-grid-glass {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 @media (max-width: 640px) {
@@ -859,27 +859,27 @@ body.view-roadmap .app-shell {
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
   border: 1px solid var(--glass-white-12);
-  border-radius: var(--radius-glass-md);
-  padding: 16px;
+  border-radius: var(--radius-glass-sm);
+  padding: 8px;
   text-align: center;
   transition: all 0.2s ease;
 }
 
 .stat-card-glass:hover {
   background: var(--glass-white-10);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .stat-card-glass .stat-value {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--glass-text-primary);
 }
 
 .stat-card-glass .stat-label {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--glass-text-muted);
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 /* File List Glass */
@@ -888,9 +888,9 @@ body.view-roadmap .app-shell {
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
   border: 1px solid var(--glass-white-10);
-  border-radius: var(--radius-glass-md);
-  padding: 16px;
-  max-height: 256px;
+  border-radius: var(--radius-glass-sm);
+  padding: 8px;
+  max-height: 128px;
   overflow-y: auto;
 }
 
@@ -917,19 +917,19 @@ body.view-roadmap .app-shell {
 .file-item-glass {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 6px 10px;
   background: var(--glass-white-6);
   border: 1px solid var(--glass-white-8);
-  border-radius: 10px;
-  margin-bottom: 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
   transition: all 0.2s ease;
 }
 
 .file-item-glass:hover {
   background: var(--glass-white-10);
   border-color: var(--glass-white-15);
-  transform: translateX(4px);
+  transform: translateX(2px);
 }
 
 .file-item-glass:last-child {
@@ -937,10 +937,10 @@ body.view-roadmap .app-shell {
 }
 
 .file-item-glass .file-icon {
-  width: 32px;
-  height: 32px;
+  width: 20px;
+  height: 20px;
   background: rgba(80, 175, 123, 0.15);
-  border-radius: 8px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -950,7 +950,7 @@ body.view-roadmap .app-shell {
 
 .file-item-glass .file-name {
   flex: 1;
-  font-size: 14px;
+  font-size: 11px;
   color: var(--glass-text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -958,13 +958,13 @@ body.view-roadmap .app-shell {
 }
 
 .file-item-glass .file-size {
-  font-size: 12px;
+  font-size: 10px;
   color: var(--glass-text-muted);
 }
 
 .file-item-glass .file-status {
   color: var(--color-glass-success);
-  font-size: 16px;
+  font-size: 12px;
 }
 
 /* Primary Button Glass */
@@ -1235,7 +1235,7 @@ body.view-roadmap .app-shell {
 }
 
 .file-item-glass {
-  min-height: 44px;
+  min-height: 32px;
 }
 
 /* ARIA live region styling */
