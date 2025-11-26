@@ -18,13 +18,6 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 // Timeout configuration for AI generation
 const GENERATION_TIMEOUT_MS = 180000; // 3 minutes - generous but not infinite
 
-// Retry configuration for timeout errors
-const TIMEOUT_RETRY_CONFIG = {
-  maxRetries: 2,              // Retry up to 2 times (3 total attempts)
-  baseDelayMs: 2000,          // Start with 2 second delay
-  reducedThinkingBudget: 16384 // Reduce thinking budget on retry to speed up generation
-};
-
 /**
  * Generation config presets for different content types
  *
@@ -495,100 +488,7 @@ function withTimeout(promise, timeoutMs, operationName) {
 }
 
 /**
- * Helper to check if an error is a timeout error
- */
-function isTimeoutError(error) {
-  return error.message && error.message.includes('timed out');
-}
-
-/**
- * Sleep for a specified number of milliseconds
- */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Core generation function - single attempt
- */
-async function generateWithGeminiCore(prompt, schema, contentType, configOverrides = {}) {
-  // Merge default config with any overrides
-  const {
-    temperature,
-    topP,
-    topK,
-    thinkingBudget = STRUCTURED_DEFAULT_CONFIG.thinkingBudget
-  } = configOverrides;
-
-  // Build generation config - only include optional params if specified
-  const generationConfig = {
-    responseMimeType: 'application/json',
-    responseSchema: schema,
-    thinkingConfig: {
-      thinkingBudget
-    }
-  };
-
-  // Add optional creativity parameters if provided
-  if (temperature !== undefined) generationConfig.temperature = temperature;
-  if (topP !== undefined) generationConfig.topP = topP;
-  if (topK !== undefined) generationConfig.topK = topK;
-
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash-preview-09-2025',
-    generationConfig
-  });
-
-  console.log(`[${contentType}] Starting generation (timeout: ${GENERATION_TIMEOUT_MS / 1000}s, thinkingBudget: ${thinkingBudget})...`);
-
-  // Wrap the API call with timeout to prevent indefinite hangs
-  const result = await withTimeout(
-    model.generateContent(prompt),
-    GENERATION_TIMEOUT_MS,
-    `${contentType} generation`
-  );
-
-  const response = result.response;
-  const text = response.text();
-
-  console.log(`[${contentType}] Generation complete, parsing JSON...`);
-  console.log(`[${contentType}] Response text length: ${text.length}`);
-
-  try {
-    const data = JSON.parse(text);
-    return data;
-  } catch (parseError) {
-    // Log the parse error details
-    const positionMatch = parseError.message.match(/position (\d+)/);
-    const errorPosition = positionMatch ? parseInt(positionMatch[1]) : 0;
-
-    console.error(`[${contentType}] JSON Parse Error:`, parseError.message);
-    console.error(`[${contentType}] Total JSON length:`, text.length);
-    console.error(`[${contentType}] Problematic JSON (first 500 chars):`, text.substring(0, 500));
-    if (errorPosition > 0) {
-      const contextStart = Math.max(0, errorPosition - 200);
-      const contextEnd = Math.min(text.length, errorPosition + 200);
-      console.error(`[${contentType}] JSON around error position:`, text.substring(contextStart, contextEnd));
-    }
-
-    // Try to repair the JSON using jsonrepair library
-    try {
-      console.log(`[${contentType}] Attempting to repair JSON using jsonrepair library...`);
-      const repairedJsonText = jsonrepair(text);
-      const repairedData = JSON.parse(repairedJsonText);
-      console.log(`[${contentType}] Successfully repaired and parsed JSON!`);
-      return repairedData;
-    } catch (repairError) {
-      console.error(`[${contentType}] JSON repair failed:`, repairError.message);
-      console.error(`[${contentType}] Full JSON response:`, text);
-      throw parseError; // Throw the original parse error
-    }
-  }
-}
-
-/**
  * Generate content using Gemini API with structured output
- * Includes automatic retry with exponential backoff for timeout errors
  * @param {string} prompt - The complete prompt
  * @param {object} schema - JSON schema for response
  * @param {string} contentType - Type of content being generated
@@ -596,43 +496,84 @@ async function generateWithGeminiCore(prompt, schema, contentType, configOverrid
  * @returns {Promise<object>} Generated content
  */
 async function generateWithGemini(prompt, schema, contentType, configOverrides = {}) {
-  let lastError;
+  try {
+    // Merge default config with any overrides
+    const {
+      temperature,
+      topP,
+      topK,
+      thinkingBudget = STRUCTURED_DEFAULT_CONFIG.thinkingBudget
+    } = configOverrides;
 
-  for (let attempt = 0; attempt <= TIMEOUT_RETRY_CONFIG.maxRetries; attempt++) {
+    // Build generation config - only include optional params if specified
+    const generationConfig = {
+      responseMimeType: 'application/json',
+      responseSchema: schema,
+      thinkingConfig: {
+        thinkingBudget
+      }
+    };
+
+    // Add optional creativity parameters if provided
+    if (temperature !== undefined) generationConfig.temperature = temperature;
+    if (topP !== undefined) generationConfig.topP = topP;
+    if (topK !== undefined) generationConfig.topK = topK;
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash-preview-09-2025',
+      generationConfig
+    });
+
+    console.log(`[${contentType}] Starting generation (timeout: ${GENERATION_TIMEOUT_MS / 1000}s)...`);
+
+    // Wrap the API call with timeout to prevent indefinite hangs
+    const result = await withTimeout(
+      model.generateContent(prompt),
+      GENERATION_TIMEOUT_MS,
+      `${contentType} generation`
+    );
+
+    const response = result.response;
+    const text = response.text();
+
+    console.log(`[${contentType}] Generation complete, parsing JSON...`);
+    console.log(`[${contentType}] Response text length: ${text.length}`);
+
     try {
-      // On retry attempts, reduce thinking budget to potentially speed up generation
-      const effectiveConfig = attempt === 0
-        ? configOverrides
-        : {
-            ...configOverrides,
-            thinkingBudget: TIMEOUT_RETRY_CONFIG.reducedThinkingBudget
-          };
+      const data = JSON.parse(text);
+      return data;
+    } catch (parseError) {
+      // Log the parse error details
+      const positionMatch = parseError.message.match(/position (\d+)/);
+      const errorPosition = positionMatch ? parseInt(positionMatch[1]) : 0;
 
-      if (attempt > 0) {
-        const delayMs = TIMEOUT_RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt - 1);
-        console.log(`[${contentType}] Retry attempt ${attempt}/${TIMEOUT_RETRY_CONFIG.maxRetries} after ${delayMs}ms delay (reduced thinkingBudget: ${TIMEOUT_RETRY_CONFIG.reducedThinkingBudget})...`);
-        await sleep(delayMs);
+      console.error(`[${contentType}] JSON Parse Error:`, parseError.message);
+      console.error(`[${contentType}] Total JSON length:`, text.length);
+      console.error(`[${contentType}] Problematic JSON (first 500 chars):`, text.substring(0, 500));
+      if (errorPosition > 0) {
+        const contextStart = Math.max(0, errorPosition - 200);
+        const contextEnd = Math.min(text.length, errorPosition + 200);
+        console.error(`[${contentType}] JSON around error position:`, text.substring(contextStart, contextEnd));
       }
 
-      return await generateWithGeminiCore(prompt, schema, contentType, effectiveConfig);
-
-    } catch (error) {
-      lastError = error;
-
-      // Only retry on timeout errors
-      if (isTimeoutError(error) && attempt < TIMEOUT_RETRY_CONFIG.maxRetries) {
-        console.warn(`[${contentType}] Generation timed out, will retry (attempt ${attempt + 1}/${TIMEOUT_RETRY_CONFIG.maxRetries + 1})...`);
-        continue;
+      // Try to repair the JSON using jsonrepair library
+      try {
+        console.log(`[${contentType}] Attempting to repair JSON using jsonrepair library...`);
+        const repairedJsonText = jsonrepair(text);
+        const repairedData = JSON.parse(repairedJsonText);
+        console.log(`[${contentType}] Successfully repaired and parsed JSON!`);
+        return repairedData;
+      } catch (repairError) {
+        console.error(`[${contentType}] JSON repair failed:`, repairError.message);
+        console.error(`[${contentType}] Full JSON response:`, text);
+        throw parseError; // Throw the original parse error
       }
-
-      // For non-timeout errors or final attempt, throw immediately
-      console.error(`[${contentType}] Generation error:`, error);
-      throw new Error(`Failed to generate ${contentType}: ${error.message}`);
     }
-  }
 
-  // Should not reach here, but just in case
-  throw new Error(`Failed to generate ${contentType}: ${lastError?.message || 'Unknown error'}`);
+  } catch (error) {
+    console.error(`[${contentType}] Generation error:`, error);
+    throw new Error(`Failed to generate ${contentType}: ${error.message}`);
+  }
 }
 
 /**
