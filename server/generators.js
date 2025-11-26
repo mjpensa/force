@@ -16,7 +16,7 @@ import { generateResearchAnalysisPrompt, researchAnalysisSchema, validateResearc
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
 // Timeout configuration for AI generation
-const GENERATION_TIMEOUT_MS = 180000; // 3 minutes - generous but not infinite
+const GENERATION_TIMEOUT_MS = 300000; // 5 minutes - slides with complex schemas need more time
 
 // ============================================================================
 // REQUEST QUEUE - Controls concurrent API calls to prevent overload
@@ -578,7 +578,7 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     if (topK !== undefined) generationConfig.topK = topK;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-flash-preview-09-2025',
       generationConfig
     });
 
