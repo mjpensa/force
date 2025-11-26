@@ -646,8 +646,8 @@ body.view-roadmap .app-shell {
     var(--shadow-glass-3),
     inset 0 -1px 0 var(--glass-navy-10);
 
-  /* Spacing */
-  padding: 48px;
+  /* Spacing - reduced for better fit at 100% zoom */
+  padding: 32px;
 
   /* Positioning */
   position: relative;
@@ -657,7 +657,7 @@ body.view-roadmap .app-shell {
 /* Responsive padding for form panel */
 @media (max-width: 640px) {
   .form-glass-panel {
-    padding: 24px;
+    padding: 20px;
     border-radius: var(--radius-glass-lg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -666,13 +666,13 @@ body.view-roadmap .app-shell {
 
 @media (min-width: 640px) and (max-width: 1024px) {
   .form-glass-panel {
-    padding: 36px;
+    padding: 28px;
   }
 }
 
 @media (min-width: 1920px) {
   .form-glass-panel {
-    padding: 64px;
+    padding: 48px;
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
   }
@@ -715,14 +715,14 @@ body.view-roadmap .app-shell {
 
   /* Text */
   color: var(--glass-text-primary);
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1.6;
 
-  /* Spacing */
-  padding: 20px;
+  /* Spacing - reduced for better fit at 100% zoom */
+  padding: 16px;
   width: 100%;
   resize: vertical;
-  min-height: 160px;
+  min-height: 120px;
 
   /* Transition */
   transition: all 0.2s ease;
@@ -760,9 +760,9 @@ body.view-roadmap .app-shell {
     inset 0 2px 4px var(--glass-navy-10),
     0 4px 16px var(--glass-navy-10);
 
-  /* Layout */
-  min-height: 320px;
-  padding: 48px;
+  /* Layout - reduced for better fit at 100% zoom */
+  min-height: 200px;
+  padding: 32px;
 
   /* Smooth Transitions */
   transition: all 0.3s var(--ease-out-quad);
@@ -809,23 +809,23 @@ body.view-roadmap .app-shell {
 
 /* Upload Icon Container */
 .upload-icon-container {
-  width: 80px;
-  height: 80px;
+  width: 56px;
+  height: 56px;
   background: var(--glass-white-8);
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
   border: var(--border-glass);
-  border-radius: 20px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   transition: all 0.3s ease;
 }
 
 .upload-icon-container svg {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   color: var(--glass-text-secondary);
   transition: all 0.3s ease;
 }
@@ -987,11 +987,11 @@ body.view-roadmap .app-shell {
 
   /* Text */
   color: var(--glass-text-primary);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
 
-  /* Spacing */
-  padding: 16px 32px;
+  /* Spacing - reduced for better fit at 100% zoom */
+  padding: 12px 24px;
 
   /* Transition */
   transition: all 0.2s var(--ease-out-quad);
@@ -1020,9 +1020,9 @@ body.view-roadmap .app-shell {
 
 /* Glass Spinner */
 .spinner-glass {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--glass-white-15);
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--glass-white-15);
   border-top-color: var(--color-accent-red);
   border-radius: 50%;
   animation: spinnerRotate 0.8s linear infinite;
