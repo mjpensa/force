@@ -138,9 +138,7 @@ class ContentViewer {
     header.innerHTML = `
       <div class="header-content">
         <h1 class="header-title">
-          <a href="/" style="color: inherit; text-decoration: none;">
-            AI Roadmap Generator
-          </a>
+          <a href="/">AI Roadmap Generator</a>
         </h1>
         <nav class="view-tabs" role="navigation" aria-label="Main navigation">
           <button class="view-tab" data-view="roadmap" aria-label="Roadmap view">
