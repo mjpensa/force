@@ -1119,14 +1119,14 @@ For each slide type, you MUST include the appropriate body content:
 **EXAMPLE OF CORRECT vs INCORRECT:**
 
 INCORRECT (will be rejected):
-```json
+\`\`\`json
 { "type": "bullets", "title": "Key Points" }
-```
+\`\`\`
 
 CORRECT:
-```json
+\`\`\`json
 { "type": "bullets", "title": "Key Points", "section": "OVERVIEW", "bullets": ["First key point with detail", "Second key point with detail", "Third key point with detail"] }
-```
+\`\`\`
 
 - Use appropriate slide types based on content structure
 - Ensure smooth narrative progression
