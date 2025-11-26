@@ -132,7 +132,7 @@ class ContentViewer {
     const appShell = document.createElement('div');
     appShell.className = 'app-shell';
 
-    // Header with navigation
+    // Header with navigation - Timeline design (Concept B)
     const header = document.createElement('header');
     header.className = 'app-header';
     header.innerHTML = `
@@ -142,24 +142,60 @@ class ContentViewer {
         </h1>
         <nav class="view-tabs" role="navigation" aria-label="Main navigation">
           <button class="view-tab" data-view="roadmap" aria-label="Roadmap view">
-            <span class="tab-icon">📊</span>
+            <div class="tab-node">
+              <span class="tab-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="4" rx="1"></rect>
+                  <rect x="3" y="10" width="12" height="4" rx="1"></rect>
+                  <rect x="3" y="16" width="15" height="4" rx="1"></rect>
+                </svg>
+              </span>
+              <span class="tab-status" id="status-roadmap" title="Loading..."></span>
+            </div>
             <span class="tab-label">Roadmap</span>
-            <span class="tab-status" id="status-roadmap" title="Loading..."></span>
           </button>
           <button class="view-tab" data-view="slides" aria-label="Slides view">
-            <span class="tab-icon">📽️</span>
+            <div class="tab-node">
+              <span class="tab-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                  <path d="M8 21h8"></path>
+                  <path d="M12 17v4"></path>
+                  <path d="M7 8l3 2-3 2"></path>
+                </svg>
+              </span>
+              <span class="tab-status" id="status-slides" title="Loading..."></span>
+            </div>
             <span class="tab-label">Slides</span>
-            <span class="tab-status" id="status-slides" title="Loading..."></span>
           </button>
           <button class="view-tab" data-view="document" aria-label="Document view">
-            <span class="tab-icon">📄</span>
+            <div class="tab-node">
+              <span class="tab-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <line x1="10" y1="9" x2="8" y2="9"></line>
+                </svg>
+              </span>
+              <span class="tab-status" id="status-document" title="Loading..."></span>
+            </div>
             <span class="tab-label">Document</span>
-            <span class="tab-status" id="status-document" title="Loading..."></span>
           </button>
-          <button class="view-tab" data-view="research-analysis" aria-label="Research QA view">
-            <span class="tab-icon">🔍</span>
-            <span class="tab-label">Research QA</span>
-            <span class="tab-status" id="status-research-analysis" title="Loading..."></span>
+          <button class="view-tab" data-view="research-analysis" aria-label="Analysis view">
+            <div class="tab-node">
+              <span class="tab-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="M21 21l-4.35-4.35"></path>
+                  <path d="M11 8v6"></path>
+                  <path d="M8 11h6"></path>
+                </svg>
+              </span>
+              <span class="tab-status" id="status-research-analysis" title="Loading..."></span>
+            </div>
+            <span class="tab-label">Analysis</span>
           </button>
         </nav>
       </div>
@@ -994,66 +1030,61 @@ class ContentViewer {
 
   /**
    * Add CSS styles for status indicators
+   * Note: Most styles are now in navigation-tabs.css
+   * This method is kept for backwards compatibility but is essentially a no-op
    */
   _addStatusIndicatorStyles() {
-    if (document.getElementById('status-indicator-styles')) return;
+    // Styles are now in /styles/navigation-tabs.css
+    // This method is kept for backwards compatibility
+    return;
+  }
 
-    const style = document.createElement('style');
-    style.id = 'status-indicator-styles';
-    style.textContent = `
-      .tab-status {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 18px;
-        height: 18px;
-        margin-left: 6px;
-        font-size: 12px;
-        border-radius: 50%;
-        transition: all 0.3s ease;
-      }
+  /**
+   * Update the progress line based on completed views
+   * The line grows to show progression through the timeline
+   */
+  _updateProgressLine() {
+    const views = ['roadmap', 'slides', 'document', 'research-analysis'];
+    const navContainer = this.navContainer;
+    if (!navContainer) return;
 
-      .tab-status.loading {
-        animation: pulse 1.5s ease-in-out infinite;
+    // Count how many views are ready (completed)
+    let completedCount = 0;
+    views.forEach(view => {
+      const statusEl = document.getElementById(`status-${view}`);
+      if (statusEl && statusEl.classList.contains('ready')) {
+        completedCount++;
       }
+    });
 
-      .tab-status.ready {
-        color: #10b981;
-      }
+    // Calculate progress percentage (0%, 33%, 66%, 100%)
+    // We use 3 segments between 4 nodes
+    const progressPercent = completedCount > 0
+      ? Math.min(((completedCount - 1) / 3) * 100 + (completedCount > 0 ? 10 : 0), 100)
+      : 0;
 
-      .tab-status.failed {
-        color: #ef4444;
-      }
+    // Update the CSS custom property for progress width
+    navContainer.style.setProperty('--progress-width', `${progressPercent}%`);
 
-      .tab-status.processing {
-        color: #f59e0b;
-      }
+    // Also update completed class on tabs
+    views.forEach((view, index) => {
+      const tab = navContainer.querySelector(`[data-view="${view}"]`);
+      if (!tab) return;
 
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
-      }
+      const statusEl = document.getElementById(`status-${view}`);
+      const isReady = statusEl && statusEl.classList.contains('ready');
 
-      @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+      if (isReady && !tab.classList.contains('active')) {
+        tab.classList.add('completed');
+      } else {
+        tab.classList.remove('completed');
       }
-
-      .tab-status.loading::after {
-        content: '';
-        width: 12px;
-        height: 12px;
-        border: 2px solid currentColor;
-        border-top-color: transparent;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-    `;
-    document.head.appendChild(style);
+    });
   }
 
   /**
    * Update status indicator for a specific tab
+   * Note: Visual indicators are now handled via CSS pseudo-elements
    */
   _updateTabStatus(viewName, status) {
     const statusEl = document.getElementById(`status-${viewName}`);
@@ -1065,28 +1096,26 @@ class ContentViewer {
     switch (status) {
       case 'loading':
         statusEl.classList.add('loading');
-        statusEl.textContent = '';
         statusEl.title = 'Checking status...';
         break;
       case 'processing':
         statusEl.classList.add('processing');
-        statusEl.textContent = '🔄';
         statusEl.title = 'Generating...';
         break;
       case 'ready':
         statusEl.classList.add('ready');
-        statusEl.textContent = '✓';
         statusEl.title = 'Ready';
         break;
       case 'failed':
         statusEl.classList.add('failed');
-        statusEl.textContent = '!';
         statusEl.title = 'Failed - click to retry';
         break;
       default:
-        statusEl.textContent = '';
         statusEl.title = '';
     }
+
+    // Update the progress line to reflect the new status
+    this._updateProgressLine();
   }
 
   /**
