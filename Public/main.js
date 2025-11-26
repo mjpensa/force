@@ -159,7 +159,7 @@ async function processFiles(files) {
         // Create subtitle paragraph
         const subtitle = document.createElement('p');
         subtitle.className = 'text-lg md:text-xl opacity-60 mt-3';
-        subtitle.textContent = 'Supports .docx, .md, .txt, and .pdf files';
+        subtitle.textContent = 'Supports .docx, .md, .txt, .pdf';
 
         // Append all elements
         dropzonePrompt.appendChild(svg);
