@@ -136,19 +136,7 @@ class ContentViewer {
     const appShell = document.createElement('div');
     appShell.className = 'app-shell';
 
-    // Simplified header (sidebar handles navigation now)
-    const header = document.createElement('header');
-    header.className = 'app-header app-header-minimal';
-    header.innerHTML = `
-      <div class="header-content">
-        <h1 class="header-title">
-          <a href="/">AI Roadmap Generator</a>
-        </h1>
-        <div class="header-spacer"></div>
-      </div>
-    `;
-
-    // Main content area
+    // Main content area (no header - sidebar handles navigation)
     const main = document.createElement('main');
     main.className = 'app-main';
     main.id = 'main-content';
@@ -159,7 +147,6 @@ class ContentViewer {
     // Initialize sidebar navigation (glassmorphic icon rail)
     this._initSidebarNav();
 
-    appShell.appendChild(header);
     appShell.appendChild(main);
     this.appRoot.appendChild(appShell);
   }
