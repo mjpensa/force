@@ -293,8 +293,8 @@ export class SidebarNav {
     const tooltipRect = this.tooltip.getBoundingClientRect();
 
     this.tooltip.style.top = `${rect.top + (rect.height / 2) - 18}px`;
-    this.tooltip.style.right = `${window.innerWidth - rect.left + 12}px`;
-    this.tooltip.style.left = 'auto';
+    this.tooltip.style.left = `${rect.right + 12}px`;
+    this.tooltip.style.right = 'auto';
 
     this.tooltip.classList.add('visible');
     this.tooltip.setAttribute('aria-hidden', 'false');

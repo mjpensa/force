@@ -484,22 +484,22 @@
 
 /* Adjust main content when sidebar is present */
 .has-icon-rail .app-shell {
-  padding-right: 0;
+  padding-left: 0;
 }
 
 .has-icon-rail .app-main {
-  margin-right: var(--icon-rail-width-collapsed, 72px);
-  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: var(--icon-rail-width-collapsed, 72px);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .has-icon-rail.rail-expanded .app-main {
-  margin-right: var(--icon-rail-width-expanded, 240px);
+  margin-left: var(--icon-rail-width-expanded, 240px);
 }
 
 /* Mobile: bottom dock mode */
 @media (max-width: 640px) {
   .has-icon-rail .app-main {
-    margin-right: 0;
+    margin-left: 0;
     margin-bottom: 80px;
   }
 
