@@ -128,15 +128,14 @@ const RESEARCH_ANALYSIS_CONFIG = {
 /**
  * Slides generation config - optimized for determinism with 3 slide types
  * - Very low temperature for consistent, reliable output
- * - Fixed seed for reproducibility
  * - Constrained exploration since only 3 slide types exist
  * - Reduced thinking budget since slide types are now simplified
+ * - No seed parameter (not well supported by preview models)
  */
 const SLIDES_CONFIG = {
   temperature: 0.1,      // Very low: maximum schema adherence (like Gantt chart)
   topP: 0.3,             // Constrained: follow rules exactly
   topK: 5,               // Minimal: only 3 slide types to choose from
-  seed: 42,              // Fixed seed for deterministic output
   thinkingBudget: 8192   // Reduced: 3 simple slide types don't need max thinking
 };
 
@@ -579,7 +578,7 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     if (topK !== undefined) generationConfig.topK = topK;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-preview-09-2025',
+      model: 'gemini-2.5-flash',
       generationConfig
     });
 
