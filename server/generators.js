@@ -126,15 +126,17 @@ const RESEARCH_ANALYSIS_CONFIG = {
 };
 
 /**
- * Slides generation config - optimized for schema compliance + visual variety
- * - Lower temperature for reliable JSON structure
- * - Moderate exploration for slide type variety
+ * Slides generation config - optimized for determinism with 3 slide types
+ * - Very low temperature for consistent, reliable output
+ * - Fixed seed for reproducibility
+ * - Constrained exploration since only 3 slide types exist
  * - Full thinking budget for complex multi-slide planning
  */
 const SLIDES_CONFIG = {
-  temperature: 0.2,      // Low: prioritize schema adherence over creativity
-  topP: 0.5,             // Moderate: allows variety in slide type selection
-  topK: 10,              // Constrained: reliable type choices from 35 options
+  temperature: 0.1,      // Very low: maximum schema adherence (like Gantt chart)
+  topP: 0.3,             // Constrained: follow rules exactly
+  topK: 5,               // Minimal: only 3 slide types to choose from
+  seed: 42,              // Fixed seed for deterministic output
   thinkingBudget: 24576  // Maximum: complex multi-slide narrative planning
 };
 
@@ -908,6 +910,29 @@ function validateDocumentStructure(data) {
 function slideHasBodyContent(slide) {
   const type = slide.type;
 
+  // ============================================
+  // NEW SLIDE TYPES (3 types only)
+  // ============================================
+
+  // textTwoColumn - needs paragraphs array
+  if (type === 'textTwoColumn') {
+    return Array.isArray(slide.paragraphs) && slide.paragraphs.length > 0;
+  }
+
+  // textThreeColumn - needs columns array (exactly 3)
+  if (type === 'textThreeColumn') {
+    return Array.isArray(slide.columns) && slide.columns.length > 0;
+  }
+
+  // textWithCards - needs content and cards array
+  if (type === 'textWithCards') {
+    return !!(slide.content) && Array.isArray(slide.cards) && slide.cards.length > 0;
+  }
+
+  // ============================================
+  // LEGACY SUPPORT (for backwards compatibility)
+  // ============================================
+
   // Title slides, section dividers, and closing slides don't need body content
   const titleOnlyTypes = [
     'title', 'titleVariantA', 'titleVariantB', 'sectionDivider', 'section',
@@ -918,100 +943,29 @@ function slideHasBodyContent(slide) {
     return true; // These types are valid with just a title
   }
 
-  // Check for body content based on slide type
-  // Bullet slides
+  // Bullet slides (legacy)
   if (type === 'bullets' || type === 'bulletsFull') {
     return Array.isArray(slide.bullets) && slide.bullets.length > 0;
   }
 
-  // Content slides
+  // Content slides (legacy)
   if (type === 'content' || type === 'contentWithImage') {
     return !!(slide.content || slide.text);
   }
 
-  // Multi-column content
+  // Multi-column content (legacy)
   if (type === 'contentMultiColumn') {
     return Array.isArray(slide.columns) && slide.columns.length > 0;
   }
 
-  // Quote slides
-  if (type === 'quote') {
-    return !!(slide.quote || slide.text);
-  }
-
-  // Two-column quotes
-  if (type === 'quoteTwoColumn') {
-    return !!(slide.quotes || (slide.leftQuote && slide.rightQuote));
-  }
-
-  // Quote with metrics
-  if (type === 'quoteWithMetrics' || type === 'quoteDataA' || type === 'quoteDataB') {
-    return !!(slide.quote || slide.text || (Array.isArray(slide.metrics) && slide.metrics.length > 0));
-  }
-
-  // Card and feature grids
+  // Card grid (legacy)
   if (type === 'cardGrid') {
     return Array.isArray(slide.cards) && slide.cards.length > 0;
   }
 
+  // Feature grid (legacy)
   if (type === 'featureGrid' || type === 'featureGridRed') {
     return Array.isArray(slide.features) && slide.features.length > 0;
-  }
-
-  // Process/step slides
-  if (['steps', 'process', 'processSteps', 'processSteps5', 'processStepsAlt', 'stepsVertical', 'processStepsVertical'].includes(type)) {
-    return Array.isArray(slide.steps) && slide.steps.length > 0;
-  }
-
-  // Timeline slides
-  if (['timeline', 'timelineCards', 'timelineCardsAlt', 'timelineNumbered', 'timelineNumberedMarkers'].includes(type)) {
-    return (Array.isArray(slide.items) && slide.items.length > 0) ||
-           (Array.isArray(slide.timeline) && slide.timeline.length > 0) ||
-           (Array.isArray(slide.steps) && slide.steps.length > 0);
-  }
-
-  // Timeline phases
-  if (type === 'timelinePhases') {
-    return (Array.isArray(slide.phases) && slide.phases.length > 0) ||
-           (Array.isArray(slide.items) && slide.items.length > 0);
-  }
-
-  // Rollout slides
-  if (['rolloutGrid', 'rolloutTimeline', 'rolloutDescription'].includes(type)) {
-    return Array.isArray(slide.phases) && slide.phases.length > 0;
-  }
-
-  // Gantt chart
-  if (type === 'ganttChart' || type === 'gantt') {
-    return Array.isArray(slide.activities) && slide.activities.length > 0;
-  }
-
-  // Table
-  if (type === 'table' || type === 'dataTable') {
-    return (Array.isArray(slide.headers) && slide.headers.length > 0) ||
-           (Array.isArray(slide.rows) && slide.rows.length > 0);
-  }
-
-  // Table of contents
-  if (type === 'tableOfContents' || type === 'toc') {
-    return (Array.isArray(slide.items) && slide.items.length > 0) ||
-           (Array.isArray(slide.sections) && slide.sections.length > 0) ||
-           (Array.isArray(slide.tocItems) && slide.tocItems.length > 0);
-  }
-
-  // Contents nav
-  if (type === 'contentsNav') {
-    return Array.isArray(slide.sections) && slide.sections.length > 0;
-  }
-
-  // Dual chart (placeholder, so title is enough)
-  if (type === 'dualChart') {
-    return true;
-  }
-
-  // Title with image
-  if (type === 'titleWithImage') {
-    return true; // Title is enough for this type
   }
 
   // Unknown type - be lenient but log it
