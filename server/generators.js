@@ -901,6 +901,125 @@ function validateDocumentStructure(data) {
 }
 
 /**
+ * Check if a slide has appropriate body content based on its type
+ * @param {object} slide - The slide object
+ * @returns {boolean} True if slide has body content
+ */
+function slideHasBodyContent(slide) {
+  const type = slide.type;
+
+  // Title slides, section dividers, and closing slides don't need body content
+  const titleOnlyTypes = [
+    'title', 'titleVariantA', 'titleVariantB', 'sectionDivider', 'section',
+    'thankYou', 'thankYouAlt'
+  ];
+
+  if (titleOnlyTypes.includes(type)) {
+    return true; // These types are valid with just a title
+  }
+
+  // Check for body content based on slide type
+  // Bullet slides
+  if (type === 'bullets' || type === 'bulletsFull') {
+    return Array.isArray(slide.bullets) && slide.bullets.length > 0;
+  }
+
+  // Content slides
+  if (type === 'content' || type === 'contentWithImage') {
+    return !!(slide.content || slide.text);
+  }
+
+  // Multi-column content
+  if (type === 'contentMultiColumn') {
+    return Array.isArray(slide.columns) && slide.columns.length > 0;
+  }
+
+  // Quote slides
+  if (type === 'quote') {
+    return !!(slide.quote || slide.text);
+  }
+
+  // Two-column quotes
+  if (type === 'quoteTwoColumn') {
+    return !!(slide.quotes || (slide.leftQuote && slide.rightQuote));
+  }
+
+  // Quote with metrics
+  if (type === 'quoteWithMetrics' || type === 'quoteDataA' || type === 'quoteDataB') {
+    return !!(slide.quote || slide.text || (Array.isArray(slide.metrics) && slide.metrics.length > 0));
+  }
+
+  // Card and feature grids
+  if (type === 'cardGrid') {
+    return Array.isArray(slide.cards) && slide.cards.length > 0;
+  }
+
+  if (type === 'featureGrid' || type === 'featureGridRed') {
+    return Array.isArray(slide.features) && slide.features.length > 0;
+  }
+
+  // Process/step slides
+  if (['steps', 'process', 'processSteps', 'processSteps5', 'processStepsAlt', 'stepsVertical', 'processStepsVertical'].includes(type)) {
+    return Array.isArray(slide.steps) && slide.steps.length > 0;
+  }
+
+  // Timeline slides
+  if (['timeline', 'timelineCards', 'timelineCardsAlt', 'timelineNumbered', 'timelineNumberedMarkers'].includes(type)) {
+    return (Array.isArray(slide.items) && slide.items.length > 0) ||
+           (Array.isArray(slide.timeline) && slide.timeline.length > 0) ||
+           (Array.isArray(slide.steps) && slide.steps.length > 0);
+  }
+
+  // Timeline phases
+  if (type === 'timelinePhases') {
+    return (Array.isArray(slide.phases) && slide.phases.length > 0) ||
+           (Array.isArray(slide.items) && slide.items.length > 0);
+  }
+
+  // Rollout slides
+  if (['rolloutGrid', 'rolloutTimeline', 'rolloutDescription'].includes(type)) {
+    return Array.isArray(slide.phases) && slide.phases.length > 0;
+  }
+
+  // Gantt chart
+  if (type === 'ganttChart' || type === 'gantt') {
+    return Array.isArray(slide.activities) && slide.activities.length > 0;
+  }
+
+  // Table
+  if (type === 'table' || type === 'dataTable') {
+    return (Array.isArray(slide.headers) && slide.headers.length > 0) ||
+           (Array.isArray(slide.rows) && slide.rows.length > 0);
+  }
+
+  // Table of contents
+  if (type === 'tableOfContents' || type === 'toc') {
+    return (Array.isArray(slide.items) && slide.items.length > 0) ||
+           (Array.isArray(slide.sections) && slide.sections.length > 0) ||
+           (Array.isArray(slide.tocItems) && slide.tocItems.length > 0);
+  }
+
+  // Contents nav
+  if (type === 'contentsNav') {
+    return Array.isArray(slide.sections) && slide.sections.length > 0;
+  }
+
+  // Dual chart (placeholder, so title is enough)
+  if (type === 'dualChart') {
+    return true;
+  }
+
+  // Title with image
+  if (type === 'titleWithImage') {
+    return true; // Title is enough for this type
+  }
+
+  // Unknown type - be lenient but log it
+  console.warn(`[Slides Validation] Unknown slide type: ${type}`);
+  return true;
+}
+
+/**
  * Validate slides structure
  * @param {object} data - Generated slides data
  * @returns {boolean} True if valid
@@ -933,8 +1052,9 @@ function validateSlidesStructure(data) {
     return false;
   }
 
-  // Validate each slide has required properties
+  // Validate each slide has required properties AND body content
   let validSlides = 0;
+  let slidesWithContent = 0;
   for (let i = 0; i < data.slides.length; i++) {
     const slide = data.slides[i];
 
@@ -954,16 +1074,31 @@ function validateSlidesStructure(data) {
     }
 
     validSlides++;
+
+    // Check for body content
+    if (slideHasBodyContent(slide)) {
+      slidesWithContent++;
+    } else {
+      console.warn(`[Slides Validation] Slide ${i} (${slide.type}: "${slide.title}") is missing body content`);
+    }
   }
 
-  // At least 80% of slides should be valid
+  // At least 80% of slides should be valid (have type and title)
   const validRatio = validSlides / data.slides.length;
   if (validRatio < 0.8) {
     console.error(`[Slides Validation] REJECTED: Too many invalid slides (${validSlides}/${data.slides.length} valid)`);
     return false;
   }
 
-  console.log(`[Slides Validation] Passed: ${data.slides.length} slides, ${validSlides} valid`);
+  // CRITICAL: At least 70% of slides should have body content
+  // This catches the "titles only" bug
+  const contentRatio = slidesWithContent / data.slides.length;
+  if (contentRatio < 0.7) {
+    console.error(`[Slides Validation] REJECTED: Too many slides missing body content (${slidesWithContent}/${data.slides.length} have content, ${(contentRatio * 100).toFixed(0)}%)`);
+    return false;
+  }
+
+  console.log(`[Slides Validation] Passed: ${data.slides.length} slides, ${validSlides} valid structure, ${slidesWithContent} with body content`);
   return true;
 }
 
