@@ -270,6 +270,25 @@
   padding: 0; /* Removed top padding to eliminate blue bar */
 }
 
+/* Custom scrollbar for main content - matches glassmorphic theme */
+.app-main::-webkit-scrollbar {
+  width: 6px;
+}
+
+.app-main::-webkit-scrollbar-track {
+  background: var(--glass-white-5);
+  border-radius: var(--radius-full);
+}
+
+.app-main::-webkit-scrollbar-thumb {
+  background: var(--glass-white-20);
+  border-radius: var(--radius-full);
+}
+
+.app-main::-webkit-scrollbar-thumb:hover {
+  background: var(--glass-white-30);
+}
+
 .view-container {
   max-width: var(--container-xl);
   margin: 0 auto;
