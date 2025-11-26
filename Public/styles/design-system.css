@@ -760,12 +760,9 @@ body.view-roadmap .app-shell {
     inset 0 2px 4px var(--glass-navy-10),
     0 4px 16px var(--glass-navy-10);
 
-  /* Layout - compact square aspect */
-  min-height: 80px;
-  max-width: 280px;
-  margin: 0 auto;
+  /* Layout - compact size */
+  min-height: 64px;
   padding: 12px;
-  aspect-ratio: 1 / 1;
 
   /* Smooth Transitions */
   transition: all 0.3s var(--ease-out-quad);
