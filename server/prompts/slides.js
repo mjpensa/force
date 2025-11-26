@@ -1,16 +1,6 @@
 /**
- * Slides Generation - Extremely Simplified
- * 3 slide types with strict character limits
+ * Slides Generation - MVP
  */
-
-const cardSchema = {
-  type: "object",
-  properties: {
-    title: { type: "string" },
-    content: { type: "string" }
-  },
-  required: ["title", "content"]
-};
 
 export const slidesSchema = {
   type: "object",
@@ -21,50 +11,35 @@ export const slidesSchema = {
       items: {
         type: "object",
         properties: {
-          type: { type: "string", enum: ["textTwoColumn", "textThreeColumn", "textWithCards"] },
-          section: { type: "string" },
+          type: { type: "string" },
           title: { type: "string" },
+          section: { type: "string" },
           paragraphs: { type: "array", items: { type: "string" } },
           columns: { type: "array", items: { type: "string" } },
           content: { type: "string" },
-          cards: { type: "array", items: cardSchema }
-        },
-        required: ["type", "section", "title"]
+          cards: { type: "array", items: { type: "object" } }
+        }
       }
     }
-  },
-  required: ["title", "slides"]
+  }
 };
 
 export function generateSlidesPrompt(userPrompt, researchFiles) {
-  const research = researchFiles.map(f => `=== ${f.filename} ===\n${f.content}`).join('\n\n');
+  // Take only first 1500 chars from first file
+  const source = researchFiles[0]?.content?.substring(0, 1500) || '';
 
-  return `Generate a JSON slide deck. Be EXTREMELY BRIEF - this is for slides, not a document.
-
-THREE SLIDE TYPES:
-
-TYPE 1 - textTwoColumn:
-{"type":"textTwoColumn","section":"TOPIC","title":"Short title","paragraphs":["One brief sentence.","Another brief sentence."]}
-
-TYPE 2 - textThreeColumn:
-{"type":"textThreeColumn","section":"TOPIC","title":"Short title","columns":["Point one.","Point two.","Point three."]}
-
-TYPE 3 - textWithCards:
-{"type":"textWithCards","section":"TOPIC","title":"Short title","content":"Brief intro.","cards":[{"title":"A","content":"Few words"},{"title":"B","content":"Few words"},{"title":"C","content":"Few words"},{"title":"D","content":"Few words"},{"title":"E","content":"Few words"},{"title":"F","content":"Few words"}]}
-
-STRICT LIMITS:
-- 8-12 slides total
-- Each paragraph/column: 1-2 sentences MAX
-- Each card content: 5 words MAX
-- section: UPPERCASE
-- title: under 6 words
+  return `Create 6 slides as JSON.
 
 Topic: ${userPrompt}
 
-Source material:
-${research}
+Slide types:
+- textTwoColumn: {type,title,section,paragraphs:["p1","p2"]}
+- textThreeColumn: {type,title,section,columns:["c1","c2","c3"]}
+- textWithCards: {type,title,section,content,cards:[{title,content},...]}
 
-Output ONLY valid JSON: {"title":"...","slides":[...]}`;
+Source: ${source}
+
+Return: {"title":"...","slides":[...]}`;
 }
 
 export default { slidesSchema, generateSlidesPrompt };

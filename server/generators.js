@@ -126,15 +126,15 @@ const RESEARCH_ANALYSIS_CONFIG = {
 };
 
 /**
- * Slides generation config - optimized for speed with 3 simple slide types
- * - Minimal thinking budget since output structure is trivial
+ * Slides generation config - optimized for SPEED with 3 simple slide types
+ * - NO thinking budget - simple JSON output needs no reasoning
  * - Low temperature for consistent schema adherence
  */
 const SLIDES_CONFIG = {
   temperature: 0.1,
   topP: 0.3,
   topK: 5,
-  thinkingBudget: 1024   // Minimal: simple JSON output needs no deep reasoning
+  thinkingBudget: 0   // Zero: no thinking needed for simple JSON
 };
 
 
@@ -180,11 +180,13 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     // Build generation config - only include optional params if specified
     const generationConfig = {
       responseMimeType: 'application/json',
-      responseSchema: schema,
-      thinkingConfig: {
-        thinkingBudget
-      }
+      responseSchema: schema
     };
+
+    // Only add thinkingConfig if thinkingBudget > 0 (skip for fast generation)
+    if (thinkingBudget > 0) {
+      generationConfig.thinkingConfig = { thinkingBudget };
+    }
 
     // Add optional creativity parameters if provided
     if (temperature !== undefined) generationConfig.temperature = temperature;
@@ -287,44 +289,25 @@ async function generateRoadmap(sessionId, jobId, userPrompt, researchFiles) {
 }
 
 /**
- * Generate slides content
- * Uses SLIDES_CONFIG for optimal schema compliance + visual variety
- *
- * @param {string} sessionId - Session ID
- * @param {string} jobId - Job ID for tracking
- * @param {string} userPrompt - User's request
- * @param {Array} researchFiles - Research files
+ * Generate slides - simplified MVP
  */
 async function generateSlides(sessionId, jobId, userPrompt, researchFiles) {
   try {
-    console.log(`[Slides] Starting generation for session ${sessionId}`);
-    console.log(`[Slides] Using config: temp=${SLIDES_CONFIG.temperature}, topP=${SLIDES_CONFIG.topP}, topK=${SLIDES_CONFIG.topK}, thinkingBudget=${SLIDES_CONFIG.thinkingBudget}`);
+    console.log(`[Slides] Starting...`);
     JobDB.updateStatus(jobId, 'processing');
 
     const prompt = generateSlidesPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG);
 
-    // Validate slides structure - fail fast, no retry
-    if (!validateSlidesStructure(data)) {
-      throw new Error('Slides generation produced invalid content. Check source material.');
-    }
-
-    // Store in database
     ContentDB.create(sessionId, 'slides', data);
     JobDB.updateStatus(jobId, 'completed');
 
-    console.log(`[Slides] Successfully generated and stored with ${data.slides.length} slides`);
+    console.log(`[Slides] Done: ${data?.slides?.length || 0} slides`);
     return { success: true, data };
-
   } catch (error) {
-    console.error('[Slides] Generation failed:', error);
-    // Wrap database operations in try-catch to prevent cascade failures
-    try {
-      JobDB.updateStatus(jobId, 'error', error.message);
-      ContentDB.create(sessionId, 'slides', null, error.message);
-    } catch (dbError) {
-      console.error('[Slides] Failed to update error status in database:', dbError);
-    }
+    console.error('[Slides] Failed:', error.message);
+    JobDB.updateStatus(jobId, 'error', error.message);
+    ContentDB.create(sessionId, 'slides', null, error.message);
     return { success: false, error: error.message };
   }
 }
@@ -342,14 +325,6 @@ function validateDocumentStructure(data) {
   return true;
 }
 
-/**
- * Validate slides structure - minimal check
- */
-function validateSlidesStructure(data) {
-  if (!data?.slides?.length) return false;
-  console.log(`[Slides] Validated: ${data.slides.length} slides`);
-  return true;
-}
 
 /**
  * Generate document content (executive summary)
@@ -455,15 +430,8 @@ async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFi
 }
 
 /**
- * Generate all four content types sequentially
- * Each artifact must complete before the next begins
- * Order: 1) Roadmap (Gantt) 2) Document (Executive Summary) 3) Slides 4) Research Analysis
- *
- * @param {string} sessionId - Session ID
- * @param {string} userPrompt - User's request
- * @param {Array} researchFiles - Research files
- * @param {object} jobIds - Job IDs for tracking { roadmap, slides, document, researchAnalysis }
- * @returns {Promise<object>} Results of all generations
+ * Generate all content types sequentially
+ * Order: 1) Roadmap 2) Slides (fast) 3) Document 4) Research Analysis
  */
 export async function generateAllContent(sessionId, userPrompt, researchFiles, jobIds) {
   const results = {
@@ -474,95 +442,36 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
   };
 
   try {
-    console.log(`[Session ${sessionId}] Starting SEQUENTIAL content generation`);
+    console.log(`[Session ${sessionId}] Starting generation`);
+    SessionDB.updateStatus(sessionId, 'processing');
 
-    // Update session status
-    try {
-      SessionDB.updateStatus(sessionId, 'processing');
-    } catch (dbError) {
-      console.error(`[Session ${sessionId}] Failed to update initial status:`, dbError);
-    }
+    // STEP 1: Roadmap
+    console.log(`[Session ${sessionId}] 1/4: Roadmap`);
+    results.roadmap = await generateRoadmap(sessionId, jobIds.roadmap, userPrompt, researchFiles);
 
-    // ========================================
-    // STEP 1: Generate Roadmap (Gantt Chart)
-    // ========================================
-    console.log(`[Session ${sessionId}] Step 1/4: Generating Roadmap...`);
-    try {
-      results.roadmap = await generateRoadmap(sessionId, jobIds.roadmap, userPrompt, researchFiles);
-      console.log(`[Session ${sessionId}] Step 1/4: Roadmap ${results.roadmap.success ? 'COMPLETED' : 'FAILED'}`);
-    } catch (error) {
-      console.error(`[Session ${sessionId}] Step 1/4: Roadmap ERROR:`, error.message);
-      results.roadmap = { success: false, error: error.message };
-    }
+    // STEP 2: Slides (fast - no thinking)
+    console.log(`[Session ${sessionId}] 2/4: Slides`);
+    results.slides = await generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles);
 
-    // ========================================
-    // STEP 2: Generate Document (Executive Summary)
-    // ========================================
-    console.log(`[Session ${sessionId}] Step 2/4: Generating Document...`);
-    try {
-      results.document = await generateDocument(sessionId, jobIds.document, userPrompt, researchFiles);
-      console.log(`[Session ${sessionId}] Step 2/4: Document ${results.document.success ? 'COMPLETED' : 'FAILED'}`);
-    } catch (error) {
-      console.error(`[Session ${sessionId}] Step 2/4: Document ERROR:`, error.message);
-      results.document = { success: false, error: error.message };
-    }
+    // STEP 3: Document
+    console.log(`[Session ${sessionId}] 3/4: Document`);
+    results.document = await generateDocument(sessionId, jobIds.document, userPrompt, researchFiles);
 
-    // ========================================
-    // STEP 3: Generate Slides
-    // ========================================
-    console.log(`[Session ${sessionId}] Step 3/4: Generating Slides...`);
-    try {
-      results.slides = await generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles);
-      console.log(`[Session ${sessionId}] Step 3/4: Slides ${results.slides.success ? 'COMPLETED' : 'FAILED'}`);
-    } catch (error) {
-      console.error(`[Session ${sessionId}] Step 3/4: Slides ERROR:`, error.message);
-      results.slides = { success: false, error: error.message };
-    }
+    // STEP 4: Research Analysis
+    console.log(`[Session ${sessionId}] 4/4: Research Analysis`);
+    results.researchAnalysis = await generateResearchAnalysis(sessionId, jobIds.researchAnalysis, userPrompt, researchFiles);
 
-    // ========================================
-    // STEP 4: Generate Research Analysis (QA)
-    // ========================================
-    console.log(`[Session ${sessionId}] Step 4/4: Generating Research Analysis...`);
-    try {
-      results.researchAnalysis = await generateResearchAnalysis(sessionId, jobIds.researchAnalysis, userPrompt, researchFiles);
-      console.log(`[Session ${sessionId}] Step 4/4: Research Analysis ${results.researchAnalysis.success ? 'COMPLETED' : 'FAILED'}`);
-    } catch (error) {
-      console.error(`[Session ${sessionId}] Step 4/4: Research Analysis ERROR:`, error.message);
-      results.researchAnalysis = { success: false, error: error.message };
-    }
-
-    // ========================================
-    // Update final session status
-    // ========================================
-    const allSuccessful = results.roadmap?.success && results.document?.success &&
-                          results.slides?.success && results.researchAnalysis?.success;
-    const anySuccessful = results.roadmap?.success || results.document?.success ||
-                          results.slides?.success || results.researchAnalysis?.success;
-
-    try {
-      if (allSuccessful) {
-        SessionDB.updateStatus(sessionId, 'completed');
-        console.log(`[Session ${sessionId}] All 4 artifacts generated successfully`);
-      } else if (anySuccessful) {
-        SessionDB.updateStatus(sessionId, 'partial');
-        console.log(`[Session ${sessionId}] Some artifacts generated, some failed`);
-      } else {
-        SessionDB.updateStatus(sessionId, 'error', 'All content generation failed');
-        console.log(`[Session ${sessionId}] All content generation failed`);
-      }
-    } catch (dbError) {
-      console.error(`[Session ${sessionId}] Failed to update final status:`, dbError);
-    }
+    // Update final status
+    const anySuccess = results.roadmap?.success || results.slides?.success ||
+                       results.document?.success || results.researchAnalysis?.success;
+    SessionDB.updateStatus(sessionId, anySuccess ? 'completed' : 'error');
+    console.log(`[Session ${sessionId}] Done`);
 
     return { sessionId, ...results };
 
   } catch (error) {
-    console.error(`[Session ${sessionId}] Fatal error in generation:`, error);
-    try {
-      SessionDB.updateStatus(sessionId, 'error', error.message);
-    } catch (dbError) {
-      console.error(`[Session ${sessionId}] Failed to update error status:`, dbError);
-    }
+    console.error(`[Session ${sessionId}] Error:`, error.message);
+    SessionDB.updateStatus(sessionId, 'error', error.message);
     throw error;
   }
 }
