@@ -140,6 +140,15 @@ export async function generatePptx(slidesData, options = {}) {
       case 'contentWithImage':
         addContentWithImageSlide(pptx, slideData, slideNumber);
         break;
+      case 'textTwoColumn':
+        addTextTwoColumnSlide(pptx, slideData, slideNumber);
+        break;
+      case 'textThreeColumn':
+        addTextThreeColumnSlide(pptx, slideData, slideNumber);
+        break;
+      case 'textWithCards':
+        addTextWithCardsSlide(pptx, slideData, slideNumber);
+        break;
       case 'quote':
         addQuoteSlide(pptx, slideData, slideNumber);
         break;
@@ -704,6 +713,311 @@ function addContentMultiColumnSlide(pptx, slideData, slideNumber) {
       valign: 'top'
     });
   }
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add text two column slide (BIP Template)
+ * Title on left, paragraphs on right
+ */
+function addTextTwoColumnSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.textTwoColumn;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Main title (large, left side, italic)
+  slide.addText(slideData.title || 'Slide Title', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align,
+    italic: layout.elements.title.italic,
+    lineSpacing: layout.elements.title.lineSpacing
+  });
+
+  // Paragraphs (right side)
+  const paragraphsConfig = layout.elements.paragraphs;
+  const paragraphs = getArrayProp(slideData, 'paragraphs', 'content');
+
+  if (paragraphs.length > 0) {
+    // Join paragraphs with double line breaks
+    const paragraphText = paragraphs.map(p => typeof p === 'string' ? p : String(p)).join('\n\n');
+    slide.addText(paragraphText, {
+      x: paragraphsConfig.x,
+      y: paragraphsConfig.y,
+      w: paragraphsConfig.w,
+      h: paragraphsConfig.h,
+      fontSize: paragraphsConfig.fontSize,
+      fontFace: paragraphsConfig.fontFace,
+      color: paragraphsConfig.color,
+      align: 'left',
+      valign: 'top',
+      lineSpacing: paragraphsConfig.lineSpacing
+    });
+  }
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add text three column slide (BIP Template)
+ * Title on left, 3 text columns on right
+ */
+function addTextThreeColumnSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.textThreeColumn;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Main title (large, left side, italic)
+  slide.addText(slideData.title || 'Slide Title', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align,
+    italic: layout.elements.title.italic,
+    lineSpacing: layout.elements.title.lineSpacing
+  });
+
+  // Three columns
+  const columnsConfig = layout.elements.columns;
+  const columns = getArrayProp(slideData, 'columns');
+
+  // Render up to 3 columns
+  for (let i = 0; i < Math.min(3, columns.length); i++) {
+    const x = columnsConfig.startX + (i * (columnsConfig.columnWidth + columnsConfig.columnGap));
+    slide.addText(columns[i] || '', {
+      x: x,
+      y: columnsConfig.y,
+      w: columnsConfig.columnWidth,
+      h: columnsConfig.h,
+      fontSize: columnsConfig.fontSize,
+      fontFace: columnsConfig.fontFace,
+      color: columnsConfig.color,
+      align: 'left',
+      valign: 'top',
+      lineSpacing: columnsConfig.lineSpacing
+    });
+  }
+
+  // Page number
+  slide.addText(String(slideNumber), {
+    x: layout.elements.pageNumber.x,
+    y: layout.elements.pageNumber.y,
+    w: layout.elements.pageNumber.w,
+    h: layout.elements.pageNumber.h,
+    fontSize: layout.elements.pageNumber.fontSize,
+    fontFace: layout.elements.pageNumber.fontFace,
+    color: layout.elements.pageNumber.color,
+    align: layout.elements.pageNumber.align
+  });
+
+  // Logo placeholder
+  addLogoPlaceholder(slide, layout.elements.logo, 'small');
+}
+
+/**
+ * Add text with cards slide (BIP Template)
+ * Title and text on left, 6 numbered cards (2x3) on right
+ */
+function addTextWithCardsSlide(pptx, slideData, slideNumber) {
+  const layout = LAYOUTS.textWithCards;
+  const slide = pptx.addSlide();
+
+  // Set background
+  slide.background = { color: layout.background };
+
+  // Section label
+  const sectionLabel = getSectionLabel(slideData);
+  if (sectionLabel) {
+    slide.addText(sectionLabel, {
+      x: layout.elements.sectionLabel.x,
+      y: layout.elements.sectionLabel.y,
+      w: layout.elements.sectionLabel.w,
+      h: layout.elements.sectionLabel.h,
+      fontSize: layout.elements.sectionLabel.fontSize,
+      fontFace: layout.elements.sectionLabel.fontFace,
+      color: layout.elements.sectionLabel.color,
+      align: layout.elements.sectionLabel.align
+    });
+  }
+
+  // Main title (left side, italic)
+  slide.addText(slideData.title || 'Slide Title', {
+    x: layout.elements.title.x,
+    y: layout.elements.title.y,
+    w: layout.elements.title.w,
+    h: layout.elements.title.h,
+    fontSize: layout.elements.title.fontSize,
+    fontFace: layout.elements.title.fontFace,
+    color: layout.elements.title.color,
+    align: layout.elements.title.align,
+    italic: layout.elements.title.italic,
+    lineSpacing: layout.elements.title.lineSpacing
+  });
+
+  // Content text (below title on left)
+  const contentConfig = layout.elements.content;
+  const content = getStringProp(slideData, 'content', 'text', 'description');
+  if (content) {
+    slide.addText(content, {
+      x: contentConfig.x,
+      y: contentConfig.y,
+      w: contentConfig.w,
+      h: contentConfig.h,
+      fontSize: contentConfig.fontSize,
+      fontFace: contentConfig.fontFace,
+      color: contentConfig.color,
+      align: 'left',
+      valign: 'top',
+      lineSpacing: contentConfig.lineSpacing
+    });
+  }
+
+  // Cards (2x3 grid on right)
+  const cardsConfig = layout.elements.cards;
+  const cards = getArrayProp(slideData, 'cards');
+
+  cards.slice(0, 6).forEach((card, i) => {
+    const row = Math.floor(i / cardsConfig.columns);
+    const col = i % cardsConfig.columns;
+
+    const x = cardsConfig.startX + (col * (cardsConfig.cardWidth + cardsConfig.gapX));
+    const y = cardsConfig.startY + (row * (cardsConfig.cardHeight + cardsConfig.gapY));
+
+    // Card background
+    slide.addShape('rect', {
+      x: x,
+      y: y,
+      w: cardsConfig.cardWidth,
+      h: cardsConfig.cardHeight,
+      fill: { color: cardsConfig.cardBackground }
+    });
+
+    // Number circle
+    const circleX = x + cardsConfig.padding;
+    const circleY = y + cardsConfig.padding;
+    slide.addShape('ellipse', {
+      x: circleX,
+      y: circleY,
+      w: cardsConfig.numberCircleSize,
+      h: cardsConfig.numberCircleSize,
+      fill: { color: cardsConfig.numberCircleColor }
+    });
+
+    // Number text
+    slide.addText(String(i + 1), {
+      x: circleX,
+      y: circleY,
+      w: cardsConfig.numberCircleSize,
+      h: cardsConfig.numberCircleSize,
+      fontSize: cardsConfig.numberFontSize,
+      fontFace: cardsConfig.numberFontFace,
+      color: cardsConfig.numberColor,
+      align: 'center',
+      valign: 'middle',
+      bold: true
+    });
+
+    // Card title (next to number)
+    if (card.title) {
+      slide.addText(card.title, {
+        x: circleX + cardsConfig.numberCircleSize + 0.1,
+        y: circleY,
+        w: cardsConfig.cardWidth - cardsConfig.numberCircleSize - cardsConfig.padding * 2 - 0.1,
+        h: cardsConfig.numberCircleSize,
+        fontSize: cardsConfig.titleFontSize,
+        fontFace: cardsConfig.titleFontFace,
+        color: cardsConfig.titleColor,
+        align: 'left',
+        valign: 'middle',
+        bold: true
+      });
+    }
+
+    // Card content (below title)
+    if (card.content) {
+      slide.addText(card.content, {
+        x: x + cardsConfig.padding,
+        y: y + cardsConfig.padding + cardsConfig.numberCircleSize + 0.1,
+        w: cardsConfig.cardWidth - (cardsConfig.padding * 2),
+        h: cardsConfig.cardHeight - cardsConfig.padding - cardsConfig.numberCircleSize - 0.2,
+        fontSize: cardsConfig.contentFontSize,
+        fontFace: cardsConfig.contentFontFace,
+        color: cardsConfig.contentColor,
+        align: 'left',
+        valign: 'top'
+      });
+    }
+  });
 
   // Page number
   slide.addText(String(slideNumber), {

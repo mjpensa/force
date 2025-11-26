@@ -2474,6 +2474,224 @@ export const LAYOUTS = {
         placeholder: true
       }
     }
+  },
+
+  // ============================================
+  // TEXT TWO COLUMN - Title left, paragraphs right (BIP Template)
+  // ============================================
+  textTwoColumn: {
+    name: 'Text Two Column',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title (large, left side)
+      title: {
+        x: 0.33,
+        y: 0.5,
+        w: 4.5,
+        h: 2.5,
+        fontSize: 48,
+        fontFace: FONTS.thin,
+        color: COLORS.navy,
+        align: 'left',
+        italic: true,
+        lineSpacing: 85
+      },
+      // Paragraphs (right side)
+      paragraphs: {
+        x: 5.5,
+        y: 0.8,
+        w: 7.5,
+        h: 5.5,
+        fontSize: 11,
+        fontFace: FONTS.regular,
+        color: COLORS.navy,
+        lineSpacing: 160,
+        paragraphSpacing: 20
+      },
+      // Page number
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
+  // TEXT THREE COLUMN - Title left, 3 text columns right (BIP Template)
+  // ============================================
+  textThreeColumn: {
+    name: 'Text Three Column',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title (large, left side)
+      title: {
+        x: 0.33,
+        y: 0.5,
+        w: 4.0,
+        h: 2.5,
+        fontSize: 42,
+        fontFace: FONTS.thin,
+        color: COLORS.navy,
+        align: 'left',
+        italic: true,
+        lineSpacing: 85
+      },
+      // Three columns configuration
+      columns: {
+        startX: 4.8,
+        y: 0.8,
+        columnWidth: 2.7,
+        columnGap: 0.2,
+        h: 5.5,
+        fontSize: 10,
+        fontFace: FONTS.regular,
+        color: COLORS.navy,
+        lineSpacing: 150
+      },
+      // Page number
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
+  },
+
+  // ============================================
+  // TEXT WITH CARDS - Title/text left, 6 numbered cards right (BIP Template)
+  // ============================================
+  textWithCards: {
+    name: 'Text With Cards',
+    background: COLORS.white,
+    elements: {
+      // Section label (red, top left)
+      sectionLabel: {
+        x: 0.33,
+        y: 0.17,
+        w: 3,
+        h: 0.25,
+        fontSize: 10,
+        fontFace: FONTS.semibold,
+        color: COLORS.red,
+        align: 'left'
+      },
+      // Main title (large, left side)
+      title: {
+        x: 0.33,
+        y: 0.5,
+        w: 4.0,
+        h: 1.5,
+        fontSize: 36,
+        fontFace: FONTS.thin,
+        color: COLORS.navy,
+        align: 'left',
+        italic: true,
+        lineSpacing: 85
+      },
+      // Content text (below title on left)
+      content: {
+        x: 0.33,
+        y: 2.2,
+        w: 4.0,
+        h: 4.0,
+        fontSize: 11,
+        fontFace: FONTS.regular,
+        color: COLORS.navy,
+        lineSpacing: 160
+      },
+      // Cards configuration (2x3 grid on right)
+      cards: {
+        startX: 5.0,
+        startY: 0.8,
+        cardWidth: 2.6,
+        cardHeight: 2.0,
+        gapX: 0.2,
+        gapY: 0.2,
+        columns: 3,
+        rows: 2,
+        cardBackground: COLORS.lightGray,
+        numberCircleSize: 0.35,
+        numberCircleColor: COLORS.red,
+        numberFontSize: 12,
+        numberFontFace: FONTS.bold,
+        numberColor: COLORS.white,
+        titleFontSize: 11,
+        titleFontFace: FONTS.semibold,
+        titleColor: COLORS.navy,
+        contentFontSize: 9,
+        contentFontFace: FONTS.regular,
+        contentColor: COLORS.darkGray,
+        padding: 0.15
+      },
+      // Page number
+      pageNumber: {
+        x: 0.33,
+        y: 7.15,
+        w: 0.5,
+        h: 0.2,
+        fontSize: 8,
+        fontFace: FONTS.regular,
+        color: COLORS.darkGray,
+        align: 'left'
+      },
+      // Logo
+      logo: {
+        x: 12.5,
+        y: 7.0,
+        w: 0.69,
+        h: 0.35,
+        placeholder: true
+      }
+    }
   }
 };
 
@@ -2503,6 +2721,9 @@ export const SLIDE_TYPE_MAP = {
   'content': 'content',
   'contentMultiColumn': 'contentMultiColumn',
   'contentWithImage': 'contentWithImage',
+  'textTwoColumn': 'textTwoColumn',
+  'textThreeColumn': 'textThreeColumn',
+  'textWithCards': 'textWithCards',
 
   // ==================== QUOTE SLIDES ====================
   'quote': 'quote',
