@@ -73,7 +73,9 @@ select:focus-visible {
   border-radius: 8px;
   background-color: transparent; /* Changed from #0c2340 to remove blue bar */
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  overflow: visible;
+  overflow-x: auto; /* Allow horizontal scrolling */
+  overflow-y: auto; /* Allow vertical scrolling for sticky header */
+  max-height: 80vh; /* Limit height to enable vertical scrolling */
   margin-top: 0; /* Removed margin-top to eliminate blue bar spacing */
   font-family: 'Work Sans', sans-serif; /* CHANGED */
   position: relative; /* Added for vertical SVG border */
@@ -83,6 +85,9 @@ select:focus-visible {
 .gantt-title-container {
   /* Flexbox properties are set inline in JavaScript for dynamic alignment */
   transition: all 0.2s;
+  position: sticky;
+  top: 0;
+  z-index: 20; /* Above header cells and bars */
 }
 
 /* Chart Title */
@@ -125,7 +130,7 @@ select:focus-visible {
   position: relative; /* For "Today" line */
 }
 
-/* 9. Grid Header (Weeks) */
+/* 9. Grid Header (Weeks) - Sticky with title */
 .gantt-header {
   font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
   font-weight: 600;
@@ -135,6 +140,9 @@ select:focus-visible {
   border-bottom: 1px solid #0D0D0D; /* Grid line color (Correctly not white) */
   border-left: 0.5px solid #0D0D0D; /* Grid line color (CHANGED to black) */
   color: #FFFFFF; /* Text Color */
+  position: sticky;
+  top: var(--title-height, 70px); /* Dynamically set by JS, fallback to 70px */
+  z-index: 15; /* Below title container (20), above bars (2) */
 }
 .gantt-header-label { /* First header cell (empty) */
   border-left: 0; /* Keep left border at 0 */

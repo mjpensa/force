@@ -60,6 +60,12 @@ export class GanttChart {
     // Sort tasks within swimlanes by start date (earliest first)
     this._sortTasksWithinSwimlanes();
 
+    // Clean up previous ResizeObserver if it exists (prevents memory leaks)
+    if (this._titleResizeObserver) {
+      this._titleResizeObserver.disconnect();
+      this._titleResizeObserver = null;
+    }
+
     // Clear container
     this.container.innerHTML = '';
 
@@ -145,6 +151,9 @@ export class GanttChart {
     const today = new Date();
     this.addTodayLine(today);
 
+    // Update sticky header positioning based on actual title container height
+    this._updateStickyHeaderPosition();
+
     // Phase 5: Initialize drag-to-edit functionality
     this._initializeDragToEdit();
 
@@ -197,6 +206,9 @@ export class GanttChart {
     this.titleContainer.style.borderBottom = '1px solid #0D0D0D';
     this.titleContainer.style.backgroundColor = '#0c2340';
     this.titleContainer.style.borderRadius = '8px 8px 0 0';
+
+    // Sticky positioning is handled via CSS, but we need to measure height for header positioning
+    // This will be set after the title is rendered in _updateStickyHeaderPosition()
 
     // Create the title text element
     this.titleElement = document.createElement('div');
@@ -300,6 +312,50 @@ export class GanttChart {
 
     // Append all header cells at once (single reflow)
     this.gridElement.appendChild(headerFragment);
+  }
+
+  /**
+   * Updates the sticky header position based on the actual title container height
+   * This ensures the date interval header is positioned correctly below the title
+   * @private
+   */
+  _updateStickyHeaderPosition() {
+    if (!this.titleContainer || !this.chartWrapper) return;
+
+    // Use requestAnimationFrame to ensure the DOM has rendered
+    requestAnimationFrame(() => {
+      this._applyStickyHeaderPosition();
+
+      // Set up ResizeObserver to handle dynamic title container size changes
+      if (window.ResizeObserver && !this._titleResizeObserver) {
+        this._titleResizeObserver = new ResizeObserver(() => {
+          this._applyStickyHeaderPosition();
+        });
+        this._titleResizeObserver.observe(this.titleContainer);
+      }
+    });
+  }
+
+  /**
+   * Applies the sticky header position based on current title container height
+   * @private
+   */
+  _applyStickyHeaderPosition() {
+    if (!this.titleContainer || !this.chartWrapper || !this.gridElement) return;
+
+    // Get the actual height of the title container
+    const titleHeight = this.titleContainer.offsetHeight;
+
+    // Set CSS custom property on the chart container for header positioning
+    this.chartWrapper.style.setProperty('--title-height', `${titleHeight}px`);
+
+    // Update all header cells to use the calculated top position
+    const headerCells = this.gridElement.querySelectorAll('.gantt-header');
+    headerCells.forEach(cell => {
+      cell.style.top = `${titleHeight}px`;
+    });
+
+    console.log(`✓ Sticky header positioned at ${titleHeight}px below title`);
   }
 
   /**
