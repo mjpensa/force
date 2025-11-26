@@ -110,6 +110,17 @@ export const LAYOUTS = {
         align: 'left',
         lineSpacing: 80  // 80% line height
       },
+      // Subtitle (below main title)
+      subtitle: {
+        x: 0.23,
+        y: 5.1,
+        w: 8.5,
+        h: 0.8,
+        fontSize: 24,
+        fontFace: FONTS.regular,
+        color: COLORS.white,
+        align: 'left'
+      },
       // Logo placeholder (bottom left)
       logo: {
         x: 0.29,
@@ -159,10 +170,21 @@ export const LAYOUTS = {
         color: COLORS.white,
         align: 'left'
       },
+      // Subtitle (below main title)
+      subtitle: {
+        x: 0.5,
+        y: 5.0,
+        w: 12,
+        h: 0.8,
+        fontSize: 18,
+        fontFace: FONTS.regular,
+        color: COLORS.white,
+        align: 'left'
+      },
       // Date/subtitle
       date: {
         x: 0.5,
-        y: 5.5,
+        y: 5.8,
         w: 4,
         h: 0.5,
         fontSize: 14,

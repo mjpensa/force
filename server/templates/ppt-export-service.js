@@ -283,14 +283,14 @@ function addTitleSlide(pptx, slideData, presentationData) {
   // Add subtitle if present
   if (slideData.subtitle) {
     slide.addText(slideData.subtitle, {
-      x: layout.elements.title.x,
-      y: layout.elements.title.y + 1.8,
-      w: layout.elements.title.w,
-      h: 0.5,
-      fontSize: 24,
-      fontFace: FONTS.regular,
-      color: COLORS.white,
-      align: 'left'
+      x: layout.elements.subtitle.x,
+      y: layout.elements.subtitle.y,
+      w: layout.elements.subtitle.w,
+      h: layout.elements.subtitle.h,
+      fontSize: layout.elements.subtitle.fontSize,
+      fontFace: layout.elements.subtitle.fontFace,
+      color: layout.elements.subtitle.color,
+      align: layout.elements.subtitle.align
     });
   }
 
@@ -2228,6 +2228,20 @@ function addTitleVariantASlide(pptx, slideData) {
       fontFace: layout.elements.title.fontFace,
       color: layout.elements.title.color,
       align: layout.elements.title.align
+    });
+  }
+
+  // Subtitle
+  if (slideData.subtitle) {
+    slide.addText(slideData.subtitle, {
+      x: layout.elements.subtitle.x,
+      y: layout.elements.subtitle.y,
+      w: layout.elements.subtitle.w,
+      h: layout.elements.subtitle.h,
+      fontSize: layout.elements.subtitle.fontSize,
+      fontFace: layout.elements.subtitle.fontFace,
+      color: layout.elements.subtitle.color,
+      align: layout.elements.subtitle.align
     });
   }
 
