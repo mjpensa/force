@@ -70,9 +70,6 @@ export class GanttChart {
     renderTimer.mark('Container setup complete');
 
     // Build chart components
-    // Add stripe above Gantt chart
-    this._addHeaderSVG();
-
     this._addTitle();
     this._addLogo(); // Logo added after title so we can calculate proper alignment
 
