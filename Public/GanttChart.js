@@ -194,8 +194,8 @@ export class GanttChart {
     this.titleContainer.style.display = 'flex';
     this.titleContainer.style.justifyContent = 'space-between';
     this.titleContainer.style.alignItems = 'center'; // Vertically center logo with title
-    this.titleContainer.style.gap = '16px'; // SCALED: Was 32px
-    this.titleContainer.style.padding = '14px'; // SCALED: Was 29px
+    this.titleContainer.style.gap = '10px'; // SCALED: Was 16px - further reduced
+    this.titleContainer.style.padding = '8px'; // SCALED: Was 14px - further reduced
     this.titleContainer.style.borderBottom = '1px solid #0D0D0D';
     this.titleContainer.style.backgroundColor = '#0c2340';
     this.titleContainer.style.borderRadius = '8px 8px 0 0';
@@ -484,7 +484,7 @@ export class GanttChart {
    * @private
    */
   _createVirtualizedRows(numCols) {
-    const ROW_HEIGHT = 24; // SCALED: Was 40 - Approximate height of each row in pixels
+    const ROW_HEIGHT = 18; // SCALED: Was 24 - further reduced for compact display
     const BUFFER_ROWS = 20; // Number of extra rows to render above/below viewport
 
     // Create a scroll container
