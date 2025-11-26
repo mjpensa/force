@@ -81,6 +81,9 @@ export class GanttChart {
 
     this._addLegend();
 
+    // Add footer stripe
+    this._addFooterSVG();
+
     // Add export and edit mode toggle buttons
     const exportContainer = document.createElement('div');
     exportContainer.className = 'export-container';
