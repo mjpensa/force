@@ -21,6 +21,12 @@ export const COLORS = {
   black: '000000'
 };
 
+// Placeholder colors (used when actual assets are not available)
+export const PLACEHOLDER_COLORS = {
+  gray: '4A5568',        // Default placeholder gray
+  lightNavy: '1a3a5c'    // Lighter navy for pattern placeholders
+};
+
 // Brand fonts
 export const FONTS = {
   thin: 'Work Sans Thin',
@@ -500,7 +506,7 @@ export const LAYOUTS = {
         y: 2.71,
         w: 6.69,
         h: 5.98,
-        fontSize: 413,
+        fontSize: 200,  // Reduced from original 413 to fit better
         fontFace: FONTS.thin,
         color: COLORS.white,
         align: 'left',
@@ -935,8 +941,11 @@ export const LAYOUTS = {
         align: 'left',
         lineSpacing: 180,
         borderLeft: {
-          width: 3,
-          color: COLORS.red
+          width: 0.05,       // Border line width in inches
+          height: 2,         // Border line height in inches
+          color: COLORS.red,
+          offsetX: -0.1,     // X offset from quote position
+          textMargin: 0.2    // Left margin for quote text
         }
       },
       // Logo
@@ -2518,6 +2527,7 @@ export const DEFAULT_METADATA = {
 
 export default {
   COLORS,
+  PLACEHOLDER_COLORS,
   FONTS,
   SLIDE_SIZE,
   LAYOUTS,

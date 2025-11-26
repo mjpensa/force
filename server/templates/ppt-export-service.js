@@ -9,6 +9,7 @@ import PptxGenJS from 'pptxgenjs';
 import { existsSync } from 'fs';
 import {
   COLORS,
+  PLACEHOLDER_COLORS,
   FONTS,
   SLIDE_SIZE,
   LAYOUTS,
@@ -250,7 +251,7 @@ function addTitleSlide(pptx, slideData, presentationData) {
     y: layout.elements.banner.y,
     w: layout.elements.banner.w,
     h: layout.elements.banner.h,
-    fill: { color: '4A5568' }  // Placeholder gray
+    fill: { color: PLACEHOLDER_COLORS.gray }  // Placeholder gray
   });
 
   // Add date
@@ -401,7 +402,7 @@ function addTitleWithImageSlide(pptx, slideData) {
       y: layout.elements.image.y,
       w: layout.elements.image.w,
       h: layout.elements.image.h,
-      fill: { color: '4A5568' }
+      fill: { color: PLACEHOLDER_COLORS.gray }
     });
   }
 }
@@ -435,7 +436,7 @@ function addSectionSlide(pptx, slideData, slideNumber) {
     y: layout.elements.largeNumber.y,
     w: layout.elements.largeNumber.w,
     h: layout.elements.largeNumber.h,
-    fontSize: 200,  // Reduced from 413 to fit better
+    fontSize: layout.elements.largeNumber.fontSize,
     fontFace: layout.elements.largeNumber.fontFace,
     color: layout.elements.largeNumber.color,
     align: layout.elements.largeNumber.align,
@@ -522,7 +523,7 @@ function addBulletsSlide(pptx, slideData, slideNumber) {
     y: layout.elements.accent.y,
     w: layout.elements.accent.w,
     h: layout.elements.accent.h,
-    fill: { color: '4A5568' }  // Placeholder
+    fill: { color: PLACEHOLDER_COLORS.gray }  // Placeholder
   });
 
   // Page number
@@ -601,7 +602,7 @@ function addContentSlide(pptx, slideData, slideNumber) {
     y: layout.elements.accent.y,
     w: layout.elements.accent.w,
     h: layout.elements.accent.h,
-    fill: { color: '4A5568' }
+    fill: { color: PLACEHOLDER_COLORS.gray }
   });
 
   // Page number
@@ -952,7 +953,7 @@ function addQuoteSlide(pptx, slideData, slideNumber) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '4A5568' }
+    fill: { color: PLACEHOLDER_COLORS.gray }
   });
 
   // Section label
@@ -984,38 +985,45 @@ function addQuoteSlide(pptx, slideData, slideNumber) {
 
   // Quote text with red left border
   if (slideData.quote) {
+    const quoteConfig = layout.elements.quote;
+    const borderConfig = quoteConfig.borderLeft || {};
+    const borderWidth = borderConfig.width || 0.05;
+    const borderHeight = borderConfig.height || 2;
+    const borderOffsetX = borderConfig.offsetX || -0.1;
+    const textMargin = borderConfig.textMargin || 0.2;
+
     // Add red border line
     slide.addShape('rect', {
-      x: layout.elements.quote.x - 0.1,
-      y: layout.elements.quote.y,
-      w: 0.05,
-      h: 2,
-      fill: { color: COLORS.red }
+      x: quoteConfig.x + borderOffsetX,
+      y: quoteConfig.y,
+      w: borderWidth,
+      h: borderHeight,
+      fill: { color: borderConfig.color || COLORS.red }
     });
 
     // Add quote text
     slide.addText(`"${slideData.quote}"`, {
-      x: layout.elements.quote.x + 0.2,
-      y: layout.elements.quote.y,
-      w: layout.elements.quote.w - 0.2,
-      h: layout.elements.quote.h,
-      fontSize: layout.elements.quote.fontSize,
-      fontFace: layout.elements.quote.fontFace,
-      color: layout.elements.quote.color,
-      align: layout.elements.quote.align,
+      x: quoteConfig.x + textMargin,
+      y: quoteConfig.y,
+      w: quoteConfig.w - textMargin,
+      h: quoteConfig.h,
+      fontSize: quoteConfig.fontSize,
+      fontFace: quoteConfig.fontFace,
+      color: quoteConfig.color,
+      align: quoteConfig.align,
       italic: true
     });
 
     // Attribution
     if (slideData.attribution) {
       slide.addText(`— ${slideData.attribution}`, {
-        x: layout.elements.quote.x + 0.2,
-        y: layout.elements.quote.y + 2.5,
-        w: layout.elements.quote.w - 0.2,
+        x: quoteConfig.x + textMargin,
+        y: quoteConfig.y + borderHeight + 0.5,
+        w: quoteConfig.w - textMargin,
         h: 0.3,
         fontSize: 12,
         fontFace: FONTS.semibold,
-        color: COLORS.navy,
+        color: quoteConfig.color,
         align: 'left'
       });
     }
@@ -1041,7 +1049,7 @@ function addThankYouSlide(pptx, slideData) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '4A5568' }
+    fill: { color: PLACEHOLDER_COLORS.gray }
   });
 
   // Thank You text
@@ -1180,14 +1188,17 @@ function addProcessStepsSlide(pptx, slideData, slideNumber) {
   const totalSteps = steps.length;
   const totalWidth = 12.33; // Available width
   const startX = 0.5;
+  // Provide default values for potentially undefined config properties
+  const stepGap = stepsConfig.stepGap || 0.2;
+  const stepWidth = stepsConfig.stepWidth || 2.4;
 
   // Calculate dynamic step width based on number of steps
   const dynamicStepWidth = totalSteps > 0
-    ? Math.min(stepsConfig.stepWidth, (totalWidth - (stepsConfig.stepGap * (totalSteps - 1))) / totalSteps)
-    : stepsConfig.stepWidth;
+    ? Math.min(stepWidth, (totalWidth - (stepGap * (totalSteps - 1))) / totalSteps)
+    : stepWidth;
 
   steps.forEach((step, i) => {
-    const x = startX + (i * (dynamicStepWidth + stepsConfig.stepGap));
+    const x = startX + (i * (dynamicStepWidth + stepGap));
     const y = stepsConfig.y;
 
     // Step number circle
@@ -1246,7 +1257,7 @@ function addProcessStepsSlide(pptx, slideData, slideNumber) {
       slide.addShape('line', {
         x: x + dynamicStepWidth,
         y: y - 0.1,
-        w: stepsConfig.stepGap,
+        w: stepGap,
         h: 0,
         line: { color: COLORS.white, width: 2 }
       });
@@ -2165,8 +2176,8 @@ function addTableSlide(pptx, slideData, slideNumber) {
       })));
     });
 
-    // Calculate column widths
-    const colCount = Math.max(headers.length, rows[0]?.length || 0);
+    // Calculate column widths (ensure at least 1 column to avoid division by zero)
+    const colCount = Math.max(1, headers.length, rows[0]?.length || 0);
     const colWidths = slideData.colWidths || Array(colCount).fill(tableConfig.w / colCount);
 
     // Add the table
@@ -2214,7 +2225,7 @@ function addTitleVariantASlide(pptx, slideData) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '1a3a5c' }  // Slightly lighter navy for pattern
+    fill: { color: PLACEHOLDER_COLORS.lightNavy }  // Slightly lighter navy for pattern
   });
 
   // Main title
@@ -2279,7 +2290,7 @@ function addTitleVariantBSlide(pptx, slideData) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '1a3a5c' }  // Slightly lighter navy for pattern
+    fill: { color: PLACEHOLDER_COLORS.lightNavy }  // Slightly lighter navy for pattern
   });
 
   // Subtitle/date (upper area)
@@ -3813,7 +3824,7 @@ function addThankYouAltSlide(pptx, slideData) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '1a3a5c' }  // Slightly lighter navy as placeholder
+    fill: { color: PLACEHOLDER_COLORS.lightNavy }  // Slightly lighter navy as placeholder
   });
 
   // "Thank You" title
@@ -3933,7 +3944,9 @@ function addLogoPlaceholder(slide, position, size = 'medium', variant = null, ba
  * @param {string} patternType - 'banner' or 'accent'
  * @param {string} fallbackColor - hex color to use as fallback (without #)
  */
-function addPatternPlaceholder(slide, position, patternType = 'banner', fallbackColor = '4A5568') {
+function addPatternPlaceholder(slide, position, patternType = 'banner', fallbackColor = null) {
+  // Use PLACEHOLDER_COLORS.gray as default if no fallback provided
+  const actualFallbackColor = fallbackColor || PLACEHOLDER_COLORS.gray;
   const patternPath = ASSETS?.patterns?.[patternType];
 
   if (patternPath && existsSync(patternPath)) {
@@ -3952,7 +3965,7 @@ function addPatternPlaceholder(slide, position, patternType = 'banner', fallback
       y: position.y,
       w: position.w,
       h: position.h,
-      fill: { color: fallbackColor }
+      fill: { color: actualFallbackColor }
     });
   }
 }
