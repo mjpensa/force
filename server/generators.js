@@ -18,6 +18,63 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 // Timeout configuration for AI generation
 const GENERATION_TIMEOUT_MS = 180000; // 3 minutes - generous but not infinite
 
+// ============================================================================
+// REQUEST QUEUE - Controls concurrent API calls to prevent overload
+// ============================================================================
+
+/**
+ * API Request Queue with controlled concurrency
+ * Prevents overwhelming the Gemini API with too many simultaneous requests
+ */
+class APIQueue {
+  constructor(maxConcurrent = 2) {
+    this.maxConcurrent = maxConcurrent;
+    this.running = 0;
+    this.queue = [];
+  }
+
+  /**
+   * Add a task to the queue
+   * @param {Function} task - Async function to execute
+   * @param {string} name - Task name for logging
+   * @returns {Promise} Result of the task
+   */
+  async add(task, name = 'unknown') {
+    // If we're at capacity, wait in queue
+    if (this.running >= this.maxConcurrent) {
+      console.log(`[APIQueue] ${name} queued (${this.running}/${this.maxConcurrent} running, ${this.queue.length} waiting)`);
+      await new Promise(resolve => this.queue.push(resolve));
+    }
+
+    this.running++;
+    console.log(`[APIQueue] ${name} starting (${this.running}/${this.maxConcurrent} running)`);
+
+    try {
+      const result = await task();
+      return result;
+    } finally {
+      this.running--;
+      console.log(`[APIQueue] ${name} completed (${this.running}/${this.maxConcurrent} running, ${this.queue.length} waiting)`);
+
+      // Release next waiting task
+      const next = this.queue.shift();
+      if (next) next();
+    }
+  }
+
+  /**
+   * Run multiple tasks with controlled concurrency
+   * @param {Array<{task: Function, name: string}>} tasks - Tasks to run
+   * @returns {Promise<Array>} Results in same order as input
+   */
+  async runAll(tasks) {
+    return Promise.all(tasks.map(({ task, name }) => this.add(task, name)));
+  }
+}
+
+// Global API queue instance - max 2 concurrent Gemini API calls
+const apiQueue = new APIQueue(2);
+
 /**
  * Generation config presets for different content types
  *
@@ -1014,7 +1071,9 @@ async function generateResearchAnalysis(sessionId, jobId, userPrompt, researchFi
 }
 
 /**
- * Generate all four content types in parallel
+ * Generate all four content types with controlled concurrency
+ * Uses APIQueue to limit concurrent requests to 2, preventing API overload
+ *
  * @param {string} sessionId - Session ID
  * @param {string} userPrompt - User's request
  * @param {Array} researchFiles - Research files
@@ -1026,7 +1085,7 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
   const { enterpriseMode = false } = options;
 
   try {
-    console.log(`[Session ${sessionId}] Starting parallel generation of all content types`);
+    console.log(`[Session ${sessionId}] Starting content generation (max 2 concurrent)`);
     if (enterpriseMode) {
       console.log(`[Session ${sessionId}] Enterprise mode ENABLED for document and slides generation`);
     }
@@ -1036,33 +1095,47 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
       SessionDB.updateStatus(sessionId, 'processing');
     } catch (dbError) {
       console.error(`[Session ${sessionId}] Failed to update initial status:`, dbError);
-      // Continue anyway - the session was already created
     }
 
-    // Select generators based on enterprise mode
-    const documentGenerator = enterpriseMode
-      ? generateDocumentEnterprise(sessionId, jobIds.document, userPrompt, researchFiles)
-      : generateDocument(sessionId, jobIds.document, userPrompt, researchFiles);
+    // Define generation tasks with priority order
+    // Roadmap and Slides first (users typically view these first)
+    // Document and Research Analysis second
+    const tasks = [
+      {
+        name: 'Roadmap',
+        task: () => generateRoadmap(sessionId, jobIds.roadmap, userPrompt, researchFiles)
+      },
+      {
+        name: enterpriseMode ? 'Slides-Enterprise' : 'Slides',
+        task: () => enterpriseMode
+          ? generateSlidesEnterprise(sessionId, jobIds.slides, userPrompt, researchFiles)
+          : generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles)
+      },
+      {
+        name: enterpriseMode ? 'Document-Enterprise' : 'Document',
+        task: () => enterpriseMode
+          ? generateDocumentEnterprise(sessionId, jobIds.document, userPrompt, researchFiles)
+          : generateDocument(sessionId, jobIds.document, userPrompt, researchFiles)
+      },
+      {
+        name: 'ResearchAnalysis',
+        task: () => generateResearchAnalysis(sessionId, jobIds.researchAnalysis, userPrompt, researchFiles)
+      }
+    ];
 
-    const slidesGenerator = enterpriseMode
-      ? generateSlidesEnterprise(sessionId, jobIds.slides, userPrompt, researchFiles)
-      : generateSlides(sessionId, jobIds.slides, userPrompt, researchFiles);
-
-    // Generate all four in parallel
-    const results = await Promise.allSettled([
-      generateRoadmap(sessionId, jobIds.roadmap, userPrompt, researchFiles),
-      slidesGenerator,
-      documentGenerator,
-      generateResearchAnalysis(sessionId, jobIds.researchAnalysis, userPrompt, researchFiles)
-    ]);
+    // Run all tasks through the queue (max 2 concurrent)
+    // Promise.allSettled ensures all complete even if some fail
+    const results = await Promise.allSettled(
+      tasks.map(({ task, name }) => apiQueue.add(task, name))
+    );
 
     // Check results
     const [roadmapResult, slidesResult, documentResult, researchAnalysisResult] = results;
 
-    const allSuccessful = results.every(r => r.status === 'fulfilled' && r.value.success);
-    const anySuccessful = results.some(r => r.status === 'fulfilled' && r.value.success);
+    const allSuccessful = results.every(r => r.status === 'fulfilled' && r.value?.success);
+    const anySuccessful = results.some(r => r.status === 'fulfilled' && r.value?.success);
 
-    // Update session status based on results - wrapped in try-catch
+    // Update session status based on results
     try {
       if (allSuccessful) {
         SessionDB.updateStatus(sessionId, 'completed');
@@ -1080,14 +1153,14 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
 
     return {
       sessionId,
-      roadmap: roadmapResult.status === 'fulfilled' ? roadmapResult.value : { success: false, error: roadmapResult.reason },
-      slides: slidesResult.status === 'fulfilled' ? slidesResult.value : { success: false, error: slidesResult.reason },
-      document: documentResult.status === 'fulfilled' ? documentResult.value : { success: false, error: documentResult.reason },
-      researchAnalysis: researchAnalysisResult.status === 'fulfilled' ? researchAnalysisResult.value : { success: false, error: researchAnalysisResult.reason }
+      roadmap: roadmapResult.status === 'fulfilled' ? roadmapResult.value : { success: false, error: roadmapResult.reason?.message || 'Generation failed' },
+      slides: slidesResult.status === 'fulfilled' ? slidesResult.value : { success: false, error: slidesResult.reason?.message || 'Generation failed' },
+      document: documentResult.status === 'fulfilled' ? documentResult.value : { success: false, error: documentResult.reason?.message || 'Generation failed' },
+      researchAnalysis: researchAnalysisResult.status === 'fulfilled' ? researchAnalysisResult.value : { success: false, error: researchAnalysisResult.reason?.message || 'Generation failed' }
     };
 
   } catch (error) {
-    console.error(`[Session ${sessionId}] Fatal error in parallel generation:`, error);
+    console.error(`[Session ${sessionId}] Fatal error in generation:`, error);
     try {
       SessionDB.updateStatus(sessionId, 'error', error.message);
     } catch (dbError) {
@@ -1099,6 +1172,8 @@ export async function generateAllContent(sessionId, userPrompt, researchFiles, j
 
 /**
  * Regenerate a single content type
+ * Uses APIQueue to respect concurrency limits
+ *
  * @param {string} sessionId - Session ID
  * @param {string} viewType - 'roadmap', 'slides', 'document', or 'research-analysis'
  * @param {object} options - Optional settings { enterpriseMode: boolean }
@@ -1121,38 +1196,33 @@ export async function regenerateContent(sessionId, viewType, options = {}) {
     const jobId = uuidv4();
     JobDB.create(jobId, sessionId, viewType);
 
-    // Generate based on type
-    let result;
-    switch (viewType) {
-      case 'roadmap':
-        result = await generateRoadmap(sessionId, jobId, prompt, researchFiles);
-        break;
-      case 'slides':
-        // Use enterprise mode if enabled
-        if (enterpriseMode) {
-          console.log(`[Regenerate] Using enterprise mode for slides regeneration`);
-          result = await generateSlidesEnterprise(sessionId, jobId, prompt, researchFiles);
-        } else {
-          result = await generateSlides(sessionId, jobId, prompt, researchFiles);
-        }
-        break;
-      case 'document':
-        // Use enterprise mode if enabled
-        if (enterpriseMode) {
-          console.log(`[Regenerate] Using enterprise mode for document regeneration`);
-          result = await generateDocumentEnterprise(sessionId, jobId, prompt, researchFiles);
-        } else {
-          result = await generateDocument(sessionId, jobId, prompt, researchFiles);
-        }
-        break;
-      case 'research-analysis':
-        result = await generateResearchAnalysis(sessionId, jobId, prompt, researchFiles);
-        break;
-      default:
-        throw new Error(`Invalid view type: ${viewType}`);
-    }
+    // Define the generation task
+    const taskName = `Regenerate-${viewType}${enterpriseMode ? '-Enterprise' : ''}`;
+    const task = async () => {
+      switch (viewType) {
+        case 'roadmap':
+          return generateRoadmap(sessionId, jobId, prompt, researchFiles);
+        case 'slides':
+          if (enterpriseMode) {
+            console.log(`[Regenerate] Using enterprise mode for slides regeneration`);
+            return generateSlidesEnterprise(sessionId, jobId, prompt, researchFiles);
+          }
+          return generateSlides(sessionId, jobId, prompt, researchFiles);
+        case 'document':
+          if (enterpriseMode) {
+            console.log(`[Regenerate] Using enterprise mode for document regeneration`);
+            return generateDocumentEnterprise(sessionId, jobId, prompt, researchFiles);
+          }
+          return generateDocument(sessionId, jobId, prompt, researchFiles);
+        case 'research-analysis':
+          return generateResearchAnalysis(sessionId, jobId, prompt, researchFiles);
+        default:
+          throw new Error(`Invalid view type: ${viewType}`);
+      }
+    };
 
-    return result;
+    // Run through the queue to respect concurrency limits
+    return await apiQueue.add(task, taskName);
 
   } catch (error) {
     console.error(`Regeneration error for ${viewType}:`, error);
