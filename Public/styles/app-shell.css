@@ -267,7 +267,7 @@
   flex: 1;
   min-height: 0; /* Important: allows flex item to shrink below content size */
   overflow-y: auto; /* Main content area becomes the scroll container */
-  padding: var(--spacing-8) 0;
+  padding: 0; /* Removed top padding to eliminate blue bar */
 }
 
 .view-container {
