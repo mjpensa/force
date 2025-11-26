@@ -205,7 +205,7 @@ select:focus-visible {
   white-space: nowrap; /* Prevent text wrapping - column will auto-expand */
   overflow: visible; /* Allow text to be fully visible */
   display: grid; /* Changed to grid for better html2canvas alignment support */
-  grid-template-columns: 1fr auto; /* Label content takes available space, actions auto-size */
+  grid-template-columns: max-content auto; /* Label content fits text, actions auto-size */
   align-items: center; /* Grid align-items may work better than flex in html2canvas */
   gap: 2px; /* SCALED: Was 3px */
   min-height: 16px; /* SCALED: Was 22px - significantly reduced for compact display */
@@ -214,7 +214,7 @@ select:focus-visible {
 /* Phase 3: Label content wrapper */
 .gantt-row-label .label-content {
   /* Grid item - no flex properties needed */
-  min-width: 0;
+  width: max-content; /* Ensure content determines width for single-line display */
   transition: all 0.2s;
   border-radius: 2px;
   padding: 2px 3px; /* SCALED: Was 4px 3px - reduced vertical padding */
