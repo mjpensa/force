@@ -616,6 +616,18 @@ body {
   }
 }
 
+/* Override glassmorphic background for roadmap/Gantt chart view */
+/* Reverts to original chart styling with plain dark background */
+body.view-roadmap.bg-glass-gradient {
+  background: var(--color-navy-deep);
+  background-attachment: initial;
+}
+
+body.view-roadmap .app-shell {
+  background: var(--color-navy-deep);
+  background-attachment: initial;
+}
+
 /* ========== GLASSMORPHIC COMPONENT STYLES ========== */
 
 /* Main Form Container - Glass Panel */

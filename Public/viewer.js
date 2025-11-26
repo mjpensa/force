@@ -317,11 +317,25 @@ class ContentViewer {
     // Update active tab
     this._updateActiveTab(view);
 
+    // Update body class for view-specific styling
+    this._updateBodyViewClass(view);
+
     // Update state
     this.stateManager.setState({ currentView: view });
 
     // Load and render the view
     await this._loadView(view);
+  }
+
+  /**
+   * Update body class for view-specific styling
+   * Allows CSS to target specific views for background overrides
+   */
+  _updateBodyViewClass(view) {
+    // Remove all view-specific classes
+    document.body.classList.remove('view-roadmap', 'view-slides', 'view-document', 'view-research-analysis');
+    // Add current view class
+    document.body.classList.add(`view-${view}`);
   }
 
   /**
