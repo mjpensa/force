@@ -248,7 +248,7 @@ select:focus-visible {
   font-weight: 700;
   color: #FFFFFF; /* Text Color */
   background-color: #0C2340; /* Set swimlane title background */
-  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
+  font-size: 0.85rem; /* Slightly larger than task labels for visual hierarchy */
   padding: 0; /* Padding moved to .label-content */
   line-height: 1.5; /* Increased line-height for better text spacing */
 }
