@@ -187,14 +187,14 @@
     <div class="relative min-h-screen flex flex-col items-center justify-center p-6 md:p-12 bg-glass-gradient">
 
         <!-- Content -->
-        <main class="w-full max-w-6xl z-10">
+        <main class="w-full max-w-3xl z-10">
             <!-- Header Text -->
             <!-- Ensure title block text is white if global style fails -->
-            <div class="text-center mb-6 text-white" id="title-block">
-                <h1 class="text-3xl md:text-4xl font-bold mb-3">
+            <div class="text-center mb-4 text-white" id="title-block">
+                <h1 class="text-xl md:text-2xl font-bold mb-2">
                     AI Roadmap Generator
                 </h1>
-                <p class="text-lg md:text-xl opacity-90 max-w-3xl mx-auto font-light leading-relaxed">
+                <p class="text-sm md:text-base opacity-90 max-w-2xl mx-auto font-light leading-relaxed">
                     Transform your research documents into interactive Gantt charts with AI-powered analysis
                 </p>
             </div>
@@ -205,25 +205,25 @@
             <form id="gantt-form" class="form-glass-panel glass-panel-animate">
                 
                 <!-- NEW LOGO HEADER ADDED HERE -->
-                <header class="absolute top-0 right-0 p-4 md:p-6 pointer-events-none">
-                    <!-- LOGO SIZE is h-10 -->
-                    <img src="/bip_logo.png" alt="BIP Logo" class="h-10 w-auto pointer-events-auto">
+                <header class="absolute top-0 right-0 p-3 pointer-events-none">
+                    <!-- LOGO SIZE is h-6 -->
+                    <img src="/bip_logo.png" alt="BIP Logo" class="h-6 w-auto pointer-events-auto">
                 </header>
 
                 <!-- Project Instructions Section -->
-                <section class="mt-12">
-                    <h2 class="text-xl md:text-2xl font-semibold mb-4">
+                <section class="mt-8">
+                    <h2 class="text-sm md:text-base font-semibold mb-2">
                         Project Instructions
                     </h2>
 
                     <!-- Glassmorphic textarea -->
-                    <textarea id="prompt-input" rows="5" class="textarea-glass text-base md:text-lg leading-relaxed"
+                    <textarea id="prompt-input" rows="3" class="textarea-glass text-xs md:text-sm leading-relaxed"
                               placeholder="Describe your project goals, timeline preferences, key milestones, or any specific requirements for the roadmap generation..."></textarea>
                 </section>
                 
                 <!-- Upload Section -->
-                <section class="mt-8">
-                    <h2 class="text-xl md:text-2xl font-semibold mb-4">
+                <section class="mt-4">
+                    <h2 class="text-sm md:text-base font-semibold mb-2">
                         Upload Research Documents
                     </h2>
 
@@ -240,10 +240,10 @@
                                 </svg>
                             </div>
 
-                            <p id="dropzone-title" class="text-lg md:text-xl font-medium text-glass-primary">
+                            <p id="dropzone-title" class="text-sm md:text-base font-medium text-glass-primary">
                                 Drop files here or click to browse
                             </p>
-                            <p class="text-sm md:text-base text-glass-muted mt-2">
+                            <p class="text-xs text-glass-muted mt-1">
                                 Supports .doc, .docx, .md, and .txt files
                             </p>
                         </div>
@@ -269,11 +269,11 @@
                                 </div>
                             </div>
 
-                            <p class="text-base md:text-lg font-semibold mb-3 text-glass-primary">Selected Files:</p>
+                            <p class="text-xs md:text-sm font-semibold mb-2 text-glass-primary">Selected Files:</p>
                             <ul id="file-list" class="file-list-glass list-none text-left">
                                 <!-- File names will be injected here by JS -->
                             </ul>
-                            <p class="text-sm md:text-base text-glass-muted mt-3 font-light">Click again or drop to change selection</p>
+                            <p class="text-xs text-glass-muted mt-2 font-light">Click again or drop to change selection</p>
                         </div>
                     </label>
 
@@ -282,15 +282,15 @@
                 </section>
 
                 <!-- Form Actions (Button & Loader) - Glassmorphic -->
-                <div class="form-actions mt-8">
-                    <div class="flex items-center gap-4">
-                        <button type="submit" id="generate-btn" class="button-glass-primary text-base md:text-lg">
+                <div class="form-actions mt-4">
+                    <div class="flex items-center gap-3">
+                        <button type="submit" id="generate-btn" class="button-glass-primary text-xs md:text-sm">
                             Generate Chart
                         </button>
 
                         <div id="loading-indicator" class="flex items-center gap-2" style="display: none;">
                             <div class="spinner-glass"></div>
-                            <span class="text-base md:text-lg text-glass-secondary">Analyzing...</span>
+                            <span class="text-xs md:text-sm text-glass-secondary">Analyzing...</span>
                         </div>
                     </div>
                 </div>
