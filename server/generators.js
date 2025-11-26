@@ -87,7 +87,7 @@ const SLIDES_CONFIG = {
  */
 const ENTERPRISE_CONFIG = {
   candidateCount: 3,     // Generate 3 candidates for comparison
-  rankingThinkingBudget: 8192  // Lower budget sufficient for comparison task
+  rankingThinkingBudget: 24576  // Maximum thinking budget for thorough candidate evaluation
 };
 
 /**
