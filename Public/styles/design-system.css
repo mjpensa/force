@@ -646,8 +646,8 @@ body.view-roadmap .app-shell {
     var(--shadow-glass-3),
     inset 0 -1px 0 var(--glass-navy-10);
 
-  /* Spacing - reduced for better fit at 100% zoom */
-  padding: 32px;
+  /* Spacing - scaled down ~30% for better fit at 100% zoom */
+  padding: 22px;
 
   /* Positioning */
   position: relative;
@@ -657,7 +657,7 @@ body.view-roadmap .app-shell {
 /* Responsive padding for form panel */
 @media (max-width: 640px) {
   .form-glass-panel {
-    padding: 20px;
+    padding: 14px;
     border-radius: var(--radius-glass-lg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -666,13 +666,13 @@ body.view-roadmap .app-shell {
 
 @media (min-width: 640px) and (max-width: 1024px) {
   .form-glass-panel {
-    padding: 28px;
+    padding: 18px;
   }
 }
 
 @media (min-width: 1920px) {
   .form-glass-panel {
-    padding: 48px;
+    padding: 32px;
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
   }
@@ -713,16 +713,16 @@ body.view-roadmap .app-shell {
   border: var(--border-glass);
   border-radius: var(--radius-glass-md);
 
-  /* Text */
+  /* Text - scaled down ~30% */
   color: var(--glass-text-primary);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
 
-  /* Spacing - compact square aspect */
-  padding: 12px;
+  /* Spacing - scaled down ~30% */
+  padding: 8px;
   width: 100%;
   resize: vertical;
-  min-height: 80px;
+  min-height: 56px;
 
   /* Transition */
   transition: all 0.2s ease;
@@ -760,9 +760,9 @@ body.view-roadmap .app-shell {
     inset 0 2px 4px var(--glass-navy-10),
     0 4px 16px var(--glass-navy-10);
 
-  /* Layout - compact size */
-  min-height: 64px;
-  padding: 12px;
+  /* Layout - scaled down ~30% */
+  min-height: 45px;
+  padding: 8px;
 
   /* Smooth Transitions */
   transition: all 0.3s var(--ease-out-quad);
@@ -807,25 +807,25 @@ body.view-roadmap .app-shell {
   75% { transform: translateX(5px); }
 }
 
-/* Upload Icon Container */
+/* Upload Icon Container - scaled down ~30% */
 .upload-icon-container {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   background: var(--glass-white-8);
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
   border: var(--border-glass);
-  border-radius: 6px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   transition: all 0.3s ease;
 }
 
 .upload-icon-container svg {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   color: var(--glass-text-secondary);
   transition: all 0.3s ease;
 }
@@ -840,12 +840,12 @@ body.view-roadmap .app-shell {
   transform: translateY(-2px);
 }
 
-/* Stats Grid Glass */
+/* Stats Grid Glass - scaled down ~30% */
 .stats-grid-glass {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 @media (max-width: 640px) {
@@ -860,7 +860,7 @@ body.view-roadmap .app-shell {
   -webkit-backdrop-filter: blur(var(--blur-sm));
   border: 1px solid var(--glass-white-12);
   border-radius: var(--radius-glass-sm);
-  padding: 8px;
+  padding: 5px;
   text-align: center;
   transition: all 0.2s ease;
 }
@@ -871,26 +871,26 @@ body.view-roadmap .app-shell {
 }
 
 .stat-card-glass .stat-value {
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--glass-text-primary);
 }
 
 .stat-card-glass .stat-label {
-  font-size: 10px;
+  font-size: 8px;
   color: var(--glass-text-muted);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
-/* File List Glass */
+/* File List Glass - scaled down ~30% */
 .file-list-glass {
   background: var(--glass-white-5);
   backdrop-filter: blur(var(--blur-sm));
   -webkit-backdrop-filter: blur(var(--blur-sm));
   border: 1px solid var(--glass-white-10);
   border-radius: var(--radius-glass-sm);
-  padding: 8px;
-  max-height: 128px;
+  padding: 5px;
+  max-height: 90px;
   overflow-y: auto;
 }
 
@@ -913,16 +913,16 @@ body.view-roadmap .app-shell {
   background: var(--glass-white-30);
 }
 
-/* Individual File Item */
+/* Individual File Item - scaled down ~30% */
 .file-item-glass {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 5px;
+  padding: 4px 7px;
   background: var(--glass-white-6);
   border: 1px solid var(--glass-white-8);
-  border-radius: 6px;
-  margin-bottom: 4px;
+  border-radius: 4px;
+  margin-bottom: 3px;
   transition: all 0.2s ease;
 }
 
@@ -937,10 +937,10 @@ body.view-roadmap .app-shell {
 }
 
 .file-item-glass .file-icon {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   background: rgba(80, 175, 123, 0.15);
-  border-radius: 4px;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -950,7 +950,7 @@ body.view-roadmap .app-shell {
 
 .file-item-glass .file-name {
   flex: 1;
-  font-size: 11px;
+  font-size: 9px;
   color: var(--glass-text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -958,16 +958,16 @@ body.view-roadmap .app-shell {
 }
 
 .file-item-glass .file-size {
-  font-size: 10px;
+  font-size: 8px;
   color: var(--glass-text-muted);
 }
 
 .file-item-glass .file-status {
   color: var(--color-glass-success);
-  font-size: 12px;
+  font-size: 9px;
 }
 
-/* Primary Button Glass */
+/* Primary Button Glass - scaled down ~30% */
 .button-glass-primary {
   /* Background with gradient */
   background: linear-gradient(
@@ -982,16 +982,16 @@ body.view-roadmap .app-shell {
 
   /* Shadow */
   box-shadow:
-    0 4px 16px rgba(218, 41, 28, 0.30),
+    0 3px 12px rgba(218, 41, 28, 0.30),
     inset 0 1px 0 var(--glass-white-15);
 
-  /* Text */
+  /* Text - scaled down ~30% */
   color: var(--glass-text-primary);
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 600;
 
-  /* Spacing - reduced for better fit at 100% zoom */
-  padding: 12px 24px;
+  /* Spacing - scaled down ~30% */
+  padding: 8px 17px;
 
   /* Transition */
   transition: all 0.2s var(--ease-out-quad);
@@ -1018,10 +1018,10 @@ body.view-roadmap .app-shell {
   transform: none;
 }
 
-/* Glass Spinner */
+/* Glass Spinner - scaled down ~30% */
 .spinner-glass {
-  width: 24px;
-  height: 24px;
+  width: 17px;
+  height: 17px;
   border: 2px solid var(--glass-white-15);
   border-top-color: var(--color-accent-red);
   border-radius: 50%;
@@ -1228,14 +1228,14 @@ body.view-roadmap .app-shell {
   border-width: 0;
 }
 
-/* Ensure minimum touch target size (44x44px) */
+/* Ensure minimum touch target size - scaled down ~30% */
 .button-glass-primary {
-  min-height: 44px;
-  min-width: 44px;
+  min-height: 32px;
+  min-width: 32px;
 }
 
 .file-item-glass {
-  min-height: 32px;
+  min-height: 22px;
 }
 
 /* ARIA live region styling */
