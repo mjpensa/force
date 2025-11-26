@@ -117,7 +117,7 @@ select:focus-visible {
 /* Chart Title */
 .gantt-title {
   text-align: center;
-  font-size: 1.425rem; /* 1.5x larger than original (was 0.95rem) */
+  font-size: 1.0rem; /* SCALED: Was 1.425rem - reduced for compact display */
   font-weight: 700; /* Increased from 600 for better readability */
   color: #FFFFFF; /* Text Color */
   transition: all 0.2s;
@@ -156,16 +156,16 @@ select:focus-visible {
 
 /* 9. Grid Header (Weeks) - Sticky with title */
 .gantt-header {
-  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
+  font-size: 0.6rem; /* SCALED: Was 0.75rem - further reduced for compact display */
   font-weight: 600;
-  padding: 3px 2px; /* SCALED: Was 4px 3px */
+  padding: 2px 1px; /* SCALED: Was 3px 2px - reduced padding */
   text-align: center;
   background-color: #0c2340; /* CHANGED to new color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color (Correctly not white) */
   border-left: 0.5px solid #0D0D0D; /* Grid line color (CHANGED to black) */
   color: #FFFFFF; /* Text Color */
   position: sticky;
-  top: var(--title-height, 70px); /* Dynamically set by JS, fallback to 70px */
+  top: var(--title-height, 50px); /* SCALED: Was 70px - reduced fallback */
   z-index: 15; /* Below title container (20), above bars (2) */
 }
 .gantt-header-label { /* First header cell (empty) */
@@ -176,15 +176,15 @@ select:focus-visible {
 /* 10. Row Label (Swimlane or Task) */
 .gantt-row-label {
   padding: 0; /* Remove padding from parent - will be applied to children */
-  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
+  font-size: 0.7rem; /* SCALED: Was 0.75rem - further reduced for compact display */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   white-space: nowrap; /* Prevent text wrapping - column will auto-expand */
   overflow: visible; /* Allow text to be fully visible */
   display: grid; /* Changed to grid for better html2canvas alignment support */
   grid-template-columns: 1fr auto; /* Label content takes available space, actions auto-size */
   align-items: center; /* Grid align-items may work better than flex in html2canvas */
-  gap: 3px; /* SCALED: Was 4px */
-  min-height: 22px; /* Increased from 10px to accommodate better label spacing */
+  gap: 2px; /* SCALED: Was 3px */
+  min-height: 16px; /* SCALED: Was 22px - significantly reduced for compact display */
 }
 
 /* Phase 3: Label content wrapper */
@@ -193,9 +193,9 @@ select:focus-visible {
   min-width: 0;
   transition: all 0.2s;
   border-radius: 2px;
-  padding: 4px 3px; /* Increased vertical padding for better spacing */
+  padding: 2px 3px; /* SCALED: Was 4px 3px - reduced vertical padding */
   display: block;
-  line-height: 1.5; /* Increased line-height for better text spacing */
+  line-height: 1.3; /* SCALED: Was 1.5 - reduced line-height */
 }
 
 /* Show outline on label hover when in edit mode (for both tasks and swimlanes) */
@@ -280,13 +280,13 @@ select:focus-visible {
   font-weight: 700;
   color: #FFFFFF; /* Text Color */
   background-color: #0C2340; /* Set swimlane title background */
-  font-size: 0.85rem; /* Slightly larger than task labels for visual hierarchy */
+  font-size: 0.75rem; /* SCALED: Was 0.85rem - reduced for compact display */
   padding: 0; /* Padding moved to .label-content */
-  line-height: 1.5; /* Increased line-height for better text spacing */
+  line-height: 1.3; /* SCALED: Was 1.5 - reduced line-height */
 }
 
 .gantt-row-label.swimlane .label-content {
-  padding: 5px 4px; /* Increased vertical padding for better spacing */
+  padding: 2px 4px; /* SCALED: Was 5px 4px - reduced vertical padding */
 }
 
 .gantt-row-label.task {
@@ -295,12 +295,12 @@ select:focus-visible {
   color: #FFFFFF; /* Text Color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   background-color: #354259; /* Set task title background - default blue */
-  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact display */
-  line-height: 1.5; /* Increased line-height for better text spacing */
+  font-size: 0.7rem; /* SCALED: Was 0.75rem - further reduced for compact display */
+  line-height: 1.3; /* SCALED: Was 1.5 - reduced line-height */
 }
 
 .gantt-row-label.task .label-content {
-  padding: 5px 3px 5px 6px; /* Increased vertical padding for better spacing */
+  padding: 2px 3px 2px 6px; /* SCALED: Was 5px 3px 5px 6px - reduced vertical padding */
 }
 
 .gantt-row-label.task:hover {
@@ -313,7 +313,7 @@ select:focus-visible {
   position: relative;
   display: grid;
   align-items: center; /* Center bars vertically */
-  min-height: 22px; /* Increased from 20px to match expanded row labels */
+  min-height: 16px; /* SCALED: Was 22px - significantly reduced for compact display */
 }
 
 .gantt-bar-area.task {
@@ -341,9 +341,9 @@ select:focus-visible {
 /* 12. The Actual Bar */
 .gantt-bar {
   position: relative;
-  height: 14px; /* SCALED: Was 20px */
-  margin: 4px 2px; /* SCALED: Was 6px 4px */
-  border-radius: 3px; /* SCALED: Was 4px */
+  height: 10px; /* SCALED: Was 14px - significantly reduced for compact display */
+  margin: 3px 1px; /* SCALED: Was 4px 2px - reduced margins */
+  border-radius: 2px; /* SCALED: Was 3px */
   color: white;
   z-index: 2; /* Above time cells (which are z-index 1) */
   overflow: visible; /* Changed to visible for resize handles */
@@ -422,21 +422,21 @@ select:focus-visible {
 .export-container {
   display: flex;
   justify-content: center;
-  gap: 10px; /* SCALED: Was 16px */
-  padding: 16px 0 12px 0; /* SCALED: Was 32px 0 24px 0 */
+  gap: 6px; /* SCALED: Was 10px - further reduced */
+  padding: 8px 0 6px 0; /* SCALED: Was 16px 0 12px 0 - significantly reduced */
   font-family: 'Work Sans', sans-serif; /* CHANGED */
 }
 .export-button {
   font-family: 'Work Sans', sans-serif; /* CHANGED */
-  font-size: 0.95rem; /* Normalized to match all text on screen */
-  font-weight: 700; /* Increased from 600 for more prominence */
+  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact buttons */
+  font-weight: 600; /* SCALED: Was 700 */
   color: #ffffff;
   background-color: #50AF7B; /* Use one of the old dark mode colors (Green) */
   border: none;
-  border-radius: 6px; /* SCALED: Was 8px */
-  padding: 10px 24px; /* SCALED: Was 16px 48px */
+  border-radius: 4px; /* SCALED: Was 6px */
+  padding: 6px 14px; /* SCALED: Was 10px 24px - significantly reduced */
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3); /* SCALED: Was 0 4px 12px */
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25); /* SCALED: Was 0 2px 8px */
   transition: all 0.2s; /* Transition all properties */
 }
 .export-button:hover {
@@ -453,15 +453,15 @@ select:focus-visible {
 /* Edit Mode Toggle Button */
 .edit-mode-toggle-button {
   font-family: 'Work Sans', sans-serif;
-  font-size: 0.95rem; /* Normalized to match all text on screen */
-  font-weight: 700;
+  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact buttons */
+  font-weight: 600; /* SCALED: Was 700 */
   color: #ffffff;
   background-color: #BA3930; /* Red for locked/disabled state */
   border: none;
-  border-radius: 6px; /* SCALED: Was 8px */
-  padding: 10px 24px; /* SCALED: Was 16px 48px */
+  border-radius: 4px; /* SCALED: Was 6px */
+  padding: 6px 14px; /* SCALED: Was 10px 24px - significantly reduced */
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3); /* SCALED: Was 0 4px 12px */
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25); /* SCALED: Was 0 2px 8px */
   transition: all 0.2s;
 }
 .edit-mode-toggle-button:hover {
@@ -473,15 +473,15 @@ select:focus-visible {
 /* Copy Share URL Button */
 .copy-url-button {
   font-family: 'Work Sans', sans-serif;
-  font-size: 0.95rem; /* Normalized to match all text on screen */
-  font-weight: 700;
+  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact buttons */
+  font-weight: 600; /* SCALED: Was 700 */
   color: #ffffff;
   background-color: #1976D2; /* Blue for sharing/link action */
   border: none;
-  border-radius: 6px; /* SCALED: Was 8px */
-  padding: 10px 24px; /* SCALED: Was 16px 48px */
+  border-radius: 4px; /* SCALED: Was 6px */
+  padding: 6px 14px; /* SCALED: Was 10px 24px - significantly reduced */
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3); /* SCALED: Was 0 4px 12px */
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25); /* SCALED: Was 0 2px 8px */
   transition: all 0.2s;
 }
 .copy-url-button:hover {
@@ -1555,10 +1555,10 @@ select:focus-visible {
 /* --- GANTT LEGEND STYLES --- */
 /* ------------------------------------------------------------------- */
 .gantt-legend {
-  padding: 16px 20px; /* SCALED: Was 32px 36px */
-  margin-top: 16px; /* SCALED: Added for spacing */
-  border-radius: 6px; /* SCALED: Was 8px */
-  border-top: 2px solid #0D0D0D; /* Thicker border for separation */
+  padding: 8px 12px; /* SCALED: Was 16px 20px - further reduced */
+  margin-top: 8px; /* SCALED: Was 16px - reduced */
+  border-radius: 4px; /* SCALED: Was 6px */
+  border-top: 1px solid #0D0D0D; /* SCALED: Was 2px - thinner border */
   background-color: #0C2340; /* Set background to match swimlanes */
   color: #FFFFFF;
 }
@@ -1566,12 +1566,12 @@ select:focus-visible {
 .legend-line {
   display: flex;
   align-items: center;
-  gap: 12px; /* SCALED: Was 20px */
+  gap: 8px; /* SCALED: Was 12px - further reduced */
   flex-wrap: wrap; /* Allow wrapping if needed */
 }
 
 .legend-title {
-  font-size: 0.85rem; /* Match swimlane label size */
+  font-size: 0.7rem; /* SCALED: Was 0.85rem - reduced to match row labels */
   font-weight: 700; /* Match swimlane label weight */
   margin: 0;
   color: #FFFFFF;
@@ -1581,20 +1581,20 @@ select:focus-visible {
 .legend-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px; /* SCALED: Was 40px */
+  gap: 10px; /* SCALED: Was 16px - further reduced */
   align-items: center;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px; /* SCALED: Was 18px */
+  gap: 4px; /* SCALED: Was 8px - further reduced */
 }
 
 .legend-color-box {
-  width: 20px; /* SCALED: Was 36px */
-  height: 20px; /* SCALED: Was 36px */
-  border-radius: 3px; /* SCALED: Was 4px */
+  width: 12px; /* SCALED: Was 20px - significantly reduced */
+  height: 12px; /* SCALED: Was 20px - significantly reduced */
+  border-radius: 2px; /* SCALED: Was 3px */
   border: 1px solid rgba(255, 255, 255, 0.3); /* SCALED: Was 2px */
   flex-shrink: 0; /* Prevent box from shrinking */
 }
@@ -1613,14 +1613,14 @@ select:focus-visible {
 }
 
 .legend-label {
-  font-size: 0.85rem; /* Match swimlane label size */
-  font-weight: 700; /* Match swimlane label weight */
+  font-size: 0.65rem; /* SCALED: Was 0.85rem - reduced to match compact theme */
+  font-weight: 600; /* SCALED: Was 700 */
   color: #FFFFFF; /* Changed from #CCCCCC for maximum contrast */
   line-height: 1.2; /* Better line spacing */
   transition: all 0.2s;
-  border-radius: 4px;
-  padding: 2px 4px; /* SCALED: Was 4px 8px */
-  margin: -2px -4px; /* SCALED: Was -4px -8px */
+  border-radius: 2px;
+  padding: 1px 2px; /* SCALED: Was 2px 4px - further reduced */
+  margin: -1px -2px; /* SCALED: Was -2px -4px */
   display: inline-block;
 }
 
@@ -1979,62 +1979,58 @@ body.dragging {
 /* Tablets and smaller devices */
 @media (max-width: 1024px) {
   /* Touch-friendly button sizes (WCAG 2.1 AA: minimum 44x44px) */
-  /* SCALED: Maintain 0.95rem typography, only adjust padding */
+  /* SCALED: Compact sizing for tablets */
   .export-container button {
-    min-width: 36px; /* SCALED: Was 44px */
-    min-height: 36px; /* SCALED: Was 44px */
-    /* font-size removed - keep 0.95rem from base */
-    padding: 8px 20px; /* SCALED: Was 12px 32px */
+    min-width: 32px; /* SCALED: Was 36px */
+    min-height: 32px; /* SCALED: Was 36px */
+    padding: 5px 12px; /* SCALED: Was 8px 20px - reduced */
   }
 
   /* Stack export buttons vertically on tablets */
   .export-container {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px; /* SCALED: Was 12px */
-    padding: 14px 12px; /* SCALED: Was 24px 16px */
+    gap: 5px; /* SCALED: Was 10px - reduced */
+    padding: 6px 8px; /* SCALED: Was 14px 12px - reduced */
   }
 
-  /* REMOVED font-size overrides - keep 0.95rem from base */
   /* Legend spacing reduction */
   .gantt-legend {
-    padding: 12px 16px;
+    padding: 6px 10px; /* SCALED: Was 12px 16px - reduced */
   }
 
   .legend-list {
-    gap: 12px;
+    gap: 8px; /* SCALED: Was 12px - reduced */
   }
 }
 
 /* Mobile devices */
 @media (max-width: 768px) {
-  /* SCALED: Maintain 0.95rem typography, adjust only padding/sizes */
+  /* SCALED: Compact sizing for mobile */
   .export-container button {
-    min-height: 40px; /* SCALED: Was 48px */
-    /* font-size removed - keep 0.95rem from base */
-    padding: 10px 16px; /* SCALED: Was 14px 24px */
+    min-height: 28px; /* SCALED: Was 40px - reduced */
+    padding: 5px 10px; /* SCALED: Was 10px 16px - reduced */
   }
 
-  /* Gantt chart adjustments - REMOVED font-size overrides */
+  /* Gantt chart adjustments */
   .gantt-title {
-    /* font-size removed - keep 0.95rem from base */
-    padding: 10px; /* SCALED: Was 16px */
+    padding: 6px; /* SCALED: Was 10px - reduced */
   }
 
   /* Reduce bar height for better mobile display */
   .gantt-bar {
-    height: 12px; /* SCALED: Was 18px */
-    margin: 3px 2px; /* SCALED: Was 5px 3px */
+    height: 8px; /* SCALED: Was 12px - reduced (base is now 10px) */
+    margin: 2px 1px; /* SCALED: Was 3px 2px - reduced */
   }
 
-  /* Legend adjustments - REMOVED font-size overrides */
+  /* Legend adjustments */
   .gantt-legend {
-    padding: 10px 12px;
+    padding: 6px 8px; /* SCALED: Was 10px 12px - reduced */
   }
 
   .legend-color-box {
-    width: 16px;
-    height: 16px;
+    width: 10px; /* SCALED: Was 16px - reduced (base is now 12px) */
+    height: 10px; /* SCALED: Was 16px - reduced */
   }
 
   /* Modal adjustments for mobile */
@@ -2042,27 +2038,25 @@ body.dragging {
     width: 95%;
     max-width: 95%;
     margin: 20px auto;
-    padding: 16px; /* SCALED: Was 20px */
+    padding: 12px; /* SCALED: Was 16px - reduced */
   }
 }
 
 /* Small mobile devices */
 @media (max-width: 480px) {
-  /* SCALED: Keep 0.95rem, only adjust padding */
+  /* SCALED: Compact sizing for small mobile */
   .gantt-title {
-    /* font-size removed - keep 0.95rem from base */
-    padding: 8px; /* SCALED: Was 12px */
+    padding: 4px; /* SCALED: Was 8px - reduced */
   }
 
   .export-container button {
-    /* font-size removed - keep 0.95rem from base */
-    padding: 8px 14px; /* SCALED: Was 12px 20px */
+    padding: 4px 10px; /* SCALED: Was 8px 14px - reduced */
   }
 
   /* Simplify legend on very small screens */
   .legend-list {
     flex-direction: column;
-    gap: 6px; /* SCALED: Was 8px */
+    gap: 4px; /* SCALED: Was 6px - reduced */
   }
 
   .legend-item {
@@ -2084,13 +2078,13 @@ body.dragging {
 @media (max-width: 768px) and (orientation: landscape) {
   /* Reduce vertical padding in landscape to save space */
   .gantt-title {
-    padding: 12px;
+    padding: 6px; /* SCALED: Was 12px - reduced */
   }
 
   .export-container {
     flex-direction: row;
     flex-wrap: wrap;
-    padding: 12px;
+    padding: 6px; /* SCALED: Was 12px - reduced */
   }
 
   .export-container button {
