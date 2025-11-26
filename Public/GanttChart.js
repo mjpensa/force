@@ -195,8 +195,8 @@ export class GanttChart {
     this.titleContainer.style.display = 'flex';
     this.titleContainer.style.justifyContent = 'space-between';
     this.titleContainer.style.alignItems = 'center'; // Vertically center logo with title
-    this.titleContainer.style.gap = '32px'; // Space between title and logo
-    this.titleContainer.style.padding = '29px'; // Match original title padding
+    this.titleContainer.style.gap = '16px'; // SCALED: Was 32px
+    this.titleContainer.style.padding = '14px'; // SCALED: Was 29px
     this.titleContainer.style.borderBottom = '1px solid #0D0D0D';
     this.titleContainer.style.backgroundColor = '#0c2340';
     this.titleContainer.style.borderRadius = '8px 8px 0 0';
@@ -472,7 +472,7 @@ export class GanttChart {
    * @private
    */
   _createVirtualizedRows(numCols) {
-    const ROW_HEIGHT = 40; // Approximate height of each row in pixels
+    const ROW_HEIGHT = 24; // SCALED: Was 40 - Approximate height of each row in pixels
     const BUFFER_ROWS = 20; // Number of extra rows to render above/below viewport
 
     // Create a scroll container
@@ -886,10 +886,10 @@ export class GanttChart {
     headerSvgEl.className = 'gantt-header-svg';
 
     // Apply all styles inline
-    headerSvgEl.style.height = '30px';
+    headerSvgEl.style.height = '16px'; // SCALED: Was 30px
     headerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
     headerSvgEl.style.backgroundRepeat = 'repeat-x';
-    headerSvgEl.style.backgroundSize = 'auto 30px';
+    headerSvgEl.style.backgroundSize = 'auto 16px'; // SCALED: Was 30px
 
     this.chartWrapper.appendChild(headerSvgEl);
   }
@@ -907,10 +907,10 @@ export class GanttChart {
     footerSvgEl.className = 'gantt-footer-svg';
 
     // Apply all styles inline
-    footerSvgEl.style.height = '30px';
+    footerSvgEl.style.height = '16px'; // SCALED: Was 30px
     footerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
     footerSvgEl.style.backgroundRepeat = 'repeat-x';
-    footerSvgEl.style.backgroundSize = 'auto 30px';
+    footerSvgEl.style.backgroundSize = 'auto 16px'; // SCALED: Was 30px
 
     this.chartWrapper.appendChild(footerSvgEl);
   }
@@ -928,10 +928,10 @@ export class GanttChart {
     footerSvgEl.className = 'gantt-footer-svg';
 
     // Apply all styles inline
-    footerSvgEl.style.height = '30px';
+    footerSvgEl.style.height = '16px'; // SCALED: Was 30px
     footerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
     footerSvgEl.style.backgroundRepeat = 'repeat-x';
-    footerSvgEl.style.backgroundSize = 'auto 30px';
+    footerSvgEl.style.backgroundSize = 'auto 16px'; // SCALED: Was 30px
 
     this.chartWrapper.appendChild(footerSvgEl);
   }

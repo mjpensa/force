@@ -129,7 +129,7 @@ select:focus-visible {
 .gantt-header {
   font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: 600;
-  padding: 4px 3px; /* Further reduced padding */
+  padding: 3px 2px; /* SCALED: Was 4px 3px */
   text-align: center;
   background-color: #0c2340; /* CHANGED to new color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color (Correctly not white) */
@@ -151,8 +151,8 @@ select:focus-visible {
   display: grid; /* Changed to grid for better html2canvas alignment support */
   grid-template-columns: 1fr auto; /* Label content takes available space, actions auto-size */
   align-items: center; /* Grid align-items may work better than flex in html2canvas */
-  gap: 4px;
-  min-height: 14px; /* Further reduced minimum height */
+  gap: 3px; /* SCALED: Was 4px */
+  min-height: 10px; /* SCALED: Was 14px */
 }
 
 /* Phase 3: Label content wrapper */
@@ -161,7 +161,7 @@ select:focus-visible {
   min-width: 0;
   transition: all 0.2s;
   border-radius: 2px;
-  padding: 2px 4px;
+  padding: 1px 3px; /* SCALED: Was 2px 4px */
   display: block;
   line-height: 1.2; /* Explicit line-height */
 }
@@ -177,7 +177,7 @@ select:focus-visible {
 /* Phase 3: Row action buttons */
 .row-actions {
   display: none; /* Hidden by default */
-  gap: 6px;
+  gap: 4px; /* SCALED: Was 6px */
   align-items: center; /* Grid item - should align with parent grid */
 }
 
@@ -187,10 +187,10 @@ select:focus-visible {
 }
 
 .row-action-btn {
-  width: 18px; /* Reduced for compact display */
-  height: 18px; /* Reduced for compact display */
+  width: 14px; /* SCALED: Was 18px */
+  height: 14px; /* SCALED: Was 18px */
   border: 1px solid rgba(255, 255, 255, 0.3); /* Add border for emphasis */
-  border-radius: 4px;
+  border-radius: 3px; /* SCALED: Was 4px */
   font-size: 0.95rem; /* Normalized to match all text on screen */
   font-weight: bold;
   cursor: pointer;
@@ -200,7 +200,7 @@ select:focus-visible {
   transition: all 0.2s;
   line-height: 1;
   padding: 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* Reduced shadow */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* SCALED: Was 0 1px 3px */
 }
 
 .row-action-btn.add-task {
@@ -254,7 +254,7 @@ select:focus-visible {
 }
 
 .gantt-row-label.swimlane .label-content {
-  padding: 3px 5px; /* Further reduced padding */
+  padding: 2px 4px; /* SCALED: Was 3px 5px */
 }
 
 .gantt-row-label.task {
@@ -268,7 +268,7 @@ select:focus-visible {
 }
 
 .gantt-row-label.task .label-content {
-  padding: 2px 4px 2px 8px; /* Further reduced padding */
+  padding: 2px 3px 2px 6px; /* SCALED: Was 2px 4px 2px 8px */
 }
 
 .gantt-row-label.task:hover {
@@ -309,9 +309,9 @@ select:focus-visible {
 /* 12. The Actual Bar */
 .gantt-bar {
   position: relative;
-  height: 20px;
-  margin: 6px 4px; /* Vertical centering, small horizontal gap */
-  border-radius: 4px;
+  height: 14px; /* SCALED: Was 20px */
+  margin: 4px 2px; /* SCALED: Was 6px 4px */
+  border-radius: 3px; /* SCALED: Was 4px */
   color: white;
   z-index: 2; /* Above time cells (which are z-index 1) */
   overflow: visible; /* Changed to visible for resize handles */
@@ -326,7 +326,7 @@ select:focus-visible {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 10px; /* Increased from 6px */
+  width: 6px; /* SCALED: Was 10px */
   height: 90%; /* Increased from 80% */
   background: rgba(255, 255, 255, 0.9); /* More opaque */
   cursor: ew-resize;
@@ -336,7 +336,7 @@ select:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 10px; /* SCALED: Was 14px */
   color: rgba(0, 0, 0, 0.6);
   font-weight: bold;
   border: 2px solid rgba(255, 255, 255, 0.5);
@@ -390,8 +390,8 @@ select:focus-visible {
 .export-container {
   display: flex;
   justify-content: center;
-  gap: 16px; /* Space between buttons */
-  padding: 32px 0 24px 0; /* Increased padding for more prominence */
+  gap: 10px; /* SCALED: Was 16px */
+  padding: 16px 0 12px 0; /* SCALED: Was 32px 0 24px 0 */
   font-family: 'Work Sans', sans-serif; /* CHANGED */
 }
 .export-button {
@@ -401,10 +401,10 @@ select:focus-visible {
   color: #ffffff;
   background-color: #50AF7B; /* Use one of the old dark mode colors (Green) */
   border: none;
-  border-radius: 8px; /* Increased from 6px */
-  padding: 16px 48px; /* Increased from 10px 20px */
+  border-radius: 6px; /* SCALED: Was 8px */
+  padding: 10px 24px; /* SCALED: Was 16px 48px */
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3); /* Stronger shadow */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3); /* SCALED: Was 0 4px 12px */
   transition: all 0.2s; /* Transition all properties */
 }
 .export-button:hover {
@@ -426,10 +426,10 @@ select:focus-visible {
   color: #ffffff;
   background-color: #BA3930; /* Red for locked/disabled state */
   border: none;
-  border-radius: 8px;
-  padding: 16px 48px;
+  border-radius: 6px; /* SCALED: Was 8px */
+  padding: 10px 24px; /* SCALED: Was 16px 48px */
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3); /* SCALED: Was 0 4px 12px */
   transition: all 0.2s;
 }
 .edit-mode-toggle-button:hover {
@@ -446,10 +446,10 @@ select:focus-visible {
   color: #ffffff;
   background-color: #1976D2; /* Blue for sharing/link action */
   border: none;
-  border-radius: 8px;
-  padding: 16px 48px;
+  border-radius: 6px; /* SCALED: Was 8px */
+  padding: 10px 24px; /* SCALED: Was 16px 48px */
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3); /* SCALED: Was 0 4px 12px */
   transition: all 0.2s;
 }
 .copy-url-button:hover {
@@ -1523,7 +1523,9 @@ select:focus-visible {
 /* --- GANTT LEGEND STYLES --- */
 /* ------------------------------------------------------------------- */
 .gantt-legend {
-  padding: 32px 36px; /* Increased padding for more prominence */
+  padding: 16px 20px; /* SCALED: Was 32px 36px */
+  margin-top: 16px; /* SCALED: Added for spacing */
+  border-radius: 6px; /* SCALED: Was 8px */
   border-top: 2px solid #0D0D0D; /* Thicker border for separation */
   background-color: #0C2340; /* Set background to match swimlanes */
   color: #FFFFFF;
@@ -1532,7 +1534,7 @@ select:focus-visible {
 .legend-line {
   display: flex;
   align-items: center;
-  gap: 20px; /* Space between "Legend:" and first item */
+  gap: 12px; /* SCALED: Was 20px */
   flex-wrap: wrap; /* Allow wrapping if needed */
 }
 
@@ -1547,21 +1549,21 @@ select:focus-visible {
 .legend-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 40px; /* Increased from 30px for better spacing */
+  gap: 16px; /* SCALED: Was 40px */
   align-items: center;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 18px; /* Increased from 15px for more breathing room */
+  gap: 8px; /* SCALED: Was 18px */
 }
 
 .legend-color-box {
-  width: 36px; /* Increased from 28px for better visibility */
-  height: 36px; /* Increased from 28px for better visibility */
-  border-radius: 4px; /* Slightly larger radius to match size */
-  border: 2px solid rgba(255, 255, 255, 0.3); /* Thicker, more visible border */
+  width: 20px; /* SCALED: Was 36px */
+  height: 20px; /* SCALED: Was 36px */
+  border-radius: 3px; /* SCALED: Was 4px */
+  border: 1px solid rgba(255, 255, 255, 0.3); /* SCALED: Was 2px */
   flex-shrink: 0; /* Prevent box from shrinking */
 }
 
@@ -1585,8 +1587,8 @@ select:focus-visible {
   line-height: 1.2; /* Better line spacing */
   transition: all 0.2s;
   border-radius: 4px;
-  padding: 4px 8px;
-  margin: -4px -8px; /* Offset padding to maintain alignment */
+  padding: 2px 4px; /* SCALED: Was 4px 8px */
+  margin: -2px -4px; /* SCALED: Was -4px -8px */
   display: inline-block;
 }
 
@@ -2167,80 +2169,68 @@ body.dragging {
 /* Tablets and smaller devices */
 @media (max-width: 1024px) {
   /* Touch-friendly button sizes (WCAG 2.1 AA: minimum 44x44px) */
+  /* SCALED: Maintain 0.95rem typography, only adjust padding */
   .export-container button {
-    min-width: 44px;
-    min-height: 44px;
-    font-size: 16px;
-    padding: 12px 32px;
+    min-width: 36px; /* SCALED: Was 44px */
+    min-height: 36px; /* SCALED: Was 44px */
+    /* font-size removed - keep 0.95rem from base */
+    padding: 8px 20px; /* SCALED: Was 12px 32px */
   }
 
   /* Stack export buttons vertically on tablets */
   .export-container {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px; /* SCALED: Was 12px */
+    padding: 14px 12px; /* SCALED: Was 24px 16px */
+  }
+
+  /* REMOVED font-size overrides - keep 0.95rem from base */
+  /* Legend spacing reduction */
+  .gantt-legend {
+    padding: 12px 16px;
+  }
+
+  .legend-list {
     gap: 12px;
-    padding: 24px 16px;
-  }
-
-  /* Reduce gantt chart font sizes for better fit */
-  .gantt-title {
-    font-size: 24px;
-  }
-
-  .gantt-row-label {
-    font-size: 14px;
-  }
-
-  .gantt-header {
-    font-size: 12px;
   }
 }
 
 /* Mobile devices */
 @media (max-width: 768px) {
-  /* Larger touch targets for mobile */
+  /* SCALED: Maintain 0.95rem typography, adjust only padding/sizes */
   .export-container button {
-    min-height: 48px;
-    font-size: 16px;
-    padding: 14px 24px;
+    min-height: 40px; /* SCALED: Was 48px */
+    /* font-size removed - keep 0.95rem from base */
+    padding: 10px 16px; /* SCALED: Was 14px 24px */
   }
 
   /* Hamburger button larger on mobile (already defined above, just ensuring consistency) */
   .hamburger-button {
-    min-width: 48px;
-    min-height: 48px;
+    min-width: 40px; /* SCALED: Was 48px */
+    min-height: 40px; /* SCALED: Was 48px */
   }
 
-  /* Gantt chart adjustments */
+  /* Gantt chart adjustments - REMOVED font-size overrides */
   .gantt-title {
-    font-size: 20px;
-    padding: 16px;
-  }
-
-  .gantt-row-label {
-    font-size: 13px;
-    padding: 10px 8px;
-  }
-
-  .gantt-header {
-    font-size: 11px;
-    padding: 8px 4px;
+    /* font-size removed - keep 0.95rem from base */
+    padding: 10px; /* SCALED: Was 16px */
   }
 
   /* Reduce bar height for better mobile display */
   .gantt-bar {
-    height: 18px;
-    margin: 5px 3px;
+    height: 12px; /* SCALED: Was 18px */
+    margin: 3px 2px; /* SCALED: Was 5px 3px */
   }
 
-  /* Legend adjustments */
+  /* Legend adjustments - REMOVED font-size overrides */
   .gantt-legend {
-    font-size: 12px;
-    padding: 12px;
+    padding: 10px 12px;
   }
 
-  .legend-item {
-    font-size: 11px;
+  .legend-color-box {
+    width: 16px;
+    height: 16px;
   }
 
   /* Modal adjustments for mobile */
@@ -2248,31 +2238,27 @@ body.dragging {
     width: 95%;
     max-width: 95%;
     margin: 20px auto;
-    padding: 20px;
-  }
-
-  .modal-header h2 {
-    font-size: 20px;
+    padding: 16px; /* SCALED: Was 20px */
   }
 }
 
 /* Small mobile devices */
 @media (max-width: 480px) {
-  /* Further reduce text sizes */
+  /* SCALED: Keep 0.95rem, only adjust padding */
   .gantt-title {
-    font-size: 18px;
-    padding: 12px;
+    /* font-size removed - keep 0.95rem from base */
+    padding: 8px; /* SCALED: Was 12px */
   }
 
   .export-container button {
-    font-size: 15px;
-    padding: 12px 20px;
+    /* font-size removed - keep 0.95rem from base */
+    padding: 8px 14px; /* SCALED: Was 12px 20px */
   }
 
   /* Simplify legend on very small screens */
   .legend-list {
     flex-direction: column;
-    gap: 8px;
+    gap: 6px; /* SCALED: Was 8px */
   }
 
   .legend-item {
@@ -2535,9 +2521,9 @@ body.dragging {
    =========================================== */
 
 .research-analysis-wrapper {
-  margin-top: 32px;
+  margin-top: 16px; /* SCALED: Was 32px */
   font-family: 'Work Sans', sans-serif;
-  border-radius: 8px;
+  border-radius: 6px; /* SCALED: Was 8px */
   overflow: hidden;
   border: 1px solid #d0d0d0;
   background: #f8f9fa;
@@ -2548,7 +2534,7 @@ body.dragging {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 14px 20px;
+  padding: 10px 14px; /* SCALED: Was 14px 20px */
   background: linear-gradient(to right, #e8ecef, #f4f6f7);
   border: none;
   cursor: pointer;
@@ -2556,7 +2542,7 @@ body.dragging {
   font-size: 0.95rem;
   color: #0c2340;
   transition: background 0.2s ease;
-  gap: 12px;
+  gap: 8px; /* SCALED: Was 12px */
 }
 
 .research-analysis-collapse-header:hover {
@@ -2593,7 +2579,7 @@ body.dragging {
 
 /* Collapsible content */
 .research-analysis-content {
-  padding: 20px 24px;
+  padding: 14px 16px; /* SCALED: Was 20px 24px */
   background: #fff;
   max-height: 2000px;
   overflow: hidden;
@@ -2612,11 +2598,11 @@ body.dragging {
   font-size: 0.95rem;
   color: #444;
   line-height: 1.6;
-  margin-bottom: 20px;
-  padding: 12px 16px;
+  margin-bottom: 14px; /* SCALED: Was 20px */
+  padding: 8px 12px; /* SCALED: Was 12px 16px */
   background: #f8f9fa;
-  border-radius: 6px;
-  border-left: 4px solid #0c2340;
+  border-radius: 4px; /* SCALED: Was 6px */
+  border-left: 3px solid #0c2340; /* SCALED: Was 4px */
 }
 
 .research-analysis-table-container {
@@ -2629,9 +2615,9 @@ body.dragging {
   border-collapse: collapse;
   font-size: 0.95rem; /* Normalized to match all text on screen */
   background: #fff;
-  border-radius: 6px;
+  border-radius: 4px; /* SCALED: Was 6px */
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* SCALED: Was 0 1px 3px */
 }
 
 .research-analysis-table thead {
@@ -2640,14 +2626,14 @@ body.dragging {
 }
 
 .research-analysis-table th {
-  padding: 12px 16px;
+  padding: 8px 12px; /* SCALED: Was 12px 16px */
   text-align: left;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .research-analysis-table td {
-  padding: 12px 16px;
+  padding: 8px 12px; /* SCALED: Was 12px 16px */
   border-bottom: 1px solid #e0e0e0;
   vertical-align: top;
 }
@@ -2708,12 +2694,12 @@ body.dragging {
 /* Score badges */
 .score-badge {
   display: inline-block;
-  padding: 4px 10px;
-  border-radius: 4px;
+  padding: 3px 8px; /* SCALED: Was 4px 10px */
+  border-radius: 3px; /* SCALED: Was 4px */
   font-weight: 600;
   font-size: 0.95rem; /* Normalized to match all text on screen */
   text-align: center;
-  min-width: 50px;
+  min-width: 40px; /* SCALED: Was 50px */
 }
 
 .score-excellent {
@@ -2743,10 +2729,10 @@ body.dragging {
 
 /* Score legend */
 .research-analysis-legend {
-  margin-top: 16px;
-  padding: 12px 16px;
+  margin-top: 12px; /* SCALED: Was 16px */
+  padding: 8px 12px; /* SCALED: Was 12px 16px */
   background: #fff;
-  border-radius: 6px;
+  border-radius: 4px; /* SCALED: Was 6px */
   border: 1px solid #e0e0e0;
 }
 
@@ -2760,50 +2746,50 @@ body.dragging {
 .research-analysis-legend .legend-items {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 10px; /* SCALED: Was 16px */
 }
 
 .research-analysis-legend .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px; /* SCALED: Was 6px */
   font-size: 0.95rem; /* Normalized to match all text on screen */
   color: #666;
 }
 
 .research-analysis-legend .legend-item .score-badge {
-  padding: 2px 8px;
+  padding: 1px 6px; /* SCALED: Was 2px 8px */
   font-size: 0.95rem; /* Normalized to match all text on screen */
-  min-width: 40px;
+  min-width: 32px; /* SCALED: Was 40px */
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .research-analysis-wrapper {
-    margin-top: 24px;
+    margin-top: 12px; /* SCALED: Was 24px */
   }
 
   .research-analysis-collapse-header {
-    padding: 12px 16px;
+    padding: 8px 12px; /* SCALED: Was 12px 16px */
     flex-wrap: wrap;
   }
 
   .research-analysis-content {
-    padding: 16px;
+    padding: 10px 12px; /* SCALED: Was 16px */
   }
 
   .research-analysis-table {
-    font-size: 0.95rem; /* Normalized to match all text on screen */
+    font-size: 0.95rem; /* Keep normalized */
   }
 
   .research-analysis-table th,
   .research-analysis-table td {
-    padding: 8px 12px;
+    padding: 6px 8px; /* SCALED: Was 8px 12px */
   }
 
   .research-analysis-legend .legend-items {
     flex-direction: column;
-    gap: 8px;
+    gap: 6px; /* SCALED: Was 8px */
   }
 }
 
