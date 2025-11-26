@@ -428,13 +428,13 @@ select:focus-visible {
 }
 .export-button {
   font-family: 'Work Sans', sans-serif; /* CHANGED */
-  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact buttons */
+  font-size: 0.1875rem; /* SCALED: 25% of 0.75rem */
   font-weight: 600; /* SCALED: Was 700 */
   color: #ffffff;
   background-color: #50AF7B; /* Use one of the old dark mode colors (Green) */
   border: none;
-  border-radius: 4px; /* SCALED: Was 6px */
-  padding: 6px 14px; /* SCALED: Was 10px 24px - significantly reduced */
+  border-radius: 1px; /* SCALED: 25% of 4px */
+  padding: 1.5px 3.5px; /* SCALED: 25% of 6px 14px */
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0,0,0,0.25); /* SCALED: Was 0 2px 8px */
   transition: all 0.2s; /* Transition all properties */
@@ -473,13 +473,13 @@ select:focus-visible {
 /* Copy Share URL Button */
 .copy-url-button {
   font-family: 'Work Sans', sans-serif;
-  font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact buttons */
+  font-size: 0.1875rem; /* SCALED: 25% of 0.75rem */
   font-weight: 600; /* SCALED: Was 700 */
   color: #ffffff;
   background-color: #1976D2; /* Blue for sharing/link action */
   border: none;
-  border-radius: 4px; /* SCALED: Was 6px */
-  padding: 6px 14px; /* SCALED: Was 10px 24px - significantly reduced */
+  border-radius: 1px; /* SCALED: 25% of 4px */
+  padding: 1.5px 3.5px; /* SCALED: 25% of 6px 14px */
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0,0,0,0.25); /* SCALED: Was 0 2px 8px */
   transition: all 0.2s;
