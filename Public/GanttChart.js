@@ -70,8 +70,8 @@ export class GanttChart {
     renderTimer.mark('Container setup complete');
 
     // Build chart components
-    this._addTitle();
-    this._addLogo(); // Logo added after title so we can calculate proper alignment
+    // Title removed - keeping navigation header only
+    this._addLogo(); // Logo added at top of chart
 
     renderTimer.mark('Header components added');
 

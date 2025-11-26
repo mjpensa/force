@@ -137,9 +137,6 @@ class ContentViewer {
     header.className = 'app-header';
     header.innerHTML = `
       <div class="header-content">
-        <h1 class="header-title">
-          <a href="/">AI Roadmap Generator</a>
-        </h1>
         <nav class="view-tabs" role="navigation" aria-label="Main navigation">
           <button class="view-tab" data-view="roadmap" aria-label="Roadmap view">
             <div class="tab-node">
