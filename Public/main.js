@@ -188,7 +188,7 @@ async function processFiles(files) {
 
         // Create filename span with icon
         const filenameSpan = document.createElement('span');
-        filenameSpan.className = 'font-medium text-white';
+        filenameSpan.className = 'font-medium text-white text-xs';
 
         // Show relative path if available (folder upload)
         const displayName = file.webkitRelativePath || file.name;
@@ -207,7 +207,7 @@ async function processFiles(files) {
         // Add file size if available
         if (file.size) {
             const sizeSpan = document.createElement('span');
-            sizeSpan.className = 'ml-2 text-sm text-gray-400';
+            sizeSpan.className = 'ml-2 text-xs text-gray-400';
             sizeSpan.textContent = `(${formatFileSize(file.size)})`;
             li.appendChild(sizeSpan);
         }
@@ -219,7 +219,7 @@ async function processFiles(files) {
     // Show indicator if there are more files
     if (validFiles.length > displayLimit) {
         const li = document.createElement('li');
-        li.className = 'font-semibold text-custom-button';
+        li.className = 'font-semibold text-custom-button text-xs';
         li.textContent = `... and ${validFiles.length - displayLimit} more file(s)`;
         fragment.appendChild(li);
     }
