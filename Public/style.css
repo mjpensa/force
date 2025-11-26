@@ -71,10 +71,10 @@ select:focus-visible {
   width: 100%;
   border: 1px solid #0D0D0D; /* Darker border (using grid line color) */
   border-radius: 8px;
-  background-color: #0c2340; /* Chart Background */
+  background-color: transparent; /* Changed from #0c2340 to remove blue bar */
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   overflow: visible;
-  margin-top: 24px;
+  margin-top: 0; /* Removed margin-top to eliminate blue bar spacing */
   font-family: 'Work Sans', sans-serif; /* CHANGED */
   position: relative; /* Added for vertical SVG border */
 }
@@ -1623,6 +1623,9 @@ select:focus-visible {
      Styles are applied directly via JS.
   */
   width: 100%;
+  background-color: transparent;
+  margin: 0;
+  padding: 0;
 }
 
 /* ------------------------------------------------------------------- */
