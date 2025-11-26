@@ -30,7 +30,7 @@ const DOCUMENT_CREATIVE_CONFIG = {
   temperature: 0.4,      // Low-moderate: creative phrasing without hallucination risk
   topP: 0.6,             // Moderate: explores synonyms/phrasings while staying coherent
   topK: 15,              // Relaxed: allows richer vocabulary than greedy decoding
-  thinkingBudget: 32768  // High: deeper analysis, better insights, stronger fact-checking
+  thinkingBudget: 24576  // Maximum allowed for Gemini 2.5 Flash
 };
 
 /**
