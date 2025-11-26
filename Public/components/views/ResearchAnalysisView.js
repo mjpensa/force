@@ -541,7 +541,8 @@ export class ResearchAnalysisView {
 
     this.analysisData.actionItems.forEach(item => {
       const itemEl = document.createElement('div');
-      itemEl.className = 'action-item';
+      // Add impact class for step number coloring
+      itemEl.className = `action-item impact-${item.impact || 'medium'}`;
 
       itemEl.innerHTML = `
         <div class="action-content">
