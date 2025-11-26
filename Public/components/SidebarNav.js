@@ -92,12 +92,8 @@ export class SidebarNav {
     this.container.innerHTML = `
       <!-- Header with Logo -->
       <div class="icon-rail-header">
-        <div class="icon-rail-logo" title="AI Roadmap Generator">
+        <div class="icon-rail-logo" title="Content Viewer">
           ${this._getLogoIcon()}
-        </div>
-        <div class="icon-rail-brand">
-          <div class="icon-rail-brand-title">AI Roadmap</div>
-          <div class="icon-rail-brand-subtitle">Generator</div>
         </div>
       </div>
 
