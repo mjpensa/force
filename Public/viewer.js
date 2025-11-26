@@ -22,6 +22,7 @@ import { SlidesView } from './components/views/SlidesView.js';
 import { DocumentView } from './components/views/DocumentView.js';
 import { ResearchAnalysisView } from './components/views/ResearchAnalysisView.js';
 import { addLazyLoadingStyles, initLazyLoading } from './components/shared/LazyLoader.js';
+import { SidebarNav } from './components/SidebarNav.js';
 import {
   markPerformance,
   measurePerformance,
@@ -51,6 +52,9 @@ class ContentViewer {
     this.appRoot = document.getElementById('app-root');
     this.navContainer = null;
     this.contentContainer = null;
+
+    // Sidebar navigation (glassmorphic icon rail)
+    this.sidebarNav = null;
 
     // GanttChart dependencies (CRITICAL: same as original chart-renderer.js)
     this.footerSVG = '';
@@ -132,77 +136,17 @@ class ContentViewer {
     const appShell = document.createElement('div');
     appShell.className = 'app-shell';
 
-    // Header with navigation - Timeline design (Concept B)
+    // Simplified header (sidebar handles navigation now)
     const header = document.createElement('header');
-    header.className = 'app-header';
+    header.className = 'app-header app-header-minimal';
     header.innerHTML = `
       <div class="header-content">
         <h1 class="header-title">
           <a href="/">AI Roadmap Generator</a>
         </h1>
-        <nav class="view-tabs" role="navigation" aria-label="Main navigation">
-          <button class="view-tab" data-view="roadmap" aria-label="Roadmap view">
-            <div class="tab-node">
-              <span class="tab-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="4" rx="1"></rect>
-                  <rect x="3" y="10" width="12" height="4" rx="1"></rect>
-                  <rect x="3" y="16" width="15" height="4" rx="1"></rect>
-                </svg>
-              </span>
-              <span class="tab-status" id="status-roadmap" title="Loading..."></span>
-            </div>
-            <span class="tab-label">Roadmap</span>
-          </button>
-          <button class="view-tab" data-view="slides" aria-label="Slides view">
-            <div class="tab-node">
-              <span class="tab-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="3" width="20" height="14" rx="2"></rect>
-                  <path d="M8 21h8"></path>
-                  <path d="M12 17v4"></path>
-                  <path d="M7 8l3 2-3 2"></path>
-                </svg>
-              </span>
-              <span class="tab-status" id="status-slides" title="Loading..."></span>
-            </div>
-            <span class="tab-label">Slides</span>
-          </button>
-          <button class="view-tab" data-view="document" aria-label="Document view">
-            <div class="tab-node">
-              <span class="tab-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                  <line x1="10" y1="9" x2="8" y2="9"></line>
-                </svg>
-              </span>
-              <span class="tab-status" id="status-document" title="Loading..."></span>
-            </div>
-            <span class="tab-label">Document</span>
-          </button>
-          <button class="view-tab" data-view="research-analysis" aria-label="Analysis view">
-            <div class="tab-node">
-              <span class="tab-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <path d="M21 21l-4.35-4.35"></path>
-                  <path d="M11 8v6"></path>
-                  <path d="M8 11h6"></path>
-                </svg>
-              </span>
-              <span class="tab-status" id="status-research-analysis" title="Loading..."></span>
-            </div>
-            <span class="tab-label">Analysis</span>
-          </button>
-        </nav>
+        <div class="header-spacer"></div>
       </div>
     `;
-
-    // Add status indicator styles
-    this._addStatusIndicatorStyles();
 
     // Main content area
     const main = document.createElement('main');
@@ -210,20 +154,41 @@ class ContentViewer {
     main.id = 'main-content';
     main.setAttribute('role', 'main');
 
-    this.navContainer = header.querySelector('.view-tabs');
     this.contentContainer = main;
 
-    // Setup navigation click handlers
-    this.navContainer.querySelectorAll('.view-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const view = tab.dataset.view;
-        window.location.hash = view;
-      });
-    });
+    // Initialize sidebar navigation (glassmorphic icon rail)
+    this._initSidebarNav();
 
     appShell.appendChild(header);
     appShell.appendChild(main);
     this.appRoot.appendChild(appShell);
+  }
+
+  /**
+   * Initialize the glassmorphic sidebar navigation
+   * @private
+   */
+  _initSidebarNav() {
+    // Get initial view from hash
+    const hash = window.location.hash.slice(1);
+    const initialView = hash || 'roadmap';
+
+    // Create sidebar navigation
+    this.sidebarNav = new SidebarNav({
+      activeView: initialView,
+      sessionId: this.sessionId,
+      onNavigate: (view) => {
+        // Navigation is handled by hash change, which triggers _handleRouteChange
+        console.log(`[Viewer] Sidebar navigation to: ${view}`);
+      }
+    });
+
+    // Render and append to body (fixed position)
+    const sidebarElement = this.sidebarNav.render();
+    document.body.appendChild(sidebarElement);
+
+    // Store reference for backward compatibility
+    this.navContainer = sidebarElement;
   }
 
   /**
@@ -373,18 +338,13 @@ class ContentViewer {
   }
 
   /**
-   * Update active tab styling
+   * Update active navigation item
    */
   _updateActiveTab(view) {
-    this.navContainer.querySelectorAll('.view-tab').forEach(tab => {
-      if (tab.dataset.view === view) {
-        tab.classList.add('active');
-        tab.setAttribute('aria-current', 'page');
-      } else {
-        tab.classList.remove('active');
-        tab.removeAttribute('aria-current');
-      }
-    });
+    // Update sidebar navigation
+    if (this.sidebarNav) {
+      this.sidebarNav.setActiveView(view);
+    }
   }
 
   /**
@@ -1044,78 +1004,22 @@ class ContentViewer {
   }
 
   /**
-   * Update the progress line based on completed views
-   * The line grows to show progression through the timeline
+   * Update the progress indicator based on completed views
+   * This is kept for backward compatibility but is mostly handled by the sidebar now
    */
   _updateProgressLine() {
-    const views = ['roadmap', 'slides', 'document', 'research-analysis'];
-    const navContainer = this.navContainer;
-    if (!navContainer) return;
-
-    // Count how many views are ready (completed)
-    let completedCount = 0;
-    views.forEach(view => {
-      const statusEl = document.getElementById(`status-${view}`);
-      if (statusEl && statusEl.classList.contains('ready')) {
-        completedCount++;
-      }
-    });
-
-    // Calculate progress percentage (0%, 33%, 66%, 100%)
-    // We use 3 segments between 4 nodes
-    const progressPercent = completedCount > 0
-      ? Math.min(((completedCount - 1) / 3) * 100 + (completedCount > 0 ? 10 : 0), 100)
-      : 0;
-
-    // Update the CSS custom property for progress width
-    navContainer.style.setProperty('--progress-width', `${progressPercent}%`);
-
-    // Also update completed class on tabs
-    views.forEach((view, index) => {
-      const tab = navContainer.querySelector(`[data-view="${view}"]`);
-      if (!tab) return;
-
-      const statusEl = document.getElementById(`status-${view}`);
-      const isReady = statusEl && statusEl.classList.contains('ready');
-
-      if (isReady && !tab.classList.contains('active')) {
-        tab.classList.add('completed');
-      } else {
-        tab.classList.remove('completed');
-      }
-    });
+    // Progress tracking is now handled by the sidebar navigation status indicators
+    // This method is kept for backward compatibility
   }
 
   /**
-   * Update status indicator for a specific tab
-   * Note: Visual indicators are now handled via CSS pseudo-elements
+   * Update status indicator for a specific view
+   * Updates the sidebar navigation status indicators
    */
   _updateTabStatus(viewName, status) {
-    const statusEl = document.getElementById(`status-${viewName}`);
-    if (!statusEl) return;
-
-    // Remove all status classes
-    statusEl.classList.remove('loading', 'ready', 'failed', 'processing');
-
-    switch (status) {
-      case 'loading':
-        statusEl.classList.add('loading');
-        statusEl.title = 'Checking status...';
-        break;
-      case 'processing':
-        statusEl.classList.add('processing');
-        statusEl.title = 'Generating...';
-        break;
-      case 'ready':
-        statusEl.classList.add('ready');
-        statusEl.title = 'Ready';
-        break;
-      case 'failed':
-        statusEl.classList.add('failed');
-        statusEl.title = 'Failed - click to retry';
-        break;
-      default:
-        statusEl.title = '';
+    // Update sidebar navigation status
+    if (this.sidebarNav) {
+      this.sidebarNav.updateStatus(viewName, status);
     }
 
     // Update the progress line to reflect the new status
@@ -1247,6 +1151,12 @@ class ContentViewer {
     // Remove keyboard shortcuts
     if (this.removeShortcuts) {
       this.removeShortcuts();
+    }
+
+    // Destroy sidebar navigation
+    if (this.sidebarNav) {
+      this.sidebarNav.destroy();
+      this.sidebarNav = null;
     }
   }
 }
