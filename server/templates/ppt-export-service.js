@@ -9,6 +9,7 @@ import PptxGenJS from 'pptxgenjs';
 import { existsSync } from 'fs';
 import {
   COLORS,
+  PLACEHOLDER_COLORS,
   FONTS,
   SLIDE_SIZE,
   LAYOUTS,
@@ -250,7 +251,7 @@ function addTitleSlide(pptx, slideData, presentationData) {
     y: layout.elements.banner.y,
     w: layout.elements.banner.w,
     h: layout.elements.banner.h,
-    fill: { color: '4A5568' }  // Placeholder gray
+    fill: { color: PLACEHOLDER_COLORS.gray }  // Placeholder gray
   });
 
   // Add date
@@ -401,7 +402,7 @@ function addTitleWithImageSlide(pptx, slideData) {
       y: layout.elements.image.y,
       w: layout.elements.image.w,
       h: layout.elements.image.h,
-      fill: { color: '4A5568' }
+      fill: { color: PLACEHOLDER_COLORS.gray }
     });
   }
 }
@@ -435,7 +436,7 @@ function addSectionSlide(pptx, slideData, slideNumber) {
     y: layout.elements.largeNumber.y,
     w: layout.elements.largeNumber.w,
     h: layout.elements.largeNumber.h,
-    fontSize: 200,  // Reduced from 413 to fit better
+    fontSize: layout.elements.largeNumber.fontSize,
     fontFace: layout.elements.largeNumber.fontFace,
     color: layout.elements.largeNumber.color,
     align: layout.elements.largeNumber.align,
@@ -522,7 +523,7 @@ function addBulletsSlide(pptx, slideData, slideNumber) {
     y: layout.elements.accent.y,
     w: layout.elements.accent.w,
     h: layout.elements.accent.h,
-    fill: { color: '4A5568' }  // Placeholder
+    fill: { color: PLACEHOLDER_COLORS.gray }  // Placeholder
   });
 
   // Page number
@@ -601,7 +602,7 @@ function addContentSlide(pptx, slideData, slideNumber) {
     y: layout.elements.accent.y,
     w: layout.elements.accent.w,
     h: layout.elements.accent.h,
-    fill: { color: '4A5568' }
+    fill: { color: PLACEHOLDER_COLORS.gray }
   });
 
   // Page number
@@ -910,13 +911,14 @@ function addContentWithImageSlide(pptx, slideData, slideNumber) {
     });
     slide.addText('IMAGE', {
       x: imageConfig.x,
-      y: imageConfig.y + imageConfig.h / 2 - 0.25,
+      y: imageConfig.y,
       w: imageConfig.w,
-      h: 0.5,
+      h: imageConfig.h,
       fontSize: 14,
       fontFace: FONTS.semibold,
       color: COLORS.darkGray,
-      align: 'center'
+      align: 'center',
+      valign: 'middle'
     });
   }
 
@@ -952,7 +954,7 @@ function addQuoteSlide(pptx, slideData, slideNumber) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '4A5568' }
+    fill: { color: PLACEHOLDER_COLORS.gray }
   });
 
   // Section label
@@ -984,38 +986,45 @@ function addQuoteSlide(pptx, slideData, slideNumber) {
 
   // Quote text with red left border
   if (slideData.quote) {
+    const quoteConfig = layout.elements.quote;
+    const borderConfig = quoteConfig.borderLeft || {};
+    const borderWidth = borderConfig.width || 0.05;
+    const borderHeight = borderConfig.height || 2;
+    const borderOffsetX = borderConfig.offsetX || -0.1;
+    const textMargin = borderConfig.textMargin || 0.2;
+
     // Add red border line
     slide.addShape('rect', {
-      x: layout.elements.quote.x - 0.1,
-      y: layout.elements.quote.y,
-      w: 0.05,
-      h: 2,
-      fill: { color: COLORS.red }
+      x: quoteConfig.x + borderOffsetX,
+      y: quoteConfig.y,
+      w: borderWidth,
+      h: borderHeight,
+      fill: { color: borderConfig.color || COLORS.red }
     });
 
     // Add quote text
     slide.addText(`"${slideData.quote}"`, {
-      x: layout.elements.quote.x + 0.2,
-      y: layout.elements.quote.y,
-      w: layout.elements.quote.w - 0.2,
-      h: layout.elements.quote.h,
-      fontSize: layout.elements.quote.fontSize,
-      fontFace: layout.elements.quote.fontFace,
-      color: layout.elements.quote.color,
-      align: layout.elements.quote.align,
+      x: quoteConfig.x + textMargin,
+      y: quoteConfig.y,
+      w: quoteConfig.w - textMargin,
+      h: quoteConfig.h,
+      fontSize: quoteConfig.fontSize,
+      fontFace: quoteConfig.fontFace,
+      color: quoteConfig.color,
+      align: quoteConfig.align,
       italic: true
     });
 
     // Attribution
     if (slideData.attribution) {
       slide.addText(`— ${slideData.attribution}`, {
-        x: layout.elements.quote.x + 0.2,
-        y: layout.elements.quote.y + 2.5,
-        w: layout.elements.quote.w - 0.2,
+        x: quoteConfig.x + textMargin,
+        y: quoteConfig.y + borderHeight + 0.5,
+        w: quoteConfig.w - textMargin,
         h: 0.3,
         fontSize: 12,
         fontFace: FONTS.semibold,
-        color: COLORS.navy,
+        color: quoteConfig.color,
         align: 'left'
       });
     }
@@ -1041,7 +1050,7 @@ function addThankYouSlide(pptx, slideData) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '4A5568' }
+    fill: { color: PLACEHOLDER_COLORS.gray }
   });
 
   // Thank You text
@@ -1102,6 +1111,10 @@ function addTableOfContentsSlide(pptx, slideData, slideNumber) {
   // TOC items (right side)
   const items = slideData.items || slideData.bullets || [];
   const itemsConfig = layout.elements.items;
+  // Use config values with defaults for backwards compatibility
+  const numberWidth = itemsConfig.numberWidth || 0.5;
+  const numberHeight = itemsConfig.numberHeight || 0.4;
+  const titleOffset = itemsConfig.titleOffset || 0.6;
 
   items.forEach((item, i) => {
     const y = itemsConfig.y + (i * itemsConfig.itemSpacing);
@@ -1110,8 +1123,8 @@ function addTableOfContentsSlide(pptx, slideData, slideNumber) {
     slide.addText(`${i + 1}`, {
       x: itemsConfig.x,
       y: y,
-      w: 0.5,
-      h: 0.4,
+      w: numberWidth,
+      h: numberHeight,
       fontSize: itemsConfig.fontSize,
       fontFace: FONTS.semibold,
       color: COLORS.red,
@@ -1120,10 +1133,10 @@ function addTableOfContentsSlide(pptx, slideData, slideNumber) {
 
     // Item title (navy)
     slide.addText(item, {
-      x: itemsConfig.x + 0.6,
+      x: itemsConfig.x + titleOffset,
       y: y,
-      w: itemsConfig.w - 0.6,
-      h: 0.4,
+      w: itemsConfig.w - titleOffset,
+      h: numberHeight,
       fontSize: itemsConfig.fontSize,
       fontFace: itemsConfig.fontFace,
       color: itemsConfig.color,
@@ -1180,31 +1193,39 @@ function addProcessStepsSlide(pptx, slideData, slideNumber) {
   const totalSteps = steps.length;
   const totalWidth = 12.33; // Available width
   const startX = 0.5;
+  // Provide default values for potentially undefined config properties
+  const stepGap = stepsConfig.stepGap || 0.2;
+  const stepWidth = stepsConfig.stepWidth || 2.4;
+  const circleDiameter = stepsConfig.circleDiameter || 0.8;
+  const circleYOffset = stepsConfig.circleYOffset || -0.5;
+  const circleRadius = circleDiameter / 2;
 
   // Calculate dynamic step width based on number of steps
   const dynamicStepWidth = totalSteps > 0
-    ? Math.min(stepsConfig.stepWidth, (totalWidth - (stepsConfig.stepGap * (totalSteps - 1))) / totalSteps)
-    : stepsConfig.stepWidth;
+    ? Math.min(stepWidth, (totalWidth - (stepGap * (totalSteps - 1))) / totalSteps)
+    : stepWidth;
 
   steps.forEach((step, i) => {
-    const x = startX + (i * (dynamicStepWidth + stepsConfig.stepGap));
+    const x = startX + (i * (dynamicStepWidth + stepGap));
     const y = stepsConfig.y;
+    const circleX = x + (dynamicStepWidth / 2) - circleRadius;
+    const circleY = y + circleYOffset;
 
     // Step number circle
     slide.addShape('ellipse', {
-      x: x + (dynamicStepWidth / 2) - 0.4,
-      y: y - 0.5,
-      w: 0.8,
-      h: 0.8,
+      x: circleX,
+      y: circleY,
+      w: circleDiameter,
+      h: circleDiameter,
       fill: { color: COLORS.white }
     });
 
     // Step number text
     slide.addText(`${i + 1}`, {
-      x: x + (dynamicStepWidth / 2) - 0.4,
-      y: y - 0.5,
-      w: 0.8,
-      h: 0.8,
+      x: circleX,
+      y: circleY,
+      w: circleDiameter,
+      h: circleDiameter,
       fontSize: stepsConfig.numberFontSize,
       fontFace: FONTS.bold,
       color: COLORS.red,
@@ -1216,7 +1237,7 @@ function addProcessStepsSlide(pptx, slideData, slideNumber) {
     if (step.title) {
       slide.addText(step.title, {
         x: x,
-        y: y + 0.5,
+        y: y + circleDiameter,
         w: dynamicStepWidth,
         h: 0.6,
         fontSize: stepsConfig.titleFontSize,
@@ -1230,7 +1251,7 @@ function addProcessStepsSlide(pptx, slideData, slideNumber) {
     if (step.description) {
       slide.addText(step.description, {
         x: x,
-        y: y + 1.2,
+        y: y + circleDiameter + 0.7,
         w: dynamicStepWidth,
         h: 1.2,
         fontSize: stepsConfig.descFontSize,
@@ -1245,8 +1266,8 @@ function addProcessStepsSlide(pptx, slideData, slideNumber) {
     if (i < totalSteps - 1) {
       slide.addShape('line', {
         x: x + dynamicStepWidth,
-        y: y - 0.1,
-        w: stepsConfig.stepGap,
+        y: y + circleYOffset + circleRadius,
+        w: stepGap,
         h: 0,
         line: { color: COLORS.white, width: 2 }
       });
@@ -1539,22 +1560,32 @@ function addQuoteTwoColumnSlide(pptx, slideData, slideNumber) {
   const renderQuoteColumn = (quoteData, config) => {
     if (!quoteData) return;
 
+    // Get config values with defaults for backwards compatibility
+    const accentOffsetX = config.accentOffsetX || -0.1;
+    const textMargin = config.textMargin || 0.1;
+    const accentHeight = config.accentHeight || 2;
+    const titleHeight = config.titleHeight || 0.6;
+    const textYOffset = config.textYOffset || 0.7;
+    const textHeight = config.textHeight || 2.5;
+    const attributionYOffset = config.attributionYOffset || 3.3;
+    const attributionHeight = config.attributionHeight || 0.4;
+
     // Red accent line
     slide.addShape('rect', {
-      x: config.x - 0.1,
+      x: config.x + accentOffsetX,
       y: config.y,
       w: config.accentWidth,
-      h: 2,
+      h: accentHeight,
       fill: { color: config.accentColor }
     });
 
     // Quote title
     if (quoteData.title) {
       slide.addText(quoteData.title, {
-        x: config.x + 0.1,
+        x: config.x + textMargin,
         y: config.y,
-        w: config.w - 0.1,
-        h: 0.6,
+        w: config.w - textMargin,
+        h: titleHeight,
         fontSize: config.titleFontSize,
         fontFace: config.titleFontFace,
         color: config.titleColor,
@@ -1565,10 +1596,10 @@ function addQuoteTwoColumnSlide(pptx, slideData, slideNumber) {
     // Quote text
     if (quoteData.text || quoteData.quote) {
       slide.addText(`"${quoteData.text || quoteData.quote}"`, {
-        x: config.x + 0.1,
-        y: config.y + 0.7,
-        w: config.w - 0.1,
-        h: 2.5,
+        x: config.x + textMargin,
+        y: config.y + textYOffset,
+        w: config.w - textMargin,
+        h: textHeight,
         fontSize: config.textFontSize,
         fontFace: config.textFontFace,
         color: config.textColor,
@@ -1580,10 +1611,10 @@ function addQuoteTwoColumnSlide(pptx, slideData, slideNumber) {
     // Attribution
     if (quoteData.attribution) {
       slide.addText(`— ${quoteData.attribution}`, {
-        x: config.x + 0.1,
-        y: config.y + 3.3,
-        w: config.w - 0.1,
-        h: 0.4,
+        x: config.x + textMargin,
+        y: config.y + attributionYOffset,
+        w: config.w - textMargin,
+        h: attributionHeight,
         fontSize: 11,
         fontFace: FONTS.semibold,
         color: config.titleColor,
@@ -1642,21 +1673,29 @@ function addQuoteWithMetricsSlide(pptx, slideData, slideNumber) {
   // Quote with red accent line
   const quoteConfig = layout.elements.quote;
   if (slideData.quote) {
+    // Get config values with defaults
+    const accentOffsetX = quoteConfig.accentOffsetX || -0.1;
+    const accentHeight = quoteConfig.accentHeight || 2.5;
+    const textMargin = quoteConfig.textMargin || 0.1;
+    const textHeight = quoteConfig.textHeight || 2.5;
+    const attributionYOffset = quoteConfig.attributionYOffset || 2.6;
+    const attributionHeight = quoteConfig.attributionHeight || 0.4;
+
     // Red accent line
     slide.addShape('rect', {
-      x: quoteConfig.x - 0.1,
+      x: quoteConfig.x + accentOffsetX,
       y: quoteConfig.y,
       w: quoteConfig.accentWidth,
-      h: 2.5,
+      h: accentHeight,
       fill: { color: quoteConfig.accentColor }
     });
 
     // Quote text
     slide.addText(`"${slideData.quote}"`, {
-      x: quoteConfig.x + 0.1,
+      x: quoteConfig.x + textMargin,
       y: quoteConfig.y,
-      w: quoteConfig.w - 0.1,
-      h: 2.5,
+      w: quoteConfig.w - textMargin,
+      h: textHeight,
       fontSize: quoteConfig.fontSize,
       fontFace: quoteConfig.fontFace,
       color: quoteConfig.color,
@@ -1667,10 +1706,10 @@ function addQuoteWithMetricsSlide(pptx, slideData, slideNumber) {
     // Attribution
     if (slideData.attribution) {
       slide.addText(`— ${slideData.attribution}`, {
-        x: quoteConfig.x + 0.1,
-        y: quoteConfig.y + 2.6,
-        w: quoteConfig.w - 0.1,
-        h: 0.4,
+        x: quoteConfig.x + textMargin,
+        y: quoteConfig.y + attributionYOffset,
+        w: quoteConfig.w - textMargin,
+        h: attributionHeight,
         fontSize: 12,
         fontFace: FONTS.semibold,
         color: quoteConfig.color,
@@ -1682,6 +1721,9 @@ function addQuoteWithMetricsSlide(pptx, slideData, slideNumber) {
   // Metrics row
   const metrics = slideData.metrics || [];
   const metricsConfig = layout.elements.metrics;
+  const valueHeight = metricsConfig.valueHeight || 1.2;
+  const labelYOffset = metricsConfig.labelYOffset || 1.2;
+  const labelHeight = metricsConfig.labelHeight || 0.8;
 
   metrics.slice(0, metricsConfig.maxMetrics).forEach((metric, i) => {
     const x = metricsConfig.startX + (i * (metricsConfig.metricWidth + metricsConfig.gap));
@@ -1692,7 +1734,7 @@ function addQuoteWithMetricsSlide(pptx, slideData, slideNumber) {
       x: x,
       y: y,
       w: metricsConfig.metricWidth,
-      h: 1.2,
+      h: valueHeight,
       fontSize: metricsConfig.valueFontSize,
       fontFace: metricsConfig.valueFontFace,
       color: metricsConfig.valueColor,
@@ -1702,9 +1744,9 @@ function addQuoteWithMetricsSlide(pptx, slideData, slideNumber) {
     // Metric label
     slide.addText(metric.label || '', {
       x: x,
-      y: y + 1.2,
+      y: y + labelYOffset,
       w: metricsConfig.metricWidth,
-      h: 0.8,
+      h: labelHeight,
       fontSize: metricsConfig.labelFontSize,
       fontFace: metricsConfig.labelFontFace,
       color: metricsConfig.labelColor,
@@ -2165,8 +2207,8 @@ function addTableSlide(pptx, slideData, slideNumber) {
       })));
     });
 
-    // Calculate column widths
-    const colCount = Math.max(headers.length, rows[0]?.length || 0);
+    // Calculate column widths (ensure at least 1 column to avoid division by zero)
+    const colCount = Math.max(1, headers.length, rows[0]?.length || 0);
     const colWidths = slideData.colWidths || Array(colCount).fill(tableConfig.w / colCount);
 
     // Add the table
@@ -2214,7 +2256,7 @@ function addTitleVariantASlide(pptx, slideData) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '1a3a5c' }  // Slightly lighter navy for pattern
+    fill: { color: PLACEHOLDER_COLORS.lightNavy }  // Slightly lighter navy for pattern
   });
 
   // Main title
@@ -2279,7 +2321,7 @@ function addTitleVariantBSlide(pptx, slideData) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '1a3a5c' }  // Slightly lighter navy for pattern
+    fill: { color: PLACEHOLDER_COLORS.lightNavy }  // Slightly lighter navy for pattern
   });
 
   // Subtitle/date (upper area)
@@ -2361,16 +2403,17 @@ function addDualChartSlide(pptx, slideData, slideNumber) {
       fill: { color: config.chartBackground }
     });
 
-    // Chart placeholder label
+    // Chart placeholder label (centered vertically using valign)
     slide.addText('Chart Placeholder', {
       x: config.x,
-      y: config.chartY + (config.chartH / 2) - 0.25,
+      y: config.chartY,
       w: config.w,
-      h: 0.5,
+      h: config.chartH,
       fontSize: 14,
       fontFace: FONTS.regular,
       color: COLORS.darkGray,
-      align: 'center'
+      align: 'center',
+      valign: 'middle'
     });
 
     // Source text
@@ -2502,16 +2545,17 @@ function addQuoteDataBSlide(pptx, slideData, slideNumber) {
     fill: { color: chartConfig.background }
   });
 
-  // Chart label
+  // Chart label (centered vertically using valign)
   slide.addText('Chart Placeholder', {
     x: chartConfig.x,
-    y: chartConfig.y + (chartConfig.h / 2) - 0.25,
+    y: chartConfig.y,
     w: chartConfig.w,
-    h: 0.5,
+    h: chartConfig.h,
     fontSize: 14,
     fontFace: FONTS.regular,
     color: COLORS.darkGray,
-    align: 'center'
+    align: 'center',
+    valign: 'middle'
   });
 
   // Metrics row (bottom)
@@ -3337,6 +3381,10 @@ function addTimelinePhasesSlide(pptx, slideData, slideNumber) {
 
   const phasesConfig = layout.elements.phases;
   const phases = slideData.phases || slideData.items || [];
+  // Get config values with defaults
+  const labelHeight = phasesConfig.labelHeight || 0.5;
+  const labelGap = phasesConfig.labelGap || 0.1;
+  const barGap = phasesConfig.barGap || 0.2;
 
   phases.forEach((phase, i) => {
     const x = phasesConfig.startX + (i * (phasesConfig.phaseWidth + phasesConfig.gap));
@@ -3348,13 +3396,13 @@ function addTimelinePhasesSlide(pptx, slideData, slideNumber) {
         x: x,
         y: y,
         w: phasesConfig.phaseWidth,
-        h: 0.5,
+        h: labelHeight,
         fontSize: phasesConfig.labelFontSize,
         fontFace: phasesConfig.labelFontFace,
         color: phasesConfig.labelColor,
         align: 'left'
       });
-      y += 0.6;
+      y += labelHeight + labelGap;
     }
 
     // Phase bar (navy)
@@ -3365,7 +3413,7 @@ function addTimelinePhasesSlide(pptx, slideData, slideNumber) {
       h: phasesConfig.barHeight,
       fill: { color: phasesConfig.barColor }
     });
-    y += phasesConfig.barHeight + 0.2;
+    y += phasesConfig.barHeight + barGap;
 
     // Phase details/description
     if (phase.details || phase.description || phase.content) {
@@ -3476,12 +3524,13 @@ function addTimelineCardsAltSlide(pptx, slideData, slideNumber) {
     });
 
     // Date/phase label (above line)
+    const labelHeight = labelsConfig.height || 0.4;
     if (item.date || item.phase || item.label) {
       slide.addText(item.date || item.phase || item.label, {
         x: cardX,
         y: labelsConfig.y,
         w: cardsConfig.width,
-        h: 0.4,
+        h: labelHeight,
         fontSize: labelsConfig.fontSize,
         fontFace: labelsConfig.fontFace,
         color: labelsConfig.color,
@@ -3500,12 +3549,14 @@ function addTimelineCardsAltSlide(pptx, slideData, slideNumber) {
     });
 
     // Card title
+    const titleHeight = cardsConfig.titleHeight || 0.4;
+    const contentYOffset = cardsConfig.contentYOffset || 0.5;
     if (item.title) {
       slide.addText(item.title, {
         x: cardX + cardsConfig.padding,
         y: cardsConfig.y + cardsConfig.padding,
         w: cardsConfig.width - (cardsConfig.padding * 2),
-        h: 0.4,
+        h: titleHeight,
         fontSize: cardsConfig.titleFontSize,
         fontFace: cardsConfig.titleFontFace,
         color: cardsConfig.titleColor,
@@ -3518,9 +3569,9 @@ function addTimelineCardsAltSlide(pptx, slideData, slideNumber) {
     if (item.content || item.description) {
       slide.addText(item.content || item.description, {
         x: cardX + cardsConfig.padding,
-        y: cardsConfig.y + cardsConfig.padding + 0.5,
+        y: cardsConfig.y + cardsConfig.padding + contentYOffset,
         w: cardsConfig.width - (cardsConfig.padding * 2),
-        h: cardsConfig.height - cardsConfig.padding - 0.6,
+        h: cardsConfig.height - cardsConfig.padding - contentYOffset - 0.1,
         fontSize: cardsConfig.contentFontSize,
         fontFace: cardsConfig.contentFontFace,
         color: cardsConfig.contentColor,
@@ -3813,7 +3864,7 @@ function addThankYouAltSlide(pptx, slideData) {
     y: layout.elements.pattern.y,
     w: layout.elements.pattern.w,
     h: layout.elements.pattern.h,
-    fill: { color: '1a3a5c' }  // Slightly lighter navy as placeholder
+    fill: { color: PLACEHOLDER_COLORS.lightNavy }  // Slightly lighter navy as placeholder
   });
 
   // "Thank You" title
@@ -3933,7 +3984,9 @@ function addLogoPlaceholder(slide, position, size = 'medium', variant = null, ba
  * @param {string} patternType - 'banner' or 'accent'
  * @param {string} fallbackColor - hex color to use as fallback (without #)
  */
-function addPatternPlaceholder(slide, position, patternType = 'banner', fallbackColor = '4A5568') {
+function addPatternPlaceholder(slide, position, patternType = 'banner', fallbackColor = null) {
+  // Use PLACEHOLDER_COLORS.gray as default if no fallback provided
+  const actualFallbackColor = fallbackColor || PLACEHOLDER_COLORS.gray;
   const patternPath = ASSETS?.patterns?.[patternType];
 
   if (patternPath && existsSync(patternPath)) {
@@ -3952,7 +4005,7 @@ function addPatternPlaceholder(slide, position, patternType = 'banner', fallback
       y: position.y,
       w: position.w,
       h: position.h,
-      fill: { color: fallbackColor }
+      fill: { color: actualFallbackColor }
     });
   }
 }

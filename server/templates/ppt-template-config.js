@@ -21,6 +21,12 @@ export const COLORS = {
   black: '000000'
 };
 
+// Placeholder colors (used when actual assets are not available)
+export const PLACEHOLDER_COLORS = {
+  gray: '4A5568',        // Default placeholder gray
+  lightNavy: '1a3a5c'    // Lighter navy for pattern placeholders
+};
+
 // Brand fonts
 export const FONTS = {
   thin: 'Work Sans Thin',
@@ -500,7 +506,7 @@ export const LAYOUTS = {
         y: 2.71,
         w: 6.69,
         h: 5.98,
-        fontSize: 413,
+        fontSize: 200,  // Reduced from original 413 to fit better
         fontFace: FONTS.thin,
         color: COLORS.white,
         align: 'left',
@@ -935,8 +941,11 @@ export const LAYOUTS = {
         align: 'left',
         lineSpacing: 180,
         borderLeft: {
-          width: 3,
-          color: COLORS.red
+          width: 0.05,       // Border line width in inches
+          height: 2,         // Border line height in inches
+          color: COLORS.red,
+          offsetX: -0.1,     // X offset from quote position
+          textMargin: 0.2    // Left margin for quote text
         }
       },
       // Logo
@@ -1036,7 +1045,10 @@ export const LAYOUTS = {
         fontFace: FONTS.regular,
         color: COLORS.navy,
         lineSpacing: 180,
-        itemSpacing: 0.6  // Space between numbered items
+        itemSpacing: 0.6,      // Space between numbered items
+        numberWidth: 0.5,      // Width of number column
+        numberHeight: 0.4,     // Height of each item row
+        titleOffset: 0.6       // Offset from number to title text
       },
       // Logo (bottom right)
       logoBottom: {
@@ -1086,6 +1098,8 @@ export const LAYOUTS = {
         stepWidth: 2.4,
         stepHeight: 2.5,
         stepGap: 0.2,
+        circleDiameter: 0.8,    // Step number circle size
+        circleYOffset: -0.5,    // Y offset for circle above baseline
         numberFontSize: 18,
         titleFontSize: 14,
         descFontSize: 10,
@@ -1281,11 +1295,19 @@ export const LAYOUTS = {
         titleFontSize: 16,
         titleFontFace: FONTS.semibold,
         titleColor: COLORS.navy,
+        titleHeight: 0.6,
         textFontSize: 12,
         textFontFace: FONTS.regular,
         textColor: COLORS.navy,
+        textYOffset: 0.7,
+        textHeight: 2.5,
         accentColor: COLORS.red,
-        accentWidth: 0.05
+        accentWidth: 0.05,
+        accentHeight: 2,
+        accentOffsetX: -0.1,
+        textMargin: 0.1,
+        attributionYOffset: 3.3,
+        attributionHeight: 0.4
       },
       // Right quote configuration
       rightQuote: {
@@ -1296,11 +1318,19 @@ export const LAYOUTS = {
         titleFontSize: 16,
         titleFontFace: FONTS.semibold,
         titleColor: COLORS.navy,
+        titleHeight: 0.6,
         textFontSize: 12,
         textFontFace: FONTS.regular,
         textColor: COLORS.navy,
+        textYOffset: 0.7,
+        textHeight: 2.5,
         accentColor: COLORS.red,
-        accentWidth: 0.05
+        accentWidth: 0.05,
+        accentHeight: 2,
+        accentOffsetX: -0.1,
+        textMargin: 0.1,
+        attributionYOffset: 3.3,
+        attributionHeight: 0.4
       },
       // Page number (bottom left)
       pageNumber: {
@@ -1352,7 +1382,13 @@ export const LAYOUTS = {
         fontFace: FONTS.regular,
         color: COLORS.navy,
         accentColor: COLORS.red,
-        accentWidth: 0.05
+        accentWidth: 0.05,
+        accentHeight: 2.5,
+        accentOffsetX: -0.1,
+        textMargin: 0.1,
+        textHeight: 2.5,
+        attributionYOffset: 2.6,
+        attributionHeight: 0.4
       },
       // Metrics row (bottom)
       metrics: {
@@ -1364,9 +1400,12 @@ export const LAYOUTS = {
         valueFontSize: 48,
         valueFontFace: FONTS.light,
         valueColor: COLORS.red,
+        valueHeight: 1.2,
         labelFontSize: 11,
         labelFontFace: FONTS.regular,
-        labelColor: COLORS.navy
+        labelColor: COLORS.navy,
+        labelYOffset: 1.2,
+        labelHeight: 0.8
       },
       // Page number (bottom left)
       pageNumber: {
@@ -1623,8 +1662,11 @@ export const LAYOUTS = {
         labelFontSize: 14,
         labelFontFace: FONTS.semibold,
         labelColor: COLORS.red,
+        labelHeight: 0.5,
+        labelGap: 0.1,
         barHeight: 0.3,
         barColor: COLORS.navy,
+        barGap: 0.2,
         detailsHeight: 3,
         detailsFontSize: 10,
         detailsFontFace: FONTS.regular,
@@ -1694,6 +1736,7 @@ export const LAYOUTS = {
       // Date/phase labels (above line)
       labels: {
         y: 1.8,
+        height: 0.4,
         fontSize: 11,
         fontFace: FONTS.semibold,
         color: COLORS.navy
@@ -1710,6 +1753,8 @@ export const LAYOUTS = {
         titleFontSize: 12,
         titleFontFace: FONTS.semibold,
         titleColor: COLORS.navy,
+        titleHeight: 0.4,
+        contentYOffset: 0.5,
         contentFontSize: 10,
         contentFontFace: FONTS.regular,
         contentColor: COLORS.darkGray,
@@ -2518,6 +2563,7 @@ export const DEFAULT_METADATA = {
 
 export default {
   COLORS,
+  PLACEHOLDER_COLORS,
   FONTS,
   SLIDE_SIZE,
   LAYOUTS,
