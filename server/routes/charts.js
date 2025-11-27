@@ -68,7 +68,7 @@ router.post('/generate-chart', uploadMiddleware.array('researchFiles'), strictLi
     // Build user query
     const geminiUserQuery = `${sanitizedPrompt}
 
-**CRITICAL REMINDER:** You MUST escape all newlines (\\n) and double-quotes (\") found in the research content before placing them into the final JSON string values.
+**CRITICAL REMINDER:** You MUST escape all newlines (\\n) and double-quotes (") found in the research content before placing them into the final JSON string values.
 
 Research Content:
 ${researchText}`;

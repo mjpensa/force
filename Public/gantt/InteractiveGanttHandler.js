@@ -1,4 +1,3 @@
-import { CONFIG } from '../config.js';
 
 /**
  * Base class for Gantt chart interaction handlers (drag, resize)

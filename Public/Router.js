@@ -8,8 +8,6 @@ class Router {
         this.handleHashChange = this.handleHashChange.bind(this);
     }
     init(ganttChart) {
-            ganttChart: !!ganttChart
-        });
         this.ganttChart = ganttChart;
         window.addEventListener('hashchange', this.handleHashChange);
         this.handleHashChange();
@@ -17,10 +15,6 @@ class Router {
     handleHashChange() {
         const hash = window.location.hash.slice(1); // Remove the '#'
         const route = hash || 'roadmap'; // Default to roadmap
-            hash: hash,
-            route: route,
-            fullHash: window.location.hash
-        });
         if (this.routes[route]) {
             this.routes[route]();
             this.currentRoute = route;
@@ -34,10 +28,6 @@ class Router {
     showSection(section) {
         const ganttGrid = document.querySelector('.gantt-grid');
         const ganttTitle = document.querySelector('.gantt-title');
-            ganttGrid: !!ganttGrid,
-            ganttTitle: !!ganttTitle,
-            ganttChart: !!this.ganttChart
-        });
         const legend = document.querySelector('.gantt-legend');
         const exportContainer = document.querySelector('.export-container');
         const todayLine = document.querySelector('.today-line');

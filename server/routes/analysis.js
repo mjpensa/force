@@ -39,7 +39,7 @@ router.post('/get-task-analysis', apiLimiter, async (req, res) => {
   const sanitizedTaskName = sanitizePrompt(taskName);
 
   // Build user query
-  const geminiUserQuery = `**CRITICAL REMINDER:** You MUST escape all newlines (\\n) and double-quotes (\") found in the research content before placing them into the final JSON string values.
+  const geminiUserQuery = `**CRITICAL REMINDER:** You MUST escape all newlines (\\n) and double-quotes (") found in the research content before placing them into the final JSON string values.
 
 Research Content:
 ${researchText}

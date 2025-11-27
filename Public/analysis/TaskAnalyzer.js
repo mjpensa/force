@@ -1,4 +1,4 @@
-import { safeGetElement, safeQuerySelector, buildAnalysisSection, buildAnalysisList, buildTimelineScenarios, buildRiskAnalysis, buildImpactAnalysis, buildSchedulingContext, buildProgressIndicators, buildAccelerators, createModal } from '../Utils.js';
+import { safeGetElement, safeQuerySelector, buildAnalysisSection, createModal } from '../Utils.js';
 import { ChatInterface } from './ChatInterface.js';
 export class TaskAnalyzer {
   constructor() {
