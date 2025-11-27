@@ -328,7 +328,7 @@ document.addEventListener("DOMContentLoaded", () => {
  * @throws {Error} If generation fails or times out
  */
 async function pollForPhase2Content(sessionId, viewType, generateBtn) {
-  const POLL_INTERVAL = 1000; // Poll every 1 second
+  const POLL_INTERVAL = 2000; // Poll every 2 seconds
   const MAX_ATTEMPTS = 300; // 5 minutes maximum (300 seconds)
   let attempts = 0;
   let isPolling = false; // Prevent concurrent polls

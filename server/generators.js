@@ -14,7 +14,7 @@ import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompt
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
 // Timeout configuration for AI generation
-const GENERATION_TIMEOUT_MS = 300000; // 5 minutes - slides with complex schemas need more time
+const GENERATION_TIMEOUT_MS = 120000; // 2 minutes - faster with thinking disabled
 
 // ============================================================================
 // REQUEST QUEUE - Controls concurrent API calls to prevent overload
@@ -70,8 +70,8 @@ class APIQueue {
   }
 }
 
-// Global API queue instance - max 2 concurrent Gemini API calls
-const apiQueue = new APIQueue(2);
+// Global API queue instance - max 4 concurrent Gemini API calls
+const apiQueue = new APIQueue(4);
 
 /**
  * Generation config presets for different content types
