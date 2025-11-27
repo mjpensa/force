@@ -605,35 +605,28 @@ class ContentViewer {
     }
   }
   async _retryGeneration(viewName) {
+    // Note: Regeneration requires re-uploading the original files.
+    // Since we don't store files in the viewer session, redirect to home page.
     const viewNameCapitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
     this.contentContainer.innerHTML = `
-      <div class="loading-screen">
-        <div class="loading-spinner"></div>
-        <h2>Regenerating ${viewNameCapitalized}</h2>
-        <p style="margin-top: 1rem; color: var(--color-text-secondary);">
-          Please wait while we regenerate the content...
+      <div style="padding: 3rem; text-align: center; max-width: 600px; margin: 0 auto;">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color: var(--color-primary); margin-bottom: 1.5rem;">
+          <path d="M21 12a9 9 0 11-6.219-8.56" stroke-width="2"/>
+          <polyline points="21 3 21 9 15 9" stroke-width="2"/>
+        </svg>
+        <h2 style="margin-bottom: 1rem; color: var(--color-text-primary);">
+          Regenerate ${viewNameCapitalized}
+        </h2>
+        <p style="color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 2rem;">
+          To regenerate this content, you'll need to upload your research files again.
+          This ensures the AI has the full source material to work with.
         </p>
+        <button onclick="window.location.href='/'"
+                style="padding: 0.75rem 1.5rem; background: var(--color-primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+          🔄 Upload Files & Regenerate
+        </button>
       </div>
     `;
-    try {
-      const response = await fetch(`/api/content/${this.sessionId}/${viewName}/regenerate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to start regeneration: ${response.statusText}`);
-      }
-      await this._pollForRegeneration(viewName);
-      this.stateManager.setState({
-        content: { ...this.stateManager.state.content, [viewName]: null }
-      });
-      await this._loadView(viewName);
-    } catch (error) {
-      this._showGenerationFailed(viewName, `Regeneration failed: ${error.message}`);
-    }
   }
   async _pollForRegeneration(viewName, maxAttempts = 120, intervalMs = 2000) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {

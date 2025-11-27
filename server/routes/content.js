@@ -48,11 +48,13 @@ function enforceSessionLimit() {
   }
 }
 
-// Clean up old sessions (older than 1 hour) and enforce limits
+// Clean up old sessions (older than 1 hour since last access) and enforce limits
 setInterval(() => {
   const now = Date.now();
   for (const [sessionId, session] of sessions) {
-    if (now - session.createdAt > SESSION_TTL_MS) {
+    // Use lastAccessed time (not createdAt) so active sessions don't expire
+    const lastActivity = session.lastAccessed || session.createdAt;
+    if (now - lastActivity > SESSION_TTL_MS) {
       sessions.delete(sessionId);
     }
   }
@@ -290,6 +292,66 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
 });
 
 /**
+ * GET /api/content/:sessionId/slides/export
+ * Exports slides from a session as a branded PowerPoint file
+ *
+ * NOTE: This route MUST be defined before /:sessionId/:viewType to avoid being shadowed
+ *
+ * URL params:
+ * - sessionId: string - Session ID
+ *
+ * Response: PowerPoint file (.pptx) download
+ */
+router.get('/:sessionId/slides/export', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    // Check if session exists
+    const session = sessions.get(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        error: 'Session not found',
+        message: 'Session may have expired. Please generate new content.'
+      });
+    }
+
+    const slidesResult = session.content.slides;
+    if (!slidesResult || !slidesResult.success || !slidesResult.data) {
+      return res.status(404).json({
+        error: 'Slides not available',
+        message: slidesResult?.error || 'Slides generation failed or not yet complete'
+      });
+    }
+
+    const slides = slidesResult.data;
+
+    // Generate the PowerPoint file
+    const pptxBuffer = await generatePptx(slides, {
+      author: 'BIP',
+      company: 'BIP'
+    });
+
+    // Create filename from presentation title
+    const title = slides.title || 'Presentation';
+    const safeTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
+    const filename = `${safeTitle}.pptx`;
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pptxBuffer.length);
+
+    res.send(pptxBuffer);
+
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to generate PowerPoint file',
+      details: error.message
+    });
+  }
+});
+
+/**
  * GET /api/content/:sessionId/:viewType
  * Retrieves content for a specific view type from a session
  *
@@ -364,66 +426,6 @@ router.get('/:sessionId/:viewType', (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: 'Failed to retrieve content',
-      details: error.message
-    });
-  }
-});
-
-/**
- * GET /api/content/:sessionId/slides/export
- * Exports slides from a session as a branded PowerPoint file
- *
- * URL params:
- * - sessionId: string - Session ID
- *
- * Response: PowerPoint file (.pptx) download
- */
-router.get('/:sessionId/slides/export', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-
-    // Check if session exists
-    const session = sessions.get(sessionId);
-    if (!session) {
-      return res.status(404).json({
-        error: 'Session not found',
-        message: 'Session may have expired. Please generate new content.'
-      });
-    }
-
-    const slidesResult = session.content.slides;
-    if (!slidesResult || !slidesResult.success || !slidesResult.data) {
-      return res.status(404).json({
-        error: 'Slides not available',
-        message: slidesResult?.error || 'Slides generation failed or not yet complete'
-      });
-    }
-
-    const slides = slidesResult.data;
-
-
-    // Generate the PowerPoint file
-    const pptxBuffer = await generatePptx(slides, {
-      author: 'BIP',
-      company: 'BIP'
-    });
-
-    // Create filename from presentation title
-    const title = slides.title || 'Presentation';
-    const safeTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
-    const filename = `${safeTitle}.pptx`;
-
-    // Set headers for file download
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pptxBuffer.length);
-
-
-    res.send(pptxBuffer);
-
-  } catch (error) {
-    res.status(500).json({
-      error: 'Failed to generate PowerPoint file',
       details: error.message
     });
   }

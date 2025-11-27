@@ -390,6 +390,12 @@ export class SlidesView {
       if (!this.container || !this.container.isConnected) {
         return;
       }
+      // Don't intercept keyboard events from form elements
+      const target = e.target;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
+          target.tagName === 'BUTTON' || target.isContentEditable) {
+        return;
+      }
       switch (e.key) {
         case 'ArrowRight':
         case ' ': // Space

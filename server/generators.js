@@ -181,16 +181,20 @@ async function generateResearchAnalysis(userPrompt, researchFiles) {
 }
 
 /**
- * Generate all content types in parallel
+ * Generate all content types with controlled concurrency via API queue
+ * This prevents overwhelming the Gemini API with too many simultaneous requests
  */
 export async function generateAllContent(userPrompt, researchFiles) {
   try {
-    const [roadmap, slides, document, researchAnalysis] = await Promise.all([
-      generateRoadmap(userPrompt, researchFiles),
-      generateSlides(userPrompt, researchFiles),
-      generateDocument(userPrompt, researchFiles),
-      generateResearchAnalysis(userPrompt, researchFiles)
-    ]);
+    // Use apiQueue.runAll to control concurrency and prevent rate limiting
+    const tasks = [
+      { task: () => generateRoadmap(userPrompt, researchFiles), name: 'Roadmap' },
+      { task: () => generateSlides(userPrompt, researchFiles), name: 'Slides' },
+      { task: () => generateDocument(userPrompt, researchFiles), name: 'Document' },
+      { task: () => generateResearchAnalysis(userPrompt, researchFiles), name: 'ResearchAnalysis' }
+    ];
+
+    const [roadmap, slides, document, researchAnalysis] = await apiQueue.runAll(tasks);
 
     return { roadmap, slides, document, researchAnalysis };
   } catch (error) {
