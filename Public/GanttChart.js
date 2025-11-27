@@ -78,7 +78,10 @@ export class GanttChart {
     // Render UI components
     this.components.addHeaderSVG(this.chartWrapper, this.footerSVG);
 
-    const { titleContainer, titleElement } = this.components.addTitle(this.chartWrapper, this.ganttData);
+    // Create the header menu (glassmorphic three-dot menu)
+    const headerMenu = this.components.createHeaderMenu(this.isEditMode);
+
+    const { titleContainer, titleElement } = this.components.addTitle(this.chartWrapper, this.ganttData, headerMenu);
     this.titleContainer = titleContainer;
     this.titleElement = titleElement;
 
@@ -95,11 +98,7 @@ export class GanttChart {
     this.legendElement = this.components.addLegend(this.chartWrapper, this.ganttData);
     this.components.addFooterSVG(this.chartWrapper, this.footerSVG);
 
-    // Create export buttons
-    const exportContainer = this.components.createExportButtons(this.isEditMode);
-
     this.container.appendChild(this.chartWrapper);
-    this.container.appendChild(exportContainer);
 
     // Add research analysis
     this.analysis.addResearchAnalysis(this.container, this.ganttData);
