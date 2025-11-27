@@ -40,7 +40,8 @@ export async function fetchWithRetry(url, options = {}) {
     return response;
   }, { maxRetries: 3, initialDelay: 1000 });
 }
-export function logError(error, context = {}) {
+export function logError(_error, _context = {}) {
+  // Stub: Error logging handled by browser console in production
 }
 export function showErrorNotification(error, options = {}) {
   const { onRetry = null, dismissible = true } = options;

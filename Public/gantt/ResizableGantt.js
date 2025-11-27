@@ -63,7 +63,7 @@ export class ResizableGantt extends InteractiveGanttHandler {
     this.state.bar.style.gridColumn = `${newStartCol} / ${newEndCol}`;
   }
 
-  async _handleMouseUp(event) {
+  async _handleMouseUp(_event) {
     if (!this.state) return;
 
     const { startCol: newStartCol, endCol: newEndCol } = this.parseGridColumn(this.state.bar.style.gridColumn);
@@ -77,7 +77,7 @@ export class ResizableGantt extends InteractiveGanttHandler {
           await this.callback(this.buildTaskInfo(newStartCol, newEndCol, {
             resizeHandle: this.state.handle
           }));
-        } catch (error) {
+        } catch (_error) {
           this.rollback();
         }
       }

@@ -13,7 +13,8 @@ export function measurePerformance(name, startMark, endMark) {
   metrics.measures.set(name, duration);
   return duration;
 }
-export function logPerformanceMetrics(label = 'Performance Metrics') {
+export function logPerformanceMetrics(_label = 'Performance Metrics') {
+  // Stub: Metrics logging disabled in production
 }
 export function reportWebVitals(callback) {
   if (!('PerformanceObserver' in window)) return;
@@ -34,7 +35,9 @@ export function reportWebVitals(callback) {
       for (const entry of list.getEntries()) if (!entry.hadRecentInput) clsValue += entry.value;
       callback({ name: 'CLS', value: clsValue, rating: getRating(clsValue, [0.1, 0.25]) });
     }).observe({ entryTypes: ['layout-shift'] });
-  } catch (e) {}
+  } catch (_e) {
+    // PerformanceObserver not supported
+  }
 }
 export function debounce(func, wait) {
   let timeout;

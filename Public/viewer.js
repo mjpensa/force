@@ -133,7 +133,8 @@ class ContentViewer {
       });
       this._setupKeyboardShortcuts();
       if (window.location.search.includes('debug=true')) {
-        reportWebVitals((vital) => {
+        reportWebVitals((_vital) => {
+          // Web vitals reported for debug mode
         });
       }
       this.sessionId = this._getSessionIdFromURL();
@@ -147,7 +148,7 @@ class ContentViewer {
       await this._handleRouteChange();
       this._startBackgroundStatusPolling();
       markPerformance('viewer-init-end');
-      const initTime = measurePerformance('viewer-initialization', 'viewer-init-start', 'viewer-init-end');
+      measurePerformance('viewer-initialization', 'viewer-init-start', 'viewer-init-end');
     } catch (error) {
       this._showError('Failed to load content', error.message);
     }
@@ -171,7 +172,8 @@ class ContentViewer {
     this.sidebarNav = new SidebarNav({
       activeView: initialView,
       sessionId: this.sessionId,
-      onNavigate: (view) => {
+      onNavigate: (_view) => {
+        // Navigation handled by hash change listener
       }
     });
     const sidebarElement = this.sidebarNav.render();
@@ -285,7 +287,7 @@ class ContentViewer {
       try {
         viewData = await this.stateManager.loadView(viewName);
         markPerformance(`api-${viewName}-end`);
-        const apiTime = measurePerformance(`api-${viewName}`, `api-${viewName}-start`, `api-${viewName}-end`);
+        measurePerformance(`api-${viewName}`, `api-${viewName}-start`, `api-${viewName}-end`);
       } catch (error) {
         const isProcessing = error.message.includes('processing') ||
                             error.message.includes('being generated') ||
@@ -325,10 +327,10 @@ class ContentViewer {
           break;
       }
       markPerformance(`render-${viewName}-end`);
-      const renderTime = measurePerformance(`render-${viewName}`, `render-${viewName}-start`, `render-${viewName}-end`);
+      measurePerformance(`render-${viewName}`, `render-${viewName}-start`, `render-${viewName}-end`);
       this.currentView = viewName;
       markPerformance(`view-${viewName}-end`);
-      const totalTime = measurePerformance(`view-${viewName}-total`, `view-${viewName}-start`, `view-${viewName}-end`);
+      measurePerformance(`view-${viewName}-total`, `view-${viewName}-start`, `view-${viewName}-end`);
       setTimeout(() => {
         initLazyLoading('img[data-src]');
       }, 0);
@@ -523,7 +525,8 @@ class ContentViewer {
       this._processingPollTimeouts[viewName] = setTimeout(() => {
         this._pollForProcessingComplete(viewName, attempt + 1);
       }, interval);
-    } catch (error) {
+    } catch (_error) {
+      // Network error - continue polling with longer interval
       this._processingPollTimeouts[viewName] = setTimeout(() => {
         this._pollForProcessingComplete(viewName, attempt + 1);
       }, interval * 2);
@@ -707,9 +710,10 @@ class ContentViewer {
     return urlParams.get('sessionId');
   }
   _addStatusIndicatorStyles() {
-    
+    // Stub: Status indicator styles now handled by CSS
   }
   _updateProgressLine() {
+    // Stub: Progress line updates handled by SidebarNav
   }
   _updateTabStatus(viewName, status) {
     if (this.sidebarNav) {
@@ -723,7 +727,7 @@ class ContentViewer {
 
     // Use unified polling service for efficient background status checks
     views.forEach(viewName => {
-      this.pollingService.start(`bg-${viewName}`, async ({ status, attempt }) => {
+      this.pollingService.start(`bg-${viewName}`, async ({ status, attempt: _attempt }) => {
         if (status === 'timeout') {
           this._updateTabStatus(viewName, 'failed');
           return { done: true };
@@ -760,7 +764,7 @@ class ContentViewer {
           }
 
           return { done: false };
-        } catch (error) {
+        } catch (_error) {
           return { done: false }; // Continue polling on network errors
         }
       }, { baseInterval: 3000, maxAttempts: 100 });
