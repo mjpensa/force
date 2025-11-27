@@ -462,7 +462,7 @@ body.view-roadmap .app-shell {
   right: -8%;
   width: 45%;
   max-width: 500px;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
   contain: layout style;
 }
