@@ -1,27 +1,7 @@
 import { CONFIG, getGeminiApiUrl } from './config.js';
 import { jsonrepair } from 'jsonrepair';
 const API_URL = getGeminiApiUrl();
-function parseRetryDelay(errorData) {
-  try {
-    if (!errorData || !errorData.error || !errorData.error.details) {
-      return null;
-    }
-    const retryInfo = errorData.error.details.find(
-      detail => detail['@type'] === 'type.googleapis.com/google.rpc.RetryInfo'
-    );
-    if (!retryInfo || !retryInfo.retryDelay) {
-      return null;
-    }
-    const delay = retryInfo.retryDelay;
-    const seconds = parseFloat(delay.replace('s', ''));
-    if (isNaN(seconds)) {
-      return null;
-    }
-    return Math.ceil(seconds * 1000); // Convert to milliseconds and round up
-  } catch (e) {
-    return null;
-  }
-}
+
 function isRateLimitError(error) {
   return error.message && error.message.includes('status: 429');
 }

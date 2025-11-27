@@ -61,16 +61,16 @@ export const uploadMiddleware = multer({
     const allowedMimes = CONFIG.FILES.ALLOWED_MIMES;
     const fileExtension = getFileExtension(file.originalname);
     const allowedExtensions = CONFIG.FILES.ALLOWED_EXTENSIONS;
+
+    // Security: Always validate extension to prevent MIME type spoofing
+    if (!allowedExtensions.includes(fileExtension)) {
+      cb(new Error(CONFIG.ERRORS.INVALID_FILE_EXTENSION(fileExtension)));
+      return;
+    }
+
+    // Accept if MIME type is allowed (includes octet-stream for .md files)
     if (allowedMimes.includes(file.mimetype)) {
-      if (file.mimetype === 'application/octet-stream') {
-        if (allowedExtensions.includes(fileExtension)) {
-          cb(null, true);
-        } else {
-          cb(new Error(CONFIG.ERRORS.INVALID_FILE_EXTENSION(fileExtension)));
-        }
-      } else {
-        cb(null, true);
-      }
+      cb(null, true);
     } else {
       cb(new Error(CONFIG.ERRORS.INVALID_FILE_TYPE(file.mimetype)));
     }

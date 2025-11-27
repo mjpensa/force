@@ -1,6 +1,6 @@
-import { CONFIG } from './config.js';
-const SUPPORTED_FILE_MIMES = CONFIG.FILES.SUPPORTED_MIMES;
-const SUPPORTED_FILE_EXTENSIONS = CONFIG.FILES.SUPPORTED_EXTENSIONS;
+import { CONFIG, FILE_TYPES } from './config.js';
+const SUPPORTED_FILE_MIMES = FILE_TYPES.MIMES;
+const SUPPORTED_FILE_EXTENSIONS = FILE_TYPES.EXTENSIONS;
 const SUPPORTED_FILES_STRING = SUPPORTED_FILE_EXTENSIONS.join(', ');
 function displayError(message) {
     const errorMessage = document.getElementById('error-message');
