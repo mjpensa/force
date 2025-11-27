@@ -1,9 +1,7 @@
 /**
  * SidebarNav - Glassmorphic Icon Rail Navigation
- *
  * A beautiful, persistent vertical navigation bar with icons that expands on hover.
  * Features glassmorphic design with blur, transparency, glow effects, and smooth animations.
- *
  * Features:
  * - Collapsed state shows only icons (72px width)
  * - Expands on hover to show labels (240px width)

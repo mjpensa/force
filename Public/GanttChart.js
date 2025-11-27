@@ -49,7 +49,6 @@ export class GanttChart {
     const renderTimer = new PerformanceTimer('Gantt Chart Render');
 
     if (!this.container) {
-      console.error('Could not find chart container!');
       return;
     }
 
@@ -151,9 +150,7 @@ export class GanttChart {
     this._initializeDragToEdit();
 
     // Restore edit mode state if it was enabled before rendering
-    console.log('🔧 Checking edit mode state after render:', this.isEditMode);
     if (this.isEditMode) {
-      console.log('🔧 Restoring edit mode features after re-render');
       this._enableAllEditFeatures();
     }
 
@@ -314,7 +311,6 @@ export class GanttChart {
       cell.style.top = `${titleHeight}px`;
     });
 
-    console.log(`✓ Sticky header positioned at ${titleHeight}px below title`);
   }
 
   /**
@@ -328,7 +324,6 @@ export class GanttChart {
     const VIRTUALIZATION_THRESHOLD = 100;
 
     if (totalRows > VIRTUALIZATION_THRESHOLD) {
-      console.log(`📊 Large dataset detected (${totalRows} rows). Enabling virtualization for better performance.`);
       this._createVirtualizedRows(numCols);
       return;
     }
@@ -525,7 +520,6 @@ export class GanttChart {
     scrollContainer.appendChild(viewport);
     this.gridElement.appendChild(scrollContainer);
 
-    console.log(`✓ Virtualization enabled: Rendering ${this.virtualScroll.visibleEnd} of ${this.ganttData.data.length} rows initially`);
   }
 
   /**
@@ -805,7 +799,6 @@ export class GanttChart {
     // Replace the original data with sorted data
     this.ganttData.data = sortedData;
 
-    console.log('✓ Tasks sorted within swimlanes by start date (earliest first)');
   }
 
   /**
@@ -956,7 +949,6 @@ export class GanttChart {
   _addResearchAnalysis() {
     // Check if research analysis data exists
     if (!this.ganttData.researchAnalysis) {
-      console.log('No research analysis data available');
       return;
     }
 
@@ -1074,7 +1066,6 @@ export class GanttChart {
     // Append to container (after chart wrapper and export buttons)
     this.container.appendChild(analysisWrapper);
 
-    console.log('✓ Research analysis section rendered (collapsible)');
   }
 
   /**
@@ -1112,7 +1103,6 @@ export class GanttChart {
     const editModeBtn = document.getElementById('edit-mode-toggle-btn');
 
     if (!editModeBtn) {
-      console.warn('Edit mode toggle button not found.');
       return;
     }
 
@@ -1128,13 +1118,11 @@ export class GanttChart {
         // ACCESSIBILITY: Announce mode change to screen readers
         this._announceToScreenReader('Edit mode enabled. You can now drag, resize, and customize chart elements.');
 
-        console.log('✓ Edit mode enabled');
       } else {
         this._disableAllEditFeatures();
         // ACCESSIBILITY: Announce mode change to screen readers
         this._announceToScreenReader('Edit mode disabled. Chart is now read-only.');
 
-        console.log('✓ Edit mode disabled');
       }
     });
   }
@@ -1148,7 +1136,6 @@ export class GanttChart {
     const chartContainer = document.getElementById('gantt-chart-container');
 
     if (!exportBtn || !chartContainer) {
-      console.warn('Export button or chart container not found.');
       return;
     }
 
@@ -1198,7 +1185,6 @@ export class GanttChart {
 
         // Performance logging
         const duration = Math.round(performance.now() - startTime);
-        console.log(`✓ PNG export completed in ${duration}ms`);
 
         // Update button state
         exportBtn.textContent = 'Export as PNG';
@@ -1207,7 +1193,6 @@ export class GanttChart {
         // Remove loading overlay
         document.body.removeChild(loadingOverlay);
       } catch (err) {
-        console.error('Error exporting canvas:', err);
         exportBtn.textContent = 'Export as PNG';
         exportBtn.disabled = false;
 
@@ -1280,7 +1265,6 @@ export class GanttChart {
     const chartContainer = document.getElementById('gantt-chart-container');
 
     if (!exportBtn || !chartContainer) {
-      console.warn('SVG export button or chart container not found.');
       return;
     }
 
@@ -1348,7 +1332,6 @@ export class GanttChart {
 
         // Performance logging
         const duration = Math.round(performance.now() - startTime);
-        console.log(`✓ SVG export completed in ${duration}ms`);
 
         // Update button state
         exportBtn.textContent = 'Export as SVG';
@@ -1357,7 +1340,6 @@ export class GanttChart {
         // Remove loading overlay
         document.body.removeChild(loadingOverlay);
       } catch (err) {
-        console.error('Error exporting SVG:', err);
         exportBtn.textContent = 'Export as SVG';
         exportBtn.disabled = false;
 
@@ -1418,8 +1400,6 @@ export class GanttChart {
 
     return overlay;
   }
-
-
   /**
    * FEATURE #8: Adds Copy Share URL button functionality
    * Copies the current chart URL to clipboard for sharing
@@ -1428,7 +1408,6 @@ export class GanttChart {
   _addCopyUrlListener() {
     const copyUrlBtn = document.getElementById('copy-url-btn');
     if (!copyUrlBtn) {
-      console.warn('Copy URL button not found.');
       return;
     }
 
@@ -1457,9 +1436,7 @@ export class GanttChart {
           copyUrlBtn.style.backgroundColor = ''; // Reset to default
         }, 2000);
 
-        console.log('✓ Chart URL copied to clipboard:', currentUrl);
       } catch (err) {
-        console.error('Failed to copy URL:', err);
 
         // Fallback: Show URL in alert
         alert(`Copy this URL to share:\n\n${currentUrl}`);
@@ -1541,7 +1518,6 @@ export class GanttChart {
           // T = Timeline (navigate to roadmap view)
           if (this.router) {
             this.router.navigate('roadmap');
-            console.log('⌨️ Keyboard shortcut: T (Timeline/Roadmap)');
           }
           break;
 
@@ -1551,10 +1527,7 @@ export class GanttChart {
       }
     });
 
-    console.log('⌨️ Keyboard shortcuts enabled: T=Timeline');
   }
-
-
   /**
    * ACCESSIBILITY: Announces messages to screen readers via ARIA live region
    * @param {string} message - The message to announce
@@ -1627,7 +1600,6 @@ export class GanttChart {
       this.gridElement.appendChild(todayLine);
 
     } catch (e) {
-      console.error("Error calculating 'Today' line position:", e);
     }
   }
 
@@ -1638,13 +1610,11 @@ export class GanttChart {
    */
   _initializeDragToEdit() {
     if (!this.gridElement) {
-      console.warn('Cannot initialize drag-to-edit: gridElement not found');
       return;
     }
 
     // Create callback for task updates (drag)
     const onTaskUpdate = async (taskInfo) => {
-      console.log('Task updated via drag:', taskInfo);
 
       // Persist to server if sessionId is available
       if (taskInfo.sessionId) {
@@ -1660,9 +1630,7 @@ export class GanttChart {
           }
 
           const result = await response.json();
-          console.log('✓ Task update persisted to server:', result);
         } catch (error) {
-          console.error('Failed to persist task update:', error);
           throw error; // Re-throw to trigger rollback in DraggableGantt
         }
       }
@@ -1670,7 +1638,6 @@ export class GanttChart {
 
     // Phase 2: Create callback for task resize
     const onTaskResize = async (taskInfo) => {
-      console.log('Task resized:', taskInfo);
 
       // Persist to server if sessionId is available
       if (taskInfo.sessionId) {
@@ -1686,9 +1653,7 @@ export class GanttChart {
           }
 
           const result = await response.json();
-          console.log('✓ Task resize persisted to server:', result);
         } catch (error) {
-          console.error('Failed to persist task resize:', error);
           throw error; // Re-throw to trigger rollback in ResizableGantt
         }
       }
@@ -1696,7 +1661,6 @@ export class GanttChart {
 
     // Phase 5: Create callback for color change
     const onColorChange = async (taskInfo) => {
-      console.log('Bar color changed:', taskInfo);
 
       // Persist to server if sessionId is available
       if (taskInfo.sessionId) {
@@ -1712,12 +1676,10 @@ export class GanttChart {
           }
 
           const result = await response.json();
-          console.log('✓ Color change persisted to server:', result);
 
           // Refresh legend to include new color if needed
           this._refreshLegend();
         } catch (error) {
-          console.error('Failed to persist color change:', error);
           throw error; // Re-throw to trigger rollback in ContextMenu
         }
       }
@@ -1749,7 +1711,6 @@ export class GanttChart {
 
     // Edit features are disabled by default (edit mode is off)
     // They will be enabled when user toggles edit mode
-    console.log('✓ Drag-to-edit, bar resizing, and context menu functionality initialized (disabled by default)');
   }
 
   /**
@@ -1792,7 +1753,6 @@ export class GanttChart {
    * @private
    */
   _enableAllEditFeatures() {
-    console.log('🔧 _enableAllEditFeatures called, instances:', {
       draggable: !!this.draggableGantt,
       resizable: !!this.resizableGantt,
       contextMenu: !!this.contextMenu
@@ -1864,7 +1824,6 @@ export class GanttChart {
   enableDragToEdit() {
     if (this.draggableGantt) {
       this.draggableGantt.enableDragging();
-      console.log('Drag-to-edit enabled');
     }
   }
 
@@ -1875,7 +1834,6 @@ export class GanttChart {
   disableDragToEdit() {
     if (this.draggableGantt) {
       this.draggableGantt.disableDragging();
-      console.log('Drag-to-edit disabled');
     }
   }
 
@@ -1903,7 +1861,6 @@ export class GanttChart {
     // Re-render the chart to show the new row
     this.render();
 
-    console.log(`✓ Added new task row after index ${afterIndex}`);
   }
 
   /**
@@ -1915,13 +1872,11 @@ export class GanttChart {
     const taskData = this.ganttData.data[taskIndex];
 
     if (!taskData) {
-      console.error('Cannot remove task: invalid index');
       return;
     }
 
     // Don't allow removing swimlanes
     if (taskData.isSwimlane) {
-      console.warn('Cannot remove swimlane rows');
       return;
     }
 
@@ -1936,7 +1891,6 @@ export class GanttChart {
     // Re-render the chart
     this.render();
 
-    console.log(`✓ Removed task row at index ${taskIndex}`);
   }
 
   /**
@@ -1993,9 +1947,6 @@ export class GanttChart {
       if (newText && newText !== originalText) {
         // Update data model
         this.ganttData.data[taskIndex].title = newText;
-
-        console.log(`✓ Title updated: "${originalText}" -> "${newText}"`);
-
         // TODO: Persist to server in Phase 6
         // await this._persistTitleChange(taskIndex, newText);
       } else {
@@ -2068,9 +2019,6 @@ export class GanttChart {
       if (newText && newText !== originalText) {
         // Update data model
         this.ganttData.title = newText;
-
-        console.log(`✓ Chart title updated: "${originalText}" -> "${newText}"`);
-
         // TODO: Persist to server if needed
       } else {
         // Revert if empty or unchanged
@@ -2130,7 +2078,6 @@ export class GanttChart {
           color: color,
           label: `[Define ${this._formatColorName(color)}]`
         });
-        console.log(`✓ Added new color "${color}" to legend`);
       }
     });
   }
@@ -2183,9 +2130,6 @@ export class GanttChart {
       if (newText && newText !== originalText) {
         // Update data model
         this.ganttData.legend[legendIndex].label = newText;
-
-        console.log(`✓ Legend label updated: "${originalText}" -> "${newText}"`);
-
         // TODO: Persist to server if needed
       } else {
         // Revert if empty or unchanged

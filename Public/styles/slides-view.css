@@ -1,18 +1,15 @@
 /**
  * Slides View Styles
  * BIP branded presentation template - 3 slide types only
- *
  * Slide Types:
  * 1. textTwoColumn - Title left, paragraphs right
  * 2. textThreeColumn - Title left, 3 text columns
  * 3. textWithCards - Title/text left, 2x3 numbered cards right
- *
  * Colors:
- * - Navy: #0C2340 (text, accents)
+ * - Navy: var(--color-navy-deep) (text, accents)
  * - Red: #DA291C (section labels, card numbers)
- * - White: #FFFFFF (background)
+ * - White: var(--glass-text-primary) (background)
  * - Gray: #6B7280, #9CA3AF (pattern)
- *
  * Fonts: Work Sans (Thin, Light, Regular, Medium, SemiBold)
  */
 
@@ -46,7 +43,7 @@
 }
 
 .slide {
-  background: #FFFFFF;
+  background: var(--glass-text-primary);
   width: 100%;
   max-width: 960px;
   aspect-ratio: 16 / 9;
@@ -99,7 +96,7 @@
   width: 100%;
   height: 100%;
   background:
-    linear-gradient(135deg, #0C2340 0%, #0C2340 100%);
+    linear-gradient(135deg, var(--color-navy-deep) 0%, var(--color-navy-deep) 100%);
   clip-path: polygon(100% 0, 30% 0, 100% 80%);
 }
 
@@ -177,7 +174,7 @@
   font-style: italic;
   font-family: 'Work Sans', Arial, sans-serif;
   line-height: 1.1;
-  color: #0C2340;
+  color: var(--color-navy-deep);
   margin: 0;
   max-width: 100%;
 }
@@ -210,7 +207,7 @@
   font-weight: 400;
   font-family: 'Work Sans', Arial, sans-serif;
   line-height: 1.7;
-  color: #0C2340;
+  color: var(--color-navy-deep);
   margin: 0;
 }
 
@@ -244,7 +241,7 @@
   font-weight: 400;
   font-family: 'Work Sans', Arial, sans-serif;
   line-height: 1.6;
-  color: #0C2340;
+  color: var(--color-navy-deep);
   margin: 0;
 }
 
@@ -271,7 +268,7 @@
   font-weight: 400;
   font-family: 'Work Sans', Arial, sans-serif;
   line-height: 1.6;
-  color: #0C2340;
+  color: var(--color-navy-deep);
   margin: 0;
 }
 
@@ -293,7 +290,7 @@
   width: 24px;
   height: 24px;
   background: #DA291C;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   font-size: 12px;
   font-weight: 600;
   font-family: 'Work Sans', Arial, sans-serif;
@@ -308,7 +305,7 @@
   font-size: clamp(12px, 1.3vw, 14px);
   font-weight: 600;
   font-family: 'Work Sans', Arial, sans-serif;
-  color: #0C2340;
+  color: var(--color-navy-deep);
   margin: 0;
   line-height: 1.2;
 }
@@ -454,7 +451,7 @@
   aspect-ratio: 16 / 9;
   border: 2px solid var(--glass-white-20);
   border-radius: var(--radius-glass-sm);
-  background: #FFFFFF;
+  background: var(--glass-text-primary);
   cursor: pointer;
   transition: all var(--transition-fast);
   padding: 0;
@@ -483,7 +480,7 @@
   align-items: center;
   justify-content: center;
   font-size: var(--text-2xl);
-  color: #0C2340;
+  color: var(--color-navy-deep);
   font-weight: var(--weight-medium);
   font-family: 'Work Sans', Arial, sans-serif;
 }

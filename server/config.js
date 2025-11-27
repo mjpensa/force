@@ -13,7 +13,6 @@ import 'dotenv/config';
 function validateEnvironment() {
   // Skip validation in test environment
   if (process.env.NODE_ENV === 'test') {
-    console.log('🧪 Test environment detected - skipping strict validation');
     // Set dummy API key if not present
     if (!process.env.API_KEY) {
       process.env.API_KEY = 'test_api_key_for_testing';
@@ -25,18 +24,14 @@ function validateEnvironment() {
   const missing = required.filter(key => !process.env[key]);
 
   if (missing.length > 0) {
-    console.error('❌ Missing required environment variables:', missing.join(', '));
-    console.error('Please create a .env file with the following:');
     missing.forEach(key => console.error(`  ${key}=your_value_here`));
     process.exit(1);
   }
 
   // Validate API_KEY format
   if (process.env.API_KEY && process.env.API_KEY.length < 10) {
-    console.warn('⚠️  API_KEY looks suspicious - might be invalid (too short)');
   }
 
-  console.log('✅ Environment variables validated');
 }
 
 // Validate on module load

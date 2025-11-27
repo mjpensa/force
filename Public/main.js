@@ -246,8 +246,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Check if all required elements exist
   if (!ganttForm || !uploadInput || !dropzoneLabel) {
-    console.error('Required DOM elements not found. Please clear your browser cache and reload.');
-    console.error('Missing elements:', {
       ganttForm: !!ganttForm,
       uploadInput: !!uploadInput,
       dropzoneLabel: !!dropzoneLabel
@@ -337,7 +335,6 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
   const poll = async () => {
     // Prevent concurrent poll requests
     if (isPolling) {
-      console.warn('Poll already in progress, skipping...');
       return;
     }
 
@@ -363,14 +360,12 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
             errorText = err.message || err.error || errorText;
             // Log hint for debugging if present
             if (err.hint) {
-              console.warn('Server hint:', err.hint);
             }
           } else {
             const text = await response.text();
             errorText = text.substring(0, 200) || errorText;
           }
         } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
         }
         throw new Error(errorText);
       }
@@ -378,7 +373,6 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
       const content = await response.json();
 
       // Debug: Log content response
-      console.log(`Poll attempt ${attempts}, ${viewType} status:`, content.status);
 
       // Update button text with progress
       if (generateBtn) {
@@ -387,7 +381,6 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
 
       // Check content status
       if (content.status === 'completed') {
-        console.log(`${viewType} content generated successfully`);
         return content.data; // Return the content data
       } else if (content.status === 'error' || content.status === 'failed') {
         throw new Error(content.error || `${viewType} generation failed with unknown error`);
@@ -398,7 +391,6 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
         return await poll(); // Recursive call
       } else {
         // Unknown status - treat as error
-        console.error('Unknown content status:', content.status);
         throw new Error(`Unknown content status: ${content.status}`);
       }
 
@@ -407,7 +399,6 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
 
       // If it's a network error, retry after a short delay
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        console.warn(`Network error on attempt ${attempts}, retrying...`);
         await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
         return await poll(); // Retry
       }
@@ -474,7 +465,6 @@ async function handleChartGenerate(event) {
     // Check if elements exist
     if (!uploadInput || !promptInput) {
       displayError('Error: Page not loaded correctly. Please clear your browser cache and reload.');
-      console.error('Missing elements in handleChartGenerate:', { uploadInput: !!uploadInput, promptInput: !!promptInput });
       return;
     }
 
@@ -544,7 +534,6 @@ async function handleChartGenerate(event) {
           errorText = text.substring(0, 200) || errorText; // Limit error length
         }
       } catch (parseError) {
-        console.error('Failed to parse error response:', parseError);
       }
       throw new Error(errorText);
     }
@@ -556,65 +545,45 @@ async function handleChartGenerate(event) {
     if (!sessionId) {
       throw new Error('Server did not return a session ID');
     }
-
-    console.log('Content generation started for session:', sessionId);
-    console.log('Generating all three views:', generationResponse.jobIds);
-
     // 8. Poll for roadmap completion (other views continue in background)
     // We'll poll the /api/content/:sessionId/roadmap endpoint
     const ganttData = await pollForPhase2Content(sessionId, 'roadmap', generateBtn);
 
     // Debug: Log the received data structure
-    console.log('Received ganttData:', ganttData);
-    console.log('Has timeColumns:', !!ganttData?.timeColumns);
-    console.log('Has data:', !!ganttData?.data);
 
     // 8. Validate the data structure with detailed error reporting
     if (!ganttData || typeof ganttData !== 'object') {
-      console.error('Invalid data structure - ganttData is not an object. Type:', typeof ganttData, 'Value:', ganttData);
       throw new Error('Invalid chart data structure: Expected object, received ' + typeof ganttData);
     }
 
     // Validate standard Gantt chart structure
-    console.log('📊 Validating chart data structure');
 
     if (!ganttData.timeColumns) {
-      console.error('Invalid data structure - missing timeColumns. Keys:', Object.keys(ganttData), 'timeColumns value:', ganttData.timeColumns);
       throw new Error('Invalid chart data structure: Missing timeColumns field');
     }
 
     if (!Array.isArray(ganttData.timeColumns)) {
-      console.error('Invalid data structure - timeColumns is not an array. Type:', typeof ganttData.timeColumns, 'Value:', ganttData.timeColumns);
       throw new Error('Invalid chart data structure: timeColumns is not an array (type: ' + typeof ganttData.timeColumns + ')');
     }
 
     if (!ganttData.data) {
-      console.error('Invalid data structure - missing data. Keys:', Object.keys(ganttData), 'data value:', ganttData.data);
       throw new Error('Invalid chart data structure: Missing data field');
     }
 
     if (!Array.isArray(ganttData.data)) {
-      console.error('Invalid data structure - data is not an array. Type:', typeof ganttData.data, 'Value:', ganttData.data);
       throw new Error('Invalid chart data structure: data is not an array (type: ' + typeof ganttData.data + ')');
     }
-
-    console.log('✓ Data structure validation passed - timeColumns:', ganttData.timeColumns.length, 'data:', ganttData.data.length);
-
     // Check for empty data
     if (ganttData.timeColumns.length === 0 || ganttData.data.length === 0) {
-      console.warn("AI returned valid but empty data.", ganttData);
       throw new Error('The AI was unable to find any tasks or time columns in the provided documents. Please check your files or try a different prompt.');
     }
 
     // 9. Open in new tab - Phase 6 three-view viewer
     // Use sessionId to open the unified viewer with all three views
     window.open(`/viewer.html?sessionId=${sessionId}#roadmap`, '_blank');
-    console.log('Opening three-view viewer with sessionId:', sessionId);
-    console.log('All three views (roadmap, slides, document) will be available when generation completes');
     
 
   } catch (error) {
-    console.error("Error generating chart:", error);
     errorMessage.textContent = `Error: ${error.message}`;
     errorMessage.style.display = 'block';
   } finally {

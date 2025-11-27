@@ -31,7 +31,6 @@ export class ChatInterface {
    */
   render() {
     if (!this.container) {
-      console.error('Chat container not found');
       return;
     }
 
@@ -114,7 +113,6 @@ export class ChatInterface {
             errorMessage = text.substring(0, 200) || errorMessage;
           }
         } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
         }
         throw new Error(errorMessage);
       }
@@ -135,7 +133,6 @@ export class ChatInterface {
       }
 
     } catch (error) {
-      console.error('Error asking question:', error);
       // Replace spinner with error (using DOM methods to prevent XSS)
       const spinnerEl = document.getElementById(spinnerId);
       const errorSpan = document.createElement('span');
@@ -191,7 +188,6 @@ export class ChatInterface {
       msg.textContent = content;
     } else {
       // Unknown message type - use textContent for safety
-      console.warn(`Unknown message type: ${type}. Using textContent for safety.`);
       msg.textContent = content;
     }
 

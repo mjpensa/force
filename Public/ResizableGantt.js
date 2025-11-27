@@ -39,7 +39,6 @@ export class ResizableGantt {
     document.addEventListener('mousemove', this._handleMouseMove);
     document.addEventListener('mouseup', this._handleMouseUp);
 
-    console.log('✓ Bar resizing enabled');
   }
 
   /**
@@ -51,7 +50,6 @@ export class ResizableGantt {
     document.removeEventListener('mousemove', this._handleMouseMove);
     document.removeEventListener('mouseup', this._handleMouseUp);
 
-    console.log('✓ Bar resizing disabled');
   }
 
   /**
@@ -119,7 +117,6 @@ export class ResizableGantt {
     document.body.style.cursor = 'ew-resize';
     document.body.classList.add('resizing');
 
-    console.log('🔧 Resize started:', {
       handle: handle,
       taskName: this.ganttData.data[taskIndex].title,
       originalStartCol: startCol,
@@ -176,7 +173,6 @@ export class ResizableGantt {
     const gridColumnStyle = this.resizeState.bar.style.gridColumn;
     const [newStartCol, newEndCol] = gridColumnStyle.split('/').map(v => parseInt(v.trim()));
 
-    console.log('🔧 Resize completed:', {
       originalStartCol: this.resizeState.originalStartCol,
       originalEndCol: this.resizeState.originalEndCol,
       newStartCol: newStartCol,
@@ -211,9 +207,7 @@ export class ResizableGantt {
 
         try {
           await this.onTaskResize(taskInfo);
-          console.log('✓ Task resize persisted to server:', taskInfo);
         } catch (error) {
-          console.error('Failed to persist task resize:', error);
           // Rollback on error
           this.resizeState.bar.style.gridColumn = this.resizeState.originalGridColumn;
           this.ganttData.data[this.resizeState.taskIndex].bar.startCol = this.resizeState.originalStartCol;

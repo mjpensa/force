@@ -40,7 +40,6 @@ export class DraggableGantt {
     document.addEventListener('mousemove', this._handleMouseMove);
     document.addEventListener('mouseup', this._handleMouseUp);
 
-    console.log('✓ Bar dragging enabled (mouse events)');
   }
 
   /**
@@ -69,9 +68,6 @@ export class DraggableGantt {
 
     const barArea = bar.closest('.gantt-bar-area');
     const gridColumnStyle = bar.style.gridColumn;
-
-    console.log('🚀 Drag started! Bar gridColumn:', gridColumnStyle);
-
     // Parse grid column (e.g., "2 / 5" -> startCol: 2, endCol: 5)
     const [startCol, endCol] = gridColumnStyle.split('/').map(v => parseInt(v.trim()));
     const duration = endCol - startCol;
@@ -80,7 +76,6 @@ export class DraggableGantt {
     const taskIndex = parseInt(barArea.getAttribute('data-task-index'));
 
     if (taskIndex === -1 || isNaN(taskIndex)) {
-      console.error('Could not find task for dragged bar');
       return;
     }
 
@@ -98,7 +93,6 @@ export class DraggableGantt {
       originalGridColumn: gridColumnStyle
     };
 
-    console.log('📦 Dragged task info:', {
       taskName: this.dragState.taskData.title,
       rowId: rowId,
       originalStartCol: startCol,
@@ -150,14 +144,10 @@ export class DraggableGantt {
    */
   async _handleMouseUp(event) {
     if (!this.dragState) return;
-
-    console.log('🎯 Drag completed!');
-
     // Parse final grid column
     const gridColumnStyle = this.dragState.bar.style.gridColumn;
     const [newStartCol, newEndCol] = gridColumnStyle.split('/').map(v => parseInt(v.trim()));
 
-    console.log('📍 Final position:', {
       newStartCol,
       newEndCol,
       duration: this.dragState.duration,
@@ -192,9 +182,7 @@ export class DraggableGantt {
 
         try {
           await this.onTaskUpdate(taskInfo);
-          console.log('✓ Task position updated successfully:', taskInfo);
         } catch (error) {
-          console.error('Failed to persist task update:', error);
           // Rollback on error
           this.dragState.bar.style.gridColumn = this.dragState.originalGridColumn;
           this.ganttData.data[this.dragState.taskIndex].bar.startCol = this.dragState.originalStartCol;
@@ -214,8 +202,6 @@ export class DraggableGantt {
 
     this.dragState = null;
   }
-
-
 
   /**
    * Creates a visual indicator during drag
@@ -261,6 +247,5 @@ export class DraggableGantt {
     document.removeEventListener('mousemove', this._handleMouseMove);
     document.removeEventListener('mouseup', this._handleMouseUp);
 
-    console.log('✓ Bar dragging disabled');
   }
 }

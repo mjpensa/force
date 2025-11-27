@@ -17,7 +17,7 @@ html, body {
 }
 
 body {
-  background-color: #1A1A1A; /* Dark background for chart page */
+  background-color: var(--color-background-dark, #1A1A1A); /* Dark background for chart page */
   font-family: 'Work Sans', sans-serif;
 }
 
@@ -51,7 +51,7 @@ input:focus,
 textarea:focus,
 select:focus,
 .gantt-bar:focus {
-  outline: 3px solid #50AF7B; /* Green focus ring with 3px width */
+  outline: 3px solid var(--color-glass-success); /* Green focus ring with 3px width */
   outline-offset: 2px; /* 2px spacing from element */
 }
 
@@ -61,7 +61,7 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 3px solid #50AF7B;
+  outline: 3px solid var(--color-glass-success);
   outline-offset: 2px;
 }
 
@@ -70,7 +70,7 @@ select:focus-visible {
   position: absolute;
   top: -40px;
   left: 0;
-  background: #50AF7B;
+  background: var(--color-glass-success);
   color: white;
   padding: 8px 16px;
   text-decoration: none;
@@ -94,7 +94,7 @@ select:focus-visible {
   max-width: calc(100vw - 32px); /* SCALED: Prevent overflow beyond viewport (accounts for #chart-root padding) */
   border: 1px solid #0D0D0D; /* Darker border (using grid line color) */
   border-radius: 8px;
-  background-color: transparent; /* Changed from #0c2340 to remove blue bar */
+  background-color: transparent; /* Changed from var(--color-navy-deep) to remove blue bar */
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   overflow-x: auto; /* Allow horizontal scrolling */
   overflow-y: auto; /* Allow vertical scrolling for sticky header */
@@ -143,7 +143,7 @@ select:focus-visible {
   text-align: center;
   font-size: 1.0rem; /* SCALED: Was 1.425rem - reduced for compact display */
   font-weight: 700; /* Increased from 600 for better readability */
-  color: #FFFFFF; /* Text Color */
+  color: var(--glass-text-primary); /* Text Color */
   transition: all 0.2s;
   /* Note: padding, border, background, and border-radius are now on .gantt-title-container */
 }
@@ -159,7 +159,7 @@ select:focus-visible {
 /* Style for title when actively being edited */
 .gantt-title[contenteditable="true"],
 .gantt-title.editing {
-  outline: 2px solid #50AF7B;
+  outline: 2px solid var(--color-glass-success);
   outline-offset: 2px;
   background-color: rgba(80, 175, 123, 0.15);
   cursor: text;
@@ -184,10 +184,10 @@ select:focus-visible {
   font-weight: 600;
   padding: 2px 1px; /* SCALED: Was 3px 2px - reduced padding */
   text-align: center;
-  background-color: #0c2340; /* CHANGED to new color */
+  background-color: var(--color-navy-deep); /* CHANGED to new color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color (Correctly not white) */
   border-left: 0.5px solid #0D0D0D; /* Grid line color (CHANGED to black) */
-  color: #FFFFFF; /* Text Color */
+  color: var(--glass-text-primary); /* Text Color */
   position: sticky;
   top: var(--title-height, 50px); /* SCALED: Was 70px - reduced fallback */
   z-index: 15; /* Below title container (20), above bars (2) */
@@ -260,7 +260,7 @@ select:focus-visible {
 }
 
 .row-action-btn.add-task {
-  background-color: #50AF7B;
+  background-color: var(--color-glass-success);
   color: white;
 }
 
@@ -272,7 +272,7 @@ select:focus-visible {
 }
 
 .row-action-btn.delete-task {
-  background-color: #BA3930;
+  background-color: var(--color-accent-red, #BA3930);
   color: white;
 }
 
@@ -286,7 +286,7 @@ select:focus-visible {
 /* Phase 4: Editable label styles */
 .label-content[contenteditable="true"],
 .label-content.editing {
-  outline: 2px solid #50AF7B;
+  outline: 2px solid var(--color-glass-success);
   outline-offset: 2px;
   background-color: rgba(80, 175, 123, 0.1);
   border-radius: 4px;
@@ -302,8 +302,8 @@ select:focus-visible {
 
 .gantt-row-label.swimlane {
   font-weight: 700;
-  color: #FFFFFF; /* Text Color */
-  background-color: #0C2340; /* Set swimlane title background */
+  color: var(--glass-text-primary); /* Text Color */
+  background-color: var(--color-navy-deep); /* Set swimlane title background */
   font-size: 0.75rem; /* SCALED: Was 0.85rem - reduced for compact display */
   padding: 0; /* Padding moved to .label-content */
   line-height: 1.3; /* SCALED: Was 1.5 - reduced line-height */
@@ -316,7 +316,7 @@ select:focus-visible {
 .gantt-row-label.task {
   padding: 0; /* Padding moved to .label-content */
   font-weight: 500;
-  color: #FFFFFF; /* Text Color */
+  color: var(--glass-text-primary); /* Text Color */
   border-bottom: 1px solid #0D0D0D; /* Grid line color */
   background-color: #354259; /* Set task title background - default blue */
   font-size: 0.7rem; /* SCALED: Was 0.75rem - further reduced for compact display */
@@ -341,7 +341,7 @@ select:focus-visible {
 }
 
 .gantt-bar-area.task {
-  background-color: #383838; /* Task row background */
+  background-color: var(--color-border-dark-gray, #383838); /* Task row background */
 }
 
 .gantt-bar-area.task:hover,
@@ -351,7 +351,7 @@ select:focus-visible {
 }
 
 .gantt-bar-area.swimlane {
-  background-color: #0c2340; /* Swimlane background */
+  background-color: var(--color-navy-deep); /* Swimlane background */
 }
 
 /* 11a. Time Cell (individual cells within bar area for grid lines) */
@@ -431,7 +431,7 @@ select:focus-visible {
 .gantt-bar[data-color="medium-red"] { background-color: #FB923C; } /* Orange */
 .gantt-bar[data-color="mid-grey"] { background-color: #14B8A6; } /* Teal */
 .gantt-bar[data-color="light-grey"] { background-color: #E879F9; } /* Bright Pink-Purple */
-.gantt-bar[data-color="white"] { background-color: #FFFFFF; } /* White */
+.gantt-bar[data-color="white"] { background-color: var(--glass-text-primary); } /* White */
 .gantt-bar[data-color="dark-blue"] { background-color: #3B82F6; } /* Bright Blue */
 
 /* Visual feedback for gantt bars in edit mode */
@@ -454,8 +454,8 @@ select:focus-visible {
   font-family: 'Work Sans', sans-serif; /* CHANGED */
   font-size: 0.1875rem; /* SCALED: 25% of 0.75rem */
   font-weight: 600; /* SCALED: Was 700 */
-  color: #ffffff;
-  background-color: #50AF7B; /* Use one of the old dark mode colors (Green) */
+  color: var(--glass-text-primary);
+  background-color: var(--color-glass-success); /* Use one of the old dark mode colors (Green) */
   border: none;
   border-radius: 1px; /* SCALED: 25% of 4px */
   padding: 1.5px 3.5px; /* SCALED: 25% of 6px 14px */
@@ -479,8 +479,8 @@ select:focus-visible {
   font-family: 'Work Sans', sans-serif;
   font-size: 0.75rem; /* SCALED: Was 0.95rem - reduced for compact buttons */
   font-weight: 600; /* SCALED: Was 700 */
-  color: #ffffff;
-  background-color: #BA3930; /* Red for locked/disabled state */
+  color: var(--glass-text-primary);
+  background-color: var(--color-accent-red, #BA3930); /* Red for locked/disabled state */
   border: none;
   border-radius: 4px; /* SCALED: Was 6px */
   padding: 6px 14px; /* SCALED: Was 10px 24px - significantly reduced */
@@ -499,7 +499,7 @@ select:focus-visible {
   font-family: 'Work Sans', sans-serif;
   font-size: 0.1875rem; /* SCALED: 25% of 0.75rem */
   font-weight: 600; /* SCALED: Was 700 */
-  color: #ffffff;
+  color: var(--glass-text-primary);
   background-color: #1976D2; /* Blue for sharing/link action */
   border: none;
   border-radius: 1px; /* SCALED: 25% of 4px */
@@ -520,12 +520,10 @@ select:focus-visible {
 .gantt-today-line {
   position: absolute;
   width: 1px; /* Thin red line */
-  background-color: #BA3930; /* Use Red color from old palette */
+  background-color: var(--color-accent-red, #BA3930); /* Use Red color from old palette */
   z-index: 3; /* Above bars (bars are z-index 2) */
   /* 'top', 'bottom', and 'left' are set by JavaScript */
 }
-
-
 /* ------------------------------------------------------------------- */
 /* --- ANALYSIS MODAL STYLES (Adjusted for Dark Mode) --- */
 /* ------------------------------------------------------------------- */
@@ -547,7 +545,7 @@ select:focus-visible {
 }
 
 .modal-content {
-  background-color: #1A1A1A; /* Dark Modal Background */
+  background-color: var(--color-background-dark, #1A1A1A); /* Dark Modal Background */
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
   width: 100%;
@@ -556,7 +554,7 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: #FFFFFF; /* Default text color */
+  color: var(--glass-text-primary); /* Default text color */
 }
 
 .modal-header {
@@ -564,13 +562,13 @@ select:focus-visible {
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  border-bottom: 1px solid #383838; /* Darker separator */
+  border-bottom: 1px solid var(--color-border-dark-gray, #383838); /* Darker separator */
 }
 
 .modal-title {
   font-size: 18px;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   margin: 0;
 }
 
@@ -593,7 +591,7 @@ select:focus-visible {
 }
 
 .modal-export-btn:hover {
-  color: #50AF7B;
+  color: var(--color-glass-success);
   background-color: rgba(80, 175, 123, 0.1);
 }
 
@@ -608,13 +606,13 @@ select:focus-visible {
   line-height: 1;
 }
 .modal-close:hover {
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
 }
 
 .modal-body {
   padding: 24px;
   overflow-y: auto;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
 }
 
 /* Glassmorphic scrollbar for modal body */
@@ -639,8 +637,8 @@ select:focus-visible {
 .modal-spinner {
   width: 32px;
   height: 32px;
-  border: 4px solid #383838;
-  border-top-color: #50AF7B; /* Green accent */
+  border: 4px solid var(--color-border-dark-gray, #383838);
+  border-top-color: var(--color-glass-success); /* Green accent */
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 40px auto;
@@ -651,7 +649,7 @@ select:focus-visible {
 }
 
 .modal-error {
-  color: #BA3930;
+  color: var(--color-accent-red, #BA3930);
   font-weight: 500;
   text-align: center;
   padding: 20px;
@@ -667,10 +665,10 @@ select:focus-visible {
 .analysis-section h4 {
   font-size: 20px; /* Increased from 14px for better readability */
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   margin-top: 0;
   margin-bottom: 8px;
-  border-bottom: 1px solid #383838; /* Darker separator */
+  border-bottom: 1px solid var(--color-border-dark-gray, #383838); /* Darker separator */
   padding-bottom: 4px;
 }
 
@@ -691,7 +689,7 @@ select:focus-visible {
 }
 /* Re-mapped status colors for dark background contrast */
 .status-pill.status-completed {
-  color: #50AF7B; /* Green text */
+  color: var(--color-glass-success); /* Green text */
   background-color: #1A3025; /* Dark Green background */
 }
 .status-pill.status-in-progress {
@@ -699,15 +697,13 @@ select:focus-visible {
   background-color: #382A13; /* Dark Ochre background */
 }
 .status-pill.status-not-started {
-  color: #BA3930; /* Red text */
+  color: var(--color-accent-red, #BA3930); /* Red text */
   background-color: #2F120F; /* Dark Red background */
 }
 .status-pill.status-n\/a {
   color: #BFBFBF; /* ACCESSIBILITY: Updated from #AAAAAA for WCAG 2.1 AA compliance (5.5:1 contrast) */
-  background-color: #383838;
+  background-color: var(--color-border-dark-gray, #383838);
 }
-
-
 .analysis-list {
   list-style: none;
   padding: 0;
@@ -715,7 +711,7 @@ select:focus-visible {
 }
 .analysis-list li {
   padding: 8px 0;
-  border-bottom: 1px solid #383838; /* Darker separator */
+  border-bottom: 1px solid var(--color-border-dark-gray, #383838); /* Darker separator */
 }
 .analysis-list li:last-child {
   border-bottom: 0;
@@ -740,22 +736,20 @@ select:focus-visible {
 .analysis-list li .source a:hover {
   color: #66A3D9; /* Lighter blue on hover */
 }
-
-
 /* ------------------------------------------------------------------- */
 /* --- CHAT INTERFACE STYLES (Adjusted for Dark Mode) --- */
 /* ------------------------------------------------------------------- */
 
 .chat-container {
   margin-top: 24px;
-  border-top: 1px solid #383838;
+  border-top: 1px solid var(--color-border-dark-gray, #383838);
   padding-top: 20px;
 }
 
 .chat-title {
   font-size: 20px; /* Increased from 14px for better readability */
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   margin-top: 0;
   margin-bottom: 12px;
 }
@@ -764,10 +758,10 @@ select:focus-visible {
   height: 150px;
   max-height: 150px;
   overflow-y: auto;
-  border: 1px solid #383838;
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 6px;
   padding: 12px;
-  background-color: #0c2340; /* Match chart background */
+  background-color: var(--color-navy-deep); /* Match chart background */
   margin-bottom: 12px;
 }
 
@@ -804,14 +798,14 @@ select:focus-visible {
 
 .chat-message-user {
   background-color: #2E7BB1; /* Dark Blue */
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   margin-left: auto;
   text-align: right;
 }
 
 .chat-message-llm {
-  background-color: #383838; /* Dark Grey */
-  color: #FFFFFF;
+  background-color: var(--color-border-dark-gray, #383838); /* Dark Grey */
+  color: var(--glass-text-primary);
   margin-right: auto;
   text-align: left;
 }
@@ -835,18 +829,18 @@ select:focus-visible {
   flex-grow: 1;
   font-family: 'Work Sans', sans-serif; /* CHANGED */
   font-size: 18px; /* Increased from 14px for better readability */
-  border: 1px solid #383838;
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 6px;
   padding: 10px 14px; /* Increased padding for larger text */
-  color: #FFFFFF;
-  background-color: #0c2340;
+  color: var(--glass-text-primary);
+  background-color: var(--color-navy-deep);
 }
 
 .chat-send-btn {
   font-family: 'Work Sans', sans-serif; /* CHANGED */
   font-size: 18px; /* Increased from 14px for better readability */
   font-weight: 600;
-  color: #ffffff;
+  color: var(--glass-text-primary);
   background-color: #2E7BB1; /* Dark Blue send button */
   border: none;
   border-radius: 6px;
@@ -881,7 +875,7 @@ select:focus-visible {
 }
 
 .collapsible-header:hover {
-  color: #FFFFFF !important;
+  color: var(--glass-text-primary) !important;
   opacity: 0.9;
 }
 
@@ -907,7 +901,7 @@ select:focus-visible {
 /* Timeline Scenarios Section */
 .timeline-scenarios-section {
   background-color: #222222;
-  border: 1px solid #383838;
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
@@ -936,7 +930,7 @@ select:focus-visible {
 .scenario-label {
   font-weight: 600;
   font-size: 18px; /* Increased from 14px for better readability */
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   min-width: 110px; /* Increased to accommodate larger text */
 }
 
@@ -956,7 +950,7 @@ select:focus-visible {
 
 .confidence-high {
   background-color: #1A3025;
-  color: #50AF7B;
+  color: var(--color-glass-success);
 }
 
 .confidence-medium {
@@ -966,7 +960,7 @@ select:focus-visible {
 
 .confidence-low {
   background-color: #2F120F;
-  color: #BA3930;
+  color: var(--color-accent-red, #BA3930);
 }
 
 /* Timeline bars */
@@ -978,7 +972,7 @@ select:focus-visible {
 }
 
 .best-case-bar {
-  background: linear-gradient(90deg, #50AF7B 0%, #6BC794 100%);
+  background: linear-gradient(90deg, var(--color-glass-success) 0%, #6BC794 100%);
   width: 60%;
 }
 
@@ -988,7 +982,7 @@ select:focus-visible {
 }
 
 .worst-case-bar {
-  background: linear-gradient(90deg, #BA3930 0%, #D45A51 100%);
+  background: linear-gradient(90deg, var(--color-accent-red, #BA3930) 0%, #D45A51 100%);
   width: 100%;
 }
 
@@ -1003,13 +997,13 @@ select:focus-visible {
 .delay-factors {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #383838;
+  border-top: 1px solid var(--color-border-dark-gray, #383838);
 }
 
 .delay-factors h5 {
   font-size: 18px; /* Increased from 13px for better readability */
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   margin: 0 0 8px 0;
 }
 
@@ -1035,7 +1029,7 @@ select:focus-visible {
 /* Risk Analysis Section */
 .risks-section {
   background-color: #222222;
-  border: 1px solid #383838;
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
@@ -1046,8 +1040,8 @@ select:focus-visible {
 }
 
 .risk-card {
-  background-color: #1A1A1A;
-  border-left: 4px solid #383838;
+  background-color: var(--color-background-dark, #1A1A1A);
+  border-left: 4px solid var(--color-border-dark-gray, #383838);
   border-radius: 6px;
   padding: 12px 16px;
   margin-bottom: 12px;
@@ -1058,7 +1052,7 @@ select:focus-visible {
 }
 
 .risk-card.risk-high {
-  border-left-color: #BA3930;
+  border-left-color: var(--color-accent-red, #BA3930);
 }
 
 .risk-card.risk-medium {
@@ -1088,7 +1082,7 @@ select:focus-visible {
 
 .severity-high {
   background-color: #2F120F;
-  color: #BA3930;
+  color: var(--color-accent-red, #BA3930);
 }
 
 .severity-medium {
@@ -1110,7 +1104,7 @@ select:focus-visible {
 .risk-name {
   font-size: 18px; /* Increased from 14px for better readability */
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   flex-grow: 1;
 }
 
@@ -1124,14 +1118,14 @@ select:focus-visible {
 
 .risk-impact strong,
 .risk-mitigation strong {
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   font-weight: 600;
 }
 
 /* Impact Analysis Section */
 .impact-section {
   background-color: #222222;
-  border: 1px solid #383838;
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
@@ -1149,7 +1143,7 @@ select:focus-visible {
 }
 
 .impact-item strong {
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   font-weight: 600;
   display: inline-block;
   min-width: 140px;
@@ -1163,7 +1157,7 @@ select:focus-visible {
 /* Scheduling Context Section */
 .scheduling-section {
   background-color: #222222;
-  border: 1px solid #383838;
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
@@ -1181,7 +1175,7 @@ select:focus-visible {
 }
 
 .scheduling-item strong {
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   font-weight: 600;
   display: block;
   margin-bottom: 4px;
@@ -1215,7 +1209,7 @@ select:focus-visible {
 /* Progress Indicators Section */
 .progress-section {
   background-color: #222222;
-  border: 1px solid #383838;
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
@@ -1242,7 +1236,7 @@ select:focus-visible {
 .progress-percent {
   font-size: 16px;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
 }
 
 .velocity-badge {
@@ -1255,12 +1249,12 @@ select:focus-visible {
 
 .velocity-on-track {
   background-color: #1A3025;
-  color: #50AF7B;
+  color: var(--color-glass-success);
 }
 
 .velocity-behind {
   background-color: #2F120F;
-  color: #BA3930;
+  color: var(--color-accent-red, #BA3930);
 }
 
 .velocity-ahead {
@@ -1270,7 +1264,7 @@ select:focus-visible {
 
 .progress-bar-track {
   height: 12px;
-  background-color: #383838;
+  background-color: var(--color-border-dark-gray, #383838);
   border-radius: 6px;
   overflow: hidden;
   position: relative;
@@ -1284,11 +1278,11 @@ select:focus-visible {
 }
 
 .progress-on-track {
-  background: linear-gradient(90deg, #50AF7B 0%, #6BC794 100%);
+  background: linear-gradient(90deg, var(--color-glass-success) 0%, #6BC794 100%);
 }
 
 .progress-behind {
-  background: linear-gradient(90deg, #BA3930 0%, #D45A51 100%);
+  background: linear-gradient(90deg, var(--color-accent-red, #BA3930) 0%, #D45A51 100%);
 }
 
 .progress-ahead {
@@ -1299,13 +1293,13 @@ select:focus-visible {
 .milestones-section {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #383838;
+  border-top: 1px solid var(--color-border-dark-gray, #383838);
 }
 
 .milestones-section h5 {
   font-size: 13px;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   margin: 0 0 12px 0;
 }
 
@@ -1320,7 +1314,7 @@ select:focus-visible {
   align-items: flex-start;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid #383838;
+  border-bottom: 1px solid var(--color-border-dark-gray, #383838);
 }
 
 .milestone-item:last-child {
@@ -1342,7 +1336,7 @@ select:focus-visible {
 
 .milestone-name {
   font-size: 14px;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   font-weight: 500;
 }
 
@@ -1356,20 +1350,20 @@ select:focus-visible {
 }
 
 .milestone-pending .milestone-name {
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
 }
 
 /* Active Blockers */
 .blockers-section {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #383838;
+  border-top: 1px solid var(--color-border-dark-gray, #383838);
 }
 
 .blockers-section h5 {
   font-size: 13px;
   font-weight: 600;
-  color: #BA3930;
+  color: var(--color-accent-red, #BA3930);
   margin: 0 0 8px 0;
 }
 
@@ -1389,7 +1383,7 @@ select:focus-visible {
 /* Motivators & Accelerators Section */
 .accelerators-section {
   background-color: #222222;
-  border: 1px solid #383838;
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 24px;
@@ -1403,7 +1397,7 @@ select:focus-visible {
 }
 
 .accelerator-subsection {
-  background-color: #1A1A1A;
+  background-color: var(--color-background-dark, #1A1A1A);
   border: 1px solid #2A2A2A;
   border-radius: 6px;
   padding: 12px;
@@ -1412,9 +1406,9 @@ select:focus-visible {
 .accelerator-subsection h5 {
   font-size: 13px;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   margin: 0 0 8px 0;
-  border-bottom: 1px solid #383838;
+  border-bottom: 1px solid var(--color-border-dark-gray, #383838);
   padding-bottom: 6px;
 }
 
@@ -1436,7 +1430,7 @@ select:focus-visible {
   content: "▸";
   position: absolute;
   left: 0;
-  color: #50AF7B;
+  color: var(--color-glass-success);
   font-weight: bold;
 }
 
@@ -1493,8 +1487,8 @@ select:focus-visible {
 
 /* Quick Facts Panel */
 .quick-facts-panel {
-  background-color: #1A1A1A;
-  border: 1px solid #383838;
+  background-color: var(--color-background-dark, #1A1A1A);
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -1503,10 +1497,10 @@ select:focus-visible {
 .quick-facts-panel h4 {
   font-size: 14px;
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   margin: 0 0 16px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #383838;
+  border-bottom: 1px solid var(--color-border-dark-gray, #383838);
 }
 
 .quick-fact {
@@ -1532,7 +1526,7 @@ select:focus-visible {
 
 .fact-value {
   font-size: 13px;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   font-weight: 500;
   text-align: right;
 }
@@ -1543,7 +1537,7 @@ select:focus-visible {
 }
 
 .fact-value.confidence-high {
-  color: #50AF7B;
+  color: var(--color-glass-success);
 }
 
 .fact-value.confidence-medium {
@@ -1551,23 +1545,23 @@ select:focus-visible {
 }
 
 .fact-value.confidence-low {
-  color: #BA3930;
+  color: var(--color-accent-red, #BA3930);
 }
 
 .quick-fact.alert-fact {
   background-color: #2F120F;
   margin: 0 -16px;
   padding: 10px 16px;
-  border-left: 3px solid #BA3930;
+  border-left: 3px solid var(--color-accent-red, #BA3930);
 }
 
 .quick-fact.alert-fact .fact-label {
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   font-weight: 600;
 }
 
 .quick-fact.alert-fact .fact-value {
-  color: #BA3930;
+  color: var(--color-accent-red, #BA3930);
   font-weight: 700;
   font-size: 16px;
 }
@@ -1587,7 +1581,7 @@ select:focus-visible {
 
 .confidence-badge-header.confidence-high {
   background-color: #1A3025;
-  color: #50AF7B;
+  color: var(--color-glass-success);
 }
 
 .confidence-badge-header.confidence-medium {
@@ -1597,7 +1591,7 @@ select:focus-visible {
 
 .confidence-badge-header.confidence-low {
   background-color: #2F120F;
-  color: #BA3930;
+  color: var(--color-accent-red, #BA3930);
 }
 
 /* Enhanced Visual Polish */
@@ -1629,7 +1623,7 @@ select:focus-visible {
 
 /* Add subtle gradient to modal header */
 .modal-header {
-  background: linear-gradient(135deg, #1A1A1A 0%, #242424 100%);
+  background: linear-gradient(135deg, var(--color-background-dark, #1A1A1A) 0%, #242424 100%);
 }
 
 /* ------------------------------------------------------------------- */
@@ -1640,8 +1634,8 @@ select:focus-visible {
   margin-top: 8px; /* SCALED: Was 16px - reduced */
   border-radius: 4px; /* SCALED: Was 6px */
   border-top: 1px solid #0D0D0D; /* SCALED: Was 2px - thinner border */
-  background-color: #0C2340; /* Set background to match swimlanes */
-  color: #FFFFFF;
+  background-color: var(--color-navy-deep); /* Set background to match swimlanes */
+  color: var(--glass-text-primary);
 }
 
 .legend-line {
@@ -1655,7 +1649,7 @@ select:focus-visible {
   font-size: 0.7rem; /* SCALED: Was 0.85rem - reduced to match row labels */
   font-weight: 700; /* Match swimlane label weight */
   margin: 0;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   flex-shrink: 0; /* Prevent title from shrinking */
 }
 
@@ -1685,10 +1679,8 @@ select:focus-visible {
 .legend-color-box[data-color="medium-red"] { background-color: #FB923C; } /* Orange */
 .legend-color-box[data-color="mid-grey"] { background-color: #14B8A6; } /* Teal */
 .legend-color-box[data-color="light-grey"] { background-color: #E879F9; } /* Bright Pink-Purple */
-.legend-color-box[data-color="white"] { background-color: #FFFFFF; } /* White */
+.legend-color-box[data-color="white"] { background-color: var(--glass-text-primary); } /* White */
 .legend-color-box[data-color="dark-blue"] { background-color: #3B82F6; } /* Bright Blue */
-
-
 .legend-label-wrapper {
   transition: all 0.2s;
 }
@@ -1696,7 +1688,7 @@ select:focus-visible {
 .legend-label {
   font-size: 0.65rem; /* SCALED: Was 0.85rem - reduced to match compact theme */
   font-weight: 600; /* SCALED: Was 700 */
-  color: #FFFFFF; /* Changed from #CCCCCC for maximum contrast */
+  color: var(--glass-text-primary); /* Changed from #CCCCCC for maximum contrast */
   line-height: 1.2; /* Better line spacing */
   transition: all 0.2s;
   border-radius: 2px;
@@ -1716,7 +1708,7 @@ select:focus-visible {
 /* Style for legend label when actively being edited */
 .legend-label[contenteditable="true"],
 .legend-label.editing {
-  outline: 2px solid #50AF7B;
+  outline: 2px solid var(--color-glass-success);
   outline-offset: 2px;
   background-color: rgba(80, 175, 123, 0.1);
   cursor: text;
@@ -1819,8 +1811,8 @@ body.dragging {
 
 .context-menu {
   position: absolute;
-  background-color: #1A1A1A;
-  border: 1px solid #383838;
+  background-color: var(--color-background-dark, #1A1A1A);
+  border: 1px solid var(--color-border-dark-gray, #383838);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   min-width: 200px;
@@ -1833,9 +1825,9 @@ body.dragging {
   padding: 12px 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #FFFFFF;
-  background-color: #0c2340;
-  border-bottom: 1px solid #383838;
+  color: var(--glass-text-primary);
+  background-color: var(--color-navy-deep);
+  border-bottom: 1px solid var(--color-border-dark-gray, #383838);
 }
 
 .color-option {
@@ -1845,7 +1837,7 @@ body.dragging {
   padding: 10px 16px;
   cursor: pointer;
   transition: background-color 0.2s;
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
 }
 
 .color-option:hover {
@@ -1866,7 +1858,7 @@ body.dragging {
 }
 
 .color-option:hover .color-label {
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
 }
 
 /* --- BANKING ENHANCEMENT: COMPETITIVE INTELLIGENCE CARD --- */
@@ -1970,7 +1962,7 @@ body.dragging {
 }
 
 .your-value {
-  color: #FFFFFF;
+  color: var(--glass-text-primary);
   font-weight: 600;
 }
 
@@ -2419,7 +2411,7 @@ body.dragging {
   cursor: pointer;
   font-family: 'Work Sans', sans-serif;
   font-size: 0.95rem;
-  color: #0c2340;
+  color: var(--color-navy-deep);
   transition: background 0.2s ease;
   gap: 8px; /* SCALED: Was 12px */
 }
@@ -2429,7 +2421,7 @@ body.dragging {
 }
 
 .research-analysis-collapse-header:focus {
-  outline: 3px solid #50AF7B;
+  outline: 3px solid var(--color-glass-success);
   outline-offset: -3px;
 }
 
@@ -2481,7 +2473,7 @@ body.dragging {
   padding: 8px 12px; /* SCALED: Was 12px 16px */
   background: #f8f9fa;
   border-radius: 4px; /* SCALED: Was 6px */
-  border-left: 3px solid #0c2340; /* SCALED: Was 4px */
+  border-left: 3px solid var(--color-navy-deep); /* SCALED: Was 4px */
 }
 
 .research-analysis-table-container {
@@ -2519,7 +2511,7 @@ body.dragging {
 }
 
 .research-analysis-table thead {
-  background: #0c2340;
+  background: var(--color-navy-deep);
   color: #fff;
 }
 
@@ -2546,7 +2538,7 @@ body.dragging {
 
 .research-analysis-table .topic-name {
   font-weight: 500;
-  color: #0c2340;
+  color: var(--color-navy-deep);
   min-width: 150px;
 }
 
@@ -2565,11 +2557,11 @@ body.dragging {
 }
 
 .research-analysis-table .topic-included.included-yes {
-  color: #50AF7B;
+  color: var(--color-glass-success);
 }
 
 .research-analysis-table .topic-included.included-no {
-  color: #BA3930;
+  color: var(--color-accent-red, #BA3930);
 }
 
 .research-analysis-table .topic-issues ul {
@@ -2636,7 +2628,7 @@ body.dragging {
 
 .research-analysis-legend .legend-title {
   font-weight: 600;
-  color: #0c2340;
+  color: var(--color-navy-deep);
   margin-bottom: 8px;
   font-size: 0.95rem; /* Normalized to match all text on screen */
 }

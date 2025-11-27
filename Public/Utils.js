@@ -20,7 +20,6 @@ import { CONFIG } from './config.js';
 export function safeGetElement(id, context = '') {
   const element = document.getElementById(id);
   if (!element) {
-    console.error(`Element not found: #${id}${context ? ` (in ${context})` : ''}`);
   }
   return element;
 }
@@ -34,7 +33,6 @@ export function safeGetElement(id, context = '') {
 export function safeQuerySelector(selector, context = '') {
   const element = document.querySelector(selector);
   if (!element) {
-    console.error(`Element not found: ${selector}${context ? ` (in ${context})` : ''}`);
   }
   return element;
 }
@@ -666,10 +664,8 @@ export async function loadFooterSVG() {
   try {
     const footerResponse = await fetch('/horizontal-stripe.svg');
     const svg = await footerResponse.text();
-    console.log('SVG graphics loaded successfully');
     return svg;
   } catch (error) {
-    console.error('Error loading SVG graphics:', error);
     return '';
   }
 }
@@ -700,7 +696,6 @@ export class PerformanceTimer {
   mark(label) {
     const elapsed = Math.round(performance.now() - this.startTime);
     this.marks.push({ label, elapsed });
-    console.log(`  ⏱ ${this.operationName} - ${label}: ${elapsed}ms`);
   }
 
   /**
@@ -709,7 +704,6 @@ export class PerformanceTimer {
    */
   end() {
     const duration = Math.round(performance.now() - this.startTime);
-    console.log(`✓ ${this.operationName} completed in ${duration}ms`);
     return duration;
   }
 

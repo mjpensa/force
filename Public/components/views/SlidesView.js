@@ -1,7 +1,6 @@
 /**
  * SlidesView Component
  * Presentation mode for generated slides
- *
  * Supports 3 slide layouts matching BIP branded PowerPoint template:
  * 1. textTwoColumn - Title left, paragraphs right
  * 2. textThreeColumn - Title left, 3 text columns
@@ -386,7 +385,6 @@ export class SlidesView {
    */
   async exportToPowerPoint() {
     if (!this.sessionId) {
-      console.error('No session ID available for export');
       return;
     }
 
@@ -432,7 +430,6 @@ export class SlidesView {
       window.URL.revokeObjectURL(url);
 
     } catch (error) {
-      console.error('Export error:', error);
       alert(`Failed to export: ${error.message}`);
     } finally {
       // Restore button state
@@ -581,7 +578,6 @@ export class SlidesView {
       // Request fullscreen API if available
       if (this.container.requestFullscreen) {
         this.container.requestFullscreen().catch(err => {
-          console.warn('Fullscreen request failed:', err);
         });
       }
     } else {
@@ -682,7 +678,6 @@ export class SlidesView {
       }
 
     } catch (error) {
-      console.error('Error loading slides:', error);
       throw error;
     }
   }

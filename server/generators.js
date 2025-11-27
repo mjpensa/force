@@ -40,19 +40,16 @@ class APIQueue {
   async add(task, name = 'unknown') {
     // If we're at capacity, wait in queue
     if (this.running >= this.maxConcurrent) {
-      console.log(`[APIQueue] ${name} queued (${this.running}/${this.maxConcurrent} running, ${this.queue.length} waiting)`);
       await new Promise(resolve => this.queue.push(resolve));
     }
 
     this.running++;
-    console.log(`[APIQueue] ${name} starting (${this.running}/${this.maxConcurrent} running)`);
 
     try {
       const result = await task();
       return result;
     } finally {
       this.running--;
-      console.log(`[APIQueue] ${name} completed (${this.running}/${this.maxConcurrent} running, ${this.queue.length} waiting)`);
 
       // Release next waiting task
       const next = this.queue.shift();
@@ -195,7 +192,6 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
       generationConfig
     });
 
-    console.log(`[${contentType}] Starting generation (timeout: ${GENERATION_TIMEOUT_MS / 1000}s)...`);
 
     // Wrap the API call with timeout to prevent indefinite hangs
     const result = await withTimeout(
@@ -207,8 +203,6 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     const response = result.response;
     const text = response.text();
 
-    console.log(`[${contentType}] Generation complete, parsing JSON...`);
-    console.log(`[${contentType}] Response text length: ${text.length}`);
 
     try {
       const data = JSON.parse(text);
@@ -218,31 +212,22 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
       const positionMatch = parseError.message.match(/position (\d+)/);
       const errorPosition = positionMatch ? parseInt(positionMatch[1]) : 0;
 
-      console.error(`[${contentType}] JSON Parse Error:`, parseError.message);
-      console.error(`[${contentType}] Total JSON length:`, text.length);
-      console.error(`[${contentType}] Problematic JSON (first 500 chars):`, text.substring(0, 500));
       if (errorPosition > 0) {
         const contextStart = Math.max(0, errorPosition - 200);
         const contextEnd = Math.min(text.length, errorPosition + 200);
-        console.error(`[${contentType}] JSON around error position:`, text.substring(contextStart, contextEnd));
       }
 
       // Try to repair the JSON using jsonrepair library
       try {
-        console.log(`[${contentType}] Attempting to repair JSON using jsonrepair library...`);
         const repairedJsonText = jsonrepair(text);
         const repairedData = JSON.parse(repairedJsonText);
-        console.log(`[${contentType}] Successfully repaired and parsed JSON!`);
         return repairedData;
       } catch (repairError) {
-        console.error(`[${contentType}] JSON repair failed:`, repairError.message);
-        console.error(`[${contentType}] Full JSON response:`, text);
         throw parseError; // Throw the original parse error
       }
     }
 
   } catch (error) {
-    console.error(`[${contentType}] Generation error:`, error);
     throw new Error(`Failed to generate ${contentType}: ${error.message}`);
   }
 }
@@ -256,17 +241,13 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
  */
 async function generateRoadmap(userPrompt, researchFiles) {
   try {
-    console.log(`[Roadmap] Starting generation`);
-    console.log(`[Roadmap] Using config: temp=${ROADMAP_CONFIG.temperature}, topP=${ROADMAP_CONFIG.topP}, topK=${ROADMAP_CONFIG.topK}, thinkingBudget=${ROADMAP_CONFIG.thinkingBudget}`);
 
     const prompt = generateRoadmapPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG);
 
-    console.log(`[Roadmap] Successfully generated`);
     return { success: true, data };
 
   } catch (error) {
-    console.error('[Roadmap] Generation failed:', error);
     return { success: false, error: error.message };
   }
 }
@@ -276,15 +257,12 @@ async function generateRoadmap(userPrompt, researchFiles) {
  */
 async function generateSlides(userPrompt, researchFiles) {
   try {
-    console.log(`[Slides] Starting...`);
 
     const prompt = generateSlidesPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG);
 
-    console.log(`[Slides] Done: ${data?.slides?.length || 0} slides`);
     return { success: true, data };
   } catch (error) {
-    console.error('[Slides] Failed:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -295,15 +273,12 @@ async function generateSlides(userPrompt, researchFiles) {
  */
 async function generateDocument(userPrompt, researchFiles) {
   try {
-    console.log(`[Document] Starting...`);
 
     const prompt = generateDocumentPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CONFIG);
 
-    console.log(`[Document] Done: ${data?.sections?.length || 0} sections`);
     return { success: true, data };
   } catch (error) {
-    console.error('[Document] Failed:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -319,15 +294,12 @@ async function generateDocument(userPrompt, researchFiles) {
  */
 async function generateResearchAnalysis(userPrompt, researchFiles) {
   try {
-    console.log(`[ResearchAnalysis] Starting generation`);
-    console.log(`[ResearchAnalysis] Using config: temp=${RESEARCH_ANALYSIS_CONFIG.temperature}, topP=${RESEARCH_ANALYSIS_CONFIG.topP}, topK=${RESEARCH_ANALYSIS_CONFIG.topK}, thinkingBudget=${RESEARCH_ANALYSIS_CONFIG.thinkingBudget}`);
 
     const prompt = generateResearchAnalysisPrompt(userPrompt, researchFiles);
     let data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG);
 
     // Validate research analysis structure
     if (!validateResearchAnalysisStructure(data)) {
-      console.warn('[ResearchAnalysis] Generated data has invalid structure, retrying once...');
 
       // Retry generation once with same config
       data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG);
@@ -337,11 +309,9 @@ async function generateResearchAnalysis(userPrompt, researchFiles) {
       }
     }
 
-    console.log(`[ResearchAnalysis] Successfully generated with ${data.themes.length} themes analyzed`);
     return { success: true, data };
 
   } catch (error) {
-    console.error('[ResearchAnalysis] Generation failed:', error);
     return { success: false, error: error.message };
   }
 }
@@ -359,30 +329,23 @@ export async function generateAllContent(userPrompt, researchFiles) {
   };
 
   try {
-    console.log(`[Generation] Starting all content generation`);
 
     // STEP 1: Roadmap
-    console.log(`[Generation] 1/4: Roadmap`);
     results.roadmap = await generateRoadmap(userPrompt, researchFiles);
 
     // STEP 2: Slides (fast - no thinking)
-    console.log(`[Generation] 2/4: Slides`);
     results.slides = await generateSlides(userPrompt, researchFiles);
 
     // STEP 3: Document
-    console.log(`[Generation] 3/4: Document`);
     results.document = await generateDocument(userPrompt, researchFiles);
 
     // STEP 4: Research Analysis
-    console.log(`[Generation] 4/4: Research Analysis`);
     results.researchAnalysis = await generateResearchAnalysis(userPrompt, researchFiles);
 
-    console.log(`[Generation] Done`);
 
     return results;
 
   } catch (error) {
-    console.error(`[Generation] Error:`, error.message);
     throw error;
   }
 }
@@ -419,7 +382,6 @@ export async function regenerateContent(viewType, prompt, researchFiles) {
     return await apiQueue.add(task, taskName);
 
   } catch (error) {
-    console.error(`Regeneration error for ${viewType}:`, error);
     throw error;
   }
 }

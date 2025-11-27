@@ -122,7 +122,6 @@ export class StateManager {
       try {
         listener(newState, previousState);
       } catch (error) {
-        console.error('Error in state listener:', error);
       }
     });
 
@@ -133,7 +132,6 @@ export class StateManager {
           try {
             listener(newState.content[viewName], previousState.content[viewName]);
           } catch (error) {
-            console.error(`Error in ${viewName} listener:`, error);
           }
         });
       }
@@ -149,13 +147,11 @@ export class StateManager {
   async loadView(viewName, forceRefresh = false) {
     // Check if already loaded (skip if force refresh)
     if (!forceRefresh && this.state.content[viewName]) {
-      console.log(`✅ ${viewName} already loaded from cache`);
       return this.state.content[viewName];
     }
 
     // Clear cached content and errors if force refreshing
     if (forceRefresh) {
-      console.log(`🔄 Force refreshing ${viewName}...`);
       this.setState({
         content: { ...this.state.content, [viewName]: null },
         errors: { ...this.state.errors, [viewName]: null }
@@ -276,11 +272,9 @@ export class StateManager {
         loading: { ...this.state.loading, [viewName]: false }
       });
 
-      console.log(`✅ ${viewName} loaded successfully`);
       return data;
 
     } catch (error) {
-      console.error(`❌ Error loading ${viewName}:`, error);
 
       // Convert to AppError if not already
       const appError = error instanceof AppError
@@ -330,9 +324,6 @@ export class StateManager {
       currentView: hash
     });
 
-    console.log('✅ State initialized from URL');
-    console.log('   Session ID:', sessionId);
-    console.log('   Current view:', hash);
   }
 
   /**
@@ -349,12 +340,8 @@ export class StateManager {
       const viewsToFetch = otherViews.filter(view => !this.state.content[view]);
 
       if (viewsToFetch.length === 0) {
-        console.log('✅ All views already cached, no prefetch needed');
         return;
       }
-
-      console.log(`🔄 Prefetching ${viewsToFetch.length} views in parallel: ${viewsToFetch.join(', ')}`);
-
       // Fetch all views in parallel using Promise.allSettled
       const results = await Promise.allSettled(
         viewsToFetch.map(async (view) => {
@@ -371,10 +358,8 @@ export class StateManager {
       results.forEach((result, index) => {
         const view = viewsToFetch[index];
         if (result.status === 'fulfilled' && result.value.success) {
-          console.log(`✅ Prefetched ${view}`);
         } else {
           const errorMsg = result.status === 'rejected' ? result.reason : result.value?.error;
-          console.log(`⚠️ Failed to prefetch ${view}: ${errorMsg || 'unknown error'}`);
         }
       });
     }, 1500); // Reduced delay since we're fetching in parallel

@@ -39,7 +39,6 @@ function parseRetryDelay(errorData) {
 
     return Math.ceil(seconds * 1000); // Convert to milliseconds and round up
   } catch (e) {
-    console.error('Failed to parse retry delay:', e);
     return null;
   }
 }
@@ -79,7 +78,6 @@ function createQuotaErrorMessage(errorData) {
       }
     }
   } catch (e) {
-    console.error('Failed to create quota error message:', e);
   }
 
   return 'API rate limit exceeded. Please try again in a few minutes.';
@@ -102,18 +100,15 @@ export async function retryWithBackoff(operation, retryCount = CONFIG.API.RETRY_
       return await operation();
     } catch (error) {
       lastError = error;
-      console.log(`Attempt ${attempt + 1}/${retryCount} failed:`, error.message);
 
       // Check if this is a rate limit error
       const isRateLimit = isRateLimitError(error);
 
       if (isRateLimit) {
-        console.warn('⚠️  Rate limit (429) error detected');
 
         // For rate limit errors, don't retry if it's quota exhaustion
         // (retrying won't help until quota resets)
         if (error.message.includes('quota') || error.message.includes('RESOURCE_EXHAUSTED')) {
-          console.error('❌ Quota exhausted - cannot retry');
           throw error; // Fail immediately for quota exhaustion
         }
       }
@@ -138,7 +133,6 @@ export async function retryWithBackoff(operation, retryCount = CONFIG.API.RETRY_
         delayMs = CONFIG.API.RETRY_BASE_DELAY_MS * (attempt + 1);
       }
 
-      console.log(`Retrying in ${delayMs}ms...`);
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
   }
@@ -175,7 +169,6 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
           // Not JSON, use raw text
         }
       } catch (e) {
-        console.error('Failed to read error response:', e);
       }
 
       // For 429 errors, create user-friendly message
@@ -190,7 +183,6 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
     const result = await response.json();
 
     if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
-      console.error('Invalid API response:', JSON.stringify(result));
       throw new Error('Invalid response from AI API');
     }
 
@@ -204,7 +196,6 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
 
     // Validate that parts array exists and has content
     if (!result.candidates[0].content.parts || !Array.isArray(result.candidates[0].content.parts) || result.candidates[0].content.parts.length === 0) {
-      console.error('No content parts in Gemini response:', JSON.stringify(result));
       throw new Error('No content parts in Gemini response');
     }
 
@@ -227,24 +218,17 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
       const errorPosition = positionMatch ? parseInt(positionMatch[1]) : 0;
 
       // Log the problematic JSON for debugging
-      console.error('JSON Parse Error:', parseError.message);
-      console.error('Total JSON length:', extractedJsonText.length);
-      console.error('Problematic JSON (first 500 chars):', extractedJsonText.substring(0, 500));
       if (errorPosition > 0) {
         const contextStart = Math.max(0, errorPosition - 200);
         const contextEnd = Math.min(extractedJsonText.length, errorPosition + 200);
-        console.error('Problematic JSON (around error position):', extractedJsonText.substring(contextStart, contextEnd));
       }
 
       // Try to repair the JSON using jsonrepair library
       try {
-        console.log('Attempting to repair JSON using jsonrepair library...');
         const repairedJsonText = jsonrepair(extractedJsonText);
         const repairedData = JSON.parse(repairedJsonText);
-        console.log('Successfully repaired and parsed JSON!');
 
         // Log the repaired data structure for debugging
-        console.log('🔍 Repaired data structure keys:', Object.keys(repairedData));
 
         // Validate based on response type (chart vs task analysis)
         // Chart data has: title, timeColumns, data
@@ -253,51 +237,34 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
         const isTaskAnalysis = repairedData.taskName && repairedData.status;
 
         if (isChartData) {
-          console.log('  - Detected chart data structure');
-          console.log('  - title:', repairedData.title);
-          console.log('  - timeColumns length:', repairedData.timeColumns?.length);
-          console.log('  - data length:', repairedData.data?.length);
 
           // Validate chart data structure
           if (!repairedData.data || !Array.isArray(repairedData.data)) {
-            console.error('❌ Repaired JSON is missing or has invalid data array');
             throw new Error('Repaired JSON structure is invalid - missing data array');
           }
 
           if (!repairedData.timeColumns || !Array.isArray(repairedData.timeColumns)) {
-            console.error('❌ Repaired JSON is missing or has invalid timeColumns array');
             throw new Error('Repaired JSON structure is invalid - missing timeColumns array');
           }
 
           // Check for suspiciously small data arrays that might indicate corruption
           if (repairedData.data.length < 2) {
-            console.warn('⚠️  Repaired data array has fewer than 2 items, possible data corruption from duplicate key removal');
-            console.log('  - data items:', JSON.stringify(repairedData.data, null, 2));
           }
 
           // Validate data items have required properties
           for (let i = 0; i < repairedData.data.length; i++) {
             const item = repairedData.data[i];
             if (!item.title || typeof item.isSwimlane !== 'boolean' || !item.entity) {
-              console.error(`❌ Data item ${i} is missing required properties:`, item);
               throw new Error(`Repaired JSON data item ${i} is invalid - missing required properties`);
             }
           }
         } else if (isTaskAnalysis) {
-          console.log('  - Detected task analysis structure');
-          console.log('  - taskName:', repairedData.taskName);
-          console.log('  - status:', repairedData.status);
           // Task analysis is valid as long as it has taskName and status
         } else {
-          console.warn('⚠️  Unknown repaired data structure, proceeding with caution');
         }
 
-        console.log('✅ Repaired JSON validation passed');
         return repairedData;
       } catch (repairError) {
-        console.error('JSON repair failed:', repairError.message);
-        console.error('Saving full JSON response to help debug...');
-        console.error('Full JSON response:', extractedJsonText);
         throw parseError; // Throw the original error
       }
     }
@@ -332,7 +299,6 @@ export async function callGeminiForText(payload, retryCount = CONFIG.API.RETRY_C
           // Not JSON, use raw text
         }
       } catch (e) {
-        console.error('Failed to read error response:', e);
       }
 
       // For 429 errors, create user-friendly message
@@ -347,7 +313,6 @@ export async function callGeminiForText(payload, retryCount = CONFIG.API.RETRY_C
     const result = await response.json();
 
     if (!result.candidates || !result.candidates[0] || !result.candidates[0].content) {
-      console.error('Invalid API response:', JSON.stringify(result));
       throw new Error('Invalid response from AI API');
     }
 
@@ -361,7 +326,6 @@ export async function callGeminiForText(payload, retryCount = CONFIG.API.RETRY_C
 
     // Validate that parts array exists and has content
     if (!result.candidates[0].content.parts || !Array.isArray(result.candidates[0].content.parts) || result.candidates[0].content.parts.length === 0) {
-      console.error('No content parts in Gemini response:', JSON.stringify(result));
       throw new Error('No content parts in Gemini response');
     }
 

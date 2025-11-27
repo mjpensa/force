@@ -36,18 +36,12 @@ export function sanitizePrompt(userPrompt) {
   // Detect attempts to use Unicode lookalikes or zero-width characters
   const suspiciousUnicode = /[\u200B-\u200D\uFEFF\u202A-\u202E]/g;
   if (suspiciousUnicode.test(sanitized)) {
-    console.warn('⚠️  Suspicious Unicode characters detected (zero-width, direction overrides)');
     detectedPatterns.push('Unicode obfuscation attempt');
     sanitized = sanitized.replace(suspiciousUnicode, '');
   }
 
   // Log potential injection attempts
   if (detectedPatterns.length > 0) {
-    console.warn('⚠️  Potential prompt injection detected!');
-    console.warn('Detected patterns:', detectedPatterns);
-    console.warn('Original prompt length:', originalLength);
-    console.warn('Sanitized prompt length:', sanitized.length);
-    console.warn('First 100 chars of sanitized:', sanitized.substring(0, 100));
   }
 
   // Layer 2: Wrap with strong security context

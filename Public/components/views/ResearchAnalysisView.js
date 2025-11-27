@@ -1,7 +1,6 @@
 /**
  * ResearchAnalysisView Component
  * Displays comprehensive research quality analysis for Gantt chart creation
- *
  * Features:
  * - Overall score with color-coded badge
  * - Executive summary and key findings

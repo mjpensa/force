@@ -3,7 +3,6 @@
  * Phase 5: Integrates all four views (Roadmap, Slides, Document, Research Analysis)
  * Phase 6: Enhanced with performance monitoring and lazy loading
  * Phase 7: Automatic polling for processing content (v2)
- *
  * Handles:
  * - Session loading from URL
  * - View routing (#roadmap, #slides, #document, #research-analysis)
@@ -15,7 +14,6 @@
  */
 
 // Version identifier for debugging cache issues
-console.log('[Viewer] Version 2 - Automatic polling enabled');
 
 import { StateManager } from './components/shared/StateManager.js';
 import { SlidesView } from './components/views/SlidesView.js';
@@ -90,7 +88,6 @@ class ContentViewer {
       // Setup Web Vitals monitoring
       if (window.location.search.includes('debug=true')) {
         reportWebVitals((vital) => {
-          console.log(`[Web Vitals] ${vital.name}:`, vital.value, `(${vital.rating})`);
         });
       }
 
@@ -118,10 +115,8 @@ class ContentViewer {
 
       markPerformance('viewer-init-end');
       const initTime = measurePerformance('viewer-initialization', 'viewer-init-start', 'viewer-init-end');
-      console.log(`[Performance] Viewer initialized in ${initTime.toFixed(2)}ms`);
 
     } catch (error) {
-      console.error('Viewer initialization error:', error);
       this._showError('Failed to load content', error.message);
     }
   }
@@ -166,7 +161,6 @@ class ContentViewer {
       sessionId: this.sessionId,
       onNavigate: (view) => {
         // Navigation is handled by hash change, which triggers _handleRouteChange
-        console.log(`[Viewer] Sidebar navigation to: ${view}`);
       }
     });
 
@@ -297,9 +291,6 @@ class ContentViewer {
   async _handleRouteChange() {
     const hash = window.location.hash.slice(1); // Remove '#'
     const view = hash || 'roadmap'; // Default to roadmap
-
-    console.log(`[Viewer] Route changed to: ${view}`);
-
     // Update active tab
     this._updateActiveTab(view);
 
@@ -357,11 +348,8 @@ class ContentViewer {
         viewData = await this.stateManager.loadView(viewName);
         markPerformance(`api-${viewName}-end`);
         const apiTime = measurePerformance(`api-${viewName}`, `api-${viewName}-start`, `api-${viewName}-end`);
-        console.log(`[Performance] API call for ${viewName}: ${apiTime.toFixed(2)}ms`);
       } catch (error) {
         // Check error type and route to appropriate UI
-        console.log(`[Viewer] _loadView error for ${viewName}:`, error.message);
-        console.log(`[Viewer] Error details:`, error.details);
 
         const isProcessing = error.message.includes('processing') ||
                             error.message.includes('being generated') ||
@@ -371,18 +359,13 @@ class ContentViewer {
         const hasEmptyContent = error.details?.emptyContent === true || error.details?.emptyData === true;
         const canRetry = error.details?.canRetry === true || error.details?.emptyData === true;
         const isApiError = error.details?.apiError === true;
-
-        console.log(`[Viewer] isProcessing=${isProcessing}, hasEmptyContent=${hasEmptyContent}, canRetry=${canRetry}, isApiError=${isApiError}`);
-
         if (isProcessing) {
-          console.log(`[Viewer] Showing processing state with automatic polling for ${viewName}`);
           this._showProcessing(viewName);
           return;
         }
 
         // Handle API errors (generation failures) - show retry UI
         if (isApiError) {
-          console.log(`[Viewer] Showing generation failed state for ${viewName} due to API error`);
           this._updateTabStatus(viewName, 'failed');
           this._showGenerationFailed(viewName, error.message);
           return;
@@ -415,13 +398,11 @@ class ContentViewer {
       }
       markPerformance(`render-${viewName}-end`);
       const renderTime = measurePerformance(`render-${viewName}`, `render-${viewName}-start`, `render-${viewName}-end`);
-      console.log(`[Performance] Render ${viewName}: ${renderTime.toFixed(2)}ms`);
 
       this.currentView = viewName;
 
       markPerformance(`view-${viewName}-end`);
       const totalTime = measurePerformance(`view-${viewName}-total`, `view-${viewName}-start`, `view-${viewName}-end`);
-      console.log(`[Performance] Total ${viewName} load: ${totalTime.toFixed(2)}ms`);
 
       // Initialize lazy loading for any images in the view
       setTimeout(() => {
@@ -429,7 +410,6 @@ class ContentViewer {
       }, 0);
 
     } catch (error) {
-      console.error(`Error loading ${viewName}:`, error);
       logError(error, { component: 'ContentViewer', action: 'loadView', viewName });
 
       // Show user-friendly error notification with retry option
@@ -453,7 +433,6 @@ class ContentViewer {
    * Render slides view
    */
   async _renderSlidesView(data) {
-    console.log('[Viewer] Rendering slides view');
 
     const slidesView = new SlidesView(data, this.sessionId);
     const container = slidesView.render();
@@ -468,7 +447,6 @@ class ContentViewer {
    * Render document view
    */
   async _renderDocumentView(data) {
-    console.log('[Viewer] Rendering document view');
 
     const documentView = new DocumentView(data, this.sessionId);
     const container = documentView.render();
@@ -483,7 +461,6 @@ class ContentViewer {
    * Render research analysis view
    */
   async _renderResearchAnalysisView(data) {
-    console.log('[Viewer] Rendering research analysis view');
 
     const analysisView = new ResearchAnalysisView(data, this.sessionId);
     const container = analysisView.render();
@@ -499,7 +476,6 @@ class ContentViewer {
    * CRITICAL: Uses EXACT SAME logic and parameters as original chart-renderer.js
    */
   async _renderRoadmapView(data) {
-    console.log('[Viewer] Rendering roadmap view with original GanttChart component');
 
     // Clear container
     this.contentContainer.innerHTML = '';
@@ -526,9 +502,6 @@ class ContentViewer {
       if (!data.data || !Array.isArray(data.data)) {
         throw new Error('Invalid data array in chart data');
       }
-
-      console.log('✅ Chart data validation passed - timeColumns:', data.timeColumns.length, 'data:', data.data.length);
-
       // Task click handler (EXACT same as original chart-renderer.js)
       const handleTaskClick = (taskIdentifier) => {
         this.taskAnalyzer.showAnalysis(taskIdentifier);
@@ -547,10 +520,8 @@ class ContentViewer {
       ganttChart.render();
 
       this.currentViewComponent = ganttChart;
-      console.log('✅ Gantt chart rendered successfully using ORIGINAL component and logic');
 
     } catch (error) {
-      console.error('❌ Error rendering Gantt chart:', error);
 
       // Show error state
       this.contentContainer.innerHTML = `
@@ -658,7 +629,6 @@ class ContentViewer {
     const interval = Math.min(BASE_INTERVAL * Math.pow(1.2, Math.floor(attempt / 5)), MAX_INTERVAL);
 
     if (attempt >= MAX_ATTEMPTS) {
-      console.log(`[Viewer] Polling timeout for ${viewName} after ${MAX_ATTEMPTS} attempts`);
       this._showGenerationTimeout(viewName);
       return;
     }
@@ -683,9 +653,6 @@ class ContentViewer {
     try {
       const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
       const data = await response.json();
-
-      console.log(`[Viewer] Poll attempt ${attempt + 1} for ${viewName}: status=${data.status}`);
-
       if (data.status === 'completed' && data.data) {
         // Content is ready! Clear polling and load the view
         if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
@@ -735,7 +702,6 @@ class ContentViewer {
       }, interval);
 
     } catch (error) {
-      console.error(`[Viewer] Error polling ${viewName}:`, error);
 
       // On network error, retry with backoff
       this._processingPollTimeouts[viewName] = setTimeout(() => {
@@ -875,7 +841,6 @@ class ContentViewer {
       await this._loadView(viewName);
 
     } catch (error) {
-      console.error(`Error regenerating ${viewName}:`, error);
       this._showGenerationFailed(viewName, `Regeneration failed: ${error.message}`);
     }
   }
@@ -1038,7 +1003,6 @@ class ContentViewer {
 
       // Stop polling if we've exceeded max attempts
       if (attempt >= MAX_ATTEMPTS) {
-        console.warn(`[Background Poll] Max attempts reached for ${viewName}, stopping poll`);
         this._updateTabStatus(viewName, 'failed');
         if (this._backgroundPollTimeouts[viewName]) {
           delete this._backgroundPollTimeouts[viewName];
@@ -1051,7 +1015,6 @@ class ContentViewer {
 
         // Handle HTTP errors (404, 500, etc.)
         if (!response.ok) {
-          console.error(`[Background Poll] HTTP error ${response.status} for ${viewName}`);
           this._updateTabStatus(viewName, 'failed');
           // Stop polling on HTTP errors - session may not exist
           if (this._backgroundPollTimeouts[viewName]) {
@@ -1068,7 +1031,6 @@ class ContentViewer {
           // Cache the content in StateManager for instant view switching
           // Only cache if not already cached
           if (!this.stateManager.state.content[viewName]) {
-            console.log(`[Background Poll] Caching ${viewName} content for instant access`);
             this.stateManager.setState({
               content: { ...this.stateManager.state.content, [viewName]: data.data }
             });
@@ -1102,7 +1064,6 @@ class ContentViewer {
         }
 
       } catch (error) {
-        console.error(`[Background Poll] Error polling ${viewName}:`, error);
         // On error, retry with longer interval
         this._backgroundPollTimeouts[viewName] = setTimeout(() => {
           pollView(viewName, attempt + 1);
@@ -1150,7 +1111,6 @@ class ContentViewer {
 
 // Initialize viewer when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('[Viewer] Initializing content viewer');
   const viewer = new ContentViewer();
   viewer.init();
 });

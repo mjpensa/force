@@ -2,18 +2,15 @@
  * LazyLoader Utility
  * Provides lazy loading functionality for images and components
  * Improves initial page load performance
- *
  * @module LazyLoader
  */
 
 /**
  * Initialize lazy loading for images using Intersection Observer
  * Automatically detects images with data-src attribute and loads them when visible
- *
  * @param {string} selector - CSS selector for images to lazy load (default: 'img[data-src]')
  * @param {Object} options - Intersection Observer options
  * @returns {IntersectionObserver} The observer instance
- *
  * @example
  * // HTML: <img data-src="image.jpg" alt="Description" class="lazy">
  * initLazyLoading('img.lazy');
@@ -29,7 +26,6 @@ export function initLazyLoading(selector = 'img[data-src]', options = {}) {
 
   // Check for Intersection Observer support
   if (!('IntersectionObserver' in window)) {
-    console.warn('Intersection Observer not supported. Loading all images immediately.');
     loadAllImages(selector);
     return null;
   }
@@ -53,7 +49,6 @@ export function initLazyLoading(selector = 'img[data-src]', options = {}) {
 
 /**
  * Load a single image by replacing data-src with src
- *
  * @param {HTMLImageElement} img - The image element to load
  * @private
  */
@@ -62,7 +57,6 @@ function loadImage(img) {
   const srcset = img.getAttribute('data-srcset');
 
   if (!src) {
-    console.warn('Image missing data-src attribute:', img);
     return;
   }
 
@@ -82,7 +76,6 @@ function loadImage(img) {
   };
 
   preloader.onerror = () => {
-    console.error('Failed to load image:', src);
     img.classList.remove('loading');
     img.classList.add('error');
     // Set a fallback image or placeholder
@@ -97,7 +90,6 @@ function loadImage(img) {
 
 /**
  * Fallback: Load all images immediately (for browsers without Intersection Observer)
- *
  * @param {string} selector - CSS selector for images
  * @private
  */
@@ -109,12 +101,10 @@ function loadAllImages(selector) {
 /**
  * Lazy load a component/module when it becomes visible
  * Useful for code splitting and reducing initial bundle size
- *
  * @param {HTMLElement} element - Element to observe
  * @param {Function} loadCallback - Function to call when element is visible
  * @param {Object} options - Intersection Observer options
  * @returns {IntersectionObserver} The observer instance
- *
  * @example
  * const chart = document.getElementById('chart');
  * lazyLoadComponent(chart, async () => {
@@ -153,10 +143,8 @@ export function lazyLoadComponent(element, loadCallback, options = {}) {
 /**
  * Preload images in the background for better UX
  * Useful for preloading images for next slides, sections, etc.
- *
  * @param {string[]} urls - Array of image URLs to preload
  * @returns {Promise<void>} Resolves when all images are loaded
- *
  * @example
  * preloadImages(['/img/slide1.jpg', '/img/slide2.jpg'])
  *   .then(() => console.log('Images preloaded'));
@@ -168,7 +156,6 @@ export function preloadImages(urls) {
         const img = new Image();
         img.onload = () => resolve(url);
         img.onerror = () => {
-          console.warn('Failed to preload image:', url);
           resolve(url); // Resolve anyway to not block other images
         };
         img.src = url;

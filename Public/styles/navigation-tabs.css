@@ -1,9 +1,7 @@
 /**
  * Navigation Timeline - Glassmorphic Design (Concept B)
- *
  * Progress Timeline Navigation for the AI Roadmap Generator.
  * A horizontal timeline showing workflow progression with connected nodes.
- *
  * Design features:
  * - Nodes for each view connected by glass lines
  * - Visual progress indicator between completed views
@@ -40,8 +38,6 @@
     inset 0 1px 0 var(--glass-white-10),
     0 6px 24px rgba(12, 35, 64, 0.18);
 }
-
-
 /* ========== CONNECTING LINE (BACKGROUND) ========== */
 
 .view-tabs::before {
@@ -58,8 +54,6 @@
   border-radius: 1px;
   z-index: 0;
 }
-
-
 /* ========== PROGRESS LINE (ANIMATED) ========== */
 
 .view-tabs::after {
@@ -86,8 +80,6 @@
   width: var(--progress-width, 0%);
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
-
 /* ========== TIMELINE NODE (TAB BUTTON) ========== */
 
 .view-tab {
@@ -132,8 +124,6 @@
     0 0 0 5px var(--color-glass-success),
     inset 0 1px 0 var(--glass-white-30);
 }
-
-
 /* ========== NODE CIRCLE ========== */
 
 .tab-node {
@@ -182,8 +172,6 @@
   fill: none;
   transition: all 0.2s ease;
 }
-
-
 /* ========== COMPLETED NODE STATE ========== */
 
 .view-tab.completed .tab-node {
@@ -198,8 +186,6 @@
 .view-tab.completed .tab-node .tab-icon svg {
   stroke: var(--color-glass-success);
 }
-
-
 /* ========== ACTIVE NODE STATE ========== */
 
 .view-tab.active {
@@ -241,8 +227,6 @@
   stroke: var(--glass-text-primary);
   stroke-width: 1.75;
 }
-
-
 /* ========== TAB LABEL ========== */
 
 .tab-label {
@@ -257,8 +241,6 @@
 .view-tab.active .tab-label {
   font-weight: 600;
 }
-
-
 /* ========== STATUS BADGE ========== */
 
 .tab-status {
@@ -364,8 +346,6 @@
   background: rgba(239, 68, 68, 0.3);
   cursor: pointer;
 }
-
-
 /* ========== STEP CONNECTOR NUMBERS ========== */
 
 .tab-step-number {
@@ -396,8 +376,6 @@
   border-color: rgba(80, 175, 123, 0.4);
   color: var(--color-glass-success);
 }
-
-
 /* ========== HEADER CONTENT LAYOUT ========== */
 
 .header-content {
@@ -416,8 +394,6 @@
   flex: 1;
   max-width: 600px;
 }
-
-
 /* ========== RESPONSIVE DESIGN ========== */
 
 /* Large screens */
@@ -574,8 +550,6 @@
     display: none;
   }
 }
-
-
 /* ========== REDUCED MOTION ========== */
 
 @media (prefers-reduced-motion: reduce) {
@@ -598,8 +572,6 @@
     animation: none;
   }
 }
-
-
 /* ========== HIGH CONTRAST MODE ========== */
 
 @media (prefers-contrast: high) {
@@ -628,8 +600,6 @@
       0 0 0 7px var(--glass-text-primary);
   }
 }
-
-
 /* ========== PRINT STYLES ========== */
 
 @media print {

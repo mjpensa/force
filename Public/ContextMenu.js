@@ -34,7 +34,6 @@ export class ContextMenu {
   enable() {
     // Add context menu listener to grid (event delegation)
     this.gridElement.addEventListener('contextmenu', this._handleContextMenu);
-    console.log('✓ Context menu enabled');
   }
 
   /**
@@ -44,7 +43,6 @@ export class ContextMenu {
   disable() {
     this.gridElement.removeEventListener('contextmenu', this._handleContextMenu);
     this.hide();
-    console.log('✓ Context menu disabled');
   }
 
   /**
@@ -174,7 +172,6 @@ export class ContextMenu {
    */
   async _changeColor(newColor) {
     if (!this.targetBar || this.targetTaskIndex === null) {
-      console.error('No target bar for color change');
       return;
     }
 
@@ -185,9 +182,6 @@ export class ContextMenu {
 
     // Update data model
     this.ganttData.data[this.targetTaskIndex].bar.color = newColor;
-
-    console.log(`✓ Color changed from "${oldColor}" to "${newColor}"`);
-
     // Trigger update callback
     if (this.onColorChange) {
       const taskInfo = {
@@ -202,7 +196,6 @@ export class ContextMenu {
       try {
         await this.onColorChange(taskInfo);
       } catch (error) {
-        console.error('Failed to persist color change:', error);
         // Rollback on error
         this.targetBar.setAttribute('data-color', oldColor);
         this.ganttData.data[this.targetTaskIndex].bar.color = oldColor;

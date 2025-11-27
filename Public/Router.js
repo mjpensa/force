@@ -17,7 +17,6 @@ class Router {
      * Initialize the router with component references
      */
     init(ganttChart) {
-        console.log('🚀 Router.init called with:', {
             ganttChart: !!ganttChart
         });
 
@@ -25,9 +24,6 @@ class Router {
 
         // Listen for hash changes
         window.addEventListener('hashchange', this.handleHashChange);
-
-        console.log('✅ Router initialized, calling initial handleHashChange...');
-
         // Handle initial route
         this.handleHashChange();
     }
@@ -39,7 +35,6 @@ class Router {
         const hash = window.location.hash.slice(1); // Remove the '#'
         const route = hash || 'roadmap'; // Default to roadmap
 
-        console.log('🔗 Hash changed:', {
             hash: hash,
             route: route,
             fullHash: window.location.hash
@@ -50,7 +45,6 @@ class Router {
             this.currentRoute = route;
         } else {
             // Unknown route, redirect to roadmap
-            console.warn('⚠️ Unknown route:', route, '- redirecting to roadmap');
             this.navigate('roadmap');
         }
     }
@@ -66,13 +60,11 @@ class Router {
      * Show a specific section and hide others
      */
     showSection(section) {
-        console.log('🔄 Router.showSection called with section:', section);
 
         // Get container elements
         const ganttGrid = document.querySelector('.gantt-grid');
         const ganttTitle = document.querySelector('.gantt-title');
 
-        console.log('📦 Container references:', {
             ganttGrid: !!ganttGrid,
             ganttTitle: !!ganttTitle,
             ganttChart: !!this.ganttChart
@@ -104,7 +96,6 @@ class Router {
                 break;
 
             default:
-                console.warn(`Unknown section: ${section}`);
         }
 
         // Scroll to top when switching sections

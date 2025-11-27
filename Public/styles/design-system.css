@@ -1,7 +1,6 @@
 /**
  * Design System - Foundation
  * Google Docs-inspired design tokens
- *
  * This file establishes the core design system for the Force platform.
  * All components should reference these CSS variables for consistency.
  */
@@ -53,9 +52,9 @@
 
   /* ========== GLASSMORPHIC DESIGN TOKENS ========== */
 
-  /* Navy Color Palette (Primary Base: #0c2340) */
+  /* Navy Color Palette */
   --color-navy-deep: #0c2340;
-  --color-navy-brand: #002040;  /* Brand color */
+  --color-navy-brand: #002040;
   --color-navy-mid: #143052;
   --color-navy-light: #1d4168;
   --color-navy-pale: #2a5580;
@@ -1319,9 +1318,9 @@ body.view-roadmap .ambient-logo-container {
 .title-glass-gradient {
   background: linear-gradient(
     135deg,
-    #FFFFFF 0%,
+    var(--glass-text-primary) 0%,
     rgba(255, 255, 255, 0.85) 50%,
-    #FFFFFF 100%
+    var(--glass-text-primary) 100%
   );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

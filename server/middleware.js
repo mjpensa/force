@@ -55,7 +55,6 @@ export const apiLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   handler: (req, res) => {
-    console.warn(`Rate limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       error: CONFIG.ERRORS.RATE_LIMIT_EXCEEDED
     });
@@ -74,7 +73,6 @@ export const strictLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    console.warn(`Strict rate limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       error: CONFIG.ERRORS.STRICT_RATE_LIMIT_EXCEEDED
     });
@@ -135,7 +133,6 @@ export function handleUploadErrors(error, req, res, next) {
 
   // Other errors (including fileFilter errors)
   if (error) {
-    console.error('Server error:', error);
     return res.status(400).json({ error: error.message || 'An error occurred processing your request.' });
   }
 

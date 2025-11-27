@@ -2,7 +2,6 @@
  * Chart Renderer - Main Orchestrator
  * Phase 3 Enhancement: Refactored into modular architecture
  * This file now serves as a lightweight orchestrator, coordinating between modules
- *
  * Note: No persistence - charts must be loaded from URL parameter
  */
 
@@ -51,7 +50,6 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @returns {Promise<void>}
  */
 async function loadChartFromServer(chartId) {
-  console.log('Attempting to load chart from server with ID:', chartId);
 
   const maxRetries = 3;
   let lastError = null;
@@ -60,13 +58,11 @@ async function loadChartFromServer(chartId) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       if (attempt > 1) {
-        console.log(`Retry attempt ${attempt}/${maxRetries} for chart ${chartId}`);
         // Wait briefly before retrying (exponential backoff)
         await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt - 2), 5000)));
       }
 
       const response = await fetch(`/chart/${chartId}`);
-      console.log(`Fetch response status (attempt ${attempt}):`, response.status, response.statusText);
 
       if (!response.ok) {
         // For 404, don't retry - chart definitely doesn't exist
@@ -78,27 +74,19 @@ async function loadChartFromServer(chartId) {
       }
 
       ganttData = await response.json();
-      console.log('Chart data received from server');
-      console.log('Data keys:', Object.keys(ganttData || {}));
 
       // Validate the loaded data structure
       if (!ganttData || typeof ganttData !== 'object') {
-        console.error('Invalid chart data structure. Type:', typeof ganttData);
         throw new Error('Invalid chart data structure');
       }
 
       if (!ganttData.timeColumns || !Array.isArray(ganttData.timeColumns)) {
-        console.error('Invalid timeColumns. Type:', typeof ganttData.timeColumns, 'Keys:', Object.keys(ganttData));
         throw new Error('Invalid timeColumns in chart data');
       }
 
       if (!ganttData.data || !Array.isArray(ganttData.data)) {
-        console.error('Invalid data array. Type:', typeof ganttData.data, 'Keys:', Object.keys(ganttData));
         throw new Error('Invalid data array in chart data');
       }
-
-      console.log('Chart data validation passed - timeColumns:', ganttData.timeColumns.length, 'data:', ganttData.data.length);
-
       // Success! Exit the retry loop
       return;
 
@@ -107,24 +95,19 @@ async function loadChartFromServer(chartId) {
 
       // If it's a 404, don't retry
       if (error.message.includes('404')) {
-        console.error('Chart not found (404) - will not retry');
         break;
       }
 
       // If this was the last attempt, break
       if (attempt === maxRetries) {
-        console.error(`All ${maxRetries} attempts failed`);
         break;
       }
 
       // Otherwise, log and continue to next retry
-      console.warn(`Attempt ${attempt} failed:`, error.message);
     }
   }
 
   // If we get here, all retries failed
-  console.error('Failed to load chart from URL after retries:', lastError);
-  console.error('Error details:', {
     name: lastError?.name,
     message: lastError?.message,
     chartId: chartId,
@@ -143,7 +126,6 @@ async function loadChartFromServer(chartId) {
 function renderChart() {
   const container = document.getElementById('chart-root');
   if (!container) {
-    console.error('Could not find chart container!');
     return;
   }
 

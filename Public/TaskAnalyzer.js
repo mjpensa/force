@@ -122,7 +122,6 @@ export class TaskAnalyzer {
             errorMessage = text.substring(0, 200) || errorMessage;
           }
         } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
         }
         throw new Error(errorMessage);
       }
@@ -131,7 +130,6 @@ export class TaskAnalyzer {
       this._displayAnalysis(analysis, taskIdentifier);
 
     } catch (error) {
-      console.error('Error fetching analysis:', error);
       this._displayError(error.message);
     }
   }
