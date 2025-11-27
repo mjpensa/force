@@ -312,20 +312,19 @@ router.get('/:sessionId/:viewType', (req, res) => {
       });
     }
 
-    // For roadmap, frontend expects the data directly (for gantt chart)
-    if (viewType === 'roadmap') {
-      if (contentResult.success && contentResult.data) {
-        return res.json(contentResult.data);
-      } else {
-        return res.status(500).json({
-          error: 'Roadmap generation failed',
-          message: contentResult.error || 'Unknown error during roadmap generation'
-        });
-      }
+    // Return consistent response format for all view types
+    // Frontend polling expects { status: 'completed' | 'error', data: ... }
+    if (contentResult.success && contentResult.data) {
+      return res.json({
+        status: 'completed',
+        data: contentResult.data
+      });
+    } else {
+      return res.json({
+        status: 'error',
+        error: formatUserError(contentResult.error, viewType)
+      });
     }
-
-    // For other views, return the full result object
-    res.json(contentResult);
 
   } catch (error) {
     console.error('Get content error:', error);
