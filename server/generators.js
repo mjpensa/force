@@ -111,7 +111,7 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     if (topP !== undefined) generationConfig.topP = topP;
     if (topK !== undefined) generationConfig.topK = topK;
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'models/gemini-flash-latest',
       generationConfig
     });
     const result = await withTimeout(
