@@ -438,6 +438,34 @@ async function handleChartGenerate(event) {
   const originalBtnText = generateBtn.textContent;
   generateBtn.textContent = 'Generating...';
 
+  // Progress timer to show elapsed time during long generation
+  let elapsedSeconds = 0;
+  let progressInterval = null;
+
+  // Helper to format elapsed time
+  const formatElapsed = (seconds) => {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
+  // Start progress timer
+  const startProgressTimer = () => {
+    progressInterval = setInterval(() => {
+      elapsedSeconds++;
+      generateBtn.textContent = `Generating... (${formatElapsed(elapsedSeconds)})`;
+    }, 1000);
+  };
+
+  // Stop progress timer
+  const stopProgressTimer = () => {
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = null;
+    }
+  };
+
   try {
     // 1. Get form data
     const promptInput = document.getElementById('prompt-input');
@@ -492,6 +520,9 @@ async function handleChartGenerate(event) {
     loadingIndicator.style.display = 'flex';
     errorMessage.style.display = 'none';
     chartOutput.innerHTML = ''; // Clear old chart
+
+    // Start progress timer to show elapsed time during long generation
+    startProgressTimer();
 
     // 6. Call Phase 2 unified content generation endpoint
     // This generates all three views (roadmap, slides, document) in parallel
@@ -588,6 +619,7 @@ async function handleChartGenerate(event) {
     errorMessage.style.display = 'block';
   } finally {
     // 10. Restore UI (always re-enable button)
+    stopProgressTimer();
     generateBtn.disabled = false;
     generateBtn.textContent = originalBtnText;
     loadingIndicator.style.display = 'none';
