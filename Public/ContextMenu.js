@@ -6,6 +6,7 @@ export class ContextMenu {
     this.menu = null;
     this.targetBar = null;
     this.targetTaskIndex = null;
+    this._isDocumentListenerAttached = false; // Prevent duplicate listeners
     this._handleContextMenu = this._handleContextMenu.bind(this);
     this._handleDocumentClick = this._handleDocumentClick.bind(this);
   }
@@ -15,6 +16,11 @@ export class ContextMenu {
   disable() {
     this.gridElement.removeEventListener('contextmenu', this._handleContextMenu);
     this.hide();
+    // Remove menu from DOM on disable to prevent orphaned elements
+    if (this.menu && this.menu.parentNode) {
+      this.menu.parentNode.removeChild(this.menu);
+      this.menu = null;
+    }
   }
   _handleContextMenu(event) {
     const bar = event.target.closest('.gantt-bar');
@@ -34,15 +40,24 @@ export class ContextMenu {
     this.menu.style.left = `${event.pageX}px`;
     this.menu.style.top = `${event.pageY}px`;
     this.menu.style.display = 'block';
-    setTimeout(() => {
-      document.addEventListener('click', this._handleDocumentClick);
-    }, 0);
+
+    // Only attach listener if not already attached
+    if (!this._isDocumentListenerAttached) {
+      setTimeout(() => {
+        document.addEventListener('click', this._handleDocumentClick);
+        this._isDocumentListenerAttached = true;
+      }, 0);
+    }
   }
   hide() {
     if (this.menu) {
       this.menu.style.display = 'none';
     }
-    document.removeEventListener('click', this._handleDocumentClick);
+    // Only remove if attached
+    if (this._isDocumentListenerAttached) {
+      document.removeEventListener('click', this._handleDocumentClick);
+      this._isDocumentListenerAttached = false;
+    }
     this.targetBar = null;
     this.targetTaskIndex = null;
   }
