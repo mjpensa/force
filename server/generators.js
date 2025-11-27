@@ -6,6 +6,7 @@ import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
 import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompts/research-analysis.js';
 import { PerformanceLogger, createTimer, globalMetrics } from './utils/performanceLogger.js';
 import { getCachedContent, setCachedContent, getCacheMetrics } from './cache/contentCache.js';
+import { connectionPrewarmer, speculativeGenerator } from './utils/advancedOptimizer.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
@@ -27,6 +28,35 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
 // Timeout configuration for AI generation
 const GENERATION_TIMEOUT_MS = 360000; // 6 minutes - increased for complex content and API variability
+
+// ============================================================================
+// CONNECTION PREWARMING - Register Gemini API warmup callback
+// ============================================================================
+
+/**
+ * Warm up the Gemini API connection by making a minimal request
+ * This keeps the connection pool active and reduces cold start latency
+ */
+async function warmupGeminiConnection() {
+  try {
+    const model = genAI.getGenerativeModel({
+      model: 'models/gemini-flash-latest',
+      generationConfig: {
+        maxOutputTokens: 10,
+        temperature: 0
+      }
+    });
+
+    // Minimal prompt to verify connection
+    await model.generateContent('Say "ok"');
+  } catch (error) {
+    // Log but don't throw - warmup failure shouldn't block operation
+    console.warn('[Warmup] Gemini connection warmup failed:', error.message);
+  }
+}
+
+// Register warmup callback (will be started when initializeOptimizers() is called)
+connectionPrewarmer.register('gemini-api', warmupGeminiConnection);
 
 // ============================================================================
 // REQUEST QUEUE - Controls concurrent API calls to prevent overload
@@ -495,7 +525,7 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
 }
 
 // Export metrics for monitoring endpoints
-export { globalMetrics, apiQueue, getCacheMetrics };
+export { globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator };
 
 /**
  * Generate all content types with streaming - emits results as each completes

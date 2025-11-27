@@ -43,6 +43,9 @@ import chartRoutes from './server/routes/charts.js';
 import analysisRoutes from './server/routes/analysis.js';
 import contentRoutes from './server/routes/content.js';
 
+// Import advanced optimizers
+import { initializeOptimizers, shutdownOptimizers } from './server/utils/advancedOptimizer.js';
+
 // --- Server Setup ---
 const app = express();
 const port = CONFIG.SERVER.PORT;
@@ -143,12 +146,14 @@ process.on('uncaughtException', (error) => {
 // Handle SIGTERM gracefully (for deployment platforms like Railway)
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server gracefully');
+  shutdownOptimizers();
   process.exit(0);
 });
 
 // Handle SIGINT gracefully (Ctrl+C)
 process.on('SIGINT', () => {
   console.log('\nSIGINT signal received: shutting down gracefully');
+  shutdownOptimizers();
   process.exit(0);
 });
 
@@ -161,4 +166,7 @@ app.listen(port, () => {
   console.log(`Server started at: ${serverStartTime}`);
   console.log('All modules loaded successfully');
   console.log('No persistence - content generated on demand');
+
+  // Initialize advanced optimizers (connection prewarming, etc.)
+  initializeOptimizers();
 });

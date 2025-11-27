@@ -15,7 +15,7 @@
 import express from 'express';
 import mammoth from 'mammoth';
 import crypto from 'crypto';
-import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue, getCacheMetrics } from '../generators.js';
+import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { generatePptx } from '../templates/ppt-export-service.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
@@ -23,6 +23,7 @@ import { generateETag, clearAllCaches, clearExpiredEntries } from '../cache/cont
 import { processFiles } from '../utils/fileProcessor.js';
 import { cleanJsonResponse } from '../utils/networkOptimizer.js';
 import { sessionStorage } from '../storage/sessionStorage.js';
+import { getAdvancedOptimizationStats } from '../utils/advancedOptimizer.js';
 
 const router = express.Router();
 
@@ -569,6 +570,9 @@ router.get('/:sessionId/:viewType', async (req, res) => {
     // Performance: Track access for LRU management
     await touchSession(sessionId);
 
+    // Track view pattern for speculative generation optimization
+    speculativeGenerator.recordView(sessionId, viewType);
+
     // Map viewType to content key
     const viewTypeMap = {
       'roadmap': 'roadmap',
@@ -866,6 +870,22 @@ router.get('/metrics/recent', (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve recent metrics', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/metrics/advanced
+ * Returns advanced optimization metrics (warmup, prefetch, speculative)
+ */
+router.get('/metrics/advanced', (req, res) => {
+  try {
+    const advancedStats = getAdvancedOptimizationStats();
+    res.json({
+      status: 'ok',
+      ...advancedStats
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve advanced metrics', details: error.message });
   }
 });
 
