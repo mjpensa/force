@@ -560,25 +560,25 @@ body {
     /* Blob 1: Top-left warm red accent */
     radial-gradient(
       ellipse 80% 60% at 15% 20%,
-      rgba(218, 41, 28, 0.12) 0%,
+      rgba(218, 41, 28, 0.25) 0%,
       transparent 50%
     ),
     /* Blob 2: Center-right cool blue accent */
     radial-gradient(
       ellipse 70% 50% at 85% 40%,
-      rgba(42, 85, 128, 0.20) 0%,
+      rgba(42, 85, 128, 0.35) 0%,
       transparent 50%
     ),
     /* Blob 3: Bottom-left teal/green accent */
     radial-gradient(
       ellipse 60% 70% at 25% 80%,
-      rgba(80, 175, 123, 0.08) 0%,
+      rgba(80, 175, 123, 0.18) 0%,
       transparent 50%
     ),
     /* Blob 4: Bottom-right deep navy accent */
     radial-gradient(
       ellipse 50% 40% at 90% 90%,
-      rgba(20, 48, 82, 0.30) 0%,
+      rgba(20, 48, 82, 0.45) 0%,
       transparent 50%
     ),
     /* Base gradient: Navy with brand color blend */
