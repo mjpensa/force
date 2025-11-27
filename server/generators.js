@@ -70,8 +70,9 @@ class APIQueue {
   }
 }
 
-// Global API queue instance - max 4 concurrent Gemini API calls
-const apiQueue = new APIQueue(4);
+// Global API queue instance - max 6 concurrent Gemini API calls
+// Increased from 4 for better throughput; monitor for rate limit errors
+const apiQueue = new APIQueue(6);
 
 /**
  * Generation config presets for different content types

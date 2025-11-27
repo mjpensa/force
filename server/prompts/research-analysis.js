@@ -9,6 +9,8 @@
  * - Actionable recommendations for improving research
  */
 
+import { truncateResearchFiles, TRUNCATION_LIMITS } from '../utils.js';
+
 // ============================================================================
 // SCHEMA DEFINITIONS
 // ============================================================================
@@ -353,12 +355,16 @@ Calculate the overall score as a weighted average:
 
 /**
  * Generate the complete research analysis prompt with user context
+ * Applies truncation to reduce token usage and improve latency
  * @param {string} userPrompt - The user's analysis request
  * @param {Array<{filename: string, content: string}>} researchFiles - Research files to analyze
  * @returns {string} Complete prompt for AI
  */
 export function generateResearchAnalysisPrompt(userPrompt, researchFiles) {
-  const researchContent = researchFiles
+  // Apply truncation - research analysis needs more context
+  const truncatedFiles = truncateResearchFiles(researchFiles, TRUNCATION_LIMITS.researchAnalysis);
+
+  const researchContent = truncatedFiles
     .map(file => `=== ${file.filename} ===\n${file.content}`)
     .join('\n\n');
 

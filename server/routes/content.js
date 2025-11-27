@@ -15,21 +15,56 @@ import { generatePptx } from '../templates/ppt-export-service.js';
 
 const router = express.Router();
 
-// In-memory session storage
+// In-memory session storage with expiration tracking
 // Map<sessionId, { prompt, researchFiles, content, createdAt }>
 const sessions = new Map();
 
-// Clean up old sessions (older than 1 hour)
+// Priority queue for session expiration (sorted by expiration time)
+// Array of { sessionId, expiresAt } sorted by expiresAt ascending
+let expirationQueue = [];
+
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
-setInterval(() => {
+
+/**
+ * Add session to expiration queue
+ * @param {string} sessionId - Session ID
+ * @param {number} createdAt - Creation timestamp
+ */
+function scheduleSessionExpiration(sessionId, createdAt) {
+  const expiresAt = createdAt + SESSION_TTL_MS;
+  expirationQueue.push({ sessionId, expiresAt });
+  // Keep sorted by expiration time (insertion sort is efficient for nearly-sorted arrays)
+  expirationQueue.sort((a, b) => a.expiresAt - b.expiresAt);
+}
+
+/**
+ * Clean up expired sessions efficiently
+ * Only processes sessions that have actually expired (O(k) where k = expired sessions)
+ */
+function cleanupExpiredSessions() {
   const now = Date.now();
-  for (const [sessionId, session] of sessions) {
-    if (now - session.createdAt > SESSION_TTL_MS) {
+  let cleaned = 0;
+
+  // Process only expired sessions from front of queue
+  while (expirationQueue.length > 0 && expirationQueue[0].expiresAt <= now) {
+    const { sessionId } = expirationQueue.shift();
+
+    // Verify session still exists and is actually expired
+    const session = sessions.get(sessionId);
+    if (session && now - session.createdAt >= SESSION_TTL_MS) {
       sessions.delete(sessionId);
+      cleaned++;
       console.log(`[Session] Cleaned up expired session: ${sessionId}`);
     }
   }
-}, 5 * 60 * 1000); // Run cleanup every 5 minutes
+
+  if (cleaned > 0) {
+    console.log(`[Session] Cleanup complete: ${cleaned} sessions removed, ${sessions.size} remaining`);
+  }
+}
+
+// Run cleanup every 5 minutes
+setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
 
 /**
  * Generate a unique session ID
@@ -37,6 +72,18 @@ setInterval(() => {
 function generateSessionId() {
   return crypto.randomUUID();
 }
+
+// Pre-compiled error message patterns (module-level constant for performance)
+// Patterns are compiled once at module load instead of on every function call
+const ERROR_PATTERNS = Object.freeze([
+  { pattern: /JSON.*parse.*position/i, message: 'The AI response was malformed. Please try again.' },
+  { pattern: /timeout|timed out/i, message: 'Generation took too long. Please try again with simpler content.' },
+  { pattern: /rate limit/i, message: 'Too many requests. Please wait a moment and try again.' },
+  { pattern: /empty.*content|no.*section|invalid.*content/i, message: 'The AI could not generate valid content. Try providing more detailed source material.' },
+  { pattern: /network|connection|ECONNREFUSED/i, message: 'Network error occurred. Please check your connection and try again.' },
+  { pattern: /quota|exceeded/i, message: 'API quota exceeded. Please try again later.' },
+  { pattern: /invalid.*schema|validation.*failed/i, message: 'Generated content did not match expected format. Please try again.' }
+]);
 
 /**
  * Format raw error messages into user-friendly text
@@ -47,18 +94,7 @@ function generateSessionId() {
 function formatUserError(rawError, viewType) {
   if (!rawError) return `Failed to generate ${viewType}. Please try again.`;
 
-  // Map common error patterns to user-friendly messages
-  const errorMappings = [
-    { pattern: /JSON.*parse.*position/i, message: 'The AI response was malformed. Please try again.' },
-    { pattern: /timeout|timed out/i, message: 'Generation took too long. Please try again with simpler content.' },
-    { pattern: /rate limit/i, message: 'Too many requests. Please wait a moment and try again.' },
-    { pattern: /empty.*content|no.*section|invalid.*content/i, message: 'The AI could not generate valid content. Try providing more detailed source material.' },
-    { pattern: /network|connection|ECONNREFUSED/i, message: 'Network error occurred. Please check your connection and try again.' },
-    { pattern: /quota|exceeded/i, message: 'API quota exceeded. Please try again later.' },
-    { pattern: /invalid.*schema|validation.*failed/i, message: 'Generated content did not match expected format. Please try again.' }
-  ];
-
-  for (const mapping of errorMappings) {
+  for (const mapping of ERROR_PATTERNS) {
     if (mapping.pattern.test(rawError)) {
       return mapping.message;
     }
@@ -144,6 +180,7 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
 
     // Create session and store content
     const sessionId = generateSessionId();
+    const createdAt = Date.now();
     sessions.set(sessionId, {
       prompt,
       researchFiles: researchFiles.map(f => f.filename),
@@ -153,8 +190,9 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
         document: results.document,
         researchAnalysis: results.researchAnalysis
       },
-      createdAt: Date.now()
+      createdAt
     });
+    scheduleSessionExpiration(sessionId, createdAt);
     console.log(`[Session] Created session: ${sessionId}`);
 
     // Return sessionId for frontend to poll/fetch content

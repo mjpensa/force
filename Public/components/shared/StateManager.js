@@ -67,20 +67,44 @@ export class StateManager {
   }
 
   /**
-   * Deep merge objects
+   * Deep merge objects with change detection
+   * Performance optimization: Only creates new objects when values actually change
+   * Preserves reference equality for unchanged portions (enables efficient shouldComponentUpdate checks)
    */
   deepMerge(target, source) {
-    const result = { ...target };
+    // Fast path: if source is same reference, no merge needed
+    if (target === source) return target;
 
+    // Fast path: if target is null/undefined, return source
+    if (!target) return source;
+
+    let hasChanged = false;
+    const result = {};
+
+    // Copy all target keys first
+    for (const key in target) {
+      result[key] = target[key];
+    }
+
+    // Merge source keys with change detection
     for (const key in source) {
-      if (source[key] instanceof Object && !Array.isArray(source[key])) {
-        result[key] = this.deepMerge(target[key] || {}, source[key]);
-      } else {
-        result[key] = source[key];
+      const sourceValue = source[key];
+      const targetValue = target[key];
+
+      if (sourceValue instanceof Object && !Array.isArray(sourceValue) && sourceValue !== null) {
+        const merged = this.deepMerge(targetValue || {}, sourceValue);
+        if (merged !== targetValue) {
+          hasChanged = true;
+          result[key] = merged;
+        }
+      } else if (sourceValue !== targetValue) {
+        hasChanged = true;
+        result[key] = sourceValue;
       }
     }
 
-    return result;
+    // Return original target if nothing changed (preserves reference equality)
+    return hasChanged ? result : target;
   }
 
   /**
@@ -115,8 +139,14 @@ export class StateManager {
 
   /**
    * Notify all listeners of state change
+   * Performance optimization: Skip notification if state reference is unchanged
    */
   notifyListeners(previousState, newState) {
+    // Skip notification if state reference is unchanged (deep merge optimization)
+    if (previousState === newState) {
+      return;
+    }
+
     // Global listeners
     this.listeners.forEach(listener => {
       try {
@@ -126,12 +156,16 @@ export class StateManager {
       }
     });
 
-    // View-specific listeners
+    // View-specific listeners - only notify if that view's content actually changed
     for (const viewName in this.viewListeners) {
-      if (newState.content[viewName] !== previousState.content[viewName]) {
+      const prevContent = previousState.content?.[viewName];
+      const newContent = newState.content?.[viewName];
+
+      // Use reference equality (works with optimized deepMerge)
+      if (newContent !== prevContent) {
         this.viewListeners[viewName].forEach(listener => {
           try {
-            listener(newState.content[viewName], previousState.content[viewName]);
+            listener(newContent, prevContent);
           } catch (error) {
             console.error(`Error in ${viewName} listener:`, error);
           }

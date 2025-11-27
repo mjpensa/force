@@ -57,12 +57,12 @@ router.post('/generate-chart', uploadMiddleware.array('researchFiles'), strictLi
 
       const processedFiles = await Promise.all(fileProcessingPromises);
 
-      for (const processedFile of processedFiles) {
-        researchText += `\n\n--- Start of file: ${processedFile.name} ---\n`;
-        researchFiles.push(processedFile.name);
-        researchText += processedFile.content;
-        researchText += `\n--- End of file: ${processedFile.name} ---\n`;
-      }
+      // Build research text using array join (more efficient than string concatenation in loops)
+      researchFiles = processedFiles.map(f => f.name);
+      const researchParts = processedFiles.map(processedFile =>
+        `\n\n--- Start of file: ${processedFile.name} ---\n${processedFile.content}\n--- End of file: ${processedFile.name} ---\n`
+      );
+      researchText = researchParts.join('');
 
       console.log(`[Chart ${requestId}] Processed ${processedFiles.length} files (${researchText.length} characters total)`);
     }

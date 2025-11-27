@@ -59,6 +59,10 @@ class ContentViewer {
     // GanttChart dependencies (CRITICAL: same as original chart-renderer.js)
     this.footerSVG = '';
     this.taskAnalyzer = new TaskAnalyzer();
+
+    // Track which views are being actively polled to prevent duplicates
+    // Performance optimization: prevents redundant API calls
+    this._activePolls = new Set();
   }
 
   /**
@@ -647,8 +651,16 @@ class ContentViewer {
   /**
    * Poll for content generation completion
    * Uses exponential backoff to reduce server load
+   * Performance optimization: tracks active polls to prevent duplicates
    */
   async _pollForProcessingComplete(viewName, attempt = 0) {
+    // Prevent duplicate polling for the same view
+    if (this._activePolls.has(viewName)) {
+      console.log(`[Viewer] Skipping duplicate poll for ${viewName} - already active`);
+      return;
+    }
+    this._activePolls.add(viewName);
+
     const MAX_ATTEMPTS = 120; // 5 minutes with increasing intervals
     const BASE_INTERVAL = 2000; // Start at 2 seconds
     const MAX_INTERVAL = 10000; // Cap at 10 seconds
@@ -658,6 +670,7 @@ class ContentViewer {
     const interval = Math.min(BASE_INTERVAL * Math.pow(1.2, Math.floor(attempt / 5)), MAX_INTERVAL);
 
     if (attempt >= MAX_ATTEMPTS) {
+      this._activePolls.delete(viewName);
       console.log(`[Viewer] Polling timeout for ${viewName} after ${MAX_ATTEMPTS} attempts`);
       this._showGenerationTimeout(viewName);
       return;
@@ -688,6 +701,7 @@ class ContentViewer {
 
       if (data.status === 'completed' && data.data) {
         // Content is ready! Clear polling and load the view
+        this._activePolls.delete(viewName);
         if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
           delete this._processingPollTimeouts[viewName];
         }
@@ -721,6 +735,7 @@ class ContentViewer {
 
       if (data.status === 'error') {
         // Generation failed
+        this._activePolls.delete(viewName);
         if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
           delete this._processingPollTimeouts[viewName];
         }
@@ -1016,12 +1031,19 @@ class ContentViewer {
   /**
    * Start background polling to check status of all views
    * Enhanced: Now caches content when ready for instant view switching
+   * Performance optimization: Skips already-cached views and views with active foreground polls
    */
   _startBackgroundStatusPolling() {
     const views = ['roadmap', 'slides', 'document', 'research-analysis'];
 
-    // Initial state - all loading
-    views.forEach(view => this._updateTabStatus(view, 'loading'));
+    // Initial state - mark loading only for uncached views
+    views.forEach(view => {
+      if (this.stateManager.state.content[view]) {
+        this._updateTabStatus(view, 'ready');
+      } else {
+        this._updateTabStatus(view, 'loading');
+      }
+    });
 
     // Track active polling to avoid duplicates
     if (!this._backgroundPollTimeouts) {
@@ -1030,6 +1052,18 @@ class ContentViewer {
 
     // Poll each view with exponential backoff
     const pollView = async (viewName, attempt = 0) => {
+      // Skip if already cached
+      if (this.stateManager.state.content[viewName]) {
+        console.log(`[Background Poll] ${viewName} already cached, skipping`);
+        this._updateTabStatus(viewName, 'ready');
+        return;
+      }
+
+      // Skip if this view has an active foreground poll
+      if (this._activePolls.has(viewName)) {
+        console.log(`[Background Poll] ${viewName} has active foreground poll, skipping`);
+        return;
+      }
       // Calculate polling interval with backoff
       const BASE_INTERVAL = 3000; // 3 seconds
       const MAX_INTERVAL = 15000; // 15 seconds max
@@ -1110,8 +1144,9 @@ class ContentViewer {
       }
     };
 
-    // Start polling all views
-    views.forEach(view => pollView(view, 0));
+    // Start polling only uncached views (performance optimization)
+    views.filter(view => !this.stateManager.state.content[view])
+         .forEach(view => pollView(view, 0));
   }
 
   /**
