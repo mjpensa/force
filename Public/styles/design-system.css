@@ -648,10 +648,9 @@ body.view-roadmap .app-shell {
   width: 100%;
   height: auto;
 
-  /* Glassmorphic integration - treat as ambient light source */
-  opacity: 0.12;
-  filter: blur(8px);
-  mix-blend-mode: screen;
+  /* Glassmorphic integration - subtle ambient glow */
+  opacity: 0.25;
+  filter: blur(2px);
 
   /* Smooth fade-in on load */
   animation: ambientLogoFadeIn 1.5s ease-out forwards;
@@ -663,7 +662,7 @@ body.view-roadmap .app-shell {
     transform: scale(0.95);
   }
   to {
-    opacity: 0.12;
+    opacity: 0.25;
     transform: scale(1);
   }
 }
@@ -677,7 +676,7 @@ body.view-roadmap .ambient-logo-container {
 @media (prefers-reduced-motion: reduce) {
   .ambient-logo {
     animation: none;
-    opacity: 0.12;
+    opacity: 0.25;
   }
 }
 
@@ -690,8 +689,8 @@ body.view-roadmap .ambient-logo-container {
   }
 
   .ambient-logo {
-    opacity: 0.08;
-    filter: blur(12px);
+    opacity: 0.15;
+    filter: blur(4px);
   }
 }
 
