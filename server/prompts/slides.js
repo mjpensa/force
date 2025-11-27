@@ -17,7 +17,16 @@ export const slidesSchema = {
           paragraphs: { type: "array", items: { type: "string" } },
           columns: { type: "array", items: { type: "string" } },
           content: { type: "string" },
-          cards: { type: "array", items: { type: "object" } }
+          cards: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                content: { type: "string" }
+              }
+            }
+          }
         }
       }
     }
