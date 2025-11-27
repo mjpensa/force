@@ -20,6 +20,7 @@ import { generatePptx } from '../templates/ppt-export-service.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
 import { generateETag, clearAllCaches, clearExpiredEntries } from '../cache/contentCache.js';
 import { processFiles } from '../utils/fileProcessor.js';
+import { cleanJsonResponse } from '../utils/networkOptimizer.js';
 
 const router = express.Router();
 
@@ -206,7 +207,8 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     requestPerf.logReport();
 
     // Return sessionId for frontend to poll/fetch content
-    res.json({
+    // Use cleanJsonResponse to remove null/undefined values and reduce payload size
+    const responseData = cleanJsonResponse({
       status: 'completed',
       sessionId,
       prompt,
@@ -223,7 +225,9 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
         fileProcessingTime: requestReport.measures['file-processing']?.duration,
         generationTime: requestReport.measures['content-generation']?.duration
       }
-    });
+    }, { removeNull: true, removeUndefined: true });
+
+    res.json(responseData);
 
   } catch (error) {
     requestPerf.setMetadata('error', error.message);
@@ -268,10 +272,12 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
   res.flushHeaders();
 
-  // Helper to send SSE events
+  // Helper to send SSE events with optimized JSON
   const sendEvent = (event, data) => {
+    // Clean the data to remove null/undefined values before sending
+    const cleanedData = cleanJsonResponse(data, { removeNull: true, removeUndefined: true });
     res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    res.write(`data: ${JSON.stringify(cleanedData)}\n\n`);
   };
 
   // Send initial heartbeat
@@ -483,12 +489,15 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
     // Regenerate content
     const result = await regenerateContent(viewType, prompt, researchFiles);
 
-    res.json({
+    // Use cleanJsonResponse to reduce payload size
+    const responseData = cleanJsonResponse({
       viewType,
       status: result.success ? 'completed' : 'error',
-      data: result.data || null,
+      data: result.data,
       error: result.error ? formatUserError(result.error, viewType) : null
-    });
+    }, { removeNull: true, removeUndefined: true });
+
+    res.json(responseData);
 
   } catch (error) {
     res.status(500).json({
@@ -633,11 +642,14 @@ router.get('/:sessionId/:viewType', (req, res) => {
       res.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=3600');
       res.set('ETag', etag);
 
-      return res.json({
+      // Use cleanJsonResponse to remove null/undefined values and reduce payload size
+      const responseData = cleanJsonResponse({
         status: 'completed',
         data: contentResult.data,
         _cached: contentResult._cached || false  // Indicate if result was from cache
-      });
+      }, { removeNull: true, removeUndefined: true });
+
+      return res.json(responseData);
     } else {
       // Don't cache error responses
       res.set('Cache-Control', 'no-store');

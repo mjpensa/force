@@ -16,7 +16,6 @@
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import compression from 'compression';
 import cors from 'cors';
 
 // Import configuration (validates environment on load)
@@ -29,6 +28,15 @@ import {
   configureTimeout,
   handleUploadErrors
 } from './server/middleware.js';
+
+// Import network optimization utilities
+import {
+  createCompressionMiddleware,
+  createConnectionOptimizer,
+  createPreloadHintsMiddleware,
+  createJsonOptimizerMiddleware,
+  createVaryMiddleware
+} from './server/utils/networkOptimizer.js';
 
 // Import routes
 import chartRoutes from './server/routes/charts.js';
@@ -45,8 +53,20 @@ const __dirname = dirname(__filename);
 app.set('trust proxy', CONFIG.SERVER.TRUST_PROXY_HOPS);
 
 // --- Apply Middleware ---
-// Compression middleware (gzip/deflate)
-app.use(compression());
+// Enhanced compression middleware (gzip/deflate with smart filtering)
+app.use(createCompressionMiddleware());
+
+// Connection optimization (Keep-Alive headers)
+app.use(createConnectionOptimizer());
+
+// Vary headers for proper caching
+app.use(createVaryMiddleware());
+
+// JSON response optimizer (adds res.jsonOptimized method)
+app.use(createJsonOptimizerMiddleware());
+
+// Resource preload hints for critical assets
+app.use(createPreloadHintsMiddleware());
 
 // CORS configuration
 app.use(cors({
