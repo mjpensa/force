@@ -705,7 +705,13 @@ export class GanttChart {
     }
   }
   _addKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
+    // Remove existing handler to prevent duplicates
+    if (this._keyboardHandler) {
+      document.removeEventListener('keydown', this._keyboardHandler);
+    }
+
+    // Store handler reference for cleanup
+    this._keyboardHandler = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
         return;
       }
@@ -722,7 +728,8 @@ export class GanttChart {
         default:
           break;
       }
-    });
+    };
+    document.addEventListener('keydown', this._keyboardHandler);
   }
   _announceToScreenReader(message) {
     let liveRegion = document.getElementById('gantt-live-region');
@@ -773,6 +780,10 @@ export class GanttChart {
     if (!this.gridElement) {
       return;
     }
+
+    // Cleanup existing instances to prevent memory leaks
+    this._cleanupInteractionHandlers();
+
     const onTaskUpdate = async (taskInfo) => {
       if (taskInfo.sessionId) {
         await fetchJSON('/update-task-dates', {
@@ -815,8 +826,29 @@ export class GanttChart {
     );
     this._addCursorFeedback();
   }
+
+  _cleanupInteractionHandlers() {
+    if (this.draggableGantt) {
+      this.draggableGantt.disable();
+      this.draggableGantt = null;
+    }
+    if (this.resizableGantt) {
+      this.resizableGantt.disable();
+      this.resizableGantt = null;
+    }
+    if (this.contextMenu) {
+      this.contextMenu.disable();
+      this.contextMenu = null;
+    }
+    // Remove cursor feedback listener
+    if (this._cursorFeedbackHandler && this._lastGridElement) {
+      this._lastGridElement.removeEventListener('mousemove', this._cursorFeedbackHandler);
+      this._cursorFeedbackHandler = null;
+    }
+  }
   _addCursorFeedback() {
-    this.gridElement.addEventListener('mousemove', (event) => {
+    // Store handler reference for cleanup
+    this._cursorFeedbackHandler = (event) => {
       const bar = event.target.closest('.gantt-bar');
       if (!bar) return;
       if (!this.isEditMode) {
@@ -829,13 +861,15 @@ export class GanttChart {
       }
       const rect = bar.getBoundingClientRect();
       const x = event.clientX - rect.left;
-      const HANDLE_WIDTH = 10; // Updated to match new resize handle width
+      const HANDLE_WIDTH = 10;
       if (x <= HANDLE_WIDTH || x >= rect.width - HANDLE_WIDTH) {
         bar.style.cursor = 'ew-resize';
       } else {
         bar.style.cursor = 'move';
       }
-    });
+    };
+    this._lastGridElement = this.gridElement;
+    this.gridElement.addEventListener('mousemove', this._cursorFeedbackHandler);
   }
   _updateLegendWithUsedColors() {
     const usedColors = new Set();
@@ -859,5 +893,46 @@ export class GanttChart {
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  }
+
+  /**
+   * Clean up all resources to prevent memory leaks
+   * Call this before removing the chart or on page unload
+   */
+  destroy() {
+    // Cleanup ResizeObserver
+    if (this._titleResizeObserver) {
+      this._titleResizeObserver.disconnect();
+      this._titleResizeObserver = null;
+    }
+
+    // Cleanup interaction handlers
+    this._cleanupInteractionHandlers();
+
+    // Cleanup keyboard shortcuts listener
+    if (this._keyboardHandler) {
+      document.removeEventListener('keydown', this._keyboardHandler);
+      this._keyboardHandler = null;
+    }
+
+    // Cleanup exporter
+    if (this.exporter) {
+      this.exporter = null;
+    }
+
+    // Cleanup editor
+    if (this.editor) {
+      this.editor = null;
+    }
+
+    // Clear DOM references
+    if (this.container) {
+      this.container.innerHTML = '';
+    }
+    this.chartWrapper = null;
+    this.gridElement = null;
+    this.titleElement = null;
+    this.legendElement = null;
+    this.titleContainer = null;
   }
 }
