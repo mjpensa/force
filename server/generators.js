@@ -4,6 +4,7 @@ import { generateRoadmapPrompt, roadmapSchema } from './prompts/roadmap.js';
 import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
 import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
 import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompts/research-analysis.js';
+import { PerformanceLogger, createTimer, globalMetrics } from './utils/performanceLogger.js';
 
 // Initialize Gemini API (using API_KEY from environment to match server/config.js)
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
@@ -92,7 +93,9 @@ function withTimeout(promise, timeoutMs, operationName) {
     clearTimeout(timeoutId);
   });
 }
-async function generateWithGemini(prompt, schema, contentType, configOverrides = {}) {
+async function generateWithGemini(prompt, schema, contentType, configOverrides = {}, perfLogger = null) {
+  const timer = perfLogger ? createTimer(perfLogger, `api-${contentType.toLowerCase()}`) : null;
+
   try {
     const {
       temperature,
@@ -114,15 +117,39 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
       model: 'models/gemini-flash-latest',
       generationConfig
     });
+
+    // Track prompt size
+    if (perfLogger) {
+      perfLogger.setMetadata(`prompt-size-${contentType.toLowerCase()}`, prompt.length);
+    }
+
     const result = await withTimeout(
       model.generateContent(prompt),
       GENERATION_TIMEOUT_MS,
       `${contentType} generation`
     );
     const response = result.response;
+
+    // Track token usage if available
+    if (perfLogger && response.usageMetadata) {
+      perfLogger.trackTokenUsage(contentType.toLowerCase(), response.usageMetadata);
+    }
+
     const text = response.text();
+
+    // Track response size
+    if (perfLogger) {
+      perfLogger.setMetadata(`response-size-${contentType.toLowerCase()}`, text.length);
+    }
+
+    // Parse timing
+    const parseStart = Date.now();
     try {
       const data = JSON.parse(text);
+      if (perfLogger) {
+        perfLogger.setMetadata(`parse-time-${contentType.toLowerCase()}`, Date.now() - parseStart);
+      }
+      if (timer) timer.stop();
       return data;
     } catch (parseError) {
       const positionMatch = parseError.message.match(/position (\d+)/);
@@ -134,46 +161,56 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
       try {
         const repairedJsonText = jsonrepair(text);
         const repairedData = JSON.parse(repairedJsonText);
+        if (perfLogger) {
+          perfLogger.setMetadata(`parse-time-${contentType.toLowerCase()}`, Date.now() - parseStart);
+          perfLogger.setMetadata(`json-repair-${contentType.toLowerCase()}`, true);
+        }
+        if (timer) timer.stop();
         return repairedData;
       } catch (repairError) {
+        if (timer) timer.stop();
         throw parseError; // Throw the original parse error
       }
     }
   } catch (error) {
+    if (timer) timer.stop();
+    if (perfLogger) {
+      perfLogger.setMetadata(`error-${contentType.toLowerCase()}`, error.message);
+    }
     throw new Error(`Failed to generate ${contentType}: ${error.message}`);
   }
 }
-async function generateRoadmap(userPrompt, researchFiles) {
+async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
   try {
     const prompt = generateRoadmapPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG);
+    const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger);
     return { success: true, data };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
-async function generateSlides(userPrompt, researchFiles) {
+async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
   try {
     const prompt = generateSlidesPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG);
+    const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger);
     return { success: true, data };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
-async function generateDocument(userPrompt, researchFiles) {
+async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
   try {
     const prompt = generateDocumentPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CONFIG);
+    const data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger);
     return { success: true, data };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
-async function generateResearchAnalysis(userPrompt, researchFiles) {
+async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = null) {
   try {
     const prompt = generateResearchAnalysisPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG);
+    const data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger);
     return { success: true, data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -183,43 +220,95 @@ async function generateResearchAnalysis(userPrompt, researchFiles) {
 /**
  * Generate all content types with controlled concurrency via API queue
  * This prevents overwhelming the Gemini API with too many simultaneous requests
+ *
+ * @param {string} userPrompt - User's prompt
+ * @param {Array} researchFiles - Array of research file objects
+ * @param {object} options - Options including sessionId for logging
+ * @returns {object} Results with performance metrics
  */
-export async function generateAllContent(userPrompt, researchFiles) {
+export async function generateAllContent(userPrompt, researchFiles, options = {}) {
+  // Initialize performance logger
+  const perfLogger = new PerformanceLogger('generate-all-content', {
+    sessionId: options.sessionId,
+    enabled: true
+  });
+
+  // Track input metadata
+  perfLogger.setMetadata('fileCount', researchFiles.length);
+  perfLogger.setMetadata('totalInputSize', researchFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0));
+  perfLogger.setMetadata('promptLength', userPrompt.length);
+
   try {
     // Use apiQueue.runAll to control concurrency and prevent rate limiting
     const tasks = [
-      { task: () => generateRoadmap(userPrompt, researchFiles), name: 'Roadmap' },
-      { task: () => generateSlides(userPrompt, researchFiles), name: 'Slides' },
-      { task: () => generateDocument(userPrompt, researchFiles), name: 'Document' },
-      { task: () => generateResearchAnalysis(userPrompt, researchFiles), name: 'ResearchAnalysis' }
+      { task: () => generateRoadmap(userPrompt, researchFiles, perfLogger), name: 'Roadmap' },
+      { task: () => generateSlides(userPrompt, researchFiles, perfLogger), name: 'Slides' },
+      { task: () => generateDocument(userPrompt, researchFiles, perfLogger), name: 'Document' },
+      { task: () => generateResearchAnalysis(userPrompt, researchFiles, perfLogger), name: 'ResearchAnalysis' }
     ];
 
     const [roadmap, slides, document, researchAnalysis] = await apiQueue.runAll(tasks);
 
-    return { roadmap, slides, document, researchAnalysis };
+    // Complete performance logging
+    const perfReport = perfLogger.complete();
+
+    // Store in global metrics for aggregation
+    globalMetrics.addRequest(perfReport);
+
+    // Log performance report
+    perfLogger.logReport();
+
+    return {
+      roadmap,
+      slides,
+      document,
+      researchAnalysis,
+      _performanceMetrics: perfReport
+    };
   } catch (error) {
+    perfLogger.setMetadata('fatalError', error.message);
+    perfLogger.complete();
+    perfLogger.logReport();
     throw error;
   }
 }
-export async function regenerateContent(viewType, prompt, researchFiles) {
+export async function regenerateContent(viewType, prompt, researchFiles, options = {}) {
+  const perfLogger = new PerformanceLogger(`regenerate-${viewType}`, {
+    sessionId: options.sessionId,
+    enabled: true
+  });
+
   try {
     const taskName = `Regenerate-${viewType}`;
     const task = async () => {
       switch (viewType) {
         case 'roadmap':
-          return generateRoadmap(prompt, researchFiles);
+          return generateRoadmap(prompt, researchFiles, perfLogger);
         case 'slides':
-          return generateSlides(prompt, researchFiles);
+          return generateSlides(prompt, researchFiles, perfLogger);
         case 'document':
-          return generateDocument(prompt, researchFiles);
+          return generateDocument(prompt, researchFiles, perfLogger);
         case 'research-analysis':
-          return generateResearchAnalysis(prompt, researchFiles);
+          return generateResearchAnalysis(prompt, researchFiles, perfLogger);
         default:
           throw new Error(`Invalid view type: ${viewType}`);
       }
     };
-    return await apiQueue.add(task, taskName);
+    const result = await apiQueue.add(task, taskName);
+
+    // Complete performance logging
+    const perfReport = perfLogger.complete();
+    globalMetrics.addRequest(perfReport);
+    perfLogger.logReport();
+
+    return { ...result, _performanceMetrics: perfReport };
   } catch (error) {
+    perfLogger.setMetadata('error', error.message);
+    perfLogger.complete();
+    perfLogger.logReport();
     throw error;
   }
 }
+
+// Export globalMetrics for the metrics endpoint
+export { globalMetrics };
