@@ -3,6 +3,8 @@ export const ErrorTypes = {
   API: 'APIError',
   VALIDATION: 'ValidationError',
   TIMEOUT: 'TimeoutError',
+  NOT_FOUND: 'NotFoundError',
+  PERMISSION: 'PermissionError',
   UNKNOWN: 'UnknownError'
 };
 export const ErrorSeverity = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high', CRITICAL: 'critical' };
@@ -33,10 +35,29 @@ export async function retryWithBackoff(fn, options = {}) {
 }
 export async function fetchWithRetry(url, options = {}) {
   return retryWithBackoff(async () => {
-    const response = await fetch(url, options);
-    if (response.status >= 500) {
-      throw new AppError(`Server error: ${response.status}`, ErrorTypes.API, ErrorSeverity.HIGH, { status: response.status, url });
+    let response;
+    try {
+      response = await fetch(url, options);
+    } catch (networkError) {
+      // Network failures (offline, DNS error, CORS, etc.) throw TypeError
+      throw new AppError(
+        'Network error: Unable to connect to server',
+        ErrorTypes.NETWORK,
+        ErrorSeverity.HIGH,
+        { url, originalError: networkError.message }
+      );
     }
+
+    // Retry on server errors (5xx)
+    if (response.status >= 500) {
+      throw new AppError(
+        `Server error: ${response.status}`,
+        ErrorTypes.API,
+        ErrorSeverity.HIGH,
+        { status: response.status, url, retryable: true }
+      );
+    }
+
     return response;
   }, { maxRetries: 3, initialDelay: 1000 });
 }
@@ -49,7 +70,9 @@ export function showErrorNotification(error, options = {}) {
   const messages = {
     [ErrorTypes.NETWORK]: { title: 'Connection Error', message: 'Unable to connect. Check your connection.' },
     [ErrorTypes.API]: { title: 'Server Error', message: 'Server error. Try again.' },
-    [ErrorTypes.TIMEOUT]: { title: 'Timeout', message: 'Request timed out.' }
+    [ErrorTypes.TIMEOUT]: { title: 'Timeout', message: 'Request timed out.' },
+    [ErrorTypes.NOT_FOUND]: { title: 'Not Found', message: 'The requested resource was not found.' },
+    [ErrorTypes.PERMISSION]: { title: 'Permission Denied', message: 'You do not have permission to access this resource.' }
   };
   const { title, message } = messages[error.type] || { title: 'Error', message: error.message || 'Something went wrong.' };
   const notification = document.createElement('div');
