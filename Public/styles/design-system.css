@@ -628,6 +628,73 @@ body.view-roadmap .app-shell {
   background-attachment: initial;
 }
 
+/* ========== AMBIENT BACKGROUND LOGO ========== */
+/* Glassmorphic treatment for brand SVG in upper-right corner */
+
+.ambient-logo-container {
+  position: fixed;
+  top: -5%;
+  right: -8%;
+  width: 45%;
+  max-width: 500px;
+  z-index: 0;
+  pointer-events: none;
+
+  /* Prevent layout shifts */
+  contain: layout style;
+}
+
+.ambient-logo {
+  width: 100%;
+  height: auto;
+
+  /* Glassmorphic integration - treat as ambient light source */
+  opacity: 0.12;
+  filter: blur(8px);
+  mix-blend-mode: screen;
+
+  /* Smooth fade-in on load */
+  animation: ambientLogoFadeIn 1.5s ease-out forwards;
+}
+
+@keyframes ambientLogoFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 0.12;
+    transform: scale(1);
+  }
+}
+
+/* Hide ambient logo on Gantt chart view to reduce visual noise */
+body.view-roadmap .ambient-logo-container {
+  display: none;
+}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-logo {
+    animation: none;
+    opacity: 0.12;
+  }
+}
+
+/* Mobile: smaller and more subtle */
+@media screen and (max-width: 768px) {
+  .ambient-logo-container {
+    width: 60%;
+    top: -8%;
+    right: -15%;
+  }
+
+  .ambient-logo {
+    opacity: 0.08;
+    filter: blur(12px);
+  }
+}
+
 /* ========== GLASSMORPHIC COMPONENT STYLES ========== */
 
 /* Main Form Container - Glass Panel */
