@@ -7,7 +7,11 @@ import { SidebarNav } from './components/SidebarNav.js';
 import {
   markPerformance,
   measurePerformance,
-  reportWebVitals
+  reportWebVitals,
+  trackContentTiming,
+  trackApiTiming,
+  logPerformanceMetrics,
+  getAllMetrics
 } from './components/shared/Performance.js';
 import {
   initAccessibility,
@@ -125,6 +129,7 @@ class ContentViewer {
   async init() {
     try {
       markPerformance('viewer-init-start');
+      markPerformance('generation-started'); // Mark for TTFC calculation
       addLazyLoadingStyles();
       this.footerSVG = await loadFooterSVG();
       initAccessibility({
@@ -136,11 +141,22 @@ class ContentViewer {
         focusManagement: true
       });
       this._setupKeyboardShortcuts();
-      if (window.location.search.includes('debug=true')) {
-        reportWebVitals((_vital) => {
-          // Web vitals reported for debug mode
+      // Track content readiness
+      this._contentReadyStatus = {
+        roadmap: false,
+        slides: false,
+        document: false,
+        'research-analysis': false
+      };
+
+      // Enable debug mode for performance logging
+      this._debugMode = window.location.search.includes('debug=true');
+      if (this._debugMode) {
+        reportWebVitals((vital) => {
+          console.log('[WebVital]', vital.name, vital.value.toFixed(2), vital.rating);
         });
       }
+
       this.sessionId = this._getSessionIdFromURL();
       if (!this.sessionId) {
         this._showError('No session ID provided', 'Please return to the home page and generate content first.');
@@ -152,7 +168,11 @@ class ContentViewer {
       await this._handleRouteChange();
       this._startBackgroundStatusPolling();
       markPerformance('viewer-init-end');
-      measurePerformance('viewer-initialization', 'viewer-init-start', 'viewer-init-end');
+      const initTime = measurePerformance('viewer-initialization', 'viewer-init-start', 'viewer-init-end');
+
+      if (this._debugMode) {
+        console.log('[Performance] Viewer initialized in', initTime.toFixed(2), 'ms');
+      }
     } catch (error) {
       this._showError('Failed to load content', error.message);
     }
@@ -287,11 +307,19 @@ class ContentViewer {
       this.currentViewComponent = null;
       this._showLoading(viewName);
       markPerformance(`api-${viewName}-start`);
+      const apiStartTime = Date.now();
       let viewData;
       try {
         viewData = await this.stateManager.loadView(viewName);
         markPerformance(`api-${viewName}-end`);
-        measurePerformance(`api-${viewName}`, `api-${viewName}-start`, `api-${viewName}-end`);
+        const apiTime = measurePerformance(`api-${viewName}`, `api-${viewName}-start`, `api-${viewName}-end`);
+
+        // Track API timing for statistics
+        trackApiTiming(`/api/content/${viewName}`, Date.now() - apiStartTime, true);
+
+        // Track content received timing
+        trackContentTiming(viewName, 'received');
+        this._markContentReady(viewName);
       } catch (error) {
         const isProcessing = error.message.includes('processing') ||
                             error.message.includes('being generated') ||
@@ -331,10 +359,24 @@ class ContentViewer {
           break;
       }
       markPerformance(`render-${viewName}-end`);
-      measurePerformance(`render-${viewName}`, `render-${viewName}-start`, `render-${viewName}-end`);
+      const renderTime = measurePerformance(`render-${viewName}`, `render-${viewName}-start`, `render-${viewName}-end`);
+
+      // Track content rendered timing
+      trackContentTiming(viewName, 'rendered');
+
       this.currentView = viewName;
       markPerformance(`view-${viewName}-end`);
-      measurePerformance(`view-${viewName}-total`, `view-${viewName}-start`, `view-${viewName}-end`);
+      const totalTime = measurePerformance(`view-${viewName}-total`, `view-${viewName}-start`, `view-${viewName}-end`);
+
+      // Debug logging
+      if (this._debugMode) {
+        console.log(`[Performance] ${viewName} view loaded:`, {
+          apiTime: measurePerformance(`api-${viewName}`, `api-${viewName}-start`, `api-${viewName}-end`),
+          renderTime,
+          totalTime
+        });
+      }
+
       setTimeout(() => {
         initLazyLoading('img[data-src]');
       }, 0);
@@ -764,6 +806,33 @@ class ContentViewer {
   }
 
   /**
+   * Mark a content type as ready and check if all content is ready
+   * @param {string} viewName - The view name that became ready
+   */
+  _markContentReady(viewName) {
+    if (!this._contentReadyStatus) {
+      this._contentReadyStatus = {
+        roadmap: false,
+        slides: false,
+        document: false,
+        'research-analysis': false
+      };
+    }
+
+    this._contentReadyStatus[viewName] = true;
+
+    // Check if all content is ready
+    const allReady = Object.values(this._contentReadyStatus).every(v => v);
+    if (allReady) {
+      markPerformance('all-content-ready');
+      if (this._debugMode) {
+        console.log('[Performance] All content ready');
+        logPerformanceMetrics('All Content Ready');
+      }
+    }
+  }
+
+  /**
    * Start background polling to check status of all views
    * Enhanced: Now caches content when ready for instant view switching
    * Performance optimization: Skips already-cached views and views with active foreground polls
@@ -810,6 +879,11 @@ class ContentViewer {
               return { done: true };
             }
             this._updateTabStatus(viewName, 'ready');
+
+            // Track content timing for background-loaded content
+            trackContentTiming(viewName, 'received');
+            this._markContentReady(viewName);
+
             // Use batched state updates for performance
             if (!this.stateManager.state.content[viewName]) {
               this.stateManager.batchSetState({
@@ -838,6 +912,12 @@ class ContentViewer {
     });
   }
   destroy() {
+    // Log final performance metrics before cleanup
+    if (this._debugMode) {
+      console.log('[Performance] Session ending, final metrics:');
+      logPerformanceMetrics('Session End');
+    }
+
     // Clean up polling service (handles all timeouts)
     this.pollingService.stopAll();
 
