@@ -93,7 +93,7 @@ const DOCUMENT_CONFIG = {
  * - Used as fallback when no specific config is provided
  */
 const STRUCTURED_DEFAULT_CONFIG = {
-  thinkingBudget: 24576  // Standard deep reasoning
+  thinkingBudget: 0  // Disabled for speed
 };
 
 /**
@@ -106,7 +106,7 @@ const ROADMAP_CONFIG = {
   temperature: 0.1,      // Lowest: maximum determinism for rule-based output
   topP: 0.3,             // Very constrained: follow explicit rules exactly
   topK: 5,               // Minimal exploration: pick most likely tokens
-  thinkingBudget: 24576  // Maximum: complex date mapping and swimlane logic
+  thinkingBudget: 0      // Disabled for speed
 };
 
 /**
@@ -119,7 +119,7 @@ const RESEARCH_ANALYSIS_CONFIG = {
   temperature: 0.2,      // Low: reliable analysis without hallucination
   topP: 0.5,             // Moderate: allows varied recommendations
   topK: 10,              // Some exploration for insightful suggestions
-  thinkingBudget: 24576  // Maximum: deep analysis of research quality
+  thinkingBudget: 0      // Disabled for speed
 };
 
 /**
