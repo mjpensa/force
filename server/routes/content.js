@@ -65,6 +65,11 @@ function formatUserError(rawError, viewType) {
  * }
  */
 router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, res) => {
+  // Extend timeout for long-running generation (4 sequential AI calls, each up to 5 min)
+  // Default timeout is 2 minutes which is insufficient
+  const GENERATE_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes
+  req.setTimeout(GENERATE_TIMEOUT_MS);
+  res.setTimeout(GENERATE_TIMEOUT_MS);
   try {
     const { prompt } = req.body;
     const files = req.files;
@@ -153,6 +158,11 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
  * }
  */
 router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), async (req, res) => {
+  // Extend timeout for long-running AI generation (up to 5 min per content type)
+  const REGENERATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+  req.setTimeout(REGENERATE_TIMEOUT_MS);
+  res.setTimeout(REGENERATE_TIMEOUT_MS);
+
   try {
     const { viewType } = req.params;
     const { prompt } = req.body;
