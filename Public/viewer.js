@@ -494,6 +494,16 @@ class ContentViewer {
       const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
       const data = await response.json();
       if (data.status === 'completed' && data.data) {
+        // Validate data structure before caching
+        const isValidData = this._validateViewData(viewName, data.data);
+        if (!isValidData) {
+          if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
+            delete this._processingPollTimeouts[viewName];
+          }
+          this._updateTabStatus(viewName, 'failed');
+          this._showGenerationFailed(viewName, `${viewName} generation completed but produced invalid content. Please try regenerating.`);
+          return;
+        }
         if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
           delete this._processingPollTimeouts[viewName];
         }
@@ -704,6 +714,21 @@ class ContentViewer {
       </div>
     `;
   }
+  _validateViewData(viewName, data) {
+    if (!data) return false;
+    switch (viewName) {
+      case 'slides':
+        return data.slides && Array.isArray(data.slides) && data.slides.length > 0;
+      case 'document':
+        return data.sections && Array.isArray(data.sections) && data.sections.length > 0;
+      case 'research-analysis':
+        return data.themes && Array.isArray(data.themes) && data.themes.length > 0;
+      case 'roadmap':
+        return data.timeColumns && Array.isArray(data.timeColumns) && data.data && Array.isArray(data.data);
+      default:
+        return true;
+    }
+  }
   _getSessionIdFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('sessionId');
@@ -740,6 +765,12 @@ class ContentViewer {
 
           const data = await response.json();
           if (data.status === 'completed' && data.data) {
+            // Validate data structure before caching
+            const isValidData = this._validateViewData(viewName, data.data);
+            if (!isValidData) {
+              this._updateTabStatus(viewName, 'failed');
+              return { done: true };
+            }
             this._updateTabStatus(viewName, 'ready');
             // Use batched state updates for performance
             if (!this.stateManager.state.content[viewName]) {

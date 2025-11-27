@@ -24,13 +24,16 @@ export const slidesSchema = {
               properties: {
                 title: { type: "string" },
                 content: { type: "string" }
-              }
+              },
+              required: ["title"]
             }
           }
-        }
+        },
+        required: ["type", "title"]
       }
     }
-  }
+  },
+  required: ["title", "slides"]
 };
 
 export function generateSlidesPrompt(userPrompt, researchFiles) {
