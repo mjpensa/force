@@ -14,7 +14,7 @@
 import express from 'express';
 import mammoth from 'mammoth';
 import crypto from 'crypto';
-import { generateAllContent, regenerateContent, globalMetrics, apiQueue } from '../generators.js';
+import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { generatePptx } from '../templates/ppt-export-service.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
@@ -246,6 +246,196 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
       error: 'Internal server error',
       details: error.message
     });
+  }
+});
+
+/**
+ * POST /api/content/generate/stream
+ * Generates all content types with Server-Sent Events streaming
+ * Results are emitted as each content type completes, reducing perceived latency
+ *
+ * Request (multipart/form-data):
+ * - prompt: string (form field)
+ * - researchFiles: File[] (uploaded files)
+ *
+ * SSE Events:
+ * - event: progress, data: { message: string }
+ * - event: content, data: { type: string, result: object }
+ * - event: complete, data: { sessionId: string, results: object }
+ * - event: error, data: { message: string }
+ */
+router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (req, res) => {
+  // Extend timeout for streaming (content types emit as they complete)
+  const STREAM_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes
+  req.setTimeout(STREAM_TIMEOUT_MS);
+  res.setTimeout(STREAM_TIMEOUT_MS);
+
+  // Initialize performance logging
+  const requestPerf = new PerformanceLogger('content-generate-stream', { enabled: true });
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+  res.flushHeaders();
+
+  // Helper to send SSE events
+  const sendEvent = (event, data) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  // Send initial heartbeat
+  sendEvent('progress', { message: 'Connection established' });
+
+  // Keep-alive heartbeat to prevent connection timeout
+  const heartbeatInterval = setInterval(() => {
+    res.write(': heartbeat\n\n');
+  }, 15000);
+
+  try {
+    const { prompt } = req.body;
+    const files = req.files;
+
+    // Validate input
+    if (!prompt || typeof prompt !== 'string') {
+      sendEvent('error', { message: 'Invalid request. Required: prompt (string)' });
+      clearInterval(heartbeatInterval);
+      return res.end();
+    }
+
+    if (!files || files.length === 0) {
+      sendEvent('error', { message: 'At least one research file is required' });
+      clearInterval(heartbeatInterval);
+      return res.end();
+    }
+
+    // Track file metadata
+    requestPerf.setMetadata('fileCount', files.length);
+    requestPerf.setMetadata('totalUploadSize', files.reduce((sum, f) => sum + f.size, 0));
+
+    sendEvent('progress', { message: 'Processing uploaded files...' });
+
+    // Process uploaded files
+    const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
+    const fileProcessingTimer = createTimer(requestPerf, 'file-processing');
+
+    const fileProcessingPromises = sortedFiles.map(async (file) => {
+      let content = '';
+      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        const result = await mammoth.convertToHtml({ buffer: file.buffer });
+        content = result.value;
+      } else {
+        content = file.buffer.toString('utf8');
+      }
+      return { filename: file.originalname, content };
+    });
+
+    const researchFiles = await Promise.all(fileProcessingPromises);
+    fileProcessingTimer.stop();
+
+    requestPerf.setMetadata('processedContentSize', researchFiles.reduce((sum, f) => sum + f.content.length, 0));
+
+    // Create session ID
+    const sessionId = generateSessionId();
+    requestPerf.setMetadata('sessionId', sessionId);
+
+    sendEvent('progress', { message: 'Starting content generation...', sessionId });
+
+    // Initialize session with empty content (will be populated as results stream in)
+    const now = Date.now();
+    const session = {
+      prompt,
+      researchFiles: researchFiles.map(f => f.filename),
+      researchContent: researchFiles.map(f => f.content).join('\n\n---\n\n').substring(0, 500000),
+      content: {
+        roadmap: null,
+        slides: null,
+        document: null,
+        researchAnalysis: null
+      },
+      createdAt: now,
+      lastAccessed: now
+    };
+    sessions.set(sessionId, session);
+    enforceSessionLimit();
+
+    // Content type mapping for consistent naming
+    const contentKeyMap = {
+      'roadmap': 'roadmap',
+      'slides': 'slides',
+      'document': 'document',
+      'research-analysis': 'researchAnalysis'
+    };
+
+    // Time content generation
+    const generationTimer = createTimer(requestPerf, 'content-generation');
+
+    // Generate with streaming callbacks
+    await generateAllContentStreaming(prompt, researchFiles, {
+      sessionId,
+
+      onProgress: (message) => {
+        sendEvent('progress', { message });
+      },
+
+      onContentReady: (type, result) => {
+        // Store in session immediately
+        const contentKey = contentKeyMap[type] || type;
+        session.content[contentKey] = result;
+        session.lastAccessed = Date.now();
+
+        // Stream to client
+        sendEvent('content', {
+          type,
+          success: result.success,
+          data: result.data || null,
+          error: result.error ? formatUserError(result.error, type) : null
+        });
+      },
+
+      onComplete: (results) => {
+        generationTimer.stop();
+
+        // Complete performance logging
+        const requestReport = requestPerf.complete();
+        requestPerf.logReport();
+
+        // Send completion event with all results
+        sendEvent('complete', {
+          sessionId,
+          prompt,
+          researchFiles: researchFiles.map(f => f.filename),
+          _performance: {
+            totalDuration: requestReport.totalDuration,
+            fileProcessingTime: requestReport.measures['file-processing']?.duration,
+            generationTime: requestReport.measures['content-generation']?.duration
+          }
+        });
+
+        clearInterval(heartbeatInterval);
+        res.end();
+      },
+
+      onError: (error) => {
+        sendEvent('error', { message: error.message });
+        requestPerf.setMetadata('fatalError', error.message);
+        requestPerf.complete();
+        requestPerf.logReport();
+        clearInterval(heartbeatInterval);
+        res.end();
+      }
+    });
+
+  } catch (error) {
+    requestPerf.setMetadata('error', error.message);
+    requestPerf.complete();
+    requestPerf.logReport();
+
+    sendEvent('error', { message: 'Internal server error: ' + error.message });
+    clearInterval(heartbeatInterval);
+    res.end();
   }
 });
 

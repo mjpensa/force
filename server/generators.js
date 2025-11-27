@@ -393,3 +393,103 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
 
 // Export metrics for monitoring endpoints
 export { globalMetrics, apiQueue };
+
+/**
+ * Generate all content types with streaming - emits results as each completes
+ * Uses callbacks to stream results to the client via SSE
+ *
+ * @param {string} userPrompt - User's prompt
+ * @param {Array} researchFiles - Array of research file objects
+ * @param {object} options - Options including sessionId and callbacks
+ * @param {Function} options.onContentReady - Called when a content type completes: (type, result) => void
+ * @param {Function} options.onProgress - Called for progress updates: (message) => void
+ * @param {Function} options.onComplete - Called when all content is ready: (results) => void
+ * @param {Function} options.onError - Called on fatal error: (error) => void
+ * @returns {Promise<object>} Final results object
+ */
+export async function generateAllContentStreaming(userPrompt, researchFiles, options = {}) {
+  const {
+    sessionId,
+    onContentReady = () => {},
+    onProgress = () => {},
+    onComplete = () => {},
+    onError = () => {}
+  } = options;
+
+  // Initialize performance logger
+  const perfLogger = new PerformanceLogger('generate-all-content-streaming', {
+    sessionId,
+    enabled: true
+  });
+
+  // Track input metadata
+  perfLogger.setMetadata('fileCount', researchFiles.length);
+  perfLogger.setMetadata('totalInputSize', researchFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0));
+  perfLogger.setMetadata('promptLength', userPrompt.length);
+
+  const results = {
+    roadmap: null,
+    slides: null,
+    document: null,
+    researchAnalysis: null
+  };
+
+  // Content type mapping for consistent naming
+  const typeMapping = {
+    'Slides': 'slides',
+    'Document': 'document',
+    'Roadmap': 'roadmap',
+    'ResearchAnalysis': 'research-analysis'
+  };
+
+  try {
+    onProgress('Starting content generation...');
+
+    // Create tasks that emit results as they complete
+    const createStreamingTask = (generator, name, viewType) => async () => {
+      onProgress(`Generating ${name}...`);
+      const result = await generator(userPrompt, researchFiles, perfLogger);
+      const mappedType = typeMapping[name] || viewType;
+
+      // Store result
+      results[viewType] = result;
+
+      // Emit to callback immediately
+      onContentReady(mappedType, result);
+      onProgress(`${name} complete`);
+
+      return result;
+    };
+
+    // Define tasks with priority (Document and Slides are fastest, emit first)
+    const tasks = [
+      { task: createStreamingTask(generateDocument, 'Document', 'document'), name: 'Document' },
+      { task: createStreamingTask(generateSlides, 'Slides', 'slides'), name: 'Slides' },
+      { task: createStreamingTask(generateRoadmap, 'Roadmap', 'roadmap'), name: 'Roadmap' },
+      { task: createStreamingTask(generateResearchAnalysis, 'ResearchAnalysis', 'researchAnalysis'), name: 'ResearchAnalysis' }
+    ];
+
+    // Run all tasks (they'll emit as they complete due to queue priority)
+    await apiQueue.runAll(tasks);
+
+    // Complete performance logging
+    const perfReport = perfLogger.complete();
+    globalMetrics.addRequest(perfReport);
+    perfLogger.logReport();
+
+    // Add performance metrics to results
+    results._performanceMetrics = perfReport;
+
+    // Signal completion
+    onComplete(results);
+
+    return results;
+
+  } catch (error) {
+    perfLogger.setMetadata('fatalError', error.message);
+    perfLogger.complete();
+    perfLogger.logReport();
+    onError(error);
+    throw error;
+  }
+}
