@@ -458,8 +458,8 @@ body.view-roadmap .app-shell {
 }
 .ambient-logo-container {
   position: fixed;
-  top: -5%;
-  right: -8%;
+  top: 0;
+  right: 0;
   width: 45%;
   max-width: 500px;
   z-index: 1;
@@ -498,8 +498,8 @@ body.view-roadmap .ambient-logo-container {
 @media screen and (max-width: 768px) {
   .ambient-logo-container {
     width: 60%;
-    top: -8%;
-    right: -15%;
+    top: 0;
+    right: 0;
   }
   .ambient-logo {
     opacity: 0.18;
