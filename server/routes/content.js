@@ -4,6 +4,11 @@
  * (Roadmap, Slides, Document)
  *
  * Note: In-memory session storage (cleared on server restart)
+ *
+ * Performance optimizations:
+ * - LRU-style session cache with memory pressure handling
+ * - Efficient file processing with streaming
+ * - Response caching headers
  */
 
 import express from 'express';
@@ -15,12 +20,35 @@ import { generatePptx } from '../templates/ppt-export-service.js';
 
 const router = express.Router();
 
-// In-memory session storage
-// Map<sessionId, { prompt, researchFiles, content, createdAt }>
+// In-memory session storage with LRU-style management
+// Map<sessionId, { prompt, researchFiles, content, createdAt, lastAccessed }>
 const sessions = new Map();
-
-// Clean up old sessions (older than 1 hour)
+const MAX_SESSIONS = 100; // Limit max sessions to prevent memory issues
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// Performance: Track access for LRU eviction
+function touchSession(sessionId) {
+  const session = sessions.get(sessionId);
+  if (session) {
+    session.lastAccessed = Date.now();
+  }
+}
+
+// Performance: LRU-style cleanup when over capacity
+function enforceSessionLimit() {
+  if (sessions.size <= MAX_SESSIONS) return;
+
+  // Sort by lastAccessed (oldest first) and remove excess
+  const sortedSessions = [...sessions.entries()]
+    .sort((a, b) => (a[1].lastAccessed || a[1].createdAt) - (b[1].lastAccessed || b[1].createdAt));
+
+  const toRemove = sessions.size - MAX_SESSIONS;
+  for (let i = 0; i < toRemove; i++) {
+    sessions.delete(sortedSessions[i][0]);
+  }
+}
+
+// Clean up old sessions (older than 1 hour) and enforce limits
 setInterval(() => {
   const now = Date.now();
   for (const [sessionId, session] of sessions) {
@@ -28,6 +56,7 @@ setInterval(() => {
       sessions.delete(sessionId);
     }
   }
+  enforceSessionLimit();
 }, 5 * 60 * 1000); // Run cleanup every 5 minutes
 
 /**
@@ -140,6 +169,7 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
 
     // Create session and store content
     const sessionId = generateSessionId();
+    const now = Date.now();
     sessions.set(sessionId, {
       prompt,
       researchFiles: researchFiles.map(f => f.filename),
@@ -149,8 +179,12 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
         document: results.document,
         researchAnalysis: results.researchAnalysis
       },
-      createdAt: Date.now()
+      createdAt: now,
+      lastAccessed: now
     });
+
+    // Enforce session limit after adding new session
+    enforceSessionLimit();
 
     // Return sessionId for frontend to poll/fetch content
     res.json({
@@ -281,6 +315,9 @@ router.get('/:sessionId/:viewType', (req, res) => {
       });
     }
 
+    // Performance: Track access for LRU management
+    touchSession(sessionId);
+
     // Map viewType to content key
     const viewTypeMap = {
       'roadmap': 'roadmap',
@@ -305,14 +342,19 @@ router.get('/:sessionId/:viewType', (req, res) => {
       });
     }
 
-    // Return consistent response format for all view types
-    // Frontend polling expects { status: 'completed' | 'error', data: ... }
+    // Performance: Add cache control headers for completed content
     if (contentResult.success && contentResult.data) {
+      // Cache successful responses for 5 minutes on the client
+      res.set('Cache-Control', 'private, max-age=300');
+      res.set('ETag', `"${sessionId}-${viewType}-${session.lastAccessed}"`);
+
       return res.json({
         status: 'completed',
         data: contentResult.data
       });
     } else {
+      // Don't cache error responses
+      res.set('Cache-Control', 'no-store');
       return res.json({
         status: 'error',
         error: formatUserError(contentResult.error, viewType)
