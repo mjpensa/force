@@ -3,16 +3,40 @@
  * Handles synchronous generation of all three content types
  * (Roadmap, Slides, Document)
  *
- * Note: No persistence - content is generated and returned directly
+ * Note: In-memory session storage (cleared on server restart)
  */
 
 import express from 'express';
 import mammoth from 'mammoth';
+import crypto from 'crypto';
 import { generateAllContent, regenerateContent } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { generatePptx } from '../templates/ppt-export-service.js';
 
 const router = express.Router();
+
+// In-memory session storage
+// Map<sessionId, { prompt, researchFiles, content, createdAt }>
+const sessions = new Map();
+
+// Clean up old sessions (older than 1 hour)
+const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, session] of sessions) {
+    if (now - session.createdAt > SESSION_TTL_MS) {
+      sessions.delete(sessionId);
+      console.log(`[Session] Cleaned up expired session: ${sessionId}`);
+    }
+  }
+}, 5 * 60 * 1000); // Run cleanup every 5 minutes
+
+/**
+ * Generate a unique session ID
+ */
+function generateSessionId() {
+  return crypto.randomUUID();
+}
 
 /**
  * Format raw error messages into user-friendly text
@@ -118,9 +142,25 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     console.log('Starting synchronous content generation...');
     const results = await generateAllContent(prompt, researchFiles);
 
-    // Return results directly
+    // Create session and store content
+    const sessionId = generateSessionId();
+    sessions.set(sessionId, {
+      prompt,
+      researchFiles: researchFiles.map(f => f.filename),
+      content: {
+        roadmap: results.roadmap,
+        slides: results.slides,
+        document: results.document,
+        researchAnalysis: results.researchAnalysis
+      },
+      createdAt: Date.now()
+    });
+    console.log(`[Session] Created session: ${sessionId}`);
+
+    // Return sessionId for frontend to poll/fetch content
     res.json({
       status: 'completed',
+      sessionId,
       prompt,
       researchFiles: researchFiles.map(f => f.filename),
       content: {
@@ -223,8 +263,145 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
 });
 
 /**
+ * GET /api/content/:sessionId/:viewType
+ * Retrieves content for a specific view type from a session
+ *
+ * URL params:
+ * - sessionId: string - Session ID from /generate response
+ * - viewType: 'roadmap' | 'slides' | 'document' | 'research-analysis'
+ *
+ * Response:
+ * - For roadmap: Returns the gantt data directly
+ * - For other views: Returns { success, data, error }
+ */
+router.get('/:sessionId/:viewType', (req, res) => {
+  try {
+    const { sessionId, viewType } = req.params;
+
+    // Check if session exists
+    const session = sessions.get(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        error: 'Session not found',
+        message: 'Session may have expired or does not exist. Please generate new content.',
+        hint: 'Sessions expire after 1 hour'
+      });
+    }
+
+    // Map viewType to content key
+    const viewTypeMap = {
+      'roadmap': 'roadmap',
+      'slides': 'slides',
+      'document': 'document',
+      'research-analysis': 'researchAnalysis'
+    };
+
+    const contentKey = viewTypeMap[viewType];
+    if (!contentKey) {
+      return res.status(400).json({
+        error: 'Invalid view type',
+        message: `View type must be one of: ${Object.keys(viewTypeMap).join(', ')}`
+      });
+    }
+
+    const contentResult = session.content[contentKey];
+    if (!contentResult) {
+      return res.status(404).json({
+        error: 'Content not found',
+        message: `No ${viewType} content available for this session`
+      });
+    }
+
+    // For roadmap, frontend expects the data directly (for gantt chart)
+    if (viewType === 'roadmap') {
+      if (contentResult.success && contentResult.data) {
+        return res.json(contentResult.data);
+      } else {
+        return res.status(500).json({
+          error: 'Roadmap generation failed',
+          message: contentResult.error || 'Unknown error during roadmap generation'
+        });
+      }
+    }
+
+    // For other views, return the full result object
+    res.json(contentResult);
+
+  } catch (error) {
+    console.error('Get content error:', error);
+    res.status(500).json({
+      error: 'Failed to retrieve content',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/content/:sessionId/slides/export
+ * Exports slides from a session as a branded PowerPoint file
+ *
+ * URL params:
+ * - sessionId: string - Session ID
+ *
+ * Response: PowerPoint file (.pptx) download
+ */
+router.get('/:sessionId/slides/export', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    // Check if session exists
+    const session = sessions.get(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        error: 'Session not found',
+        message: 'Session may have expired. Please generate new content.'
+      });
+    }
+
+    const slidesResult = session.content.slides;
+    if (!slidesResult || !slidesResult.success || !slidesResult.data) {
+      return res.status(404).json({
+        error: 'Slides not available',
+        message: slidesResult?.error || 'Slides generation failed or not yet complete'
+      });
+    }
+
+    const slides = slidesResult.data;
+
+    console.log(`[PPT Export] Generating PPTX with ${slides.slides?.length || 0} slides from session ${sessionId}`);
+
+    // Generate the PowerPoint file
+    const pptxBuffer = await generatePptx(slides, {
+      author: 'BIP',
+      company: 'BIP'
+    });
+
+    // Create filename from presentation title
+    const title = slides.title || 'Presentation';
+    const safeTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
+    const filename = `${safeTitle}.pptx`;
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pptxBuffer.length);
+
+    console.log(`[PPT Export] Sending PPTX file: ${filename} (${pptxBuffer.length} bytes)`);
+
+    res.send(pptxBuffer);
+
+  } catch (error) {
+    console.error('PPT Export error:', error);
+    res.status(500).json({
+      error: 'Failed to generate PowerPoint file',
+      details: error.message
+    });
+  }
+});
+
+/**
  * POST /api/content/slides/export
- * Exports slides as a branded PowerPoint file
+ * Exports slides as a branded PowerPoint file (direct POST, no session)
  *
  * Request body:
  * - slides: object (slides data to export)
