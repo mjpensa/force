@@ -71,7 +71,6 @@ ${researchText}
     const analysisData = await callGeminiForJson(payload);
     res.json(analysisData);
   } catch (e) {
-    console.error("Task Analysis API error:", e);
     res.status(500).json({ error: `Error generating task analysis: ${e.message}` });
   }
 });
@@ -139,7 +138,6 @@ router.post('/ask-question', apiLimiter, async (req, res) => {
     const textResponse = await callGeminiForText(payload);
     res.json({ answer: textResponse });
   } catch (e) {
-    console.error("Q&A API error:", e);
     res.status(500).json({ error: `Error generating answer: ${e.message}` });
   }
 });
