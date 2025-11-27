@@ -24,11 +24,51 @@ import { processFiles } from '../utils/fileProcessor.js';
 import { cleanJsonResponse } from '../utils/networkOptimizer.js';
 import { sessionStorage } from '../storage/sessionStorage.js';
 import { getAdvancedOptimizationStats } from '../utils/advancedOptimizer.js';
+import {
+  metricsAggregator,
+  alertEvaluator,
+  featureFlags,
+  getDashboardData
+} from '../utils/monitoring.js';
 
 const router = express.Router();
 
 // Session TTL constant (used in storage abstraction)
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// ============================================================================
+// REGISTER METRIC COLLECTORS FOR MONITORING DASHBOARD
+// ============================================================================
+
+// Register generation metrics collector
+metricsAggregator.register('generation', async () => {
+  const metrics = globalMetrics.getAggregatedMetrics();
+  return {
+    requestCount: metrics.requestCount,
+    latency: metrics.latency,
+    lastUpdated: metrics.lastUpdated
+  };
+});
+
+// Register queue metrics collector
+metricsAggregator.register('queue', async () => {
+  return apiQueue.getMetrics();
+});
+
+// Register cache metrics collector
+metricsAggregator.register('cache', async () => {
+  return getCacheMetrics();
+});
+
+// Register storage metrics collector
+metricsAggregator.register('storage', async () => {
+  return sessionStorage.getStats();
+});
+
+// Register advanced optimizers metrics collector
+metricsAggregator.register('advanced', async () => {
+  return getAdvancedOptimizationStats();
+});
 
 /**
  * Helper to touch session (update last accessed time)
@@ -886,6 +926,111 @@ router.get('/metrics/advanced', (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve advanced metrics', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/dashboard
+ * Returns comprehensive monitoring dashboard data
+ * Includes health status, metrics, and alerts
+ */
+router.get('/dashboard', async (req, res) => {
+  try {
+    const dashboard = await getDashboardData();
+    res.json(dashboard);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve dashboard', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/alerts
+ * Returns current alerts and health status
+ */
+router.get('/alerts', (req, res) => {
+  try {
+    const health = alertEvaluator.getHealthStatus();
+    const activeAlerts = alertEvaluator.getActiveAlerts();
+    const history = alertEvaluator.getAlertHistory(20);
+
+    res.json({
+      status: 'ok',
+      health,
+      activeAlerts,
+      recentHistory: history
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve alerts', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/feature-flags
+ * Returns all feature flags and their current state
+ */
+router.get('/feature-flags', (req, res) => {
+  try {
+    const flags = featureFlags.getAllFlags();
+    res.json({
+      status: 'ok',
+      flags
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve feature flags', details: error.message });
+  }
+});
+
+/**
+ * POST /api/content/feature-flags/:flagName
+ * Update a feature flag's rollout percentage
+ *
+ * Body: { rolloutPercentage: number }
+ */
+router.post('/feature-flags/:flagName', express.json(), (req, res) => {
+  try {
+    const { flagName } = req.params;
+    const { rolloutPercentage } = req.body;
+
+    if (typeof rolloutPercentage !== 'number' || rolloutPercentage < 0 || rolloutPercentage > 100) {
+      return res.status(400).json({
+        error: 'Invalid rolloutPercentage',
+        message: 'Must be a number between 0 and 100'
+      });
+    }
+
+    featureFlags.setRollout(flagName, rolloutPercentage);
+
+    res.json({
+      status: 'ok',
+      flagName,
+      newRolloutPercentage: rolloutPercentage
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update feature flag', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/feature-flags/check/:flagName
+ * Check if a feature flag is enabled for a session
+ *
+ * Query: sessionId (optional)
+ */
+router.get('/feature-flags/check/:flagName', (req, res) => {
+  try {
+    const { flagName } = req.params;
+    const { sessionId } = req.query;
+
+    const enabled = featureFlags.isEnabled(flagName, sessionId);
+
+    res.json({
+      status: 'ok',
+      flagName,
+      enabled,
+      sessionId: sessionId || null
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to check feature flag', details: error.message });
   }
 });
 

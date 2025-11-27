@@ -46,6 +46,9 @@ import contentRoutes from './server/routes/content.js';
 // Import advanced optimizers
 import { initializeOptimizers, shutdownOptimizers } from './server/utils/advancedOptimizer.js';
 
+// Import monitoring system
+import { initializeMonitoring, shutdownMonitoring } from './server/utils/monitoring.js';
+
 // --- Server Setup ---
 const app = express();
 const port = CONFIG.SERVER.PORT;
@@ -146,6 +149,7 @@ process.on('uncaughtException', (error) => {
 // Handle SIGTERM gracefully (for deployment platforms like Railway)
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server gracefully');
+  shutdownMonitoring();
   shutdownOptimizers();
   process.exit(0);
 });
@@ -153,6 +157,7 @@ process.on('SIGTERM', () => {
 // Handle SIGINT gracefully (Ctrl+C)
 process.on('SIGINT', () => {
   console.log('\nSIGINT signal received: shutting down gracefully');
+  shutdownMonitoring();
   shutdownOptimizers();
   process.exit(0);
 });
@@ -169,4 +174,7 @@ app.listen(port, () => {
 
   // Initialize advanced optimizers (connection prewarming, etc.)
   initializeOptimizers();
+
+  // Initialize monitoring system (metrics snapshots, alerting)
+  initializeMonitoring();
 });
