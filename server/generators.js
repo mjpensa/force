@@ -9,7 +9,7 @@ import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompt
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
 // Timeout configuration for AI generation
-const GENERATION_TIMEOUT_MS = 180000; // 3 minutes - increased for API variability
+const GENERATION_TIMEOUT_MS = 360000; // 6 minutes - increased for complex content and API variability
 
 // ============================================================================
 // REQUEST QUEUE - Controls concurrent API calls to prevent overload
