@@ -29,6 +29,13 @@ export class StateManager {
     };
     this.listeners = [];
     this.viewListeners = {};  // View-specific listeners
+
+    // Performance optimizations: request deduplication
+    this._pendingRequests = new Map();
+
+    // Batch state updates for performance
+    this._pendingStateUpdates = [];
+    this._updateScheduled = false;
   }
   getState() {
     return { ...this.state };
@@ -36,6 +43,36 @@ export class StateManager {
   setState(updates) {
     const previousState = { ...this.state };
     this.state = this.deepMerge(this.state, updates);
+    this.notifyListeners(previousState, this.state);
+  }
+
+  // Batch multiple state updates into a single render cycle for performance
+  batchSetState(updates) {
+    this._pendingStateUpdates.push(updates);
+    if (!this._updateScheduled) {
+      this._updateScheduled = true;
+      // Use microtask to batch updates within the same event loop
+      queueMicrotask(() => this._flushStateUpdates());
+    }
+  }
+
+  _flushStateUpdates() {
+    if (this._pendingStateUpdates.length === 0) {
+      this._updateScheduled = false;
+      return;
+    }
+
+    const previousState = { ...this.state };
+
+    // Merge all pending updates into a single state change
+    for (const updates of this._pendingStateUpdates) {
+      this.state = this.deepMerge(this.state, updates);
+    }
+
+    this._pendingStateUpdates = [];
+    this._updateScheduled = false;
+
+    // Single notification for all batched updates
     this.notifyListeners(previousState, this.state);
   }
   deepMerge(target, source) {
@@ -85,9 +122,31 @@ export class StateManager {
     }
   }
   async loadView(viewName, forceRefresh = false) {
+    // Return cached content if available and not forcing refresh
     if (!forceRefresh && this.state.content[viewName]) {
       return this.state.content[viewName];
     }
+
+    // Request deduplication: reuse pending request for same view
+    const requestKey = `${this.state.sessionId}:${viewName}`;
+    if (!forceRefresh && this._pendingRequests.has(requestKey)) {
+      return this._pendingRequests.get(requestKey);
+    }
+
+    // Create and track the request promise
+    const requestPromise = this._executeLoadView(viewName, forceRefresh);
+    this._pendingRequests.set(requestKey, requestPromise);
+
+    try {
+      const result = await requestPromise;
+      return result;
+    } finally {
+      // Clean up pending request
+      this._pendingRequests.delete(requestKey);
+    }
+  }
+
+  async _executeLoadView(viewName, forceRefresh) {
     if (forceRefresh) {
       this.setState({
         content: { ...this.state.content, [viewName]: null },
@@ -223,29 +282,24 @@ export class StateManager {
   async prefetchOtherViews(currentView) {
     const views = ['roadmap', 'slides', 'document', 'research-analysis'];
     const otherViews = views.filter(v => v !== currentView);
-    setTimeout(async () => {
-      const viewsToFetch = otherViews.filter(view => !this.state.content[view]);
+
+    // Use requestIdleCallback for non-critical prefetching (falls back to setTimeout)
+    const scheduleIdleTask = window.requestIdleCallback || ((cb) => setTimeout(cb, 1000));
+
+    scheduleIdleTask(() => {
+      const viewsToFetch = otherViews.filter(view =>
+        !this.state.content[view] && !this._pendingRequests.has(`${this.state.sessionId}:${view}`)
+      );
+
       if (viewsToFetch.length === 0) {
         return;
       }
-      const results = await Promise.allSettled(
-        viewsToFetch.map(async (view) => {
-          try {
-            await this.loadView(view);
-            return { view, success: true };
-          } catch (error) {
-            return { view, success: false, error: error.message };
-          }
-        })
+
+      // Prefetch in parallel with lower priority
+      Promise.allSettled(
+        viewsToFetch.map(view => this.loadView(view))
       );
-      results.forEach((result, index) => {
-        const view = viewsToFetch[index];
-        if (result.status === 'fulfilled' && result.value.success) {
-        } else {
-          const errorMsg = result.status === 'rejected' ? result.reason : result.value?.error;
-        }
-      });
-    }, 1500); // Reduced delay since we're fetching in parallel
+    }, { timeout: 2000 });
   }
   async refreshView(viewName) {
     this.setState({
@@ -254,6 +308,11 @@ export class StateManager {
     return await this.loadView(viewName);
   }
   clear() {
+    // Clear pending requests
+    this._pendingRequests.clear();
+    this._pendingStateUpdates = [];
+    this._updateScheduled = false;
+
     this.setState({
       sessionId: null,
       currentView: 'roadmap',

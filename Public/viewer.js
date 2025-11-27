@@ -8,7 +8,8 @@ import {
   markPerformance,
   measurePerformance,
   logPerformanceMetrics,
-  reportWebVitals
+  reportWebVitals,
+  debounce
 } from './components/shared/Performance.js';
 import {
   initAccessibility,
@@ -21,6 +22,86 @@ import {
 } from './components/shared/ErrorHandler.js';
 import { loadFooterSVG } from './Utils.js'; // For GanttChart footer
 import { TaskAnalyzer } from './TaskAnalyzer.js'; // For task clicks
+
+// Unified polling service for efficient status checking
+class PollingService {
+  constructor() {
+    this.polls = new Map(); // viewName -> { timeout, attempt, callback }
+    this.config = {
+      baseInterval: 2000,
+      maxInterval: 15000,
+      maxAttempts: 120,
+      backoffFactor: 1.2
+    };
+  }
+
+  start(viewName, callback, options = {}) {
+    this.stop(viewName);
+
+    const config = { ...this.config, ...options };
+    this.polls.set(viewName, {
+      timeout: null,
+      attempt: 0,
+      callback,
+      config
+    });
+
+    this._poll(viewName);
+  }
+
+  stop(viewName) {
+    const poll = this.polls.get(viewName);
+    if (poll?.timeout) {
+      clearTimeout(poll.timeout);
+    }
+    this.polls.delete(viewName);
+  }
+
+  stopAll() {
+    for (const viewName of this.polls.keys()) {
+      this.stop(viewName);
+    }
+  }
+
+  _poll(viewName) {
+    const poll = this.polls.get(viewName);
+    if (!poll) return;
+
+    const { callback, config } = poll;
+
+    if (poll.attempt >= config.maxAttempts) {
+      callback({ status: 'timeout', viewName });
+      this.stop(viewName);
+      return;
+    }
+
+    // Execute callback and handle result
+    Promise.resolve(callback({ status: 'polling', attempt: poll.attempt, viewName }))
+      .then(result => {
+        if (result?.done) {
+          this.stop(viewName);
+          return;
+        }
+
+        // Schedule next poll with exponential backoff
+        const interval = Math.min(
+          config.baseInterval * Math.pow(config.backoffFactor, Math.floor(poll.attempt / 5)),
+          config.maxInterval
+        );
+
+        poll.attempt++;
+        poll.timeout = setTimeout(() => this._poll(viewName), interval);
+      })
+      .catch(() => {
+        // On error, continue polling with longer interval
+        poll.attempt++;
+        poll.timeout = setTimeout(
+          () => this._poll(viewName),
+          Math.min(config.baseInterval * 2, config.maxInterval)
+        );
+      });
+  }
+}
 class ContentViewer {
   constructor() {
     this.stateManager = new StateManager();
@@ -33,6 +114,11 @@ class ContentViewer {
     this.sidebarNav = null;
     this.footerSVG = '';
     this.taskAnalyzer = new TaskAnalyzer();
+
+    // Performance optimizations
+    this.pollingService = new PollingService();
+    this._renderQueue = new Map(); // Batch DOM updates
+    this._isRendering = false;
   }
   async init() {
     try {
@@ -636,73 +722,59 @@ class ContentViewer {
   _startBackgroundStatusPolling() {
     const views = ['roadmap', 'slides', 'document', 'research-analysis'];
     views.forEach(view => this._updateTabStatus(view, 'loading'));
-    if (!this._backgroundPollTimeouts) {
-      this._backgroundPollTimeouts = {};
-    }
-    const pollView = async (viewName, attempt = 0) => {
-      const BASE_INTERVAL = 3000; // 3 seconds
-      const MAX_INTERVAL = 15000; // 15 seconds max
-      const MAX_ATTEMPTS = 100; // Stop polling after ~5 minutes
-      const interval = Math.min(BASE_INTERVAL * Math.pow(1.3, Math.floor(attempt / 3)), MAX_INTERVAL);
-      if (attempt >= MAX_ATTEMPTS) {
-        this._updateTabStatus(viewName, 'failed');
-        if (this._backgroundPollTimeouts[viewName]) {
-          delete this._backgroundPollTimeouts[viewName];
-        }
-        return;
-      }
-      try {
-        const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
-        if (!response.ok) {
+
+    // Use unified polling service for efficient background status checks
+    views.forEach(viewName => {
+      this.pollingService.start(`bg-${viewName}`, async ({ status, attempt }) => {
+        if (status === 'timeout') {
           this._updateTabStatus(viewName, 'failed');
-          if (this._backgroundPollTimeouts[viewName]) {
-            delete this._backgroundPollTimeouts[viewName];
-          }
-          return;
+          return { done: true };
         }
-        const data = await response.json();
-        if (data.status === 'completed' && data.data) {
-          this._updateTabStatus(viewName, 'ready');
-          if (!this.stateManager.state.content[viewName]) {
-            this.stateManager.setState({
-              content: { ...this.stateManager.state.content, [viewName]: data.data }
-            });
+
+        try {
+          const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
+          if (!response.ok) {
+            this._updateTabStatus(viewName, 'failed');
+            return { done: true };
           }
-          if (this._backgroundPollTimeouts[viewName]) {
-            delete this._backgroundPollTimeouts[viewName];
+
+          const data = await response.json();
+          if (data.status === 'completed' && data.data) {
+            this._updateTabStatus(viewName, 'ready');
+            // Use batched state updates for performance
+            if (!this.stateManager.state.content[viewName]) {
+              this.stateManager.batchSetState({
+                content: { ...this.stateManager.state.content, [viewName]: data.data }
+              });
+            }
+            return { done: true };
           }
-        } else if (data.status === 'error') {
-          this._updateTabStatus(viewName, 'failed');
-          if (this._backgroundPollTimeouts[viewName]) {
-            delete this._backgroundPollTimeouts[viewName];
+
+          if (data.status === 'error') {
+            this._updateTabStatus(viewName, 'failed');
+            return { done: true };
           }
-        } else if (data.status === 'processing' || data.status === 'pending') {
-          this._updateTabStatus(viewName, 'processing');
-          this._backgroundPollTimeouts[viewName] = setTimeout(() => {
-            pollView(viewName, attempt + 1);
-          }, interval);
-        } else {
-          this._updateTabStatus(viewName, 'loading');
-          this._backgroundPollTimeouts[viewName] = setTimeout(() => {
-            pollView(viewName, attempt + 1);
-          }, interval);
+
+          if (data.status === 'processing' || data.status === 'pending') {
+            this._updateTabStatus(viewName, 'processing');
+          } else {
+            this._updateTabStatus(viewName, 'loading');
+          }
+
+          return { done: false };
+        } catch (error) {
+          return { done: false }; // Continue polling on network errors
         }
-      } catch (error) {
-        this._backgroundPollTimeouts[viewName] = setTimeout(() => {
-          pollView(viewName, attempt + 1);
-        }, interval * 2);
-      }
-    };
-    views.forEach(view => pollView(view, 0));
+      }, { baseInterval: 3000, maxAttempts: 100 });
+    });
   }
   destroy() {
+    // Clean up polling service (handles all timeouts)
+    this.pollingService.stopAll();
+
     if (this._processingPollTimeouts) {
       Object.values(this._processingPollTimeouts).forEach(timeout => clearTimeout(timeout));
       this._processingPollTimeouts = {};
-    }
-    if (this._backgroundPollTimeouts) {
-      Object.values(this._backgroundPollTimeouts).forEach(timeout => clearTimeout(timeout));
-      this._backgroundPollTimeouts = {};
     }
     if (this._processingStartTimes) {
       this._processingStartTimes = {};
@@ -714,6 +786,8 @@ class ContentViewer {
       this.sidebarNav.destroy();
       this.sidebarNav = null;
     }
+    // Clear render queue
+    this._renderQueue.clear();
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
