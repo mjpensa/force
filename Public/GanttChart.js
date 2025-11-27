@@ -1,11 +1,15 @@
 import { CONFIG } from './config.js';
 import { PerformanceTimer, fetchJSON } from './Utils.js';
-import { DraggableGantt } from './DraggableGantt.js';
-import { ResizableGantt } from './ResizableGantt.js';
-import { ContextMenu } from './ContextMenu.js';
-import { GanttExporter } from './GanttExporter.js';
-import { GanttEditor } from './GanttEditor.js';
-import { GanttRenderer, GanttComponents, GanttAnalysis } from './gantt/index.js';
+import {
+  DraggableGantt,
+  ResizableGantt,
+  ContextMenu,
+  GanttExporter,
+  GanttEditor,
+  GanttRenderer,
+  GanttComponents,
+  GanttAnalysis
+} from './gantt/index.js';
 
 /**
  * GanttChart - Main orchestrator for the Gantt chart visualization

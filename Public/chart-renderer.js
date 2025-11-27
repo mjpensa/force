@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js';
 import { safeGetElement, loadFooterSVG } from './Utils.js';
 import { GanttChart } from './GanttChart.js';
-import { TaskAnalyzer } from './TaskAnalyzer.js';
+import { TaskAnalyzer } from './analysis/TaskAnalyzer.js';
 let ganttData = null;
 let footerSVG = '';
 let errorDisplayed = false; // Track if an error message has already been shown
@@ -55,6 +55,7 @@ async function loadChartFromServer(chartId) {
       }
     }
   }
+  console.error('Failed to load chart:', {
     name: lastError?.name,
     message: lastError?.message,
     chartId: chartId,

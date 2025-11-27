@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config.js';
 import { InteractiveGanttHandler } from './InteractiveGanttHandler.js';
 
 export class DraggableGantt extends InteractiveGanttHandler {
