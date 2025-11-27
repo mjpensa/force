@@ -19,6 +19,7 @@ import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { generatePptx } from '../templates/ppt-export-service.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
 import { generateETag, clearAllCaches, clearExpiredEntries } from '../cache/contentCache.js';
+import { processFiles } from '../utils/fileProcessor.js';
 
 const router = express.Router();
 
@@ -151,37 +152,23 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     requestPerf.setMetadata('fileCount', files.length);
     requestPerf.setMetadata('totalUploadSize', files.reduce((sum, f) => sum + f.size, 0));
 
-    // Process uploaded files to extract content
-    const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
-
-    // Time file processing
+    // Time file processing with optimized processor
     const fileProcessingTimer = createTimer(requestPerf, 'file-processing');
 
-    // Process files in parallel
-    const fileProcessingPromises = sortedFiles.map(async (file) => {
-      let content = '';
-
-      // Handle DOCX files with mammoth
-      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const result = await mammoth.convertToHtml({ buffer: file.buffer });
-        content = result.value;
-      } else {
-        // Handle text-based files (TXT, MD, etc.)
-        content = file.buffer.toString('utf8');
-      }
-
-      return {
-        filename: file.originalname,
-        content: content
-      };
-    });
-
-    // Wait for all files to be processed
-    const researchFiles = await Promise.all(fileProcessingPromises);
+    // Use optimized file processor with deduplication and normalization
+    const processingResult = await processFiles(files);
+    const researchFiles = processingResult.researchFiles;
     fileProcessingTimer.stop();
 
-    // Track processed content size
-    requestPerf.setMetadata('processedContentSize', researchFiles.reduce((sum, f) => sum + f.content.length, 0));
+    // Track processing metrics
+    requestPerf.setMetadata('processedContentSize', processingResult.metrics.totalExtractedSize);
+    requestPerf.setMetadata('duplicatesRemoved', processingResult.metrics.totalDuplicatesRemoved);
+    requestPerf.setMetadata('fileProcessingMetrics', processingResult.metrics);
+
+    // Warn about failed files (but continue with successful ones)
+    if (processingResult.failed.length > 0) {
+      requestPerf.setMetadata('failedFiles', processingResult.failed);
+    }
 
     // Create session ID early so it can be included in generation metrics
     const sessionId = generateSessionId();
@@ -318,25 +305,25 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
 
     sendEvent('progress', { message: 'Processing uploaded files...' });
 
-    // Process uploaded files
-    const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
+    // Time file processing with optimized processor
     const fileProcessingTimer = createTimer(requestPerf, 'file-processing');
 
-    const fileProcessingPromises = sortedFiles.map(async (file) => {
-      let content = '';
-      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const result = await mammoth.convertToHtml({ buffer: file.buffer });
-        content = result.value;
-      } else {
-        content = file.buffer.toString('utf8');
-      }
-      return { filename: file.originalname, content };
-    });
-
-    const researchFiles = await Promise.all(fileProcessingPromises);
+    // Use optimized file processor with deduplication and normalization
+    const processingResult = await processFiles(files);
+    const researchFiles = processingResult.researchFiles;
     fileProcessingTimer.stop();
 
-    requestPerf.setMetadata('processedContentSize', researchFiles.reduce((sum, f) => sum + f.content.length, 0));
+    // Track processing metrics
+    requestPerf.setMetadata('processedContentSize', processingResult.metrics.totalExtractedSize);
+    requestPerf.setMetadata('duplicatesRemoved', processingResult.metrics.totalDuplicatesRemoved);
+
+    // Report any failed files via progress event
+    if (processingResult.failed.length > 0) {
+      sendEvent('progress', {
+        message: `Warning: ${processingResult.failed.length} file(s) could not be processed`,
+        failedFiles: processingResult.failed
+      });
+    }
 
     // Create session ID
     const sessionId = generateSessionId();
@@ -489,19 +476,9 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
       });
     }
 
-    // Process uploaded files
-    const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
-    const fileProcessingPromises = sortedFiles.map(async (file) => {
-      let content = '';
-      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const result = await mammoth.convertToHtml({ buffer: file.buffer });
-        content = result.value;
-      } else {
-        content = file.buffer.toString('utf8');
-      }
-      return { filename: file.originalname, content };
-    });
-    const researchFiles = await Promise.all(fileProcessingPromises);
+    // Use optimized file processor
+    const processingResult = await processFiles(files);
+    const researchFiles = processingResult.researchFiles;
 
     // Regenerate content
     const result = await regenerateContent(viewType, prompt, researchFiles);
