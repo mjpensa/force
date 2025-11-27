@@ -7,6 +7,13 @@ import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompt
 import { PerformanceLogger, createTimer, globalMetrics } from './utils/performanceLogger.js';
 import { getCachedContent, setCachedContent, getCacheMetrics } from './cache/contentCache.js';
 import { connectionPrewarmer, speculativeGenerator } from './utils/advancedOptimizer.js';
+import { CONFIG, isRoutingEnabled } from './config.js';
+import {
+  getRouter,
+  getFallbackManager,
+  TaskType,
+  analyzeComplexity
+} from './layers/routing/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
@@ -218,8 +225,61 @@ function withTimeout(promise, timeoutMs, operationName) {
     clearTimeout(timeoutId);
   });
 }
-async function generateWithGemini(prompt, schema, contentType, configOverrides = {}, perfLogger = null) {
+/**
+ * Map content types to TaskType for routing
+ */
+const CONTENT_TYPE_TO_TASK = {
+  'Roadmap': TaskType.ROADMAP,
+  'Slides': TaskType.SLIDES,
+  'Document': TaskType.DOCUMENT,
+  'ResearchAnalysis': TaskType.RESEARCH_ANALYSIS
+};
+
+/**
+ * Generate content using Gemini API with optional model routing
+ *
+ * @param {string} prompt - The prompt to send
+ * @param {object} schema - JSON schema for structured output
+ * @param {string} contentType - Type of content being generated
+ * @param {object} configOverrides - Generation config overrides
+ * @param {object} perfLogger - Performance logger instance
+ * @param {object} routingOptions - Optional routing configuration
+ * @returns {object} Generated content
+ */
+async function generateWithGemini(prompt, schema, contentType, configOverrides = {}, perfLogger = null, routingOptions = {}) {
   const timer = perfLogger ? createTimer(perfLogger, `api-${contentType.toLowerCase()}`) : null;
+
+  // Determine model to use (routing or default)
+  let modelId = 'models/gemini-flash-latest'; // Default fallback
+  let routingDecision = null;
+
+  if (isRoutingEnabled() && routingOptions.content) {
+    try {
+      const router = getRouter();
+      const taskType = CONTENT_TYPE_TO_TASK[contentType] || TaskType.DOCUMENT;
+
+      routingDecision = router.route(routingOptions.content, taskType, {
+        fileCount: routingOptions.fileCount || 1,
+        estimatedOutputTokens: configOverrides.maxOutputTokens || 4000
+      });
+
+      modelId = `models/${routingDecision.modelId}`;
+
+      // Log routing decision
+      if (perfLogger) {
+        perfLogger.setMetadata(`routing-${contentType.toLowerCase()}`, {
+          modelId: routingDecision.modelId,
+          tier: routingDecision.tier,
+          complexity: routingDecision.complexity.level,
+          estimatedCost: routingDecision.estimatedCost,
+          reasoning: routingDecision.reasoning
+        });
+      }
+    } catch (routingError) {
+      // Routing failed, fall back to default
+      console.warn(`[Routing] Failed for ${contentType}, using default:`, routingError.message);
+    }
+  }
 
   try {
     const {
@@ -240,8 +300,9 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     if (topP !== undefined) generationConfig.topP = topP;
     if (topK !== undefined) generationConfig.topK = topK;
     if (maxOutputTokens !== undefined) generationConfig.maxOutputTokens = maxOutputTokens;
+
     const model = genAI.getGenerativeModel({
-      model: 'models/gemini-flash-latest',
+      model: modelId,
       generationConfig
     });
 
@@ -309,11 +370,11 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
 }
 async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'roadmap';
+  const combinedContent = combineResearchContent(researchFiles);
 
   try {
     // Check cache first
     if (ENABLE_CACHE) {
-      const combinedContent = combineResearchContent(researchFiles);
       const cached = getCachedContent(contentType, combinedContent, userPrompt);
       if (cached) {
         if (perfLogger) {
@@ -324,11 +385,17 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
     }
 
     const prompt = generateRoadmapPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger);
+
+    // Build routing options for model selection
+    const routingOptions = {
+      content: combinedContent,
+      fileCount: researchFiles.length
+    };
+
+    const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger, routingOptions);
 
     // Store in cache
     if (ENABLE_CACHE && data) {
-      const combinedContent = combineResearchContent(researchFiles);
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
@@ -340,11 +407,11 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
 
 async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'slides';
+  const combinedContent = combineResearchContent(researchFiles);
 
   try {
     // Check cache first
     if (ENABLE_CACHE) {
-      const combinedContent = combineResearchContent(researchFiles);
       const cached = getCachedContent(contentType, combinedContent, userPrompt);
       if (cached) {
         if (perfLogger) {
@@ -355,11 +422,17 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
     }
 
     const prompt = generateSlidesPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger);
+
+    // Build routing options for model selection
+    const routingOptions = {
+      content: combinedContent,
+      fileCount: researchFiles.length
+    };
+
+    const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
 
     // Store in cache
     if (ENABLE_CACHE && data) {
-      const combinedContent = combineResearchContent(researchFiles);
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
@@ -371,11 +444,11 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
 
 async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'document';
+  const combinedContent = combineResearchContent(researchFiles);
 
   try {
     // Check cache first
     if (ENABLE_CACHE) {
-      const combinedContent = combineResearchContent(researchFiles);
       const cached = getCachedContent(contentType, combinedContent, userPrompt);
       if (cached) {
         if (perfLogger) {
@@ -386,11 +459,17 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
     }
 
     const prompt = generateDocumentPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger);
+
+    // Build routing options for model selection
+    const routingOptions = {
+      content: combinedContent,
+      fileCount: researchFiles.length
+    };
+
+    const data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger, routingOptions);
 
     // Store in cache
     if (ENABLE_CACHE && data) {
-      const combinedContent = combineResearchContent(researchFiles);
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
@@ -402,11 +481,11 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
 
 async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'researchAnalysis';
+  const combinedContent = combineResearchContent(researchFiles);
 
   try {
     // Check cache first
     if (ENABLE_CACHE) {
-      const combinedContent = combineResearchContent(researchFiles);
       const cached = getCachedContent(contentType, combinedContent, userPrompt);
       if (cached) {
         if (perfLogger) {
@@ -417,11 +496,17 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
     }
 
     const prompt = generateResearchAnalysisPrompt(userPrompt, researchFiles);
-    const data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger);
+
+    // Build routing options for model selection
+    const routingOptions = {
+      content: combinedContent,
+      fileCount: researchFiles.length
+    };
+
+    const data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger, routingOptions);
 
     // Store in cache
     if (ENABLE_CACHE && data) {
-      const combinedContent = combineResearchContent(researchFiles);
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 

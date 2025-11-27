@@ -43,6 +43,7 @@ export const CONFIG = {
     TRUST_PROXY_HOPS: 1 // Railway uses single proxy layer
   },
   API: {
+    // Default model (legacy - use MODELS for multi-model routing)
     GEMINI_MODEL: 'gemini-2.5-flash-preview-09-2025',
     BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
     RETRY_COUNT: 3,
@@ -56,7 +57,52 @@ export const CONFIG = {
     TEMPERATURE_QA: 0.1,
     TOP_P: 0.1,
     TOP_K: 1,
-    SEED: 42 // Fixed seed for deterministic output - same inputs produce same outputs
+    SEED: 42, // Fixed seed for deterministic output - same inputs produce same outputs
+
+    // Multi-model configuration (PROMPT ML Layer 5)
+    MODELS: {
+      // Fast tier - simple tasks, lowest cost
+      fast: {
+        id: 'gemini-2.0-flash-lite',
+        inputCostPer1M: 0.075,
+        outputCostPer1M: 0.30,
+        maxOutputTokens: 8192,
+        qualityScore: 0.7
+      },
+      // Standard tier - balanced cost/quality
+      standard: {
+        id: 'gemini-2.5-flash-preview-09-2025',
+        inputCostPer1M: 0.15,
+        outputCostPer1M: 0.60,
+        maxOutputTokens: 65536,
+        qualityScore: 0.88
+      },
+      // Advanced tier - complex tasks, highest quality
+      advanced: {
+        id: 'gemini-2.5-pro',
+        inputCostPer1M: 1.25,
+        outputCostPer1M: 5.00,
+        maxOutputTokens: 65536,
+        qualityScore: 0.95
+      }
+    },
+
+    // Model routing configuration
+    ROUTING: {
+      enabled: process.env.ENABLE_MODEL_ROUTING !== 'false', // Enable by default
+      defaultTier: 'standard',
+      maxCostPerRequest: 0.50, // USD
+      enableAdvancedTier: process.env.ENABLE_ADVANCED_TIER === 'true', // Disabled by default (expensive)
+
+      // Task-specific tier preferences
+      taskPreferences: {
+        roadmap: 'standard',
+        slides: 'fast',
+        document: 'standard',
+        'research-analysis': 'standard',
+        qa: 'fast'
+      }
+    }
   },
   FILES: {
     MAX_SIZE_BYTES: FILE_LIMITS.MAX_SIZE_BYTES,
@@ -109,6 +155,12 @@ export const CONFIG = {
 Object.freeze(CONFIG);
 Object.freeze(CONFIG.SERVER);
 Object.freeze(CONFIG.API);
+Object.freeze(CONFIG.API.MODELS);
+Object.freeze(CONFIG.API.MODELS.fast);
+Object.freeze(CONFIG.API.MODELS.standard);
+Object.freeze(CONFIG.API.MODELS.advanced);
+Object.freeze(CONFIG.API.ROUTING);
+Object.freeze(CONFIG.API.ROUTING.taskPreferences);
 Object.freeze(CONFIG.FILES);
 Object.freeze(CONFIG.TIMEOUTS);
 Object.freeze(CONFIG.RATE_LIMIT);
@@ -118,8 +170,38 @@ Object.freeze(CONFIG.SECURITY.PATTERNS);
 Object.freeze(CONFIG.VALIDATION);
 Object.freeze(CONFIG.ERRORS);
 
+/**
+ * Get Gemini API URL for default model (legacy)
+ * @returns {string} API URL
+ */
 export function getGeminiApiUrl() {
   return `${CONFIG.API.BASE_URL}/models/${CONFIG.API.GEMINI_MODEL}:generateContent?key=${process.env.API_KEY}`;
+}
+
+/**
+ * Get Gemini API URL for a specific model (PROMPT ML model routing)
+ * @param {string} modelId - Model identifier
+ * @returns {string} API URL for the specified model
+ */
+export function getGeminiApiUrlForModel(modelId) {
+  return `${CONFIG.API.BASE_URL}/models/${modelId}:generateContent?key=${process.env.API_KEY}`;
+}
+
+/**
+ * Get model configuration by tier
+ * @param {string} tier - Model tier (fast, standard, advanced)
+ * @returns {Object|null} Model configuration
+ */
+export function getModelConfig(tier) {
+  return CONFIG.API.MODELS[tier] || null;
+}
+
+/**
+ * Check if model routing is enabled
+ * @returns {boolean} Whether routing is enabled
+ */
+export function isRoutingEnabled() {
+  return CONFIG.API.ROUTING.enabled;
 }
 
 // Re-export shared config for convenience
