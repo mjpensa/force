@@ -1,6 +1,9 @@
 import { CONFIG, getGeminiApiUrl } from './config.js';
 import { jsonrepair } from 'jsonrepair';
 const API_URL = getGeminiApiUrl();
+
+// Timeout for Gemini API calls (5 minutes - under typical proxy timeouts)
+const GEMINI_TIMEOUT_MS = 300000;
 function parseRetryDelay(errorData) {
   try {
     if (!errorData || !errorData.error || !errorData.error.details) {
@@ -76,11 +79,27 @@ export async function retryWithBackoff(operation, retryCount = CONFIG.API.RETRY_
 }
 export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_COUNT, onRetry = null) {
   return retryWithBackoff(async () => {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+
+    let response;
+    try {
+      response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error(`Gemini API request timed out after ${GEMINI_TIMEOUT_MS / 1000} seconds. Please try again with a smaller request or fewer files.`);
+      }
+      throw fetchError;
+    }
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       let errorText = 'Unknown error';
       let errorData = null;
@@ -160,11 +179,27 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
 }
 export async function callGeminiForText(payload, retryCount = CONFIG.API.RETRY_COUNT) {
   return retryWithBackoff(async () => {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+
+    let response;
+    try {
+      response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error(`Gemini API request timed out after ${GEMINI_TIMEOUT_MS / 1000} seconds. Please try again with a smaller request or fewer files.`);
+      }
+      throw fetchError;
+    }
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       let errorText = 'Unknown error';
       let errorData = null;
