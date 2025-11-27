@@ -155,7 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const uploadInput = document.getElementById('upload-input');
   const dropzoneLabel = document.querySelector('.dropzone-glass');
   if (!ganttForm || !uploadInput || !dropzoneLabel) {
-    console.log('Missing elements:', {
+    console.error('Missing elements:', {
       ganttForm: !!ganttForm,
       uploadInput: !!uploadInput,
       dropzoneLabel: !!dropzoneLabel
