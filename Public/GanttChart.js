@@ -169,8 +169,13 @@ export class GanttChart {
     requestAnimationFrame(() => {
       this._applyStickyHeaderPosition();
       if (window.ResizeObserver && !this._titleResizeObserver) {
+        // Debounced callback to prevent excessive updates during resize
+        let resizeTimeout;
         this._titleResizeObserver = new ResizeObserver(() => {
-          this._applyStickyHeaderPosition();
+          if (resizeTimeout) clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            this._applyStickyHeaderPosition();
+          }, 16); // ~1 frame at 60fps
         });
         this._titleResizeObserver.observe(this.titleContainer);
       }
@@ -208,47 +213,24 @@ export class GanttChart {
         addBtn.className = 'row-action-btn add-task';
         addBtn.title = 'Add task below';
         addBtn.textContent = '+';
-        addBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (this.editor) this.editor.addNewTaskRow(dataIndex);
-        });
+        // No individual listener - handled by delegation
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'row-action-btn delete-task';
         deleteBtn.title = 'Delete this row';
         deleteBtn.textContent = '×';
-        deleteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (this.editor) this.editor.removeTaskRow(dataIndex);
-        });
+        // No individual listener - handled by delegation
         actionsDiv.appendChild(addBtn);
         actionsDiv.appendChild(deleteBtn);
         labelEl.appendChild(actionsDiv);
       }
       labelEl.setAttribute('data-row-id', `row-${dataIndex}`);
       labelEl.setAttribute('data-task-index', dataIndex);
-      labelContent.addEventListener('dblclick', (e) => {
-        e.stopPropagation();
-        if (this.isEditMode && this.editor) {
-          this.editor.makeEditable(labelContent, dataIndex);
-        }
-      });
+      // No individual dblclick listener - handled by delegation
       const barAreaEl = this._createBarArea(row, numCols, isSwimlane, dataIndex);
       if (!isSwimlane && row.bar && row.bar.startCol != null && this.onTaskClick) {
-        const taskIdentifier = {
-          taskName: row.title,
-          entity: row.entity,
-          sessionId: this.ganttData.sessionId
-        };
-        labelEl.addEventListener('click', () => {
-          if (!this.isEditMode) {
-            this.onTaskClick(taskIdentifier);
-          }
-        });
-        barAreaEl.addEventListener('click', () => {
-          if (!this.isEditMode) {
-            this.onTaskClick(taskIdentifier);
-          }
-        });
+        // Mark as clickable for delegation
+        labelEl.setAttribute('data-clickable', 'true');
+        barAreaEl.setAttribute('data-clickable', 'true');
         labelEl.style.cursor = 'pointer';
         barAreaEl.style.cursor = 'pointer';
       }
@@ -259,6 +241,73 @@ export class GanttChart {
       rowsFragment.appendChild(barAreaEl);
     });
     this.gridElement.appendChild(rowsFragment);
+
+    // Setup delegated event listeners (once per render)
+    this._setupGridDelegation();
+  }
+
+  _setupGridDelegation() {
+    // Remove existing delegated handlers
+    if (this._gridClickHandler) {
+      this.gridElement.removeEventListener('click', this._gridClickHandler);
+    }
+    if (this._gridDblClickHandler) {
+      this.gridElement.removeEventListener('dblclick', this._gridDblClickHandler);
+    }
+
+    // Delegated click handler for row actions and task clicks
+    this._gridClickHandler = (e) => {
+      const target = e.target;
+
+      // Handle add task button
+      const addBtn = target.closest('.row-action-btn.add-task');
+      if (addBtn) {
+        e.stopPropagation();
+        const taskIndex = parseInt(addBtn.closest('[data-task-index]').getAttribute('data-task-index'));
+        if (this.editor) this.editor.addNewTaskRow(taskIndex);
+        return;
+      }
+
+      // Handle delete task button
+      const deleteBtn = target.closest('.row-action-btn.delete-task');
+      if (deleteBtn) {
+        e.stopPropagation();
+        const taskIndex = parseInt(deleteBtn.closest('[data-task-index]').getAttribute('data-task-index'));
+        if (this.editor) this.editor.removeTaskRow(taskIndex);
+        return;
+      }
+
+      // Handle task row/bar click for analysis
+      if (this.onTaskClick && !this.isEditMode) {
+        const clickableEl = target.closest('[data-clickable="true"]');
+        if (clickableEl) {
+          const taskIndex = parseInt(clickableEl.getAttribute('data-task-index'));
+          const row = this.ganttData.data[taskIndex];
+          if (row && !row.isSwimlane) {
+            this.onTaskClick({
+              taskName: row.title,
+              entity: row.entity,
+              sessionId: this.ganttData.sessionId
+            });
+          }
+        }
+      }
+    };
+
+    // Delegated double-click handler for inline editing
+    this._gridDblClickHandler = (e) => {
+      if (!this.isEditMode || !this.editor) return;
+
+      const labelContent = e.target.closest('.label-content');
+      if (labelContent) {
+        e.stopPropagation();
+        const taskIndex = parseInt(labelContent.closest('[data-task-index]').getAttribute('data-task-index'));
+        this.editor.makeEditable(labelContent, taskIndex);
+      }
+    };
+
+    this.gridElement.addEventListener('click', this._gridClickHandler);
+    this.gridElement.addEventListener('dblclick', this._gridDblClickHandler);
   }
   _createBarArea(row, numCols, isSwimlane, dataIndex) {
     const barAreaEl = document.createElement('div');
@@ -383,30 +432,19 @@ export class GanttChart {
       addBtn.className = 'row-action-btn add-task';
       addBtn.title = 'Add task below';
       addBtn.textContent = '+';
-      addBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.addNewTaskRow(dataIndex);
-      });
+      // No individual listener - handled by delegation
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'row-action-btn delete-task';
       deleteBtn.title = 'Delete this row';
       deleteBtn.textContent = '×';
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.removeTaskRow(dataIndex);
-      });
+      // No individual listener - handled by delegation
       actionsDiv.appendChild(addBtn);
       actionsDiv.appendChild(deleteBtn);
       labelEl.appendChild(actionsDiv);
     }
     labelEl.setAttribute('data-row-id', `row-${dataIndex}`);
     labelEl.setAttribute('data-task-index', dataIndex);
-    labelContent.addEventListener('dblclick', (e) => {
-      e.stopPropagation();
-      if (this.isEditMode) {
-        this._makeEditable(labelContent, dataIndex);
-      }
-    });
+    // No individual dblclick listener - handled by delegation
     return labelEl;
   }
   _addHoverEffects(labelEl, barAreaEl) {
@@ -451,12 +489,6 @@ export class GanttChart {
       const label = document.createElement('span');
       label.className = 'legend-label';
       label.textContent = item.label;
-      label.addEventListener('dblclick', (e) => {
-        e.stopPropagation();
-        if (this.isEditMode && this.editor) {
-          this.editor.makeLegendLabelEditable(label, index);
-        }
-      });
       labelWrapper.appendChild(label);
       itemEl.appendChild(colorBox);
       itemEl.appendChild(labelWrapper);
@@ -465,6 +497,25 @@ export class GanttChart {
     legendLine.appendChild(list);
     this.legendElement.appendChild(legendLine);
     this.chartWrapper.appendChild(this.legendElement);
+    this._setupLegendDelegation();
+  }
+  _setupLegendDelegation() {
+    if (!this.legendElement) return;
+    // Clean up any existing handler
+    if (this._legendDblClickHandler) {
+      this.legendElement.removeEventListener('dblclick', this._legendDblClickHandler);
+    }
+    this._legendDblClickHandler = (e) => {
+      const label = e.target.closest('.legend-label');
+      if (!label) return;
+      e.stopPropagation();
+      if (this.isEditMode && this.editor) {
+        const legendItem = label.closest('.legend-item');
+        const index = parseInt(legendItem.getAttribute('data-legend-index'));
+        this.editor.makeLegendLabelEditable(label, index);
+      }
+    };
+    this.legendElement.addEventListener('dblclick', this._legendDblClickHandler);
   }
   _sortTasksWithinSwimlanes() {
     if (!this.ganttData || !this.ganttData.data || this.ganttData.data.length === 0) {
@@ -846,6 +897,20 @@ export class GanttChart {
     if (this._cursorFeedbackHandler && this._lastGridElement) {
       this._lastGridElement.removeEventListener('mousemove', this._cursorFeedbackHandler);
       this._cursorFeedbackHandler = null;
+    }
+    // Remove grid delegation listeners
+    if (this._gridClickHandler && this._lastGridElement) {
+      this._lastGridElement.removeEventListener('click', this._gridClickHandler);
+      this._gridClickHandler = null;
+    }
+    if (this._gridDblClickHandler && this._lastGridElement) {
+      this._lastGridElement.removeEventListener('dblclick', this._gridDblClickHandler);
+      this._gridDblClickHandler = null;
+    }
+    // Remove legend delegation listener
+    if (this._legendDblClickHandler && this.legendElement) {
+      this.legendElement.removeEventListener('dblclick', this._legendDblClickHandler);
+      this._legendDblClickHandler = null;
     }
   }
   _addCursorFeedback() {

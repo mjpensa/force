@@ -86,6 +86,7 @@
   display: grid;
   width: 100%;
   position: relative;
+  contain: layout style;
 }
 
 /* Header */
@@ -246,6 +247,7 @@
   display: grid;
   align-items: center;
   min-height: 16px;
+  contain: layout style;
 }
 
 .gantt-bar-area.task {

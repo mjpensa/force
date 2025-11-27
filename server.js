@@ -69,8 +69,20 @@ app.use(configureCacheControl);
 // JSON parsing with size limit
 app.use(express.json({ limit: '50mb' }));
 
-// Static file serving
-app.use(express.static(join(__dirname, 'Public')));
+// Static file serving with optimized options
+app.use(express.static(join(__dirname, 'Public'), {
+  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
+  etag: true,
+  lastModified: true
+}));
+
+// Serve minified JS in production
+if (process.env.NODE_ENV === 'production') {
+  app.use('/dist', express.static(join(__dirname, 'Public', 'dist'), {
+    maxAge: '7d',
+    immutable: true
+  }));
+}
 
 // Request timeout
 app.use(configureTimeout);
