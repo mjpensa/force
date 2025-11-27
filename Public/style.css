@@ -1,4 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600&display=swap'); 
+/**
+ * Main Stylesheet
+ *
+ * NOTE: CSS modules are available in ./styles/ directory:
+ * - styles/index.css (entry point for modular imports)
+ * - styles/base.css (resets, typography, accessibility)
+ * - styles/modal.css (consolidated modal styles)
+ * - styles/gantt.css (gantt chart components)
+ * - styles/analysis.css (analysis sections)
+ * - styles/responsive.css (accessibility preferences)
+ *
+ * The modular structure consolidates duplicate rules and improves maintainability.
+ * This file remains for backward compatibility.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600&display=swap');
 html, body {
   margin: 0;
   padding: 0;
