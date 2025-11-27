@@ -1,4 +1,56 @@
 import { CONFIG } from './config.js';
+
+/**
+ * Fetch JSON with standardized error handling
+ * @param {string} url - The URL to fetch
+ * @param {Object} options - Fetch options (method, headers, body, etc.)
+ * @returns {Promise<any>} - Parsed JSON response
+ */
+export async function fetchJSON(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || data.message || `Server error: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Create a button element with the given configuration
+ * @param {Object} config - Button configuration
+ * @param {string} config.id - Button ID
+ * @param {string} config.className - CSS class name
+ * @param {string} config.text - Button text content
+ * @param {string} [config.title] - Tooltip text
+ * @param {string} [config.ariaLabel] - Accessibility label
+ * @param {Object} [config.style] - Inline styles
+ * @param {Object} [config.attributes] - Additional attributes
+ * @returns {HTMLButtonElement}
+ */
+export function createButton(config) {
+  const btn = document.createElement('button');
+  if (config.id) btn.id = config.id;
+  if (config.className) btn.className = config.className;
+  if (config.text) btn.textContent = config.text;
+  if (config.title) btn.title = config.title;
+  if (config.ariaLabel) btn.setAttribute('aria-label', config.ariaLabel);
+  if (config.style) {
+    Object.assign(btn.style, config.style);
+  }
+  if (config.attributes) {
+    Object.entries(config.attributes).forEach(([key, value]) => {
+      btn.setAttribute(key, value);
+    });
+  }
+  return btn;
+}
+
 export function safeGetElement(id, context = '') {
   const element = document.getElementById(id);
   if (!element) {
