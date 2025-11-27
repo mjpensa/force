@@ -4031,13 +4031,13 @@ body.dragging {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-4);
-  margin-top: var(--spacing-6);
+  margin: 0;
   padding: var(--spacing-4);
-  background: var(--glass-white-8);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-  border: var(--border-glass);
-  border-radius: var(--radius-glass-md);
+  background: var(--color-navy-brand, #002040);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-radius: 0 0 6px 6px;
 }
 .legend-item {
   display: flex;
