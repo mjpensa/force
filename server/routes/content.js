@@ -14,9 +14,10 @@
 import express from 'express';
 import mammoth from 'mammoth';
 import crypto from 'crypto';
-import { generateAllContent, regenerateContent } from '../generators.js';
+import { generateAllContent, regenerateContent, globalMetrics, apiQueue } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { generatePptx } from '../templates/ppt-export-service.js';
+import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
 
 const router = express.Router();
 
@@ -125,6 +126,10 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
   const GENERATE_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes
   req.setTimeout(GENERATE_TIMEOUT_MS);
   res.setTimeout(GENERATE_TIMEOUT_MS);
+
+  // Initialize performance logging for request lifecycle
+  const requestPerf = new PerformanceLogger('content-generate-request', { enabled: true });
+
   try {
     const { prompt } = req.body;
     const files = req.files;
@@ -142,8 +147,15 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
       });
     }
 
+    // Track file metadata
+    requestPerf.setMetadata('fileCount', files.length);
+    requestPerf.setMetadata('totalUploadSize', files.reduce((sum, f) => sum + f.size, 0));
+
     // Process uploaded files to extract content
     const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
+
+    // Time file processing
+    const fileProcessingTimer = createTimer(requestPerf, 'file-processing');
 
     // Process files in parallel
     const fileProcessingPromises = sortedFiles.map(async (file) => {
@@ -166,12 +178,23 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
 
     // Wait for all files to be processed
     const researchFiles = await Promise.all(fileProcessingPromises);
+    fileProcessingTimer.stop();
+
+    // Track processed content size
+    requestPerf.setMetadata('processedContentSize', researchFiles.reduce((sum, f) => sum + f.content.length, 0));
+
+    // Create session ID early so it can be included in generation metrics
+    const sessionId = generateSessionId();
+    requestPerf.setMetadata('sessionId', sessionId);
+
+    // Time content generation
+    const generationTimer = createTimer(requestPerf, 'content-generation');
 
     // Generate all content synchronously
-    const results = await generateAllContent(prompt, researchFiles);
+    const results = await generateAllContent(prompt, researchFiles, { sessionId });
+    generationTimer.stop();
 
-    // Create session and store content (including research for task analysis)
-    const sessionId = generateSessionId();
+    // Store content (including research for task analysis)
     const now = Date.now();
     sessions.set(sessionId, {
       prompt,
@@ -191,6 +214,10 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     // Enforce session limit after adding new session
     enforceSessionLimit();
 
+    // Complete request performance logging
+    const requestReport = requestPerf.complete();
+    requestPerf.logReport();
+
     // Return sessionId for frontend to poll/fetch content
     res.json({
       status: 'completed',
@@ -202,10 +229,20 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
         slides: results.slides,
         document: results.document,
         researchAnalysis: results.researchAnalysis
+      },
+      // Include performance metrics in response (useful for debugging)
+      _performance: {
+        totalDuration: requestReport.totalDuration,
+        fileProcessingTime: requestReport.measures['file-processing']?.duration,
+        generationTime: requestReport.measures['content-generation']?.duration
       }
     });
 
   } catch (error) {
+    requestPerf.setMetadata('error', error.message);
+    requestPerf.complete();
+    requestPerf.logReport();
+
     res.status(500).json({
       error: 'Internal server error',
       details: error.message
@@ -563,6 +600,54 @@ router.post('/update-task-color', express.json(), (req, res) => {
     res.json({ success: true, task });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update task color', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/metrics
+ * Returns aggregated performance metrics for content generation
+ *
+ * Response:
+ * {
+ *   requestCount: number,
+ *   latency: { min, max, avg, p50, p95, p99 },
+ *   lastUpdated: string
+ * }
+ */
+router.get('/metrics', (req, res) => {
+  try {
+    const metrics = globalMetrics.getAggregatedMetrics();
+    const queueMetrics = apiQueue.getMetrics();
+    res.json({
+      status: 'ok',
+      metrics,
+      queue: queueMetrics,
+      sessionCount: sessions.size,
+      maxSessions: MAX_SESSIONS
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve metrics', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/metrics/recent
+ * Returns the most recent performance reports (for debugging)
+ *
+ * Query params:
+ * - limit: number (default 10, max 50)
+ */
+router.get('/metrics/recent', (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const recentRequests = globalMetrics.requests.slice(-limit).reverse();
+    res.json({
+      status: 'ok',
+      count: recentRequests.length,
+      requests: recentRequests
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve recent metrics', details: error.message });
   }
 });
 
