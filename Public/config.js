@@ -16,7 +16,7 @@ export const CONFIG = {
     }
   },
   SIZES: {
-    BAR_HEIGHT: 6, // SCALED: Was 10, then 14 - reduced for thinner bars
+    BAR_HEIGHT: 4, // SCALED: Was 6, 10, 14 - reduced for thinner bars
     POINT_RADIUS: 4, // SCALED: Was 5
     LOGO_HEIGHT: 28, // SCALED: Was 40 - significantly reduced for compact display
     MAX_FILE_SIZE_MB: 10,
