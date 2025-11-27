@@ -8,7 +8,7 @@ import { jsonrepair } from 'jsonrepair';
 import { generateRoadmapPrompt, roadmapSchema } from './prompts/roadmap.js';
 import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
 import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
-import { generateResearchAnalysisPrompt, researchAnalysisSchema, validateResearchAnalysisStructure } from './prompts/research-analysis.js';
+import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompts/research-analysis.js';
 
 // Initialize Gemini API (using API_KEY from environment to match server/config.js)
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
@@ -93,7 +93,7 @@ const DOCUMENT_CONFIG = {
  * - Used as fallback when no specific config is provided
  */
 const STRUCTURED_DEFAULT_CONFIG = {
-  thinkingBudget: 24576  // Standard deep reasoning
+  thinkingBudget: 0  // Disabled for speed
 };
 
 /**
@@ -106,7 +106,7 @@ const ROADMAP_CONFIG = {
   temperature: 0.1,      // Lowest: maximum determinism for rule-based output
   topP: 0.3,             // Very constrained: follow explicit rules exactly
   topK: 5,               // Minimal exploration: pick most likely tokens
-  thinkingBudget: 24576  // Maximum: complex date mapping and swimlane logic
+  thinkingBudget: 0      // Disabled for speed
 };
 
 /**
@@ -119,7 +119,7 @@ const RESEARCH_ANALYSIS_CONFIG = {
   temperature: 0.2,      // Low: reliable analysis without hallucination
   topP: 0.5,             // Moderate: allows varied recommendations
   topK: 10,              // Some exploration for insightful suggestions
-  thinkingBudget: 24576  // Maximum: deep analysis of research quality
+  thinkingBudget: 0      // Disabled for speed
 };
 
 /**
@@ -323,21 +323,9 @@ async function generateResearchAnalysis(userPrompt, researchFiles) {
     console.log(`[ResearchAnalysis] Using config: temp=${RESEARCH_ANALYSIS_CONFIG.temperature}, topP=${RESEARCH_ANALYSIS_CONFIG.topP}, topK=${RESEARCH_ANALYSIS_CONFIG.topK}, thinkingBudget=${RESEARCH_ANALYSIS_CONFIG.thinkingBudget}`);
 
     const prompt = generateResearchAnalysisPrompt(userPrompt, researchFiles);
-    let data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG);
+    const data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG);
 
-    // Validate research analysis structure
-    if (!validateResearchAnalysisStructure(data)) {
-      console.warn('[ResearchAnalysis] Generated data has invalid structure, retrying once...');
-
-      // Retry generation once with same config
-      data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG);
-
-      if (!validateResearchAnalysisStructure(data)) {
-        throw new Error('Research analysis generation produced empty or invalid content after retry. The AI may need more detailed source material.');
-      }
-    }
-
-    console.log(`[ResearchAnalysis] Successfully generated with ${data.themes.length} themes analyzed`);
+    console.log(`[ResearchAnalysis] Successfully generated with ${data.themes?.length || 0} themes analyzed`);
     return { success: true, data };
 
   } catch (error) {
@@ -347,39 +335,22 @@ async function generateResearchAnalysis(userPrompt, researchFiles) {
 }
 
 /**
- * Generate all content types sequentially
- * Order: 1) Roadmap 2) Slides (fast) 3) Document 4) Research Analysis
+ * Generate all content types in parallel
  */
 export async function generateAllContent(userPrompt, researchFiles) {
-  const results = {
-    roadmap: null,
-    document: null,
-    slides: null,
-    researchAnalysis: null
-  };
-
   try {
-    console.log(`[Generation] Starting all content generation`);
+    console.log(`[Generation] Starting all content generation in parallel`);
 
-    // STEP 1: Roadmap
-    console.log(`[Generation] 1/4: Roadmap`);
-    results.roadmap = await generateRoadmap(userPrompt, researchFiles);
-
-    // STEP 2: Slides (fast - no thinking)
-    console.log(`[Generation] 2/4: Slides`);
-    results.slides = await generateSlides(userPrompt, researchFiles);
-
-    // STEP 3: Document
-    console.log(`[Generation] 3/4: Document`);
-    results.document = await generateDocument(userPrompt, researchFiles);
-
-    // STEP 4: Research Analysis
-    console.log(`[Generation] 4/4: Research Analysis`);
-    results.researchAnalysis = await generateResearchAnalysis(userPrompt, researchFiles);
+    const [roadmap, slides, document, researchAnalysis] = await Promise.all([
+      generateRoadmap(userPrompt, researchFiles),
+      generateSlides(userPrompt, researchFiles),
+      generateDocument(userPrompt, researchFiles),
+      generateResearchAnalysis(userPrompt, researchFiles)
+    ]);
 
     console.log(`[Generation] Done`);
 
-    return results;
+    return { roadmap, slides, document, researchAnalysis };
 
   } catch (error) {
     console.error(`[Generation] Error:`, error.message);
