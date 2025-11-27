@@ -21,7 +21,7 @@ import {
   logError
 } from './components/shared/ErrorHandler.js';
 import { loadFooterSVG } from './Utils.js'; // For GanttChart footer
-import { TaskAnalyzer } from './TaskAnalyzer.js'; // For task clicks
+import { TaskAnalyzer } from './analysis/TaskAnalyzer.js'; // For task clicks
 
 // Unified polling service for efficient status checking
 class PollingService {

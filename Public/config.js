@@ -1,3 +1,21 @@
+import {
+  INJECTION_PATTERNS,
+  ID_PATTERNS,
+  FILE_TYPES,
+  RATE_LIMITS,
+  TIMEOUTS,
+  FILE_LIMITS,
+  VALIDATION,
+  ERROR_MESSAGES
+} from './config/shared.js';
+
+/**
+ * Client Configuration
+ *
+ * Client-specific UI settings. Shared patterns are imported from
+ * config/shared.js to maintain a single source of truth.
+ */
+
 export const CONFIG = {
   COLORS: {
     TODAY_LINE: '#BA3930',
@@ -19,10 +37,10 @@ export const CONFIG = {
     BAR_HEIGHT: 4, // SCALED: Was 6, 10, 14 - reduced for thinner bars
     POINT_RADIUS: 4, // SCALED: Was 5
     LOGO_HEIGHT: 28, // SCALED: Was 40 - significantly reduced for compact display
-    MAX_FILE_SIZE_MB: 10,
-    MAX_TOTAL_SIZE_MB: 50,
-    MAX_FILE_COUNT: 10,
-    MAX_QUESTION_LENGTH: 1000
+    MAX_FILE_SIZE_MB: FILE_LIMITS.MAX_SIZE_MB,
+    MAX_TOTAL_SIZE_MB: FILE_LIMITS.MAX_TOTAL_SIZE_MB,
+    MAX_FILE_COUNT: FILE_LIMITS.MAX_COUNT_UI,
+    MAX_QUESTION_LENGTH: VALIDATION.MAX_QUESTION_LENGTH
   },
   EXPORT: {
     ASPECT_RATIO: { width: 9, height: 16 }, // Target aspect ratio for exports (9:16 portrait)
@@ -30,23 +48,17 @@ export const CONFIG = {
     BACKGROUND_COLOR: '#0c2340' // Background color for padding areas
   },
   API: {
-    TIMEOUT_MS: 120000, // 2 minutes
+    TIMEOUT_MS: TIMEOUTS.REQUEST_MS,
     RETRY_COUNT: 3,
-    RATE_LIMIT_WINDOW_MS: 15 * 60 * 1000, // 15 minutes
-    RATE_LIMIT_MAX_REQUESTS: 100,
-    STRICT_RATE_LIMIT_MAX_REQUESTS: 20,
+    RATE_LIMIT_WINDOW_MS: RATE_LIMITS.WINDOW_MS,
+    RATE_LIMIT_MAX_REQUESTS: RATE_LIMITS.MAX_REQUESTS,
+    STRICT_RATE_LIMIT_MAX_REQUESTS: RATE_LIMITS.STRICT_MAX_REQUESTS,
     SESSION_EXPIRATION_MS: 60 * 60 * 1000, // 1 hour
     CLEANUP_INTERVAL_MS: 5 * 60 * 1000 // 5 minutes
   },
   FILES: {
-    SUPPORTED_MIMES: [
-      'text/markdown',
-      'text/plain',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/octet-stream', // Some browsers send .md files with this MIME type
-      'application/pdf' // PDF files
-    ],
-    SUPPORTED_EXTENSIONS: ['md', 'txt', 'docx', 'pdf']
+    SUPPORTED_MIMES: FILE_TYPES.MIMES,
+    SUPPORTED_EXTENSIONS: FILE_TYPES.EXTENSIONS
   },
   UI: {
     ERROR_MESSAGES: {
@@ -54,13 +66,13 @@ export const CONFIG = {
       CHART_NOT_FOUND: 'Chart Not Found',
       CHART_EXPIRED: 'This chart may have expired or the link is invalid.',
       CHART_AVAILABILITY: 'Charts are available for 30 days after generation.',
-      SESSION_NOT_FOUND: 'Session not found or expired. Please regenerate the chart.',
-      INVALID_CHART_ID: 'Invalid chart ID format',
-      FILE_TOO_LARGE: 'File too large. Maximum size is 10MB per file.',
-      TOO_MANY_FILES: 'Too many files. Maximum is 10 files per upload.',
-      FIELD_TOO_LARGE: 'Field value too large. Maximum total size is 50MB.',
-      RATE_LIMIT_EXCEEDED: 'Too many requests from this IP, please try again later.',
-      STRICT_RATE_LIMIT_EXCEEDED: 'Too many chart generation requests. Please try again in 15 minutes.'
+      SESSION_NOT_FOUND: ERROR_MESSAGES.SESSION_NOT_FOUND,
+      INVALID_CHART_ID: ERROR_MESSAGES.INVALID_CHART_ID,
+      FILE_TOO_LARGE: ERROR_MESSAGES.FILE_TOO_LARGE,
+      TOO_MANY_FILES: 'Too many files. Maximum is 10 files per upload.', // UI uses different limit
+      FIELD_TOO_LARGE: 'Field value too large. Maximum total size is 50MB.', // UI uses different limit
+      RATE_LIMIT_EXCEEDED: ERROR_MESSAGES.RATE_LIMIT_EXCEEDED,
+      STRICT_RATE_LIMIT_EXCEEDED: ERROR_MESSAGES.STRICT_RATE_LIMIT_EXCEEDED
     },
     LOADING_MESSAGES: {
       GENERATING: 'Generating...',
@@ -68,22 +80,11 @@ export const CONFIG = {
     }
   },
   PATTERNS: {
-    CHART_ID: /^[a-f0-9]{32}$/i,
-    INJECTION_PATTERNS: [
-      { pattern: /ignore\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
-      { pattern: /disregard\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
-      { pattern: /forget\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
-      { pattern: /system\s*:/gi, replacement: '[REDACTED]' },
-      { pattern: /\[SYSTEM\]/gi, replacement: '[REDACTED]' },
-      { pattern: /\{SYSTEM\}/gi, replacement: '[REDACTED]' },
-      { pattern: /new\s+instructions?\s*:/gi, replacement: '[REDACTED]' },
-      { pattern: /override\s+instructions?/gi, replacement: '[REDACTED]' },
-      { pattern: /you\s+are\s+now\s+/gi, replacement: '[REDACTED]' },
-      { pattern: /act\s+as\s+if\s+you\s+are\s+/gi, replacement: '[REDACTED]' },
-      { pattern: /pretend\s+(you\s+are|to\s+be)\s+/gi, replacement: '[REDACTED]' }
-    ]
+    CHART_ID: ID_PATTERNS.CHART_ID,
+    INJECTION_PATTERNS: INJECTION_PATTERNS
   }
 };
+
 Object.freeze(CONFIG);
 Object.freeze(CONFIG.COLORS);
 Object.freeze(CONFIG.COLORS.BAR_COLORS);
@@ -96,3 +97,15 @@ Object.freeze(CONFIG.UI);
 Object.freeze(CONFIG.UI.ERROR_MESSAGES);
 Object.freeze(CONFIG.UI.LOADING_MESSAGES);
 Object.freeze(CONFIG.PATTERNS);
+
+// Re-export shared config for convenience
+export {
+  INJECTION_PATTERNS,
+  ID_PATTERNS,
+  FILE_TYPES,
+  RATE_LIMITS,
+  TIMEOUTS,
+  FILE_LIMITS,
+  VALIDATION,
+  ERROR_MESSAGES
+};

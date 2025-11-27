@@ -4,7 +4,7 @@
  * Contains: PNG export, SVG export, URL copy, notifications
  */
 
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config.js';
 
 export class GanttExporter {
   constructor(chartContainer, callbacks = {}) {
