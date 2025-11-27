@@ -1,6 +1,3 @@
-/**
- * Router - Handles hash-based navigation between different sections
- */
 class Router {
     constructor() {
         this.routes = {
@@ -8,76 +5,44 @@ class Router {
         };
         this.currentRoute = null;
         this.ganttChart = null;
-
-        // Bind event handlers
         this.handleHashChange = this.handleHashChange.bind(this);
     }
-
-    /**
-     * Initialize the router with component references
-     */
     init(ganttChart) {
             ganttChart: !!ganttChart
         });
-
         this.ganttChart = ganttChart;
-
-        // Listen for hash changes
         window.addEventListener('hashchange', this.handleHashChange);
-        // Handle initial route
         this.handleHashChange();
     }
-
-    /**
-     * Handle hash changes in the URL
-     */
     handleHashChange() {
         const hash = window.location.hash.slice(1); // Remove the '#'
         const route = hash || 'roadmap'; // Default to roadmap
-
             hash: hash,
             route: route,
             fullHash: window.location.hash
         });
-
         if (this.routes[route]) {
             this.routes[route]();
             this.currentRoute = route;
         } else {
-            // Unknown route, redirect to roadmap
             this.navigate('roadmap');
         }
     }
-
-    /**
-     * Navigate to a specific route
-     */
     navigate(route) {
         window.location.hash = route;
     }
-
-    /**
-     * Show a specific section and hide others
-     */
     showSection(section) {
-
-        // Get container elements
         const ganttGrid = document.querySelector('.gantt-grid');
         const ganttTitle = document.querySelector('.gantt-title');
-
             ganttGrid: !!ganttGrid,
             ganttTitle: !!ganttTitle,
             ganttChart: !!this.ganttChart
         });
-
-        // Also get the legend and other Gantt-specific elements
         const legend = document.querySelector('.gantt-legend');
         const exportContainer = document.querySelector('.export-container');
         const todayLine = document.querySelector('.today-line');
-
         switch (section) {
             case 'roadmap':
-                // Show the Gantt chart elements
                 if (ganttGrid) {
                     ganttGrid.style.display = '';
                 }
@@ -94,28 +59,15 @@ class Router {
                     exportContainer.style.display = '';
                 }
                 break;
-
             default:
         }
-
-        // Scroll to top when switching sections
         window.scrollTo(0, 0);
     }
-
-    /**
-     * Get the current route
-     */
     getCurrentRoute() {
         return this.currentRoute;
     }
-
-    /**
-     * Cleanup
-     */
     destroy() {
         window.removeEventListener('hashchange', this.handleHashChange);
     }
 }
-
-// Make Router available globally
 window.Router = Router;

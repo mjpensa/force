@@ -1,7 +1,3 @@
-/**
- * Minimal Accessibility Utilities - WCAG 2.1 AA compliance
- */
-
 export function announceToScreenReader(message, priority = 'polite') {
   let liveRegion = document.getElementById('aria-live-region');
   if (!liveRegion) {
@@ -17,7 +13,6 @@ export function announceToScreenReader(message, priority = 'polite') {
   liveRegion.textContent = '';
   setTimeout(() => { liveRegion.textContent = message; }, 100);
 }
-
 export function trapFocus(container) {
   const focusable = container.querySelectorAll('a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])');
   const first = focusable[0], last = focusable[focusable.length - 1];
@@ -30,7 +25,6 @@ export function trapFocus(container) {
   if (first) first.focus();
   return () => container.removeEventListener('keydown', handleTab);
 }
-
 export function addSkipLink(targetId, label = 'Skip to main content') {
   if (document.getElementById('skip-link')) return;
   const link = document.createElement('a');
@@ -47,7 +41,6 @@ export function addSkipLink(targetId, label = 'Skip to main content') {
   });
   document.body.insertBefore(link, document.body.firstChild);
 }
-
 export function addKeyboardShortcuts(shortcuts) {
   function handleKey(e) {
     const combo = [e.ctrlKey && 'Control', e.altKey && 'Alt', e.shiftKey && 'Shift', e.key].filter(Boolean).join('+');
@@ -57,7 +50,6 @@ export function addKeyboardShortcuts(shortcuts) {
   document.addEventListener('keydown', handleKey);
   return () => document.removeEventListener('keydown', handleKey);
 }
-
 export function initAccessibility(options = {}) {
   const config = { skipLink: true, skipLinkTarget: 'main-content', announceRouteChanges: true, focusManagement: true, ...options };
   if (config.skipLink) addSkipLink(config.skipLinkTarget);
@@ -74,5 +66,4 @@ export function initAccessibility(options = {}) {
     }).observe(document.body, { childList: true, subtree: true });
   }
 }
-
 export default { announceToScreenReader, trapFocus, addSkipLink, addKeyboardShortcuts, initAccessibility };

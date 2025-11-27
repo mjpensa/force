@@ -1,29 +1,11 @@
-/**
- * Centralized Configuration for AI Roadmap Generator
- * Phase 2 Enhancement: Consolidates magic strings and numbers for better maintainability
- * Phase 5 Enhancement: Added drag-to-edit color configurations
- */
-
 export const CONFIG = {
-  // Color scheme for the chart
   COLORS: {
-    // Today line indicator
     TODAY_LINE: '#BA3930',
-
-    // Task hover state
     TASK_HOVER: '#354259',
-
-    // Swimlane background
     SWIMLANE_BG: '#0c2340',
-
-    // Grid and borders
     GRID_BORDER: '#0D0D0D',
-
-    // Phase 5: Drag-to-edit visual feedback
     DRAG_HOVER: 'rgba(186, 57, 48, 0.1)',
     PRIMARY: '#BA3930',
-
-    // Available bar colors (in priority order)
     BAR_COLORS: {
       PRIORITY_RED: 'priority-red',
       MEDIUM_RED: 'medium-red',
@@ -33,40 +15,24 @@ export const CONFIG = {
       DARK_BLUE: 'dark-blue'
     }
   },
-
-  // Size constants
   SIZES: {
-    // Chart element sizes
     BAR_HEIGHT: 10, // SCALED: Was 14 - significantly reduced for compact display
     POINT_RADIUS: 4, // SCALED: Was 5
     LOGO_HEIGHT: 28, // SCALED: Was 40 - significantly reduced for compact display
-
-    // File upload limits (in MB)
     MAX_FILE_SIZE_MB: 10,
     MAX_TOTAL_SIZE_MB: 50,
     MAX_FILE_COUNT: 10,
-
-    // Text limits
     MAX_QUESTION_LENGTH: 1000
   },
-
-  // API configuration
   API: {
-    // Timeout settings (in milliseconds)
     TIMEOUT_MS: 120000, // 2 minutes
     RETRY_COUNT: 3,
-
-    // Rate limiting
     RATE_LIMIT_WINDOW_MS: 15 * 60 * 1000, // 15 minutes
     RATE_LIMIT_MAX_REQUESTS: 100,
     STRICT_RATE_LIMIT_MAX_REQUESTS: 20,
-
-    // Session/Chart expiration
     SESSION_EXPIRATION_MS: 60 * 60 * 1000, // 1 hour
     CLEANUP_INTERVAL_MS: 5 * 60 * 1000 // 5 minutes
   },
-
-  // File type validation
   FILES: {
     SUPPORTED_MIMES: [
       'text/markdown',
@@ -77,8 +43,6 @@ export const CONFIG = {
     ],
     SUPPORTED_EXTENSIONS: ['md', 'txt', 'docx', 'pdf']
   },
-
-  // UI text constants
   UI: {
     ERROR_MESSAGES: {
       NO_CHART_DATA: 'No chart data found. Please close this tab and try generating the chart again.',
@@ -93,20 +57,13 @@ export const CONFIG = {
       RATE_LIMIT_EXCEEDED: 'Too many requests from this IP, please try again later.',
       STRICT_RATE_LIMIT_EXCEEDED: 'Too many chart generation requests. Please try again in 15 minutes.'
     },
-
     LOADING_MESSAGES: {
       GENERATING: 'Generating...',
       LOADING: 'Loading...'
     }
   },
-
-  // Regular expressions for validation
   PATTERNS: {
     CHART_ID: /^[a-f0-9]{32}$/i,
-
-    // Prompt injection patterns (for security)
-    // IMPORTANT: These patterns must be kept in sync with server/config.js
-    // Any changes in server config should be reflected here
     INJECTION_PATTERNS: [
       { pattern: /ignore\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
       { pattern: /disregard\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
@@ -122,8 +79,6 @@ export const CONFIG = {
     ]
   }
 };
-
-// Freeze the config to prevent accidental modifications
 Object.freeze(CONFIG);
 Object.freeze(CONFIG.COLORS);
 Object.freeze(CONFIG.COLORS.BAR_COLORS);

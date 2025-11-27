@@ -1,20 +1,3 @@
-/**
- * Unified Content Viewer
- * Phase 5: Integrates all four views (Roadmap, Slides, Document, Research Analysis)
- * Phase 6: Enhanced with performance monitoring and lazy loading
- * Phase 7: Automatic polling for processing content (v2)
- * Handles:
- * - Session loading from URL
- * - View routing (#roadmap, #slides, #document, #research-analysis)
- * - State management with StateManager
- * - Component lifecycle
- * - Performance monitoring
- * - Lazy loading for optimal performance
- * - Automatic polling when content is processing
- */
-
-// Version identifier for debugging cache issues
-
 import { StateManager } from './components/shared/StateManager.js';
 import { SlidesView } from './components/views/SlidesView.js';
 import { DocumentView } from './components/views/DocumentView.js';
@@ -38,41 +21,24 @@ import {
 } from './components/shared/ErrorHandler.js';
 import { loadFooterSVG } from './Utils.js'; // For GanttChart footer
 import { TaskAnalyzer } from './TaskAnalyzer.js'; // For task clicks
-
 class ContentViewer {
   constructor() {
     this.stateManager = new StateManager();
     this.sessionId = null;
     this.currentView = null;
     this.currentViewComponent = null;
-
-    // DOM elements
     this.appRoot = document.getElementById('app-root');
     this.navContainer = null;
     this.contentContainer = null;
-
-    // Sidebar navigation (glassmorphic icon rail)
     this.sidebarNav = null;
-
-    // GanttChart dependencies (CRITICAL: same as original chart-renderer.js)
     this.footerSVG = '';
     this.taskAnalyzer = new TaskAnalyzer();
   }
-
-  /**
-   * Initialize the viewer
-   */
   async init() {
     try {
       markPerformance('viewer-init-start');
-
-      // Add lazy loading styles
       addLazyLoadingStyles();
-
-      // CRITICAL: Load footer SVG for GanttChart (same as original chart-renderer.js)
       this.footerSVG = await loadFooterSVG();
-
-      // Initialize accessibility features
       initAccessibility({
         skipLink: true,
         skipLinkTarget: 'main-content',
@@ -81,125 +47,66 @@ class ContentViewer {
         validateImages: true,
         focusManagement: true
       });
-
-      // Setup keyboard shortcuts
       this._setupKeyboardShortcuts();
-
-      // Setup Web Vitals monitoring
       if (window.location.search.includes('debug=true')) {
         reportWebVitals((vital) => {
         });
       }
-
-      // Get session ID from URL
       this.sessionId = this._getSessionIdFromURL();
       if (!this.sessionId) {
         this._showError('No session ID provided', 'Please return to the home page and generate content first.');
         return;
       }
-
-      // Set session in state manager
       this.stateManager.setState({ sessionId: this.sessionId });
-
-      // Build UI structure
       this._buildUI();
-
-      // Setup hash-based routing
       this._setupRouting();
-
-      // Load initial view
       await this._handleRouteChange();
-
-      // Start background polling for all view statuses
       this._startBackgroundStatusPolling();
-
       markPerformance('viewer-init-end');
       const initTime = measurePerformance('viewer-initialization', 'viewer-init-start', 'viewer-init-end');
-
     } catch (error) {
       this._showError('Failed to load content', error.message);
     }
   }
-
-  /**
-   * Build the UI structure
-   */
   _buildUI() {
     this.appRoot.innerHTML = '';
-
-    // Create app shell
     const appShell = document.createElement('div');
     appShell.className = 'app-shell';
-
-    // Main content area (no header - sidebar handles navigation)
     const main = document.createElement('main');
     main.className = 'app-main';
     main.id = 'main-content';
     main.setAttribute('role', 'main');
-
     this.contentContainer = main;
-
-    // Initialize sidebar navigation (glassmorphic icon rail)
     this._initSidebarNav();
-
     appShell.appendChild(main);
     this.appRoot.appendChild(appShell);
   }
-
-  /**
-   * Initialize the glassmorphic sidebar navigation
-   * @private
-   */
   _initSidebarNav() {
-    // Get initial view from hash
     const hash = window.location.hash.slice(1);
     const initialView = hash || 'roadmap';
-
-    // Create sidebar navigation
     this.sidebarNav = new SidebarNav({
       activeView: initialView,
       sessionId: this.sessionId,
       onNavigate: (view) => {
-        // Navigation is handled by hash change, which triggers _handleRouteChange
       }
     });
-
-    // Render and append to body (fixed position)
     const sidebarElement = this.sidebarNav.render();
     document.body.appendChild(sidebarElement);
-
-    // Store reference for backward compatibility
     this.navContainer = sidebarElement;
   }
-
-  /**
-   * Setup hash-based routing
-   */
   _setupRouting() {
     window.addEventListener('hashchange', () => this._handleRouteChange());
   }
-
-  /**
-   * Setup keyboard shortcuts for accessibility
-   */
   _setupKeyboardShortcuts() {
     this.removeShortcuts = addKeyboardShortcuts({
-      // Navigate between views
       '1': () => window.location.hash = 'roadmap',
       '2': () => window.location.hash = 'slides',
       '3': () => window.location.hash = 'document',
       '4': () => window.location.hash = 'research-analysis',
-
-      // Arrow key navigation
       'ArrowLeft': () => this._navigateToPreviousView(),
       'ArrowRight': () => this._navigateToNextView(),
-
-      // Help
       '?': () => this._showKeyboardShortcutsHelp(),
-
-      // Focus management
       'Escape': () => {
-        // Close any open modals or dialogs
         const activeElement = document.activeElement;
         if (activeElement && activeElement !== document.body) {
           activeElement.blur();
@@ -207,11 +114,6 @@ class ContentViewer {
       }
     });
   }
-
-  /**
-   * Navigate to previous view
-   * @private
-   */
   _navigateToPreviousView() {
     const views = ['roadmap', 'slides', 'document', 'research-analysis'];
     const currentIndex = views.indexOf(this.currentView);
@@ -219,11 +121,6 @@ class ContentViewer {
     window.location.hash = views[previousIndex];
     announceToScreenReader(`Navigated to ${views[previousIndex]} view`);
   }
-
-  /**
-   * Navigate to next view
-   * @private
-   */
   _navigateToNextView() {
     const views = ['roadmap', 'slides', 'document', 'research-analysis'];
     const currentIndex = views.indexOf(this.currentView);
@@ -231,11 +128,6 @@ class ContentViewer {
     window.location.hash = views[nextIndex];
     announceToScreenReader(`Navigated to ${views[nextIndex]} view`);
   }
-
-  /**
-   * Show keyboard shortcuts help dialog
-   * @private
-   */
   _showKeyboardShortcutsHelp() {
     const helpHtml = `
       <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px;">
@@ -243,13 +135,10 @@ class ContentViewer {
         <dl style="line-height: 2;">
           <dt style="font-weight: 600;">1, 2, 3, 4</dt>
           <dd style="margin-left: 2rem; color: #666;">Navigate to Roadmap, Slides, Document, or Research QA view</dd>
-
           <dt style="font-weight: 600;">← →</dt>
           <dd style="margin-left: 2rem; color: #666;">Navigate between views</dd>
-
           <dt style="font-weight: 600;">?</dt>
           <dd style="margin-left: 2rem; color: #666;">Show this help dialog</dd>
-
           <dt style="font-weight: 600;">Esc</dt>
           <dd style="margin-left: 2rem; color: #666;">Close dialog or clear focus</dd>
         </dl>
@@ -259,7 +148,6 @@ class ContentViewer {
         </button>
       </div>
     `;
-
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.style.cssText = `
@@ -280,68 +168,34 @@ class ContentViewer {
         overlay.remove();
       }
     });
-
     document.body.appendChild(overlay);
     announceToScreenReader('Keyboard shortcuts dialog opened');
   }
-
-  /**
-   * Handle route changes
-   */
   async _handleRouteChange() {
     const hash = window.location.hash.slice(1); // Remove '#'
     const view = hash || 'roadmap'; // Default to roadmap
-    // Update active tab
     this._updateActiveTab(view);
-
-    // Update body class for view-specific styling
     this._updateBodyViewClass(view);
-
-    // Update state
     this.stateManager.setState({ currentView: view });
-
-    // Load and render the view
     await this._loadView(view);
   }
-
-  /**
-   * Update body class for view-specific styling
-   * Allows CSS to target specific views for background overrides
-   */
   _updateBodyViewClass(view) {
-    // Remove all view-specific classes
     document.body.classList.remove('view-roadmap', 'view-slides', 'view-document', 'view-research-analysis');
-    // Add current view class
     document.body.classList.add(`view-${view}`);
   }
-
-  /**
-   * Update active navigation item
-   */
   _updateActiveTab(view) {
-    // Update sidebar navigation
     if (this.sidebarNav) {
       this.sidebarNav.setActiveView(view);
     }
   }
-
-  /**
-   * Load and render a specific view
-   */
   async _loadView(viewName) {
     try {
       markPerformance(`view-${viewName}-start`);
-
-      // Destroy previous view and clear reference
       if (this.currentViewComponent && this.currentViewComponent.destroy) {
         this.currentViewComponent.destroy();
       }
       this.currentViewComponent = null;
-
-      // Show loading state
       this._showLoading(viewName);
-
-      // Load view data using StateManager
       markPerformance(`api-${viewName}-start`);
       let viewData;
       try {
@@ -349,13 +203,9 @@ class ContentViewer {
         markPerformance(`api-${viewName}-end`);
         const apiTime = measurePerformance(`api-${viewName}`, `api-${viewName}-start`, `api-${viewName}-end`);
       } catch (error) {
-        // Check error type and route to appropriate UI
-
         const isProcessing = error.message.includes('processing') ||
                             error.message.includes('being generated') ||
                             error.details?.processing === true;
-
-        // Check for both emptyContent and emptyData flags (emptyData is thrown when data is null)
         const hasEmptyContent = error.details?.emptyContent === true || error.details?.emptyData === true;
         const canRetry = error.details?.canRetry === true || error.details?.emptyData === true;
         const isApiError = error.details?.apiError === true;
@@ -363,23 +213,17 @@ class ContentViewer {
           this._showProcessing(viewName);
           return;
         }
-
-        // Handle API errors (generation failures) - show retry UI
         if (isApiError) {
           this._updateTabStatus(viewName, 'failed');
           this._showGenerationFailed(viewName, error.message);
           return;
         }
-
         if (hasEmptyContent && canRetry) {
           this._showGenerationFailed(viewName, error.message);
           return;
         }
-
         throw error;
       }
-
-      // Render the appropriate view
       markPerformance(`render-${viewName}-start`);
       switch (viewName) {
         case 'slides':
@@ -398,26 +242,16 @@ class ContentViewer {
       }
       markPerformance(`render-${viewName}-end`);
       const renderTime = measurePerformance(`render-${viewName}`, `render-${viewName}-start`, `render-${viewName}-end`);
-
       this.currentView = viewName;
-
       markPerformance(`view-${viewName}-end`);
       const totalTime = measurePerformance(`view-${viewName}-total`, `view-${viewName}-start`, `view-${viewName}-end`);
-
-      // Initialize lazy loading for any images in the view
       setTimeout(() => {
         initLazyLoading('img[data-src]');
       }, 0);
-
     } catch (error) {
       logError(error, { component: 'ContentViewer', action: 'loadView', viewName });
-
-      // Show user-friendly error notification with retry option
-      // Check if this is a legacy chart limitation
       const isLegacyLimitation = error.message && error.message.includes('not available for legacy charts');
-
       if (isLegacyLimitation) {
-        // Special handling for legacy chart limitations
         this._showLegacyChartLimitation(viewName);
       } else {
         showErrorNotification(error, {
@@ -428,102 +262,56 @@ class ContentViewer {
       }
     }
   }
-
-  /**
-   * Render slides view
-   */
   async _renderSlidesView(data) {
-
     const slidesView = new SlidesView(data, this.sessionId);
     const container = slidesView.render();
-
     this.contentContainer.innerHTML = '';
     this.contentContainer.appendChild(container);
-
     this.currentViewComponent = slidesView;
   }
-
-  /**
-   * Render document view
-   */
   async _renderDocumentView(data) {
-
     const documentView = new DocumentView(data, this.sessionId);
     const container = documentView.render();
-
     this.contentContainer.innerHTML = '';
     this.contentContainer.appendChild(container);
-
     this.currentViewComponent = documentView;
   }
-
-  /**
-   * Render research analysis view
-   */
   async _renderResearchAnalysisView(data) {
-
     const analysisView = new ResearchAnalysisView(data, this.sessionId);
     const container = analysisView.render();
-
     this.contentContainer.innerHTML = '';
     this.contentContainer.appendChild(container);
-
     this.currentViewComponent = analysisView;
   }
-
-  /**
-   * Render roadmap view (Gantt chart)
-   * CRITICAL: Uses EXACT SAME logic and parameters as original chart-renderer.js
-   */
   async _renderRoadmapView(data) {
-
-    // Clear container
     this.contentContainer.innerHTML = '';
-
-    // Create a container div for the chart
     const chartContainer = document.createElement('div');
     chartContainer.id = 'chart-root';
     chartContainer.style.cssText = 'width: 100%; height: 100%; overflow: auto;';
     this.contentContainer.appendChild(chartContainer);
-
-    // Dynamically import and render the GanttChart
     try {
       const { GanttChart } = await import('./GanttChart.js');
-
-      // Validate data structure (EXACT same validation as original)
       if (!data || typeof data !== 'object') {
         throw new Error('Invalid chart data structure');
       }
-
       if (!data.timeColumns || !Array.isArray(data.timeColumns)) {
         throw new Error('Invalid timeColumns in chart data');
       }
-
       if (!data.data || !Array.isArray(data.data)) {
         throw new Error('Invalid data array in chart data');
       }
-      // Task click handler (EXACT same as original chart-renderer.js)
       const handleTaskClick = (taskIdentifier) => {
         this.taskAnalyzer.showAnalysis(taskIdentifier);
       };
-
-      // CRITICAL: Create GanttChart with EXACT SAME parameters as original
-      // Signature: new GanttChart(container, ganttData, footerSVG, onTaskClick)
       const ganttChart = new GanttChart(
         chartContainer,      // container element
         data,                // ganttData object (with timeColumns and data)
         this.footerSVG,      // footerSVG decoration (CRITICAL!)
         handleTaskClick      // onTaskClick callback
       );
-
-      // Render the chart (EXACT same as original)
       ganttChart.render();
-
       this.currentViewComponent = ganttChart;
-
     } catch (error) {
-
-      // Show error state
       this.contentContainer.innerHTML = `
         <div class="empty-state" style="padding: 2rem; text-align: center;">
           <h2 style="color: var(--color-error);">Failed to Load Roadmap</h2>
@@ -538,10 +326,6 @@ class ContentViewer {
       `;
     }
   }
-
-  /**
-   * Show loading state
-   */
   _showLoading(viewName) {
     this.contentContainer.innerHTML = `
       <div class="loading-screen">
@@ -552,15 +336,7 @@ class ContentViewer {
       </div>
     `;
   }
-
-  /**
-   * Show processing state with automatic polling
-   * Instead of requiring manual refresh, automatically polls for completion
-   */
   _showProcessing(viewName) {
-    // Clear ALL existing processing polls to prevent multiple polls updating the same progress bar
-    // This fixes the issue where switching between processing views causes progress to jump
-    // (e.g., from 30% to 90%) due to polls from different views with different start times
     if (this._processingPollTimeouts) {
       Object.keys(this._processingPollTimeouts).forEach(key => {
         clearTimeout(this._processingPollTimeouts[key]);
@@ -569,15 +345,11 @@ class ContentViewer {
     } else {
       this._processingPollTimeouts = {};
     }
-
-    // Track start time for accurate elapsed time display
     if (!this._processingStartTimes) {
       this._processingStartTimes = {};
     }
     this._processingStartTimes[viewName] = Date.now();
-
     const viewNameCapitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
-
     this.contentContainer.innerHTML = `
       <div class="loading-screen">
         <div class="loading-spinner"></div>
@@ -598,8 +370,6 @@ class ContentViewer {
         </div>
       </div>
     `;
-
-    // Add cancel button handler
     const cancelBtn = document.getElementById('cancel-generation-btn');
     if (cancelBtn) {
       cancelBtn.addEventListener('click', () => {
@@ -610,56 +380,37 @@ class ContentViewer {
         window.location.href = '/';
       });
     }
-
-    // Start automatic polling
     this._pollForProcessingComplete(viewName);
   }
-
-  /**
-   * Poll for content generation completion
-   * Uses exponential backoff to reduce server load
-   */
   async _pollForProcessingComplete(viewName, attempt = 0) {
     const MAX_ATTEMPTS = 120; // 5 minutes with increasing intervals
     const BASE_INTERVAL = 2000; // Start at 2 seconds
     const MAX_INTERVAL = 10000; // Cap at 10 seconds
     const EXPECTED_DURATION = 60000; // Expected 60 seconds for generation
-
-    // Calculate interval with exponential backoff (capped)
     const interval = Math.min(BASE_INTERVAL * Math.pow(1.2, Math.floor(attempt / 5)), MAX_INTERVAL);
-
     if (attempt >= MAX_ATTEMPTS) {
       this._showGenerationTimeout(viewName);
       return;
     }
-
-    // Update status message with accurate elapsed time
     const statusEl = document.getElementById('processing-status');
     const progressBar = document.getElementById('progress-bar');
     const startTime = this._processingStartTimes?.[viewName] || Date.now();
     const elapsedMs = Date.now() - startTime;
     const elapsedSeconds = Math.floor(elapsedMs / 1000);
-
     if (statusEl) {
       statusEl.textContent = `Checking status... (${elapsedSeconds}s elapsed)`;
     }
-
-    // Update progress bar (estimate based on expected duration)
     if (progressBar) {
       const progress = Math.min((elapsedMs / EXPECTED_DURATION) * 100, 95); // Cap at 95% until complete
       progressBar.style.width = `${progress}%`;
     }
-
     try {
       const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
       const data = await response.json();
       if (data.status === 'completed' && data.data) {
-        // Content is ready! Clear polling and load the view
         if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
           delete this._processingPollTimeouts[viewName];
         }
-
-        // Show completion in progress bar
         const progressBar = document.getElementById('progress-bar');
         const statusEl = document.getElementById('processing-status');
         if (progressBar) {
@@ -669,25 +420,15 @@ class ContentViewer {
         if (statusEl) {
           statusEl.textContent = 'Generation complete! Loading...';
         }
-
-        // Brief delay to show completion state
         await new Promise(resolve => setTimeout(resolve, 300));
-
-        // Update cache in state manager
         this.stateManager.setState({
           content: { ...this.stateManager.state.content, [viewName]: data.data }
         });
-
-        // Update tab status
         this._updateTabStatus(viewName, 'ready');
-
-        // Re-load the view (will use cached data)
         await this._loadView(viewName);
         return;
       }
-
       if (data.status === 'error') {
-        // Generation failed
         if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
           delete this._processingPollTimeouts[viewName];
         }
@@ -695,27 +436,17 @@ class ContentViewer {
         this._showGenerationFailed(viewName, data.error || 'Content generation failed. Please try again.');
         return;
       }
-
-      // Still processing - schedule next poll
       this._processingPollTimeouts[viewName] = setTimeout(() => {
         this._pollForProcessingComplete(viewName, attempt + 1);
       }, interval);
-
     } catch (error) {
-
-      // On network error, retry with backoff
       this._processingPollTimeouts[viewName] = setTimeout(() => {
         this._pollForProcessingComplete(viewName, attempt + 1);
       }, interval * 2);
     }
   }
-
-  /**
-   * Show timeout state when generation takes too long
-   */
   _showGenerationTimeout(viewName) {
     const viewNameCapitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
-
     this.contentContainer.innerHTML = `
       <div style="padding: 3rem; text-align: center; max-width: 600px; margin: 0 auto;">
         <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color: var(--color-warning, #f59e0b); margin-bottom: 1.5rem;">
@@ -741,28 +472,19 @@ class ContentViewer {
         </div>
       </div>
     `;
-
-    // Add button handlers
     const continueBtn = document.getElementById('continue-waiting-btn');
     const retryBtn = document.getElementById('retry-generation-btn');
-
     if (continueBtn) {
       continueBtn.addEventListener('click', () => {
         this._showProcessing(viewName);
       });
     }
-
     if (retryBtn) {
       retryBtn.addEventListener('click', () => this._retryGeneration(viewName));
     }
   }
-
-  /**
-   * Show generation failed state with retry option
-   */
   _showGenerationFailed(viewName, errorMessage) {
     const viewNameCapitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
-
     this.contentContainer.innerHTML = `
       <div style="padding: 3rem; text-align: center; max-width: 600px; margin: 0 auto;">
         <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="color: var(--color-error, #ef4444); margin-bottom: 1.5rem;">
@@ -791,21 +513,13 @@ class ContentViewer {
         </p>
       </div>
     `;
-
-    // Add click handler for retry button
     const retryBtn = document.getElementById('retry-generation-btn');
     if (retryBtn) {
       retryBtn.addEventListener('click', () => this._retryGeneration(viewName));
     }
   }
-
-  /**
-   * Retry content generation for a specific view
-   */
   async _retryGeneration(viewName) {
     const viewNameCapitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
-
-    // Show loading state
     this.contentContainer.innerHTML = `
       <div class="loading-screen">
         <div class="loading-spinner"></div>
@@ -815,62 +529,41 @@ class ContentViewer {
         </p>
       </div>
     `;
-
     try {
-      // Call regeneration API
       const response = await fetch(`/api/content/${this.sessionId}/${viewName}/regenerate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         }
       });
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Failed to start regeneration: ${response.statusText}`);
       }
-
-      // Poll for completion
       await this._pollForRegeneration(viewName);
-
-      // Clear state cache and reload view
       this.stateManager.setState({
         content: { ...this.stateManager.state.content, [viewName]: null }
       });
-
       await this._loadView(viewName);
-
     } catch (error) {
       this._showGenerationFailed(viewName, `Regeneration failed: ${error.message}`);
     }
   }
-
-  /**
-   * Poll for regeneration completion
-   */
   async _pollForRegeneration(viewName, maxAttempts = 120, intervalMs = 2000) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
-
-        // Handle HTTP errors (404, 500, etc.)
         if (!response.ok) {
           throw new Error(`Server error: ${response.status}`);
         }
-
         const data = await response.json();
-
         if (data.status === 'completed' && data.data) {
           return data;
         }
-
         if (data.status === 'error') {
           throw new Error(data.error || 'Generation failed');
         }
-
-        // Still processing, wait and try again
         await new Promise(resolve => setTimeout(resolve, intervalMs));
-
       } catch (error) {
         if (attempt === maxAttempts - 1) {
           throw error;
@@ -878,14 +571,8 @@ class ContentViewer {
         await new Promise(resolve => setTimeout(resolve, intervalMs));
       }
     }
-
     throw new Error('Regeneration timed out. Please try again.');
   }
-
-  /**
-   * Show legacy chart limitation message
-   * For charts generated before the three-view system
-   */
   _showLegacyChartLimitation(viewName) {
     this.contentContainer.innerHTML = `
       <div style="padding: 3rem; text-align: center; max-width: 600px; margin: 0 auto;">
@@ -917,10 +604,6 @@ class ContentViewer {
       </div>
     `;
   }
-
-  /**
-   * Show error state
-   */
   _showError(title, message) {
     this.appRoot.innerHTML = `
       <div class="error-screen">
@@ -935,73 +618,32 @@ class ContentViewer {
       </div>
     `;
   }
-
-  /**
-   * Get session ID from URL query parameters
-   */
   _getSessionIdFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('sessionId');
   }
-
-  /**
-   * Add CSS styles for status indicators
-   * Note: Most styles are now in navigation-tabs.css
-   * This method is kept for backwards compatibility but is essentially a no-op
-   */
   _addStatusIndicatorStyles() {
-    // Styles are now in /styles/navigation-tabs.css
-    // This method is kept for backwards compatibility
     return;
   }
-
-  /**
-   * Update the progress indicator based on completed views
-   * This is kept for backward compatibility but is mostly handled by the sidebar now
-   */
   _updateProgressLine() {
-    // Progress tracking is now handled by the sidebar navigation status indicators
-    // This method is kept for backward compatibility
   }
-
-  /**
-   * Update status indicator for a specific view
-   * Updates the sidebar navigation status indicators
-   */
   _updateTabStatus(viewName, status) {
-    // Update sidebar navigation status
     if (this.sidebarNav) {
       this.sidebarNav.updateStatus(viewName, status);
     }
-
-    // Update the progress line to reflect the new status
     this._updateProgressLine();
   }
-
-  /**
-   * Start background polling to check status of all views
-   * Enhanced: Now caches content when ready for instant view switching
-   */
   _startBackgroundStatusPolling() {
     const views = ['roadmap', 'slides', 'document', 'research-analysis'];
-
-    // Initial state - all loading
     views.forEach(view => this._updateTabStatus(view, 'loading'));
-
-    // Track active polling to avoid duplicates
     if (!this._backgroundPollTimeouts) {
       this._backgroundPollTimeouts = {};
     }
-
-    // Poll each view with exponential backoff
     const pollView = async (viewName, attempt = 0) => {
-      // Calculate polling interval with backoff
       const BASE_INTERVAL = 3000; // 3 seconds
       const MAX_INTERVAL = 15000; // 15 seconds max
       const MAX_ATTEMPTS = 100; // Stop polling after ~5 minutes
       const interval = Math.min(BASE_INTERVAL * Math.pow(1.3, Math.floor(attempt / 3)), MAX_INTERVAL);
-
-      // Stop polling if we've exceeded max attempts
       if (attempt >= MAX_ATTEMPTS) {
         this._updateTabStatus(viewName, 'failed');
         if (this._backgroundPollTimeouts[viewName]) {
@@ -1009,107 +651,71 @@ class ContentViewer {
         }
         return;
       }
-
       try {
         const response = await fetch(`/api/content/${this.sessionId}/${viewName}`);
-
-        // Handle HTTP errors (404, 500, etc.)
         if (!response.ok) {
           this._updateTabStatus(viewName, 'failed');
-          // Stop polling on HTTP errors - session may not exist
           if (this._backgroundPollTimeouts[viewName]) {
             delete this._backgroundPollTimeouts[viewName];
           }
           return;
         }
-
         const data = await response.json();
-
         if (data.status === 'completed' && data.data) {
           this._updateTabStatus(viewName, 'ready');
-
-          // Cache the content in StateManager for instant view switching
-          // Only cache if not already cached
           if (!this.stateManager.state.content[viewName]) {
             this.stateManager.setState({
               content: { ...this.stateManager.state.content, [viewName]: data.data }
             });
           }
-
-          // Stop polling for this view - it's done
           if (this._backgroundPollTimeouts[viewName]) {
             delete this._backgroundPollTimeouts[viewName];
           }
-
         } else if (data.status === 'error') {
           this._updateTabStatus(viewName, 'failed');
-          // Stop polling on error
           if (this._backgroundPollTimeouts[viewName]) {
             delete this._backgroundPollTimeouts[viewName];
           }
-
         } else if (data.status === 'processing' || data.status === 'pending') {
           this._updateTabStatus(viewName, 'processing');
-          // Still processing, poll again with backoff
           this._backgroundPollTimeouts[viewName] = setTimeout(() => {
             pollView(viewName, attempt + 1);
           }, interval);
-
         } else {
-          // Unknown status - continue polling
           this._updateTabStatus(viewName, 'loading');
           this._backgroundPollTimeouts[viewName] = setTimeout(() => {
             pollView(viewName, attempt + 1);
           }, interval);
         }
-
       } catch (error) {
-        // On error, retry with longer interval
         this._backgroundPollTimeouts[viewName] = setTimeout(() => {
           pollView(viewName, attempt + 1);
         }, interval * 2);
       }
     };
-
-    // Start polling all views
     views.forEach(view => pollView(view, 0));
   }
-
-  /**
-   * Cleanup polling on viewer destroy
-   */
   destroy() {
-    // Clear all processing poll timeouts
     if (this._processingPollTimeouts) {
       Object.values(this._processingPollTimeouts).forEach(timeout => clearTimeout(timeout));
       this._processingPollTimeouts = {};
     }
-
-    // Clear all background poll timeouts
     if (this._backgroundPollTimeouts) {
       Object.values(this._backgroundPollTimeouts).forEach(timeout => clearTimeout(timeout));
       this._backgroundPollTimeouts = {};
     }
-
-    // Clear start time tracking
     if (this._processingStartTimes) {
       this._processingStartTimes = {};
     }
-
-    // Remove keyboard shortcuts
     if (this.removeShortcuts) {
       this.removeShortcuts();
     }
-
-    // Destroy sidebar navigation
     if (this.sidebarNav) {
       this.sidebarNav.destroy();
       this.sidebarNav = null;
     }
   }
 }
-
-// Initialize viewer when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   const viewer = new ContentViewer();
   viewer.init();
