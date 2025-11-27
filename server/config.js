@@ -1,4 +1,22 @@
 import 'dotenv/config';
+import {
+  INJECTION_PATTERNS,
+  ID_PATTERNS,
+  FILE_TYPES,
+  RATE_LIMITS,
+  TIMEOUTS,
+  FILE_LIMITS,
+  VALIDATION,
+  ERROR_MESSAGES
+} from '../Public/config/shared.js';
+
+/**
+ * Server Configuration
+ *
+ * Server-specific settings. Shared patterns are imported from
+ * Public/config/shared.js to maintain a single source of truth.
+ */
+
 function validateEnvironment() {
   if (process.env.NODE_ENV === 'test') {
     if (!process.env.API_KEY) {
@@ -13,9 +31,12 @@ function validateEnvironment() {
     process.exit(1);
   }
   if (process.env.API_KEY && process.env.API_KEY.length < 10) {
+    // API key seems too short - could add warning here
   }
 }
+
 validateEnvironment();
+
 export const CONFIG = {
   SERVER: {
     PORT: parseInt(process.env.PORT, 10) || 3000,
@@ -37,74 +58,53 @@ export const CONFIG = {
     SEED: 42 // Fixed seed for deterministic output - same inputs produce same outputs
   },
   FILES: {
-    MAX_SIZE_BYTES: 10 * 1024 * 1024, // 10MB per file
-    MAX_COUNT: 500, // Increased to support folder uploads with many files
-    MAX_FIELD_SIZE_BYTES: 200 * 1024 * 1024, // 200MB total - increased for folder uploads
-    ALLOWED_MIMES: [
-      'text/markdown',
-      'text/plain',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/octet-stream', // Some browsers send .md files with this
-      'application/pdf'
-    ],
-    ALLOWED_EXTENSIONS: ['md', 'txt', 'docx', 'pdf']
+    MAX_SIZE_BYTES: FILE_LIMITS.MAX_SIZE_BYTES,
+    MAX_COUNT: FILE_LIMITS.MAX_COUNT,
+    MAX_FIELD_SIZE_BYTES: FILE_LIMITS.MAX_FIELD_SIZE_BYTES,
+    ALLOWED_MIMES: FILE_TYPES.MIMES,
+    ALLOWED_EXTENSIONS: FILE_TYPES.EXTENSIONS
   },
   TIMEOUTS: {
-    REQUEST_MS: 120000, // 2 minutes
-    RESPONSE_MS: 120000
+    REQUEST_MS: TIMEOUTS.REQUEST_MS,
+    RESPONSE_MS: TIMEOUTS.RESPONSE_MS
   },
   RATE_LIMIT: {
-    WINDOW_MS: 15 * 60 * 1000, // 15 minutes
-    MAX_REQUESTS: 100,
-    STRICT_MAX_REQUESTS: 20 // For resource-intensive endpoints
+    WINDOW_MS: RATE_LIMITS.WINDOW_MS,
+    MAX_REQUESTS: RATE_LIMITS.MAX_REQUESTS,
+    STRICT_MAX_REQUESTS: RATE_LIMITS.STRICT_MAX_REQUESTS
   },
   CACHE: {
     STATIC_ASSETS_MAX_AGE: 86400 // 1 day in seconds
   },
   SECURITY: {
-    INJECTION_PATTERNS: [
-      { pattern: /ignore\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
-      { pattern: /disregard\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
-      { pattern: /forget\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
-      { pattern: /system\s*:/gi, replacement: '[REDACTED]' },
-      { pattern: /\[SYSTEM\]/gi, replacement: '[REDACTED]' },
-      { pattern: /\{SYSTEM\}/gi, replacement: '[REDACTED]' },
-      { pattern: /new\s+instructions?\s*:/gi, replacement: '[REDACTED]' },
-      { pattern: /override\s+instructions?/gi, replacement: '[REDACTED]' },
-      { pattern: /you\s+are\s+now\s+/gi, replacement: '[REDACTED]' },
-      { pattern: /act\s+as\s+if\s+you\s+are\s+/gi, replacement: '[REDACTED]' },
-      { pattern: /pretend\s+(you\s+are|to\s+be)\s+/gi, replacement: '[REDACTED]' }
-    ],
-    PATTERNS: {
-      CHART_ID: /^[a-f0-9]{32}$/i,
-      JOB_ID: /^[a-f0-9]{32}$/i,
-      SESSION_ID: /^[a-f0-9]{32}$/i
-    }
+    INJECTION_PATTERNS: INJECTION_PATTERNS,
+    PATTERNS: ID_PATTERNS
   },
   VALIDATION: {
-    MAX_QUESTION_LENGTH: 1000
+    MAX_QUESTION_LENGTH: VALIDATION.MAX_QUESTION_LENGTH
   },
   ERRORS: {
     MISSING_TASK_NAME: 'Missing taskName or entity',
     MISSING_SESSION_ID: 'Missing sessionId',
-    SESSION_NOT_FOUND: 'Session not found or expired. Please regenerate the chart.',
+    SESSION_NOT_FOUND: ERROR_MESSAGES.SESSION_NOT_FOUND,
     QUESTION_REQUIRED: 'Question is required and must be non-empty',
     ENTITY_REQUIRED: 'Entity is required',
     TASK_NAME_REQUIRED: 'Task name is required',
     QUESTION_TOO_LONG: 'Question too long (max 1000 characters)',
-    INVALID_CHART_ID: 'Invalid chart ID format',
-    CHART_NOT_FOUND: 'Chart not found or expired. Charts are available for 30 days after generation.',
+    INVALID_CHART_ID: ERROR_MESSAGES.INVALID_CHART_ID,
+    CHART_NOT_FOUND: ERROR_MESSAGES.CHART_NOT_FOUND,
     INVALID_JOB_ID: 'Invalid job ID format',
     JOB_NOT_FOUND: 'Job not found or expired. Jobs are available for 1 hour.',
-    FILE_TOO_LARGE: 'File too large. Maximum size is 10MB per file.',
-    TOO_MANY_FILES: 'Too many files. Maximum is 500 files per upload.',
-    FIELD_TOO_LARGE: 'Field value too large. Maximum total size is 200MB.',
-    RATE_LIMIT_EXCEEDED: 'Too many requests from this IP, please try again later.',
-    STRICT_RATE_LIMIT_EXCEEDED: 'Too many chart generation requests. Please try again in 15 minutes.',
+    FILE_TOO_LARGE: ERROR_MESSAGES.FILE_TOO_LARGE,
+    TOO_MANY_FILES: ERROR_MESSAGES.TOO_MANY_FILES,
+    FIELD_TOO_LARGE: ERROR_MESSAGES.FIELD_TOO_LARGE,
+    RATE_LIMIT_EXCEEDED: ERROR_MESSAGES.RATE_LIMIT_EXCEEDED,
+    STRICT_RATE_LIMIT_EXCEEDED: ERROR_MESSAGES.STRICT_RATE_LIMIT_EXCEEDED,
     INVALID_FILE_EXTENSION: (ext) => `Invalid file extension: .${ext}. Only .md, .txt, and .docx files are allowed.`,
     INVALID_FILE_TYPE: (type) => `Invalid file type: ${type}. Only .md, .txt, and .docx files are allowed.`
   }
 };
+
 Object.freeze(CONFIG);
 Object.freeze(CONFIG.SERVER);
 Object.freeze(CONFIG.API);
@@ -116,6 +116,19 @@ Object.freeze(CONFIG.SECURITY);
 Object.freeze(CONFIG.SECURITY.PATTERNS);
 Object.freeze(CONFIG.VALIDATION);
 Object.freeze(CONFIG.ERRORS);
+
 export function getGeminiApiUrl() {
   return `${CONFIG.API.BASE_URL}/models/${CONFIG.API.GEMINI_MODEL}:generateContent?key=${process.env.API_KEY}`;
 }
+
+// Re-export shared config for convenience
+export {
+  INJECTION_PATTERNS,
+  ID_PATTERNS,
+  FILE_TYPES,
+  RATE_LIMITS,
+  TIMEOUTS as SHARED_TIMEOUTS,
+  FILE_LIMITS,
+  VALIDATION as SHARED_VALIDATION,
+  ERROR_MESSAGES
+};
