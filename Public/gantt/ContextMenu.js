@@ -125,7 +125,8 @@ export class ContextMenu {
       };
       try {
         await this.onColorChange(taskInfo);
-      } catch (error) {
+      } catch (_error) {
+        // Revert color on error
         this.targetBar.setAttribute('data-color', oldColor);
         this.ganttData.data[this.targetTaskIndex].bar.color = oldColor;
       }
