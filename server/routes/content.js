@@ -68,6 +68,18 @@ function generateSessionId() {
   return crypto.randomUUID();
 }
 
+// Pre-compiled error message patterns (module-level constant for performance)
+// Patterns are compiled once at module load instead of on every function call
+const ERROR_PATTERNS = Object.freeze([
+  { pattern: /JSON.*parse.*position/i, message: 'The AI response was malformed. Please try again.' },
+  { pattern: /timeout|timed out/i, message: 'Generation took too long. Please try again with simpler content.' },
+  { pattern: /rate limit/i, message: 'Too many requests. Please wait a moment and try again.' },
+  { pattern: /empty.*content|no.*section|invalid.*content/i, message: 'The AI could not generate valid content. Try providing more detailed source material.' },
+  { pattern: /network|connection|ECONNREFUSED/i, message: 'Network error occurred. Please check your connection and try again.' },
+  { pattern: /quota|exceeded/i, message: 'API quota exceeded. Please try again later.' },
+  { pattern: /invalid.*schema|validation.*failed/i, message: 'Generated content did not match expected format. Please try again.' }
+]);
+
 /**
  * Format raw error messages into user-friendly text
  * @param {string} rawError - Raw error message
@@ -77,18 +89,7 @@ function generateSessionId() {
 function formatUserError(rawError, viewType) {
   if (!rawError) return `Failed to generate ${viewType}. Please try again.`;
 
-  // Map common error patterns to user-friendly messages
-  const errorMappings = [
-    { pattern: /JSON.*parse.*position/i, message: 'The AI response was malformed. Please try again.' },
-    { pattern: /timeout|timed out/i, message: 'Generation took too long. Please try again with simpler content.' },
-    { pattern: /rate limit/i, message: 'Too many requests. Please wait a moment and try again.' },
-    { pattern: /empty.*content|no.*section|invalid.*content/i, message: 'The AI could not generate valid content. Try providing more detailed source material.' },
-    { pattern: /network|connection|ECONNREFUSED/i, message: 'Network error occurred. Please check your connection and try again.' },
-    { pattern: /quota|exceeded/i, message: 'API quota exceeded. Please try again later.' },
-    { pattern: /invalid.*schema|validation.*failed/i, message: 'Generated content did not match expected format. Please try again.' }
-  ];
-
-  for (const mapping of errorMappings) {
+  for (const mapping of ERROR_PATTERNS) {
     if (mapping.pattern.test(rawError)) {
       return mapping.message;
     }

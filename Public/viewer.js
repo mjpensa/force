@@ -113,6 +113,10 @@ class ContentViewer {
     this.footerSVG = '';
     this.taskAnalyzer = new TaskAnalyzer();
 
+    // Track which views are being actively polled to prevent duplicates
+    // Performance optimization: prevents redundant API calls
+    this._activePolls = new Set();
+
     // Performance optimizations
     this.pollingService = new PollingService();
     this._renderQueue = new Map(); // Batch DOM updates
@@ -468,13 +472,27 @@ class ContentViewer {
     }
     this._pollForProcessingComplete(viewName);
   }
+
+  /**
+   * Poll for content generation completion
+   * Uses exponential backoff to reduce server load
+   * Performance optimization: tracks active polls to prevent duplicates
+   */
   async _pollForProcessingComplete(viewName, attempt = 0) {
+    // Prevent duplicate polling for the same view
+    if (this._activePolls.has(viewName)) {
+      console.log(`[Viewer] Skipping duplicate poll for ${viewName} - already active`);
+      return;
+    }
+    this._activePolls.add(viewName);
+
     const MAX_ATTEMPTS = 120; // 5 minutes with increasing intervals
     const BASE_INTERVAL = 2000; // Start at 2 seconds
     const MAX_INTERVAL = 10000; // Cap at 10 seconds
     const EXPECTED_DURATION = 60000; // Expected 60 seconds for generation
     const interval = Math.min(BASE_INTERVAL * Math.pow(1.2, Math.floor(attempt / 5)), MAX_INTERVAL);
     if (attempt >= MAX_ATTEMPTS) {
+      this._activePolls.delete(viewName);
       this._showGenerationTimeout(viewName);
       return;
     }
@@ -497,6 +515,7 @@ class ContentViewer {
         // Validate data structure before caching
         const isValidData = this._validateViewData(viewName, data.data);
         if (!isValidData) {
+          this._activePolls.delete(viewName);
           if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
             delete this._processingPollTimeouts[viewName];
           }
@@ -504,6 +523,8 @@ class ContentViewer {
           this._showGenerationFailed(viewName, `${viewName} generation completed but produced invalid content. Please try regenerating.`);
           return;
         }
+        // Content is ready! Clear polling and load the view
+        this._activePolls.delete(viewName);
         if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
           delete this._processingPollTimeouts[viewName];
         }
@@ -525,6 +546,8 @@ class ContentViewer {
         return;
       }
       if (data.status === 'error') {
+        // Generation failed
+        this._activePolls.delete(viewName);
         if (this._processingPollTimeouts && this._processingPollTimeouts[viewName]) {
           delete this._processingPollTimeouts[viewName];
         }
@@ -739,13 +762,33 @@ class ContentViewer {
     }
     this._updateProgressLine();
   }
+
+  /**
+   * Start background polling to check status of all views
+   * Enhanced: Now caches content when ready for instant view switching
+   * Performance optimization: Skips already-cached views and views with active foreground polls
+   */
   _startBackgroundStatusPolling() {
     const views = ['roadmap', 'slides', 'document', 'research-analysis'];
-    views.forEach(view => this._updateTabStatus(view, 'loading'));
+
+    // Initial state - mark loading only for uncached views
+    views.forEach(view => {
+      if (this.stateManager.state.content[view]) {
+        this._updateTabStatus(view, 'ready');
+      } else {
+        this._updateTabStatus(view, 'loading');
+      }
+    });
 
     // Use unified polling service for efficient background status checks
-    views.forEach(viewName => {
+    // Only poll views that aren't already cached
+    views.filter(view => !this.stateManager.state.content[view]).forEach(viewName => {
       this.pollingService.start(`bg-${viewName}`, async ({ status, attempt: _attempt }) => {
+        // Skip if this view has an active foreground poll
+        if (this._activePolls.has(viewName)) {
+          return { done: false }; // Let foreground poll handle it
+        }
+
         if (status === 'timeout') {
           this._updateTabStatus(viewName, 'failed');
           return { done: true };
