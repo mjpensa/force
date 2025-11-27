@@ -76,16 +76,15 @@ const apiQueue = new APIQueue(2);
 /**
  * Generation config presets for different content types
  *
- * DOCUMENT_CREATIVE_CONFIG: Optimized for executive summaries
- * - Balanced creativity for captivating narratives
- * - Grounded through high thinking budget for fact-checking
- * - No seed to allow natural variation between generations
+ * DOCUMENT_CONFIG: Optimized for SPEED - MVP executive summaries
+ * - No thinking budget for instant generation
+ * - Low temperature for consistent output
  */
-const DOCUMENT_CREATIVE_CONFIG = {
-  temperature: 0.4,      // Low-moderate: creative phrasing without hallucination risk
-  topP: 0.6,             // Moderate: explores synonyms/phrasings while staying coherent
-  topK: 15,              // Relaxed: allows richer vocabulary than greedy decoding
-  thinkingBudget: 24576  // Maximum allowed for Gemini 2.5 Flash
+const DOCUMENT_CONFIG = {
+  temperature: 0.1,
+  topP: 0.3,
+  topK: 5,
+  thinkingBudget: 0   // Zero: fast generation
 };
 
 /**
@@ -291,52 +290,20 @@ async function generateSlides(userPrompt, researchFiles) {
 }
 
 /**
- * Validate document structure
- * @param {object} data - Generated document data
- * @returns {boolean} True if valid
- */
-function validateDocumentStructure(data) {
-  if (!data) return false;
-  if (!data.sections || !Array.isArray(data.sections)) return false;
-  if (data.sections.length === 0) return false;
-  if (!data.title) return false;
-  return true;
-}
-
-
-/**
- * Generate document content (executive summary)
- * Uses DOCUMENT_CREATIVE_CONFIG for captivating, insightful narratives
- * while staying grounded through high thinking budget
- *
- * @param {string} userPrompt - User's request
- * @param {Array} researchFiles - Research files
+ * Generate document content (executive summary) - MVP
+ * Optimized for SPEED with no thinking budget
  */
 async function generateDocument(userPrompt, researchFiles) {
   try {
-    console.log(`[Document] Starting generation`);
-    console.log(`[Document] Using creative config: temp=${DOCUMENT_CREATIVE_CONFIG.temperature}, topP=${DOCUMENT_CREATIVE_CONFIG.topP}, topK=${DOCUMENT_CREATIVE_CONFIG.topK}, thinkingBudget=${DOCUMENT_CREATIVE_CONFIG.thinkingBudget}`);
+    console.log(`[Document] Starting...`);
 
     const prompt = generateDocumentPrompt(userPrompt, researchFiles);
-    let data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CREATIVE_CONFIG);
+    const data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CONFIG);
 
-    // Validate document structure
-    if (!validateDocumentStructure(data)) {
-      console.warn('[Document] Generated data has invalid structure, retrying once...');
-
-      // Retry generation once with same creative config
-      data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CREATIVE_CONFIG);
-
-      if (!validateDocumentStructure(data)) {
-        throw new Error('Document generation produced empty or invalid content after retry. The AI may need more detailed source material.');
-      }
-    }
-
-    console.log(`[Document] Successfully generated with ${data.sections.length} sections`);
+    console.log(`[Document] Done: ${data?.sections?.length || 0} sections`);
     return { success: true, data };
-
   } catch (error) {
-    console.error('[Document] Generation failed:', error);
+    console.error('[Document] Failed:', error.message);
     return { success: false, error: error.message };
   }
 }
