@@ -460,8 +460,8 @@ body.view-roadmap .app-shell {
   position: fixed;
   top: 0;
   right: 0;
-  width: 45%;
-  max-width: 500px;
+  width: 35%;
+  max-width: 400px;
   z-index: 1;
   pointer-events: none;
   contain: layout style;
@@ -497,7 +497,7 @@ body.view-roadmap .ambient-logo-container {
 }
 @media screen and (max-width: 768px) {
   .ambient-logo-container {
-    width: 60%;
+    width: 50%;
     top: 0;
     right: 0;
   }
