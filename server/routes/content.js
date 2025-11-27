@@ -3,10 +3,11 @@
  * Handles synchronous generation of all three content types
  * (Roadmap, Slides, Document)
  *
- * Note: In-memory session storage (cleared on server restart)
+ * Storage: Uses sessionStorage abstraction (Redis with in-memory fallback)
  *
  * Performance optimizations:
- * - LRU-style session cache with memory pressure handling
+ * - Persistent session storage with Redis support
+ * - Content compression for large sessions
  * - Efficient file processing with streaming
  * - Response caching headers
  */
@@ -14,53 +15,68 @@
 import express from 'express';
 import mammoth from 'mammoth';
 import crypto from 'crypto';
-import { generateAllContent, regenerateContent, globalMetrics, apiQueue } from '../generators.js';
+import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { generatePptx } from '../templates/ppt-export-service.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
+import { generateETag, clearAllCaches, clearExpiredEntries } from '../cache/contentCache.js';
+import { processFiles } from '../utils/fileProcessor.js';
+import { cleanJsonResponse } from '../utils/networkOptimizer.js';
+import { sessionStorage } from '../storage/sessionStorage.js';
+import { getAdvancedOptimizationStats } from '../utils/advancedOptimizer.js';
+import {
+  metricsAggregator,
+  alertEvaluator,
+  featureFlags,
+  getDashboardData
+} from '../utils/monitoring.js';
 
 const router = express.Router();
 
-// In-memory session storage with LRU-style management
-// Map<sessionId, { prompt, researchFiles, content, createdAt, lastAccessed }>
-const sessions = new Map();
-const MAX_SESSIONS = 100; // Limit max sessions to prevent memory issues
+// Session TTL constant (used in storage abstraction)
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Performance: Track access for LRU eviction
-function touchSession(sessionId) {
-  const session = sessions.get(sessionId);
-  if (session) {
-    session.lastAccessed = Date.now();
-  }
+// ============================================================================
+// REGISTER METRIC COLLECTORS FOR MONITORING DASHBOARD
+// ============================================================================
+
+// Register generation metrics collector
+metricsAggregator.register('generation', async () => {
+  const metrics = globalMetrics.getAggregatedMetrics();
+  return {
+    requestCount: metrics.requestCount,
+    latency: metrics.latency,
+    lastUpdated: metrics.lastUpdated
+  };
+});
+
+// Register queue metrics collector
+metricsAggregator.register('queue', async () => {
+  return apiQueue.getMetrics();
+});
+
+// Register cache metrics collector
+metricsAggregator.register('cache', async () => {
+  return getCacheMetrics();
+});
+
+// Register storage metrics collector
+metricsAggregator.register('storage', async () => {
+  return sessionStorage.getStats();
+});
+
+// Register advanced optimizers metrics collector
+metricsAggregator.register('advanced', async () => {
+  return getAdvancedOptimizationStats();
+});
+
+/**
+ * Helper to touch session (update last accessed time)
+ * @param {string} sessionId - Session ID
+ */
+async function touchSession(sessionId) {
+  await sessionStorage.touch(sessionId);
 }
-
-// Performance: LRU-style cleanup when over capacity
-function enforceSessionLimit() {
-  if (sessions.size <= MAX_SESSIONS) return;
-
-  // Sort by lastAccessed (oldest first) and remove excess
-  const sortedSessions = [...sessions.entries()]
-    .sort((a, b) => (a[1].lastAccessed || a[1].createdAt) - (b[1].lastAccessed || b[1].createdAt));
-
-  const toRemove = sessions.size - MAX_SESSIONS;
-  for (let i = 0; i < toRemove; i++) {
-    sessions.delete(sortedSessions[i][0]);
-  }
-}
-
-// Clean up old sessions (older than 1 hour since last access) and enforce limits
-setInterval(() => {
-  const now = Date.now();
-  for (const [sessionId, session] of sessions) {
-    // Use lastAccessed time (not createdAt) so active sessions don't expire
-    const lastActivity = session.lastAccessed || session.createdAt;
-    if (now - lastActivity > SESSION_TTL_MS) {
-      sessions.delete(sessionId);
-    }
-  }
-  enforceSessionLimit();
-}, 5 * 60 * 1000); // Run cleanup every 5 minutes
 
 /**
  * Generate a unique session ID
@@ -151,37 +167,23 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     requestPerf.setMetadata('fileCount', files.length);
     requestPerf.setMetadata('totalUploadSize', files.reduce((sum, f) => sum + f.size, 0));
 
-    // Process uploaded files to extract content
-    const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
-
-    // Time file processing
+    // Time file processing with optimized processor
     const fileProcessingTimer = createTimer(requestPerf, 'file-processing');
 
-    // Process files in parallel
-    const fileProcessingPromises = sortedFiles.map(async (file) => {
-      let content = '';
-
-      // Handle DOCX files with mammoth
-      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const result = await mammoth.convertToHtml({ buffer: file.buffer });
-        content = result.value;
-      } else {
-        // Handle text-based files (TXT, MD, etc.)
-        content = file.buffer.toString('utf8');
-      }
-
-      return {
-        filename: file.originalname,
-        content: content
-      };
-    });
-
-    // Wait for all files to be processed
-    const researchFiles = await Promise.all(fileProcessingPromises);
+    // Use optimized file processor with deduplication and normalization
+    const processingResult = await processFiles(files);
+    const researchFiles = processingResult.researchFiles;
     fileProcessingTimer.stop();
 
-    // Track processed content size
-    requestPerf.setMetadata('processedContentSize', researchFiles.reduce((sum, f) => sum + f.content.length, 0));
+    // Track processing metrics
+    requestPerf.setMetadata('processedContentSize', processingResult.metrics.totalExtractedSize);
+    requestPerf.setMetadata('duplicatesRemoved', processingResult.metrics.totalDuplicatesRemoved);
+    requestPerf.setMetadata('fileProcessingMetrics', processingResult.metrics);
+
+    // Warn about failed files (but continue with successful ones)
+    if (processingResult.failed.length > 0) {
+      requestPerf.setMetadata('failedFiles', processingResult.failed);
+    }
 
     // Create session ID early so it can be included in generation metrics
     const sessionId = generateSessionId();
@@ -196,7 +198,7 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
 
     // Store content (including research for task analysis)
     const now = Date.now();
-    sessions.set(sessionId, {
+    await sessionStorage.set(sessionId, {
       prompt,
       researchFiles: researchFiles.map(f => f.filename),
       // Store research content for session-based task analysis (truncated to limit memory)
@@ -209,17 +211,15 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
       },
       createdAt: now,
       lastAccessed: now
-    });
-
-    // Enforce session limit after adding new session
-    enforceSessionLimit();
+    }, SESSION_TTL_MS);
 
     // Complete request performance logging
     const requestReport = requestPerf.complete();
     requestPerf.logReport();
 
     // Return sessionId for frontend to poll/fetch content
-    res.json({
+    // Use cleanJsonResponse to remove null/undefined values and reduce payload size
+    const responseData = cleanJsonResponse({
       status: 'completed',
       sessionId,
       prompt,
@@ -236,7 +236,9 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
         fileProcessingTime: requestReport.measures['file-processing']?.duration,
         generationTime: requestReport.measures['content-generation']?.duration
       }
-    });
+    }, { removeNull: true, removeUndefined: true });
+
+    res.json(responseData);
 
   } catch (error) {
     requestPerf.setMetadata('error', error.message);
@@ -247,6 +249,202 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
       error: 'Internal server error',
       details: error.message
     });
+  }
+});
+
+/**
+ * POST /api/content/generate/stream
+ * Generates all content types with Server-Sent Events streaming
+ * Results are emitted as each content type completes, reducing perceived latency
+ *
+ * Request (multipart/form-data):
+ * - prompt: string (form field)
+ * - researchFiles: File[] (uploaded files)
+ *
+ * SSE Events:
+ * - event: progress, data: { message: string }
+ * - event: content, data: { type: string, result: object }
+ * - event: complete, data: { sessionId: string, results: object }
+ * - event: error, data: { message: string }
+ */
+router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (req, res) => {
+  // Extend timeout for streaming (content types emit as they complete)
+  const STREAM_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes
+  req.setTimeout(STREAM_TIMEOUT_MS);
+  res.setTimeout(STREAM_TIMEOUT_MS);
+
+  // Initialize performance logging
+  const requestPerf = new PerformanceLogger('content-generate-stream', { enabled: true });
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+  res.flushHeaders();
+
+  // Helper to send SSE events with optimized JSON
+  const sendEvent = (event, data) => {
+    // Clean the data to remove null/undefined values before sending
+    const cleanedData = cleanJsonResponse(data, { removeNull: true, removeUndefined: true });
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(cleanedData)}\n\n`);
+  };
+
+  // Send initial heartbeat
+  sendEvent('progress', { message: 'Connection established' });
+
+  // Keep-alive heartbeat to prevent connection timeout
+  const heartbeatInterval = setInterval(() => {
+    res.write(': heartbeat\n\n');
+  }, 15000);
+
+  try {
+    const { prompt } = req.body;
+    const files = req.files;
+
+    // Validate input
+    if (!prompt || typeof prompt !== 'string') {
+      sendEvent('error', { message: 'Invalid request. Required: prompt (string)' });
+      clearInterval(heartbeatInterval);
+      return res.end();
+    }
+
+    if (!files || files.length === 0) {
+      sendEvent('error', { message: 'At least one research file is required' });
+      clearInterval(heartbeatInterval);
+      return res.end();
+    }
+
+    // Track file metadata
+    requestPerf.setMetadata('fileCount', files.length);
+    requestPerf.setMetadata('totalUploadSize', files.reduce((sum, f) => sum + f.size, 0));
+
+    sendEvent('progress', { message: 'Processing uploaded files...' });
+
+    // Time file processing with optimized processor
+    const fileProcessingTimer = createTimer(requestPerf, 'file-processing');
+
+    // Use optimized file processor with deduplication and normalization
+    const processingResult = await processFiles(files);
+    const researchFiles = processingResult.researchFiles;
+    fileProcessingTimer.stop();
+
+    // Track processing metrics
+    requestPerf.setMetadata('processedContentSize', processingResult.metrics.totalExtractedSize);
+    requestPerf.setMetadata('duplicatesRemoved', processingResult.metrics.totalDuplicatesRemoved);
+
+    // Report any failed files via progress event
+    if (processingResult.failed.length > 0) {
+      sendEvent('progress', {
+        message: `Warning: ${processingResult.failed.length} file(s) could not be processed`,
+        failedFiles: processingResult.failed
+      });
+    }
+
+    // Create session ID
+    const sessionId = generateSessionId();
+    requestPerf.setMetadata('sessionId', sessionId);
+
+    sendEvent('progress', { message: 'Starting content generation...', sessionId });
+
+    // Initialize session with empty content (will be populated as results stream in)
+    const now = Date.now();
+    const session = {
+      prompt,
+      researchFiles: researchFiles.map(f => f.filename),
+      researchContent: researchFiles.map(f => f.content).join('\n\n---\n\n').substring(0, 500000),
+      content: {
+        roadmap: null,
+        slides: null,
+        document: null,
+        researchAnalysis: null
+      },
+      createdAt: now,
+      lastAccessed: now
+    };
+
+    // Store initial session
+    await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
+
+    // Content type mapping for consistent naming
+    const contentKeyMap = {
+      'roadmap': 'roadmap',
+      'slides': 'slides',
+      'document': 'document',
+      'research-analysis': 'researchAnalysis'
+    };
+
+    // Time content generation
+    const generationTimer = createTimer(requestPerf, 'content-generation');
+
+    // Generate with streaming callbacks
+    await generateAllContentStreaming(prompt, researchFiles, {
+      sessionId,
+
+      onProgress: (message) => {
+        sendEvent('progress', { message });
+      },
+
+      onContentReady: async (type, result) => {
+        // Update session content incrementally
+        const contentKey = contentKeyMap[type] || type;
+        session.content[contentKey] = result;
+        session.lastAccessed = Date.now();
+
+        // Persist updated session to storage
+        await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
+
+        // Stream to client
+        sendEvent('content', {
+          type,
+          success: result.success,
+          data: result.data || null,
+          error: result.error ? formatUserError(result.error, type) : null
+        });
+      },
+
+      onComplete: (results) => {
+        generationTimer.stop();
+
+        // Complete performance logging
+        const requestReport = requestPerf.complete();
+        requestPerf.logReport();
+
+        // Send completion event with all results
+        sendEvent('complete', {
+          sessionId,
+          prompt,
+          researchFiles: researchFiles.map(f => f.filename),
+          _performance: {
+            totalDuration: requestReport.totalDuration,
+            fileProcessingTime: requestReport.measures['file-processing']?.duration,
+            generationTime: requestReport.measures['content-generation']?.duration
+          }
+        });
+
+        clearInterval(heartbeatInterval);
+        res.end();
+      },
+
+      onError: (error) => {
+        sendEvent('error', { message: error.message });
+        requestPerf.setMetadata('fatalError', error.message);
+        requestPerf.complete();
+        requestPerf.logReport();
+        clearInterval(heartbeatInterval);
+        res.end();
+      }
+    });
+
+  } catch (error) {
+    requestPerf.setMetadata('error', error.message);
+    requestPerf.complete();
+    requestPerf.logReport();
+
+    sendEvent('error', { message: 'Internal server error: ' + error.message });
+    clearInterval(heartbeatInterval);
+    res.end();
   }
 });
 
@@ -299,29 +497,22 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
       });
     }
 
-    // Process uploaded files
-    const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
-    const fileProcessingPromises = sortedFiles.map(async (file) => {
-      let content = '';
-      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const result = await mammoth.convertToHtml({ buffer: file.buffer });
-        content = result.value;
-      } else {
-        content = file.buffer.toString('utf8');
-      }
-      return { filename: file.originalname, content };
-    });
-    const researchFiles = await Promise.all(fileProcessingPromises);
+    // Use optimized file processor
+    const processingResult = await processFiles(files);
+    const researchFiles = processingResult.researchFiles;
 
     // Regenerate content
     const result = await regenerateContent(viewType, prompt, researchFiles);
 
-    res.json({
+    // Use cleanJsonResponse to reduce payload size
+    const responseData = cleanJsonResponse({
       viewType,
       status: result.success ? 'completed' : 'error',
-      data: result.data || null,
+      data: result.data,
       error: result.error ? formatUserError(result.error, viewType) : null
-    });
+    }, { removeNull: true, removeUndefined: true });
+
+    res.json(responseData);
 
   } catch (error) {
     res.status(500).json({
@@ -347,7 +538,7 @@ router.get('/:sessionId/slides/export', async (req, res) => {
     const { sessionId } = req.params;
 
     // Check if session exists
-    const session = sessions.get(sessionId);
+    const session = await sessionStorage.get(sessionId);
     if (!session) {
       return res.status(404).json({
         error: 'Session not found',
@@ -403,12 +594,12 @@ router.get('/:sessionId/slides/export', async (req, res) => {
  * - For roadmap: Returns the gantt data directly
  * - For other views: Returns { success, data, error }
  */
-router.get('/:sessionId/:viewType', (req, res) => {
+router.get('/:sessionId/:viewType', async (req, res) => {
   try {
     const { sessionId, viewType } = req.params;
 
     // Check if session exists
-    const session = sessions.get(sessionId);
+    const session = await sessionStorage.get(sessionId);
     if (!session) {
       return res.status(404).json({
         error: 'Session not found',
@@ -418,7 +609,10 @@ router.get('/:sessionId/:viewType', (req, res) => {
     }
 
     // Performance: Track access for LRU management
-    touchSession(sessionId);
+    await touchSession(sessionId);
+
+    // Track view pattern for speculative generation optimization
+    speculativeGenerator.recordView(sessionId, viewType);
 
     // Map viewType to content key
     const viewTypeMap = {
@@ -446,14 +640,34 @@ router.get('/:sessionId/:viewType', (req, res) => {
 
     // Performance: Add cache control headers for completed content
     if (contentResult.success && contentResult.data) {
-      // Cache successful responses for 5 minutes on the client
-      res.set('Cache-Control', 'private, max-age=300');
-      res.set('ETag', `"${sessionId}-${viewType}-${session.lastAccessed}"`);
+      // Generate content-based ETag for reliable caching
+      const dataHash = crypto.createHash('md5')
+        .update(JSON.stringify(contentResult.data))
+        .digest('hex')
+        .substring(0, 16);
+      const etag = `"${viewType}-${dataHash}"`;
 
-      return res.json({
+      // Check for conditional request (If-None-Match)
+      const clientEtag = req.get('If-None-Match');
+      if (clientEtag === etag) {
+        // Content unchanged - return 304 Not Modified
+        res.set('ETag', etag);
+        res.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=3600');
+        return res.status(304).end();
+      }
+
+      // Cache successful responses with improved headers
+      res.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=3600');
+      res.set('ETag', etag);
+
+      // Use cleanJsonResponse to remove null/undefined values and reduce payload size
+      const responseData = cleanJsonResponse({
         status: 'completed',
-        data: contentResult.data
-      });
+        data: contentResult.data,
+        _cached: contentResult._cached || false  // Indicate if result was from cache
+      }, { removeNull: true, removeUndefined: true });
+
+      return res.json(responseData);
     } else {
       // Don't cache error responses
       res.set('Cache-Control', 'no-store');
@@ -529,7 +743,7 @@ router.post('/slides/export', express.json({ limit: '50mb' }), async (req, res) 
  * - startCol: number (new start column)
  * - endCol: number (new end column)
  */
-router.post('/update-task-dates', express.json(), (req, res) => {
+router.post('/update-task-dates', express.json(), async (req, res) => {
   try {
     const { sessionId, taskIndex, startCol, endCol } = req.body;
 
@@ -537,12 +751,10 @@ router.post('/update-task-dates', express.json(), (req, res) => {
       return res.status(400).json({ error: 'sessionId and taskIndex are required' });
     }
 
-    const session = sessions.get(sessionId);
+    const session = await sessionStorage.get(sessionId);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
-
-    touchSession(sessionId);
 
     // Update the task in roadmap data
     const roadmapData = session.content.roadmap?.data;
@@ -555,6 +767,10 @@ router.post('/update-task-dates', express.json(), (req, res) => {
       if (startCol !== undefined) task.bar.startCol = startCol;
       if (endCol !== undefined) task.bar.endCol = endCol;
     }
+
+    // Persist updated session
+    session.lastAccessed = Date.now();
+    await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
 
     res.json({ success: true, task });
   } catch (error) {
@@ -571,7 +787,7 @@ router.post('/update-task-dates', express.json(), (req, res) => {
  * - taskIndex: number (index in ganttData.data array)
  * - color: string (new color class)
  */
-router.post('/update-task-color', express.json(), (req, res) => {
+router.post('/update-task-color', express.json(), async (req, res) => {
   try {
     const { sessionId, taskIndex, color } = req.body;
 
@@ -579,12 +795,10 @@ router.post('/update-task-color', express.json(), (req, res) => {
       return res.status(400).json({ error: 'sessionId, taskIndex, and color are required' });
     }
 
-    const session = sessions.get(sessionId);
+    const session = await sessionStorage.get(sessionId);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
-
-    touchSession(sessionId);
 
     // Update the task in roadmap data
     const roadmapData = session.content.roadmap?.data;
@@ -596,6 +810,10 @@ router.post('/update-task-color', express.json(), (req, res) => {
     if (task.bar) {
       task.bar.color = color;
     }
+
+    // Persist updated session
+    session.lastAccessed = Date.now();
+    await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
 
     res.json({ success: true, task });
   } catch (error) {
@@ -614,19 +832,64 @@ router.post('/update-task-color', express.json(), (req, res) => {
  *   lastUpdated: string
  * }
  */
-router.get('/metrics', (req, res) => {
+router.get('/metrics', async (req, res) => {
   try {
     const metrics = globalMetrics.getAggregatedMetrics();
     const queueMetrics = apiQueue.getMetrics();
+    const cacheMetrics = getCacheMetrics();
+    const storageStats = await sessionStorage.getStats();
+
     res.json({
       status: 'ok',
       metrics,
       queue: queueMetrics,
-      sessionCount: sessions.size,
-      maxSessions: MAX_SESSIONS
+      cache: cacheMetrics.aggregate,
+      storage: storageStats
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve metrics', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/metrics/cache
+ * Returns detailed cache metrics by content type
+ */
+router.get('/metrics/cache', (req, res) => {
+  try {
+    const cacheMetrics = getCacheMetrics();
+    res.json({
+      status: 'ok',
+      ...cacheMetrics
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve cache metrics', details: error.message });
+  }
+});
+
+/**
+ * POST /api/content/cache/clear
+ * Clears all caches (admin endpoint)
+ */
+router.post('/cache/clear', (req, res) => {
+  try {
+    clearAllCaches();
+    res.json({ status: 'ok', message: 'All caches cleared' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear caches', details: error.message });
+  }
+});
+
+/**
+ * POST /api/content/cache/clear-expired
+ * Clears only expired cache entries
+ */
+router.post('/cache/clear-expired', (req, res) => {
+  try {
+    const cleared = clearExpiredEntries();
+    res.json({ status: 'ok', message: `Cleared ${cleared} expired entries` });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear expired entries', details: error.message });
   }
 });
 
@@ -651,10 +914,165 @@ router.get('/metrics/recent', (req, res) => {
   }
 });
 
+/**
+ * GET /api/content/metrics/advanced
+ * Returns advanced optimization metrics (warmup, prefetch, speculative)
+ */
+router.get('/metrics/advanced', (req, res) => {
+  try {
+    const advancedStats = getAdvancedOptimizationStats();
+    res.json({
+      status: 'ok',
+      ...advancedStats
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve advanced metrics', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/dashboard
+ * Returns comprehensive monitoring dashboard data
+ * Includes health status, metrics, and alerts
+ */
+router.get('/dashboard', async (req, res) => {
+  try {
+    const dashboard = await getDashboardData();
+    res.json(dashboard);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve dashboard', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/alerts
+ * Returns current alerts and health status
+ */
+router.get('/alerts', (req, res) => {
+  try {
+    const health = alertEvaluator.getHealthStatus();
+    const activeAlerts = alertEvaluator.getActiveAlerts();
+    const history = alertEvaluator.getAlertHistory(20);
+
+    res.json({
+      status: 'ok',
+      health,
+      activeAlerts,
+      recentHistory: history
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve alerts', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/feature-flags
+ * Returns all feature flags and their current state
+ */
+router.get('/feature-flags', (req, res) => {
+  try {
+    const flags = featureFlags.getAllFlags();
+    res.json({
+      status: 'ok',
+      flags
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve feature flags', details: error.message });
+  }
+});
+
+/**
+ * POST /api/content/feature-flags/:flagName
+ * Update a feature flag's rollout percentage
+ *
+ * Body: { rolloutPercentage: number }
+ */
+router.post('/feature-flags/:flagName', express.json(), (req, res) => {
+  try {
+    const { flagName } = req.params;
+    const { rolloutPercentage } = req.body;
+
+    if (typeof rolloutPercentage !== 'number' || rolloutPercentage < 0 || rolloutPercentage > 100) {
+      return res.status(400).json({
+        error: 'Invalid rolloutPercentage',
+        message: 'Must be a number between 0 and 100'
+      });
+    }
+
+    featureFlags.setRollout(flagName, rolloutPercentage);
+
+    res.json({
+      status: 'ok',
+      flagName,
+      newRolloutPercentage: rolloutPercentage
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update feature flag', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/feature-flags/check/:flagName
+ * Check if a feature flag is enabled for a session
+ *
+ * Query: sessionId (optional)
+ */
+router.get('/feature-flags/check/:flagName', (req, res) => {
+  try {
+    const { flagName } = req.params;
+    const { sessionId } = req.query;
+
+    const enabled = featureFlags.isEnabled(flagName, sessionId);
+
+    res.json({
+      status: 'ok',
+      flagName,
+      enabled,
+      sessionId: sessionId || null
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to check feature flag', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/storage/health
+ * Returns storage health status and statistics
+ */
+router.get('/storage/health', async (req, res) => {
+  try {
+    const stats = await sessionStorage.getStats();
+    const healthy = sessionStorage.isHealthy();
+
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'healthy' : 'degraded',
+      storage: stats
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/content/storage/clear
+ * Clears all session storage (admin endpoint)
+ */
+router.post('/storage/clear', async (req, res) => {
+  try {
+    await sessionStorage.clear();
+    res.json({ status: 'ok', message: 'Session storage cleared' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear storage', details: error.message });
+  }
+});
+
 // Apply upload error handling middleware
 router.use(handleUploadErrors);
 
-// Export sessions map for use by analysis routes
-export { sessions, touchSession };
+// Export sessionStorage for use by analysis routes
+export { sessionStorage, touchSession };
 
 export default router;

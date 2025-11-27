@@ -13,7 +13,7 @@ import { callGeminiForJson, callGeminiForText } from '../gemini.js';
 import { TASK_ANALYSIS_SYSTEM_PROMPT, TASK_ANALYSIS_SCHEMA, getQASystemPrompt } from '../prompts.js';
 import { apiLimiter } from '../middleware.js';
 import { sanitizePrompt } from '../utils.js';
-import { sessions, touchSession } from './content.js';
+import { sessionStorage, touchSession } from './content.js';
 
 const router = express.Router();
 
@@ -40,11 +40,11 @@ router.post('/get-task-analysis', apiLimiter, async (req, res) => {
   let researchText = directResearchText;
 
   if (!researchText && sessionId) {
-    const session = sessions.get(sessionId);
+    const session = await sessionStorage.get(sessionId);
     if (!session) {
       return res.status(404).json({ error: 'Session not found or expired' });
     }
-    touchSession(sessionId);
+    await touchSession(sessionId);
     researchText = session.researchContent;
   }
 

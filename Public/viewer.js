@@ -1,7 +1,8 @@
 import { StateManager } from './components/shared/StateManager.js';
-import { SlidesView } from './components/views/SlidesView.js';
-import { DocumentView } from './components/views/DocumentView.js';
-import { ResearchAnalysisView } from './components/views/ResearchAnalysisView.js';
+// Views are lazy-loaded on demand for better initial load performance
+// import { SlidesView } from './components/views/SlidesView.js';
+// import { DocumentView } from './components/views/DocumentView.js';
+// import { ResearchAnalysisView } from './components/views/ResearchAnalysisView.js';
 import { addLazyLoadingStyles, initLazyLoading } from './components/shared/LazyLoader.js';
 import { SidebarNav } from './components/SidebarNav.js';
 import {
@@ -24,6 +25,10 @@ import {
 } from './components/shared/ErrorHandler.js';
 import { loadFooterSVG } from './Utils.js'; // For GanttChart footer
 import { TaskAnalyzer } from './analysis/TaskAnalyzer.js'; // For task clicks
+import { profileRender, getRenderMetrics } from './components/shared/DomUtils.js';
+
+// View module cache for lazy loading
+const viewModuleCache = new Map();
 
 // Unified polling service for efficient status checking
 class PollingService {
@@ -395,25 +400,76 @@ class ContentViewer {
     }
   }
   async _renderSlidesView(data) {
+    // Lazy load SlidesView module
+    const SlidesView = await this._loadViewModule('slides', './components/views/SlidesView.js', 'SlidesView');
     const slidesView = new SlidesView(data, this.sessionId);
-    const container = slidesView.render();
+
+    // Profile render time
+    const container = profileRender('SlidesView', () => slidesView.render());
     this.contentContainer.innerHTML = '';
     this.contentContainer.appendChild(container);
     this.currentViewComponent = slidesView;
   }
+
   async _renderDocumentView(data) {
+    // Lazy load DocumentView module
+    const DocumentView = await this._loadViewModule('document', './components/views/DocumentView.js', 'DocumentView');
     const documentView = new DocumentView(data, this.sessionId);
-    const container = documentView.render();
+
+    // Profile render time
+    const container = profileRender('DocumentView', () => documentView.render());
     this.contentContainer.innerHTML = '';
     this.contentContainer.appendChild(container);
     this.currentViewComponent = documentView;
   }
+
   async _renderResearchAnalysisView(data) {
+    // Lazy load ResearchAnalysisView module
+    const ResearchAnalysisView = await this._loadViewModule('research-analysis', './components/views/ResearchAnalysisView.js', 'ResearchAnalysisView');
     const analysisView = new ResearchAnalysisView(data, this.sessionId);
-    const container = analysisView.render();
+
+    // Profile render time
+    const container = profileRender('ResearchAnalysisView', () => analysisView.render());
     this.contentContainer.innerHTML = '';
     this.contentContainer.appendChild(container);
     this.currentViewComponent = analysisView;
+  }
+
+  /**
+   * Lazy load a view module with caching
+   * @param {string} viewName - View identifier for cache
+   * @param {string} modulePath - Path to module
+   * @param {string} exportName - Name of exported class
+   * @returns {Promise<Function>} The view class
+   */
+  async _loadViewModule(viewName, modulePath, exportName) {
+    // Check cache first
+    if (viewModuleCache.has(viewName)) {
+      return viewModuleCache.get(viewName);
+    }
+
+    // Show loading indicator for slow imports
+    const loadingTimeout = setTimeout(() => {
+      if (this.contentContainer) {
+        this.contentContainer.innerHTML = '<div class="view-loading">Loading view...</div>';
+      }
+    }, 100);
+
+    try {
+      // Dynamic import
+      const module = await import(modulePath);
+      const ViewClass = module[exportName];
+
+      // Cache for future use
+      viewModuleCache.set(viewName, ViewClass);
+
+      clearTimeout(loadingTimeout);
+      return ViewClass;
+    } catch (error) {
+      clearTimeout(loadingTimeout);
+      console.error(`Failed to load view module ${viewName}:`, error);
+      throw error;
+    }
   }
   async _renderRoadmapView(data) {
     this.contentContainer.innerHTML = '';

@@ -1,4 +1,21 @@
 import { fetchWithRetry, AppError, ErrorTypes, ErrorSeverity } from './ErrorHandler.js';
+
+/**
+ * Simple hash function for content comparison
+ * @param {*} obj - Object to hash
+ * @returns {string} Hash string
+ */
+function quickHash(obj) {
+  const str = JSON.stringify(obj);
+  let hash = 0;
+  for (let i = 0; i < Math.min(str.length, 1000); i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash.toString(36);
+}
+
 export class StateManager {
   constructor() {
     this.state = {
@@ -36,6 +53,10 @@ export class StateManager {
     // Batch state updates for performance
     this._pendingStateUpdates = [];
     this._updateScheduled = false;
+
+    // Memoization cache for computed values
+    this._memoCache = new Map();
+    this._contentHashes = new Map();
   }
   getState() {
     return { ...this.state };
@@ -377,6 +398,127 @@ export class StateManager {
     this.setState({
       ui: { ...this.state.ui, fullscreen: !this.state.ui.fullscreen }
     });
+  }
+
+  // ============================================================================
+  // MEMOIZATION - Cache computed values with automatic invalidation
+  // ============================================================================
+
+  /**
+   * Get a memoized computed value
+   * Automatically invalidates when underlying content changes
+   *
+   * @param {string} key - Cache key
+   * @param {string} viewName - View name for content dependency
+   * @param {Function} computeFn - Function to compute value if not cached
+   * @returns {*} Computed or cached value
+   */
+  getMemoized(key, viewName, computeFn) {
+    const content = this.state.content[viewName];
+    if (!content) return null;
+
+    // Calculate content hash for invalidation check
+    const contentHash = quickHash(content);
+    const cacheKey = `${viewName}:${key}`;
+
+    // Check if cached value is still valid
+    const cached = this._memoCache.get(cacheKey);
+    if (cached && this._contentHashes.get(cacheKey) === contentHash) {
+      return cached;
+    }
+
+    // Compute new value
+    const computed = computeFn(content);
+
+    // Cache the result
+    this._memoCache.set(cacheKey, computed);
+    this._contentHashes.set(cacheKey, contentHash);
+
+    return computed;
+  }
+
+  /**
+   * Invalidate memoized values for a view
+   * Called automatically when content changes
+   *
+   * @param {string} viewName - View name to invalidate
+   */
+  invalidateMemo(viewName) {
+    const keysToDelete = [];
+    for (const key of this._memoCache.keys()) {
+      if (key.startsWith(`${viewName}:`)) {
+        keysToDelete.push(key);
+      }
+    }
+    for (const key of keysToDelete) {
+      this._memoCache.delete(key);
+      this._contentHashes.delete(key);
+    }
+  }
+
+  /**
+   * Clear all memoized values
+   */
+  clearMemoCache() {
+    this._memoCache.clear();
+    this._contentHashes.clear();
+  }
+
+  /**
+   * Get memoized slide count
+   * @returns {number} Number of slides
+   */
+  getSlideCount() {
+    return this.getMemoized('slideCount', 'slides', (content) => {
+      return content?.slides?.length || 0;
+    });
+  }
+
+  /**
+   * Get memoized document section titles
+   * @returns {Array} Array of section titles
+   */
+  getDocumentOutline() {
+    return this.getMemoized('outline', 'document', (content) => {
+      if (!content?.sections) return [];
+      return content.sections.map((s, i) => ({
+        index: i,
+        title: s.title || `Section ${i + 1}`,
+        type: s.type || 'section'
+      }));
+    });
+  }
+
+  /**
+   * Get memoized roadmap task count
+   * @returns {number} Number of tasks
+   */
+  getTaskCount() {
+    return this.getMemoized('taskCount', 'roadmap', (content) => {
+      return content?.data?.length || 0;
+    });
+  }
+
+  /**
+   * Get memoized research theme count
+   * @returns {number} Number of themes
+   */
+  getThemeCount() {
+    return this.getMemoized('themeCount', 'research-analysis', (content) => {
+      return content?.themes?.length || 0;
+    });
+  }
+
+  /**
+   * Check if content has actually changed (deep comparison via hash)
+   * @param {string} viewName - View to check
+   * @param {*} newContent - New content to compare
+   * @returns {boolean} True if content changed
+   */
+  hasContentChanged(viewName, newContent) {
+    const currentHash = this._contentHashes.get(`${viewName}:content`);
+    const newHash = quickHash(newContent);
+    return currentHash !== newHash;
   }
 }
 export const state = new StateManager();

@@ -16,7 +16,6 @@
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import compression from 'compression';
 import cors from 'cors';
 
 // Import configuration (validates environment on load)
@@ -30,10 +29,25 @@ import {
   handleUploadErrors
 } from './server/middleware.js';
 
+// Import network optimization utilities
+import {
+  createCompressionMiddleware,
+  createConnectionOptimizer,
+  createPreloadHintsMiddleware,
+  createJsonOptimizerMiddleware,
+  createVaryMiddleware
+} from './server/utils/networkOptimizer.js';
+
 // Import routes
 import chartRoutes from './server/routes/charts.js';
 import analysisRoutes from './server/routes/analysis.js';
 import contentRoutes from './server/routes/content.js';
+
+// Import advanced optimizers
+import { initializeOptimizers, shutdownOptimizers } from './server/utils/advancedOptimizer.js';
+
+// Import monitoring system
+import { initializeMonitoring, shutdownMonitoring } from './server/utils/monitoring.js';
 
 // --- Server Setup ---
 const app = express();
@@ -45,8 +59,20 @@ const __dirname = dirname(__filename);
 app.set('trust proxy', CONFIG.SERVER.TRUST_PROXY_HOPS);
 
 // --- Apply Middleware ---
-// Compression middleware (gzip/deflate)
-app.use(compression());
+// Enhanced compression middleware (gzip/deflate with smart filtering)
+app.use(createCompressionMiddleware());
+
+// Connection optimization (Keep-Alive headers)
+app.use(createConnectionOptimizer());
+
+// Vary headers for proper caching
+app.use(createVaryMiddleware());
+
+// JSON response optimizer (adds res.jsonOptimized method)
+app.use(createJsonOptimizerMiddleware());
+
+// Resource preload hints for critical assets
+app.use(createPreloadHintsMiddleware());
 
 // CORS configuration
 app.use(cors({
@@ -123,12 +149,16 @@ process.on('uncaughtException', (error) => {
 // Handle SIGTERM gracefully (for deployment platforms like Railway)
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server gracefully');
+  shutdownMonitoring();
+  shutdownOptimizers();
   process.exit(0);
 });
 
 // Handle SIGINT gracefully (Ctrl+C)
 process.on('SIGINT', () => {
   console.log('\nSIGINT signal received: shutting down gracefully');
+  shutdownMonitoring();
+  shutdownOptimizers();
   process.exit(0);
 });
 
@@ -141,4 +171,10 @@ app.listen(port, () => {
   console.log(`Server started at: ${serverStartTime}`);
   console.log('All modules loaded successfully');
   console.log('No persistence - content generated on demand');
+
+  // Initialize advanced optimizers (connection prewarming, etc.)
+  initializeOptimizers();
+
+  // Initialize monitoring system (metrics snapshots, alerting)
+  initializeMonitoring();
 });
