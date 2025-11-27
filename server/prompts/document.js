@@ -3,6 +3,8 @@
  * Simplified for fast generation
  */
 
+import { truncateResearchFiles, TRUNCATION_LIMITS } from '../utils.js';
+
 /**
  * Minimal Document Schema - Just title and sections with paragraphs
  */
@@ -51,9 +53,13 @@ OUTPUT: JSON with title and sections array. Each section has heading and paragra
 
 /**
  * Generate prompt with research content
+ * Applies truncation to reduce token usage and improve latency
  */
 export function generateDocumentPrompt(userPrompt, researchFiles) {
-  const researchContent = researchFiles
+  // Apply truncation to reduce token usage
+  const truncatedFiles = truncateResearchFiles(researchFiles, TRUNCATION_LIMITS.document);
+
+  const researchContent = truncatedFiles
     .map(file => `=== ${file.filename} ===\n${file.content}`)
     .join('\n\n');
 

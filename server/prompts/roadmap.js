@@ -5,6 +5,8 @@
  * This module handles the generation of Gantt chart data from research files
  */
 
+import { truncateResearchFiles, TRUNCATION_LIMITS } from '../utils.js';
+
 /**
  * Gantt Chart JSON Schema
  */
@@ -204,12 +206,16 @@ You MUST respond with *only* a valid JSON object matching the schema.
 
 /**
  * Generate the complete roadmap prompt with user context
+ * Applies truncation to reduce token usage and improve latency
  * @param {string} userPrompt - The user's analysis request
  * @param {Array<{filename: string, content: string}>} researchFiles - Research files to analyze
  * @returns {string} Complete prompt for AI
  */
 export function generateRoadmapPrompt(userPrompt, researchFiles) {
-  const researchContent = researchFiles
+  // Apply truncation - roadmap needs substantial context for date extraction
+  const truncatedFiles = truncateResearchFiles(researchFiles, TRUNCATION_LIMITS.roadmap);
+
+  const researchContent = truncatedFiles
     .map(file => `=== ${file.filename} ===\n${file.content}`)
     .join('\n\n');
 
