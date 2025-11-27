@@ -143,7 +143,7 @@ export class GanttExporter {
         exportBtn.textContent = 'Export as PNG';
         exportBtn.disabled = false;
         document.body.removeChild(loadingOverlay);
-      } catch (err) {
+      } catch (_err) {
         exportBtn.textContent = 'Export as PNG';
         exportBtn.disabled = false;
         if (loadingOverlay.parentNode) {
@@ -223,7 +223,7 @@ export class GanttExporter {
         exportBtn.textContent = 'Export as SVG';
         exportBtn.disabled = false;
         document.body.removeChild(loadingOverlay);
-      } catch (err) {
+      } catch (_err) {
         exportBtn.textContent = 'Export as SVG';
         exportBtn.disabled = false;
         if (loadingOverlay.parentNode) {
@@ -258,7 +258,7 @@ export class GanttExporter {
           copyUrlBtn.textContent = originalText;
           copyUrlBtn.style.backgroundColor = '';
         }, 2000);
-      } catch (err) {
+      } catch (_err) {
         alert(`Copy this URL to share:\n\n${currentUrl}`);
         this.showNotification('Could not copy URL automatically. Please copy it from the address bar.', 'error');
       }

@@ -57,7 +57,7 @@ export class DraggableGantt extends InteractiveGanttHandler {
     this.state.bar.style.gridColumn = `${newStartCol} / ${newEndCol}`;
   }
 
-  async _handleMouseUp(event) {
+  async _handleMouseUp(_event) {
     if (!this.state) return;
 
     const { startCol: newStartCol, endCol: newEndCol } = this.parseGridColumn(this.state.bar.style.gridColumn);
@@ -69,7 +69,7 @@ export class DraggableGantt extends InteractiveGanttHandler {
       if (this.callback) {
         try {
           await this.callback(this.buildTaskInfo(newStartCol, newEndCol));
-        } catch (error) {
+        } catch (_error) {
           this.rollback();
         }
       }
