@@ -3,10 +3,11 @@
  * Handles synchronous generation of all three content types
  * (Roadmap, Slides, Document)
  *
- * Note: In-memory session storage (cleared on server restart)
+ * Storage: Uses sessionStorage abstraction (Redis with in-memory fallback)
  *
  * Performance optimizations:
- * - LRU-style session cache with memory pressure handling
+ * - Persistent session storage with Redis support
+ * - Content compression for large sessions
  * - Efficient file processing with streaming
  * - Response caching headers
  */
@@ -21,49 +22,20 @@ import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
 import { generateETag, clearAllCaches, clearExpiredEntries } from '../cache/contentCache.js';
 import { processFiles } from '../utils/fileProcessor.js';
 import { cleanJsonResponse } from '../utils/networkOptimizer.js';
+import { sessionStorage } from '../storage/sessionStorage.js';
 
 const router = express.Router();
 
-// In-memory session storage with LRU-style management
-// Map<sessionId, { prompt, researchFiles, content, createdAt, lastAccessed }>
-const sessions = new Map();
-const MAX_SESSIONS = 100; // Limit max sessions to prevent memory issues
+// Session TTL constant (used in storage abstraction)
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Performance: Track access for LRU eviction
-function touchSession(sessionId) {
-  const session = sessions.get(sessionId);
-  if (session) {
-    session.lastAccessed = Date.now();
-  }
+/**
+ * Helper to touch session (update last accessed time)
+ * @param {string} sessionId - Session ID
+ */
+async function touchSession(sessionId) {
+  await sessionStorage.touch(sessionId);
 }
-
-// Performance: LRU-style cleanup when over capacity
-function enforceSessionLimit() {
-  if (sessions.size <= MAX_SESSIONS) return;
-
-  // Sort by lastAccessed (oldest first) and remove excess
-  const sortedSessions = [...sessions.entries()]
-    .sort((a, b) => (a[1].lastAccessed || a[1].createdAt) - (b[1].lastAccessed || b[1].createdAt));
-
-  const toRemove = sessions.size - MAX_SESSIONS;
-  for (let i = 0; i < toRemove; i++) {
-    sessions.delete(sortedSessions[i][0]);
-  }
-}
-
-// Clean up old sessions (older than 1 hour since last access) and enforce limits
-setInterval(() => {
-  const now = Date.now();
-  for (const [sessionId, session] of sessions) {
-    // Use lastAccessed time (not createdAt) so active sessions don't expire
-    const lastActivity = session.lastAccessed || session.createdAt;
-    if (now - lastActivity > SESSION_TTL_MS) {
-      sessions.delete(sessionId);
-    }
-  }
-  enforceSessionLimit();
-}, 5 * 60 * 1000); // Run cleanup every 5 minutes
 
 /**
  * Generate a unique session ID
@@ -184,7 +156,7 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
 
     // Store content (including research for task analysis)
     const now = Date.now();
-    sessions.set(sessionId, {
+    await sessionStorage.set(sessionId, {
       prompt,
       researchFiles: researchFiles.map(f => f.filename),
       // Store research content for session-based task analysis (truncated to limit memory)
@@ -197,10 +169,7 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
       },
       createdAt: now,
       lastAccessed: now
-    });
-
-    // Enforce session limit after adding new session
-    enforceSessionLimit();
+    }, SESSION_TTL_MS);
 
     // Complete request performance logging
     const requestReport = requestPerf.complete();
@@ -352,8 +321,9 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
       createdAt: now,
       lastAccessed: now
     };
-    sessions.set(sessionId, session);
-    enforceSessionLimit();
+
+    // Store initial session
+    await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
 
     // Content type mapping for consistent naming
     const contentKeyMap = {
@@ -374,11 +344,14 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
         sendEvent('progress', { message });
       },
 
-      onContentReady: (type, result) => {
-        // Store in session immediately
+      onContentReady: async (type, result) => {
+        // Update session content incrementally
         const contentKey = contentKeyMap[type] || type;
         session.content[contentKey] = result;
         session.lastAccessed = Date.now();
+
+        // Persist updated session to storage
+        await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
 
         // Stream to client
         sendEvent('content', {
@@ -523,7 +496,7 @@ router.get('/:sessionId/slides/export', async (req, res) => {
     const { sessionId } = req.params;
 
     // Check if session exists
-    const session = sessions.get(sessionId);
+    const session = await sessionStorage.get(sessionId);
     if (!session) {
       return res.status(404).json({
         error: 'Session not found',
@@ -579,12 +552,12 @@ router.get('/:sessionId/slides/export', async (req, res) => {
  * - For roadmap: Returns the gantt data directly
  * - For other views: Returns { success, data, error }
  */
-router.get('/:sessionId/:viewType', (req, res) => {
+router.get('/:sessionId/:viewType', async (req, res) => {
   try {
     const { sessionId, viewType } = req.params;
 
     // Check if session exists
-    const session = sessions.get(sessionId);
+    const session = await sessionStorage.get(sessionId);
     if (!session) {
       return res.status(404).json({
         error: 'Session not found',
@@ -594,7 +567,7 @@ router.get('/:sessionId/:viewType', (req, res) => {
     }
 
     // Performance: Track access for LRU management
-    touchSession(sessionId);
+    await touchSession(sessionId);
 
     // Map viewType to content key
     const viewTypeMap = {
@@ -725,7 +698,7 @@ router.post('/slides/export', express.json({ limit: '50mb' }), async (req, res) 
  * - startCol: number (new start column)
  * - endCol: number (new end column)
  */
-router.post('/update-task-dates', express.json(), (req, res) => {
+router.post('/update-task-dates', express.json(), async (req, res) => {
   try {
     const { sessionId, taskIndex, startCol, endCol } = req.body;
 
@@ -733,12 +706,10 @@ router.post('/update-task-dates', express.json(), (req, res) => {
       return res.status(400).json({ error: 'sessionId and taskIndex are required' });
     }
 
-    const session = sessions.get(sessionId);
+    const session = await sessionStorage.get(sessionId);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
-
-    touchSession(sessionId);
 
     // Update the task in roadmap data
     const roadmapData = session.content.roadmap?.data;
@@ -751,6 +722,10 @@ router.post('/update-task-dates', express.json(), (req, res) => {
       if (startCol !== undefined) task.bar.startCol = startCol;
       if (endCol !== undefined) task.bar.endCol = endCol;
     }
+
+    // Persist updated session
+    session.lastAccessed = Date.now();
+    await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
 
     res.json({ success: true, task });
   } catch (error) {
@@ -767,7 +742,7 @@ router.post('/update-task-dates', express.json(), (req, res) => {
  * - taskIndex: number (index in ganttData.data array)
  * - color: string (new color class)
  */
-router.post('/update-task-color', express.json(), (req, res) => {
+router.post('/update-task-color', express.json(), async (req, res) => {
   try {
     const { sessionId, taskIndex, color } = req.body;
 
@@ -775,12 +750,10 @@ router.post('/update-task-color', express.json(), (req, res) => {
       return res.status(400).json({ error: 'sessionId, taskIndex, and color are required' });
     }
 
-    const session = sessions.get(sessionId);
+    const session = await sessionStorage.get(sessionId);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
-
-    touchSession(sessionId);
 
     // Update the task in roadmap data
     const roadmapData = session.content.roadmap?.data;
@@ -792,6 +765,10 @@ router.post('/update-task-color', express.json(), (req, res) => {
     if (task.bar) {
       task.bar.color = color;
     }
+
+    // Persist updated session
+    session.lastAccessed = Date.now();
+    await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
 
     res.json({ success: true, task });
   } catch (error) {
@@ -810,18 +787,19 @@ router.post('/update-task-color', express.json(), (req, res) => {
  *   lastUpdated: string
  * }
  */
-router.get('/metrics', (req, res) => {
+router.get('/metrics', async (req, res) => {
   try {
     const metrics = globalMetrics.getAggregatedMetrics();
     const queueMetrics = apiQueue.getMetrics();
     const cacheMetrics = getCacheMetrics();
+    const storageStats = await sessionStorage.getStats();
+
     res.json({
       status: 'ok',
       metrics,
       queue: queueMetrics,
       cache: cacheMetrics.aggregate,
-      sessionCount: sessions.size,
-      maxSessions: MAX_SESSIONS
+      storage: storageStats
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve metrics', details: error.message });
@@ -891,10 +869,44 @@ router.get('/metrics/recent', (req, res) => {
   }
 });
 
+/**
+ * GET /api/content/storage/health
+ * Returns storage health status and statistics
+ */
+router.get('/storage/health', async (req, res) => {
+  try {
+    const stats = await sessionStorage.getStats();
+    const healthy = sessionStorage.isHealthy();
+
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'healthy' : 'degraded',
+      storage: stats
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/content/storage/clear
+ * Clears all session storage (admin endpoint)
+ */
+router.post('/storage/clear', async (req, res) => {
+  try {
+    await sessionStorage.clear();
+    res.json({ status: 'ok', message: 'Session storage cleared' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear storage', details: error.message });
+  }
+});
+
 // Apply upload error handling middleware
 router.use(handleUploadErrors);
 
-// Export sessions map for use by analysis routes
-export { sessions, touchSession };
+// Export sessionStorage for use by analysis routes
+export { sessionStorage, touchSession };
 
 export default router;
