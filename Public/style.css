@@ -281,8 +281,8 @@ select:focus-visible {
 }
 .gantt-bar {
   position: relative;
-  height: 10px; 
-  margin: 3px 1px; 
+  height: 6px;
+  margin: 3px 1px;
   border-radius: 2px; 
   color: white;
   z-index: 2; 
@@ -1678,8 +1678,8 @@ body.dragging {
     padding: 6px; 
   }
   .gantt-bar {
-    height: 8px; 
-    margin: 2px 1px; 
+    height: 5px;
+    margin: 2px 1px;
   }
   .gantt-legend {
     padding: 6px 8px; 
