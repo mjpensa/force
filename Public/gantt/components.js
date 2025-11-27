@@ -13,6 +13,7 @@ export class GanttComponents {
 
   /**
    * Add the header SVG stripe
+   * Uses <img> element instead of CSS background-image for reliable html2canvas export
    */
   addHeaderSVG(chartWrapper, footerSVG) {
     if (!footerSVG) return;
@@ -21,11 +22,16 @@ export class GanttComponents {
 
     const headerSvgEl = document.createElement('div');
     headerSvgEl.className = 'gantt-header-svg';
-    headerSvgEl.style.height = '16px';
-    headerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
-    headerSvgEl.style.backgroundRepeat = 'repeat-x';
-    headerSvgEl.style.backgroundSize = 'auto 16px';
 
+    const img = document.createElement('img');
+    img.src = `data:image/svg+xml,${encodedFooterSVG}`;
+    img.alt = '';
+    img.style.height = '16px';
+    img.style.width = '100%';
+    img.style.display = 'block';
+    img.style.objectFit = 'cover';
+
+    headerSvgEl.appendChild(img);
     chartWrapper.appendChild(headerSvgEl);
   }
 
@@ -86,6 +92,7 @@ export class GanttComponents {
 
   /**
    * Add the footer SVG stripe
+   * Uses <img> element instead of CSS background-image for reliable html2canvas export
    */
   addFooterSVG(chartWrapper, footerSVG) {
     if (!footerSVG) return;
@@ -94,11 +101,16 @@ export class GanttComponents {
 
     const footerSvgEl = document.createElement('div');
     footerSvgEl.className = 'gantt-footer-svg';
-    footerSvgEl.style.height = '16px';
-    footerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
-    footerSvgEl.style.backgroundRepeat = 'repeat-x';
-    footerSvgEl.style.backgroundSize = 'auto 16px';
 
+    const img = document.createElement('img');
+    img.src = `data:image/svg+xml,${encodedFooterSVG}`;
+    img.alt = '';
+    img.style.height = '16px';
+    img.style.width = '100%';
+    img.style.display = 'block';
+    img.style.objectFit = 'cover';
+
+    footerSvgEl.appendChild(img);
     chartWrapper.appendChild(footerSvgEl);
   }
 
