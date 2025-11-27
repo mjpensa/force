@@ -17,70 +17,149 @@ const GENERATION_TIMEOUT_MS = 360000; // 6 minutes - increased for complex conte
 // ============================================================================
 
 /**
- * API Request Queue with controlled concurrency
- * Prevents overwhelming the Gemini API with too many simultaneous requests
+ * API Request Queue with controlled concurrency and priority support
+ *
+ * Features:
+ * - Concurrency limit prevents rate limiting from Gemini API
+ * - Priority queue ensures faster content types complete first
+ * - Metrics tracking for performance analysis
+ *
+ * Priority levels (lower = higher priority):
+ * - 1: Document, Slides (fast, simple)
+ * - 2: Roadmap (complex but important)
+ * - 3: ResearchAnalysis (detailed, can wait)
  */
 class APIQueue {
-  constructor(maxConcurrent = 2) {
+  constructor(maxConcurrent = 4) {
     this.maxConcurrent = maxConcurrent;
     this.running = 0;
-    this.queue = [];
+    this.queue = [];  // Priority queue: { resolve, priority, name }
+    this.metrics = {
+      totalTasks: 0,
+      completedTasks: 0,
+      queuedTasks: 0,
+      peakConcurrency: 0
+    };
   }
+
+  // Priority mapping for content types
+  static getPriority(name) {
+    const priorities = {
+      'Document': 1,
+      'Slides': 1,
+      'Roadmap': 2,
+      'ResearchAnalysis': 3
+    };
+    return priorities[name] || 2;
+  }
+
   async add(task, name = 'unknown') {
+    this.metrics.totalTasks++;
+
     if (this.running >= this.maxConcurrent) {
-      await new Promise(resolve => this.queue.push(resolve));
+      this.metrics.queuedTasks++;
+      const priority = APIQueue.getPriority(name);
+      await new Promise(resolve => {
+        // Insert in priority order
+        const entry = { resolve, priority, name };
+        const insertIndex = this.queue.findIndex(e => e.priority > priority);
+        if (insertIndex === -1) {
+          this.queue.push(entry);
+        } else {
+          this.queue.splice(insertIndex, 0, entry);
+        }
+      });
     }
+
     this.running++;
+    this.metrics.peakConcurrency = Math.max(this.metrics.peakConcurrency, this.running);
+
     try {
       const result = await task();
       return result;
     } finally {
       this.running--;
+      this.metrics.completedTasks++;
       const next = this.queue.shift();
-      if (next) next();
+      if (next) next.resolve();
     }
   }
+
   async runAll(tasks) {
     return Promise.all(tasks.map(({ task, name }) => this.add(task, name)));
   }
+
+  getMetrics() {
+    return {
+      ...this.metrics,
+      currentlyRunning: this.running,
+      currentlyQueued: this.queue.length
+    };
+  }
+
+  resetMetrics() {
+    this.metrics = {
+      totalTasks: 0,
+      completedTasks: 0,
+      queuedTasks: 0,
+      peakConcurrency: 0
+    };
+  }
 }
 
-// Global API queue instance - max 4 concurrent Gemini API calls
+// Global API queue instance
+// 4 concurrent calls optimal for Gemini API without triggering rate limits
 const apiQueue = new APIQueue(4);
 
 /**
- * Generation config presets for different content types
+ * Generation config presets optimized for speed and determinism
  *
- * DOCUMENT_CONFIG: Optimized for SPEED - MVP executive summaries
- * - No thinking budget for instant generation
- * - Low temperature for consistent output
+ * Performance tuning rationale:
+ * - temperature: Low (0.1) for deterministic, consistent JSON output
+ * - topP/topK: Constrained to reduce token exploration overhead
+ * - thinkingBudget: 0 for all types (reasoning disabled = faster response)
+ * - maxOutputTokens: Set per content type to prevent runaway generation
  */
+
+// Base config for all structured JSON output
+const STRUCTURED_DEFAULT_CONFIG = {
+  thinkingBudget: 0  // Disabled for maximum speed
+};
+
+// Document: Simplest output, fastest generation
 const DOCUMENT_CONFIG = {
   temperature: 0.1,
   topP: 0.3,
   topK: 5,
-  thinkingBudget: 0   // Zero: fast generation
+  thinkingBudget: 0,
+  maxOutputTokens: 4096  // Executive summaries are concise
 };
-const STRUCTURED_DEFAULT_CONFIG = {
-  thinkingBudget: 0  // Disabled for speed
-};
-const ROADMAP_CONFIG = {
-  temperature: 0.1,      // Lowest: maximum determinism for rule-based output
-  topP: 0.3,             // Very constrained: follow explicit rules exactly
-  topK: 5,               // Minimal exploration: pick most likely tokens
-  thinkingBudget: 0      // Disabled for speed
-};
-const RESEARCH_ANALYSIS_CONFIG = {
-  temperature: 0.2,      // Low: reliable analysis without hallucination
-  topP: 0.5,             // Moderate: allows varied recommendations
-  topK: 10,              // Some exploration for insightful suggestions
-  thinkingBudget: 0      // Disabled for speed
-};
+
+// Slides: Simple 6-slide structure
 const SLIDES_CONFIG = {
   temperature: 0.1,
   topP: 0.3,
   topK: 5,
-  thinkingBudget: 0   // Zero: no thinking needed for simple JSON
+  thinkingBudget: 0,
+  maxOutputTokens: 4096  // 6 slides with limited content
+};
+
+// Roadmap: Complex Gantt chart with many tasks
+const ROADMAP_CONFIG = {
+  temperature: 0.1,      // Maximum determinism for rule-based output
+  topP: 0.3,             // Constrained: follow explicit rules exactly
+  topK: 5,               // Minimal exploration
+  thinkingBudget: 0,
+  maxOutputTokens: 16384 // Large charts need more tokens
+};
+
+// Research Analysis: Detailed quality assessment
+const RESEARCH_ANALYSIS_CONFIG = {
+  temperature: 0.15,     // Slightly higher for nuanced analysis
+  topP: 0.4,             // Moderate: allows varied recommendations
+  topK: 8,               // Some exploration for insights
+  thinkingBudget: 0,
+  maxOutputTokens: 8192  // Detailed reports
 };
 function withTimeout(promise, timeoutMs, operationName) {
   let timeoutId;
@@ -101,6 +180,7 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
       temperature,
       topP,
       topK,
+      maxOutputTokens,
       thinkingBudget = STRUCTURED_DEFAULT_CONFIG.thinkingBudget
     } = configOverrides;
     const generationConfig = {
@@ -113,6 +193,7 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     if (temperature !== undefined) generationConfig.temperature = temperature;
     if (topP !== undefined) generationConfig.topP = topP;
     if (topK !== undefined) generationConfig.topK = topK;
+    if (maxOutputTokens !== undefined) generationConfig.maxOutputTokens = maxOutputTokens;
     const model = genAI.getGenerativeModel({
       model: 'models/gemini-flash-latest',
       generationConfig
@@ -310,5 +391,5 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
   }
 }
 
-// Export globalMetrics for the metrics endpoint
-export { globalMetrics };
+// Export metrics for monitoring endpoints
+export { globalMetrics, apiQueue };

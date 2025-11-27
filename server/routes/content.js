@@ -14,7 +14,7 @@
 import express from 'express';
 import mammoth from 'mammoth';
 import crypto from 'crypto';
-import { generateAllContent, regenerateContent, globalMetrics } from '../generators.js';
+import { generateAllContent, regenerateContent, globalMetrics, apiQueue } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { generatePptx } from '../templates/ppt-export-service.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
@@ -616,9 +616,11 @@ router.post('/update-task-color', express.json(), (req, res) => {
 router.get('/metrics', (req, res) => {
   try {
     const metrics = globalMetrics.getAggregatedMetrics();
+    const queueMetrics = apiQueue.getMetrics();
     res.json({
       status: 'ok',
       metrics,
+      queue: queueMetrics,
       sessionCount: sessions.size,
       maxSessions: MAX_SESSIONS
     });
