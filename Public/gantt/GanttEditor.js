@@ -41,8 +41,21 @@ export class GanttEditor {
     editModeBtn.addEventListener('click', () => {
       this.isEditMode = !this.isEditMode;
 
-      editModeBtn.textContent = this.isEditMode ? '🔓 Edit Mode: ON' : '🔒 Edit Mode: OFF';
-      editModeBtn.style.backgroundColor = this.isEditMode ? '#50AF7B' : '#BA3930';
+      // Update button appearance - support both old and new menu structures
+      const iconEl = editModeBtn.querySelector('.menu-item-icon');
+      const textEl = editModeBtn.querySelector('.menu-item-text');
+
+      if (iconEl && textEl) {
+        // New glassmorphic menu structure
+        iconEl.textContent = this.isEditMode ? '🔓' : '🔒';
+        textEl.textContent = this.isEditMode ? 'Edit Mode: ON' : 'Edit Mode: OFF';
+        editModeBtn.classList.toggle('active', this.isEditMode);
+      } else {
+        // Legacy button structure
+        editModeBtn.textContent = this.isEditMode ? '🔓 Edit Mode: ON' : '🔒 Edit Mode: OFF';
+        editModeBtn.style.backgroundColor = this.isEditMode ? '#50AF7B' : '#BA3930';
+      }
+
       editModeBtn.setAttribute('aria-pressed', this.isEditMode ? 'true' : 'false');
 
       if (this.isEditMode) {
