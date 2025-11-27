@@ -14,9 +14,27 @@ import {
   TaskType,
   analyzeComplexity
 } from './layers/routing/index.js';
+import {
+  getContextLayer,
+  StrategyType,
+  countTokens
+} from './layers/context/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
+
+// Feature flag for context engineering layer
+const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING !== 'false';
+
+/**
+ * Map content types to StrategyType for context engineering
+ */
+const CONTENT_TYPE_TO_STRATEGY = {
+  'Roadmap': StrategyType.ROADMAP,
+  'Slides': StrategyType.SLIDES,
+  'Document': StrategyType.DOCUMENT,
+  'ResearchAnalysis': StrategyType.RESEARCH_ANALYSIS
+};
 
 /**
  * Combine research files into a single content string for cache key
@@ -28,6 +46,103 @@ function combineResearchContent(researchFiles) {
     .map(f => `${f.filename}:${f.content}`)
     .sort() // Sort for consistent hashing regardless of file order
     .join('\n---\n');
+}
+
+/**
+ * Process research files through context engineering layer
+ *
+ * Applies task-specific strategies, token budgeting, and compression
+ * to optimize context for each generation type.
+ *
+ * @param {Array} researchFiles - Array of { filename, content } objects
+ * @param {string} userPrompt - User's prompt
+ * @param {string} contentType - Type of content being generated
+ * @param {object} perfLogger - Performance logger instance
+ * @returns {object} Processed context with files and metadata
+ */
+function processContextEngineering(researchFiles, userPrompt, contentType, perfLogger = null) {
+  if (!ENABLE_CONTEXT_ENGINEERING) {
+    return {
+      files: researchFiles,
+      applied: false,
+      metadata: null
+    };
+  }
+
+  const contextTimer = perfLogger ? createTimer(perfLogger, `context-${contentType.toLowerCase()}`) : null;
+
+  try {
+    const contextLayer = getContextLayer();
+    const strategyType = CONTENT_TYPE_TO_STRATEGY[contentType] || StrategyType.DEFAULT;
+
+    // Process through context engineering pipeline
+    const result = contextLayer.process({
+      researchFiles,
+      userPrompt,
+      taskType: strategyType,
+      tokenBudget: getTokenBudgetForType(contentType)
+    });
+
+    // Log context metrics
+    if (perfLogger) {
+      perfLogger.setMetadata(`context-tokens-${contentType.toLowerCase()}`, result.tokenUsage.used);
+      perfLogger.setMetadata(`context-budget-${contentType.toLowerCase()}`, result.tokenUsage.budget);
+      perfLogger.setMetadata(`context-utilization-${contentType.toLowerCase()}`,
+        `${(result.tokenUsage.utilization * 100).toFixed(1)}%`);
+
+      if (result.compression?.applied) {
+        perfLogger.setMetadata(`context-compression-${contentType.toLowerCase()}`, {
+          originalTokens: result.compression.originalTokens,
+          compressedTokens: result.compression.compressedTokens,
+          saved: result.compression.originalTokens - result.compression.compressedTokens
+        });
+      }
+    }
+
+    if (contextTimer) contextTimer.stop();
+
+    // Return processed files from context assembly
+    const processedFiles = result.context?.components
+      ?.find(c => c.name === 'content')?.metadata?.processedFiles || researchFiles;
+
+    return {
+      files: processedFiles,
+      applied: true,
+      result,
+      metadata: {
+        strategy: result.strategy?.name || 'default',
+        tokensUsed: result.tokenUsage.used,
+        compressionApplied: result.compression?.applied || false
+      }
+    };
+  } catch (error) {
+    // Context engineering failed - fall back to original files
+    if (perfLogger) {
+      perfLogger.setMetadata(`context-error-${contentType.toLowerCase()}`, error.message);
+    }
+    if (contextTimer) contextTimer.stop();
+
+    return {
+      files: researchFiles,
+      applied: false,
+      error: error.message,
+      metadata: null
+    };
+  }
+}
+
+/**
+ * Get token budget for content type
+ * Different content types have different complexity and output requirements
+ */
+function getTokenBudgetForType(contentType) {
+  const budgets = {
+    'Roadmap': 12000,      // Complex timeline extraction
+    'Slides': 6000,        // Concise executive content
+    'Document': 10000,     // Comprehensive sections
+    'ResearchAnalysis': 8000  // Quality assessment
+  };
+  return budgets[contentType] || 8000;
 }
 
 // Initialize Gemini API (using API_KEY from environment to match server/config.js)
@@ -384,7 +499,11 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
       }
     }
 
-    const prompt = generateRoadmapPrompt(userPrompt, researchFiles);
+    // Apply context engineering for optimized prompt assembly
+    const contextResult = processContextEngineering(researchFiles, userPrompt, 'Roadmap', perfLogger);
+    const processedFiles = contextResult.files;
+
+    const prompt = generateRoadmapPrompt(userPrompt, processedFiles);
 
     // Build routing options for model selection
     const routingOptions = {
@@ -399,7 +518,7 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
-    return { success: true, data };
+    return { success: true, data, _contextEngineering: contextResult.metadata };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -421,7 +540,11 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
       }
     }
 
-    const prompt = generateSlidesPrompt(userPrompt, researchFiles);
+    // Apply context engineering for optimized prompt assembly
+    const contextResult = processContextEngineering(researchFiles, userPrompt, 'Slides', perfLogger);
+    const processedFiles = contextResult.files;
+
+    const prompt = generateSlidesPrompt(userPrompt, processedFiles);
 
     // Build routing options for model selection
     const routingOptions = {
@@ -436,7 +559,7 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
-    return { success: true, data };
+    return { success: true, data, _contextEngineering: contextResult.metadata };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -458,7 +581,11 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
       }
     }
 
-    const prompt = generateDocumentPrompt(userPrompt, researchFiles);
+    // Apply context engineering for optimized prompt assembly
+    const contextResult = processContextEngineering(researchFiles, userPrompt, 'Document', perfLogger);
+    const processedFiles = contextResult.files;
+
+    const prompt = generateDocumentPrompt(userPrompt, processedFiles);
 
     // Build routing options for model selection
     const routingOptions = {
@@ -473,7 +600,7 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
-    return { success: true, data };
+    return { success: true, data, _contextEngineering: contextResult.metadata };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -495,7 +622,11 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       }
     }
 
-    const prompt = generateResearchAnalysisPrompt(userPrompt, researchFiles);
+    // Apply context engineering for optimized prompt assembly
+    const contextResult = processContextEngineering(researchFiles, userPrompt, 'ResearchAnalysis', perfLogger);
+    const processedFiles = contextResult.files;
+
+    const prompt = generateResearchAnalysisPrompt(userPrompt, processedFiles);
 
     // Build routing options for model selection
     const routingOptions = {
@@ -510,7 +641,7 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
-    return { success: true, data };
+    return { success: true, data, _contextEngineering: contextResult.metadata };
   } catch (error) {
     return { success: false, error: error.message };
   }
