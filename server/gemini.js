@@ -5,6 +5,7 @@ const API_URL = getGeminiApiUrl();
 function isRateLimitError(error) {
   return error.message && error.message.includes('status: 429');
 }
+
 function createQuotaErrorMessage(errorData) {
   try {
     if (errorData && errorData.error && errorData.error.message) {
@@ -20,10 +21,12 @@ function createQuotaErrorMessage(errorData) {
         return 'API quota exceeded. You have reached the free tier limit. Please wait a few minutes and try again, or upgrade your API plan at https://ai.google.dev/pricing';
       }
     }
-  } catch (e) {
+  } catch (_e) {
+    // Ignore parsing errors, fall through to default message
   }
   return 'API rate limit exceeded. Please try again in a few minutes.';
 }
+
 export async function retryWithBackoff(operation, retryCount = CONFIG.API.RETRY_COUNT, onRetry = null) {
   let lastError = null;
   for (let attempt = 0; attempt < retryCount; attempt++) {
@@ -54,6 +57,7 @@ export async function retryWithBackoff(operation, retryCount = CONFIG.API.RETRY_
   }
   throw lastError || new Error('All retry attempts failed.');
 }
+
 export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_COUNT, onRetry = null) {
   return retryWithBackoff(async () => {
     const controller = new AbortController();
@@ -81,9 +85,11 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
         errorText = await response.text();
         try {
           errorData = JSON.parse(errorText);
-        } catch (jsonError) {
+        } catch (_jsonError) {
+          // Response is not JSON, use raw text
         }
-      } catch (e) {
+      } catch (_e) {
+        // Failed to read response body
       }
       if (response.status === 429 && errorData) {
         const friendlyMessage = createQuotaErrorMessage(errorData);
@@ -115,17 +121,11 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
     try {
       return JSON.parse(extractedJsonText);
     } catch (parseError) {
-      const positionMatch = parseError.message.match(/position (\d+)/);
-      const errorPosition = positionMatch ? parseInt(positionMatch[1]) : 0;
-      if (errorPosition > 0) {
-        const contextStart = Math.max(0, errorPosition - 200);
-        const contextEnd = Math.min(extractedJsonText.length, errorPosition + 200);
-      }
+      // Attempt to repair malformed JSON
       try {
         const repairedJsonText = jsonrepair(extractedJsonText);
         const repairedData = JSON.parse(repairedJsonText);
         const isChartData = repairedData.title && repairedData.timeColumns && repairedData.data;
-        const isTaskAnalysis = repairedData.taskName && repairedData.status;
         if (isChartData) {
           if (!repairedData.data || !Array.isArray(repairedData.data)) {
             throw new Error('Repaired JSON structure is invalid - missing data array');
@@ -133,24 +133,22 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
           if (!repairedData.timeColumns || !Array.isArray(repairedData.timeColumns)) {
             throw new Error('Repaired JSON structure is invalid - missing timeColumns array');
           }
-          if (repairedData.data.length < 2) {
-          }
           for (let i = 0; i < repairedData.data.length; i++) {
             const item = repairedData.data[i];
             if (!item.title || typeof item.isSwimlane !== 'boolean' || !item.entity) {
               throw new Error(`Repaired JSON data item ${i} is invalid - missing required properties`);
             }
           }
-        } else if (isTaskAnalysis) {
-        } else {
         }
+        // Task analysis and other formats don't need additional validation
         return repairedData;
-      } catch (repairError) {
+      } catch (_repairError) {
         throw parseError; // Throw the original error
       }
     }
   }, retryCount, onRetry);
 }
+
 export async function callGeminiForText(payload, retryCount = CONFIG.API.RETRY_COUNT) {
   return retryWithBackoff(async () => {
     const controller = new AbortController();
@@ -178,9 +176,11 @@ export async function callGeminiForText(payload, retryCount = CONFIG.API.RETRY_C
         errorText = await response.text();
         try {
           errorData = JSON.parse(errorText);
-        } catch (jsonError) {
+        } catch (_jsonError) {
+          // Response is not JSON, use raw text
         }
-      } catch (e) {
+      } catch (_e) {
+        // Failed to read response body
       }
       if (response.status === 429 && errorData) {
         const friendlyMessage = createQuotaErrorMessage(errorData);
