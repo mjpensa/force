@@ -335,7 +335,7 @@ export class GanttChart {
 
     const onTaskUpdate = async (taskInfo) => {
       if (taskInfo.sessionId) {
-        await fetchJSON('/update-task-dates', {
+        await fetchJSON('/api/content/update-task-dates', {
           method: 'POST',
           body: JSON.stringify(taskInfo)
         });
@@ -344,7 +344,7 @@ export class GanttChart {
 
     const onTaskResize = async (taskInfo) => {
       if (taskInfo.sessionId) {
-        await fetchJSON('/update-task-dates', {
+        await fetchJSON('/api/content/update-task-dates', {
           method: 'POST',
           body: JSON.stringify(taskInfo)
         });
@@ -353,7 +353,7 @@ export class GanttChart {
 
     const onColorChange = async (taskInfo) => {
       if (taskInfo.sessionId) {
-        await fetchJSON('/update-task-color', {
+        await fetchJSON('/api/content/update-task-color', {
           method: 'POST',
           body: JSON.stringify(taskInfo)
         });

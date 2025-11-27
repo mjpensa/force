@@ -169,12 +169,14 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     // Generate all content synchronously
     const results = await generateAllContent(prompt, researchFiles);
 
-    // Create session and store content
+    // Create session and store content (including research for task analysis)
     const sessionId = generateSessionId();
     const now = Date.now();
     sessions.set(sessionId, {
       prompt,
       researchFiles: researchFiles.map(f => f.filename),
+      // Store research content for session-based task analysis (truncated to limit memory)
+      researchContent: researchFiles.map(f => f.content).join('\n\n---\n\n').substring(0, 500000),
       content: {
         roadmap: results.roadmap,
         slides: results.slides,
@@ -479,7 +481,94 @@ router.post('/slides/export', express.json({ limit: '50mb' }), async (req, res) 
   }
 });
 
+/**
+ * POST /api/content/update-task-dates
+ * Updates task bar positions (start/end columns) in the session
+ *
+ * Request body:
+ * - sessionId: string
+ * - taskIndex: number (index in ganttData.data array)
+ * - startCol: number (new start column)
+ * - endCol: number (new end column)
+ */
+router.post('/update-task-dates', express.json(), (req, res) => {
+  try {
+    const { sessionId, taskIndex, startCol, endCol } = req.body;
+
+    if (!sessionId || taskIndex === undefined) {
+      return res.status(400).json({ error: 'sessionId and taskIndex are required' });
+    }
+
+    const session = sessions.get(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    touchSession(sessionId);
+
+    // Update the task in roadmap data
+    const roadmapData = session.content.roadmap?.data;
+    if (!roadmapData || !roadmapData.data || !roadmapData.data[taskIndex]) {
+      return res.status(400).json({ error: 'Task not found in roadmap data' });
+    }
+
+    const task = roadmapData.data[taskIndex];
+    if (task.bar) {
+      if (startCol !== undefined) task.bar.startCol = startCol;
+      if (endCol !== undefined) task.bar.endCol = endCol;
+    }
+
+    res.json({ success: true, task });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update task dates', details: error.message });
+  }
+});
+
+/**
+ * POST /api/content/update-task-color
+ * Updates task bar color in the session
+ *
+ * Request body:
+ * - sessionId: string
+ * - taskIndex: number (index in ganttData.data array)
+ * - color: string (new color class)
+ */
+router.post('/update-task-color', express.json(), (req, res) => {
+  try {
+    const { sessionId, taskIndex, color } = req.body;
+
+    if (!sessionId || taskIndex === undefined || !color) {
+      return res.status(400).json({ error: 'sessionId, taskIndex, and color are required' });
+    }
+
+    const session = sessions.get(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    touchSession(sessionId);
+
+    // Update the task in roadmap data
+    const roadmapData = session.content.roadmap?.data;
+    if (!roadmapData || !roadmapData.data || !roadmapData.data[taskIndex]) {
+      return res.status(400).json({ error: 'Task not found in roadmap data' });
+    }
+
+    const task = roadmapData.data[taskIndex];
+    if (task.bar) {
+      task.bar.color = color;
+    }
+
+    res.json({ success: true, task });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update task color', details: error.message });
+  }
+});
+
 // Apply upload error handling middleware
 router.use(handleUploadErrors);
+
+// Export sessions map for use by analysis routes
+export { sessions, touchSession };
 
 export default router;

@@ -2,7 +2,9 @@
  * Analysis Routes Module
  * Handles task analysis and Q&A endpoints
  *
- * Note: No persistence - research content must be provided in each request
+ * Supports both:
+ * - Session-based: Pass sessionId to use stored research content
+ * - Direct: Pass researchText directly in the request
  */
 
 import express from 'express';
@@ -11,6 +13,7 @@ import { callGeminiForJson, callGeminiForText } from '../gemini.js';
 import { TASK_ANALYSIS_SYSTEM_PROMPT, TASK_ANALYSIS_SCHEMA, getQASystemPrompt } from '../prompts.js';
 import { apiLimiter } from '../middleware.js';
 import { sanitizePrompt } from '../utils.js';
+import { sessions, touchSession } from './content.js';
 
 const router = express.Router();
 
@@ -21,17 +24,32 @@ const router = express.Router();
  * Request body:
  * - taskName: string
  * - entity: string
- * - researchText: string (the research content to analyze)
+ * - sessionId: string (optional - looks up research from session)
+ * - researchText: string (optional - direct research content)
+ *
+ * Either sessionId or researchText must be provided.
  */
 router.post('/get-task-analysis', apiLimiter, async (req, res) => {
-  const { taskName, entity, researchText } = req.body;
+  const { taskName, entity, sessionId, researchText: directResearchText } = req.body;
 
   if (!taskName || !entity) {
     return res.status(400).json({ error: CONFIG.ERRORS.MISSING_TASK_NAME });
   }
 
+  // Get research text from session or direct input
+  let researchText = directResearchText;
+
+  if (!researchText && sessionId) {
+    const session = sessions.get(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found or expired' });
+    }
+    touchSession(sessionId);
+    researchText = session.researchContent;
+  }
+
   if (!researchText) {
-    return res.status(400).json({ error: 'Research text is required for analysis' });
+    return res.status(400).json({ error: 'Either sessionId or researchText is required for analysis' });
   }
 
   // Sanitize user inputs to prevent prompt injection
