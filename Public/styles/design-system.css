@@ -1075,26 +1075,6 @@ body.view-roadmap .app-shell {
   outline-offset: 2px;
 }
 
-/* Skip link for glass pages */
-.skip-link-glass {
-  position: absolute;
-  top: -40px;
-  left: 0;
-  background: var(--color-glass-success);
-  color: var(--glass-text-primary);
-  padding: 8px 16px;
-  text-decoration: none;
-  z-index: 9999;
-  border-radius: var(--radius-glass-sm);
-  font-weight: 600;
-  transition: top 0.2s ease;
-}
-
-.skip-link-glass:focus {
-  top: 8px;
-  left: 8px;
-}
-
 /* Reduced Motion Support for Glassmorphic Components */
 @media (prefers-reduced-motion: reduce) {
   /* Disable all glassmorphic animations */
