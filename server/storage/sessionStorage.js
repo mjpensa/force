@@ -251,13 +251,26 @@ class RedisStorage {
     this.client = null;
     this.type = 'redis';
     this._connected = false;
-    this._connecting = false;
+    this._connectPromise = null;  // Mutex for connection
   }
 
   async connect() {
-    if (this._connected || this._connecting) return this._connected;
-    this._connecting = true;
+    // Return existing connection
+    if (this._connected) return true;
 
+    // Return in-flight connection promise (prevents race condition)
+    if (this._connectPromise) return this._connectPromise;
+
+    // Create new connection attempt
+    this._connectPromise = this._doConnect();
+    try {
+      return await this._connectPromise;
+    } finally {
+      this._connectPromise = null;
+    }
+  }
+
+  async _doConnect() {
     try {
       // Dynamic import of ioredis (optional dependency)
       const { default: Redis } = await import('ioredis');
@@ -289,8 +302,6 @@ class RedisStorage {
         this.client = null;
       }
       return false;
-    } finally {
-      this._connecting = false;
     }
   }
 
@@ -464,6 +475,8 @@ class StorageManager {
 
       if (connected) {
         this.primary = redis;
+        // Stop fallback cleanup interval since we're using Redis
+        this.fallback.destroy();
         console.log('[Storage] Using Redis as primary storage');
       } else {
         console.log('[Storage] Redis unavailable, using in-memory storage');

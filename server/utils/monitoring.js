@@ -186,7 +186,6 @@ class AlertEvaluator {
    */
   evaluate(metrics) {
     const alerts = [];
-    const now = new Date().toISOString();
 
     // Evaluate latency thresholds
     const latency = metrics.collectors?.generation?.latency;
@@ -211,7 +210,8 @@ class AlertEvaluator {
     // Evaluate cache hit rate
     const cache = metrics.collectors?.cache?.aggregate;
     if (cache && cache.totalRequests > 10) {
-      const hitRate = cache.hits / cache.totalRequests;
+      // Use totalHits (the correct property from getCacheMetrics)
+      const hitRate = cache.totalHits / cache.totalRequests;
       if (hitRate < this.config.cache.hitRateCritical) {
         alerts.push(this._createAlert('cache_hit_rate', 'critical',
           `Cache hit rate (${(hitRate * 100).toFixed(1)}%) below critical threshold`));
@@ -438,6 +438,34 @@ class FeatureFlags {
    */
   setOverride(name, sessionId, value) {
     this.overrides.set(`${name}:${sessionId}`, value);
+
+    // Prevent memory leak - limit overrides size
+    if (this.overrides.size > 10000) {
+      // Remove oldest 1000 entries
+      const keysToDelete = [...this.overrides.keys()].slice(0, 1000);
+      for (const key of keysToDelete) {
+        this.overrides.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Clear override for a session
+   * @param {string} sessionId - Session ID
+   */
+  clearSessionOverrides(sessionId) {
+    for (const key of this.overrides.keys()) {
+      if (key.endsWith(`:${sessionId}`)) {
+        this.overrides.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Clear all overrides
+   */
+  clearAllOverrides() {
+    this.overrides.clear();
   }
 
   /**
