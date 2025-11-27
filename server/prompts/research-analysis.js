@@ -414,14 +414,12 @@ export function validateResearchAnalysisStructure(data) {
 
   for (const field of requiredFields) {
     if (!(field in data)) {
-      console.error(`Research analysis missing required field: ${field}`);
       return false;
     }
   }
 
   // Validate themes array
   if (!Array.isArray(data.themes) || data.themes.length === 0) {
-    console.error('Research analysis must have at least one theme');
     return false;
   }
 
@@ -429,14 +427,12 @@ export function validateResearchAnalysisStructure(data) {
   for (let i = 0; i < data.themes.length; i++) {
     const theme = data.themes[i];
     if (!theme.name || typeof theme.fitnessScore !== 'number') {
-      console.error(`Theme ${i} missing required fields (name or fitnessScore)`);
       return false;
     }
   }
 
   // Validate overall score range
   if (data.overallScore < 1 || data.overallScore > 10) {
-    console.error('Overall score must be between 1 and 10');
     return false;
   }
 

@@ -1,60 +1,22 @@
-/**
- * TaskAnalyzer Module
- * Phase 3 Enhancement: Extracted from chart-renderer.js
- * Handles task analysis modal functionality
- */
-
 import { safeGetElement, safeQuerySelector, buildAnalysisSection, buildAnalysisList, buildTimelineScenarios, buildRiskAnalysis, buildImpactAnalysis, buildSchedulingContext, buildProgressIndicators, buildAccelerators } from './Utils.js';
 import { ChatInterface } from './ChatInterface.js';
-
-/**
- * TaskAnalyzer Class
- * Manages the analysis modal for displaying task details
- */
 export class TaskAnalyzer {
-  /**
-   * Creates a new TaskAnalyzer instance
-   */
   constructor() {
     this.modal = null;
     this.chatInterface = null;
   }
-
-  /**
-   * Shows the analysis modal for a specific task
-   * @async
-   * @param {Object} taskIdentifier - Task identification object
-   * @param {string} taskIdentifier.taskName - Name of the task to analyze
-   * @param {string} taskIdentifier.entity - Entity/organization associated with the task
-   * @param {string} taskIdentifier.sessionId - Session ID for backend requests
-   * @returns {Promise<void>}
-   */
   async showAnalysis(taskIdentifier) {
-    // Remove any old modal
     document.getElementById('analysis-modal')?.remove();
-
-    // Create modal structure
     this._createModal();
-
-    // Add close listeners
     this._attachCloseListeners();
-
-    // Fetch and display analysis data
     await this._fetchAndDisplayAnalysis(taskIdentifier);
   }
-
-  /**
-   * Creates the modal structure
-   * @private
-   */
   _createModal() {
     const modalOverlay = document.createElement('div');
     modalOverlay.id = 'analysis-modal';
     modalOverlay.className = 'modal-overlay';
-
     const modalContent = document.createElement('div');
     modalContent.className = 'modal-content';
-
     modalContent.innerHTML = `
       <div class="modal-header">
         <h3 class="modal-title">Analyzing...</h3>
@@ -67,40 +29,22 @@ export class TaskAnalyzer {
         <div class="modal-spinner"></div>
       </div>
     `;
-
     modalOverlay.appendChild(modalContent);
     document.body.appendChild(modalOverlay);
-
     this.modal = modalOverlay;
   }
-
-  /**
-   * Attaches close event listeners to the modal
-   * @private
-   */
   _attachCloseListeners() {
     if (!this.modal) return;
-
-    // Close on overlay click
     this.modal.addEventListener('click', (e) => {
       if (e.target === this.modal) {
         this.modal?.remove();
       }
     });
-
-    // Close on button click
     const closeBtn = document.getElementById('modal-close-btn');
     closeBtn?.addEventListener('click', () => {
       this.modal?.remove();
     });
   }
-
-  /**
-   * Fetches analysis data from the server and displays it
-   * @async
-   * @param {Object} taskIdentifier - Task identification object
-   * @private
-   */
   async _fetchAndDisplayAnalysis(taskIdentifier) {
     try {
       const response = await fetch('/get-task-analysis', {
@@ -108,9 +52,7 @@ export class TaskAnalyzer {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(taskIdentifier)
       });
-
       if (!response.ok) {
-        // Handle non-JSON error responses gracefully
         let errorMessage = `Server error: ${response.status}`;
         try {
           const contentType = response.headers.get('content-type');
@@ -122,42 +64,24 @@ export class TaskAnalyzer {
             errorMessage = text.substring(0, 200) || errorMessage;
           }
         } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
         }
         throw new Error(errorMessage);
       }
-
       const analysis = await response.json();
       this._displayAnalysis(analysis, taskIdentifier);
-
     } catch (error) {
-      console.error('Error fetching analysis:', error);
       this._displayError(error.message);
     }
   }
-
-  /**
-   * Displays the analysis data in the modal
-   * @param {Object} analysis - The analysis data from the server
-   * @param {Object} taskIdentifier - Task identification object
-   * @private
-   */
   _displayAnalysis(analysis, taskIdentifier) {
     const modalBody = safeGetElement('modal-body-content', 'TaskAnalyzer._displayAnalysis');
     if (!modalBody) return;
-
-    // Update modal title with confidence badge (Phase 3)
     const modalTitle = safeQuerySelector('.modal-title', 'TaskAnalyzer._displayAnalysis');
     if (modalTitle) {
       const confidenceBadge = this._buildConfidenceBadge(analysis.confidence);
       modalTitle.innerHTML = `${DOMPurify.sanitize(analysis.taskName)} ${confidenceBadge}`;
     }
-
-    // Build quick facts sidebar (Phase 3)
     const quickFactsHTML = this._buildQuickFacts(analysis);
-
-    // Build main analysis content - Simplified schema version
-    // ORDER: Financial Impact, Stakeholder & Change, Success Metrics, Timeline, Risks & Impact, Facts & Assumptions, Summary/Rationale
     const mainContentHTML = `
       ${this._buildFinancialSection(analysis)}
       ${this._buildStakeholderSection(analysis)}
@@ -170,8 +94,6 @@ export class TaskAnalyzer {
       ${buildAnalysisSection('Summary', analysis.summary)}
       ${buildAnalysisSection('Rationale / Hurdles', analysis.rationale)}
     `;
-
-    // Create two-column layout with sidebar (Phase 3)
     const analysisHTML = `
       <div class="analysis-layout">
         <aside class="analysis-sidebar">
@@ -182,25 +104,12 @@ export class TaskAnalyzer {
         </main>
       </div>
     `;
-
     modalBody.innerHTML = DOMPurify.sanitize(analysisHTML);
-
-    // Add collapsible functionality to major sections
     this._initializeCollapsibleSections();
-
-    // Add export button listener (Phase 3)
     this._attachExportListener(analysis);
-
-    // Add chat interface
     this.chatInterface = new ChatInterface(modalBody, taskIdentifier);
     this.chatInterface.render();
   }
-
-  /**
-   * Attaches export button event listener (Phase 3)
-   * @param {Object} analysis - The analysis data
-   * @private
-   */
   _attachExportListener(analysis) {
     const exportBtn = document.getElementById('modal-export-btn');
     if (exportBtn) {
@@ -209,26 +118,14 @@ export class TaskAnalyzer {
       });
     }
   }
-
-  /**
-   * Exports analysis as a text file (simplified schema version)
-   * @param {Object} analysis - The analysis data
-   * @private
-   */
   _exportAnalysis(analysis) {
     let content = `TASK ANALYSIS: ${analysis.taskName}\n`;
     content += `${'='.repeat(60)}\n\n`;
-
-    // Status and dates
     content += `Status: ${analysis.status}\n`;
     content += `Timeline: ${analysis.startDate || 'N/A'} - ${analysis.endDate || 'N/A'}\n\n`;
-
-    // Summary
     if (analysis.summary) {
       content += `SUMMARY\n${'─'.repeat(40)}\n${analysis.summary}\n\n`;
     }
-
-    // Timeline Scenarios
     if (analysis.expectedDate || analysis.bestCaseDate || analysis.worstCaseDate) {
       content += `TIMELINE SCENARIOS\n${'─'.repeat(40)}\n`;
       if (analysis.bestCaseDate) content += `Best-Case: ${analysis.bestCaseDate}\n`;
@@ -236,8 +133,6 @@ export class TaskAnalyzer {
       if (analysis.worstCaseDate) content += `Worst-Case: ${analysis.worstCaseDate}\n`;
       content += '\n';
     }
-
-    // Risks & Impact
     if (analysis.risksText) {
       content += `RISKS\n${'─'.repeat(40)}\n${analysis.risksText}\n\n`;
     }
@@ -247,8 +142,6 @@ export class TaskAnalyzer {
     if (analysis.strategicImpact) {
       content += `STRATEGIC IMPACT\n${'─'.repeat(40)}\n${analysis.strategicImpact}\n\n`;
     }
-
-    // Financial Impact
     if (analysis.totalCost || analysis.totalBenefit || analysis.roiSummary) {
       content += `FINANCIAL IMPACT\n${'─'.repeat(40)}\n`;
       if (analysis.totalCost) content += `Cost: ${analysis.totalCost}\n`;
@@ -256,16 +149,12 @@ export class TaskAnalyzer {
       if (analysis.roiSummary) content += `ROI: ${analysis.roiSummary}\n`;
       content += '\n';
     }
-
-    // Facts & Assumptions
     if (analysis.factsText) {
       content += `FACTS\n${'─'.repeat(40)}\n${analysis.factsText}\n\n`;
     }
     if (analysis.assumptionsText) {
       content += `ASSUMPTIONS\n${'─'.repeat(40)}\n${analysis.assumptionsText}\n\n`;
     }
-
-    // Download the file
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -276,43 +165,23 @@ export class TaskAnalyzer {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
-
-  /**
-   * Builds confidence badge HTML for the modal header (simplified schema - not available)
-   * @param {Object} confidence - Confidence assessment data (may be undefined in simplified schema)
-   * @returns {string} HTML for confidence badge (empty string in simplified schema)
-   * @private
-   */
   _buildConfidenceBadge(confidence) {
-    // Confidence data not available in simplified schema
     return '';
   }
-
-  /**
-   * Builds quick facts sidebar HTML (simplified schema version)
-   * @param {Object} analysis - The analysis data
-   * @returns {string} HTML for quick facts panel
-   * @private
-   */
   _buildQuickFacts(analysis) {
     const statusClass = analysis.status.replace(/\s+/g, '-').toLowerCase();
-
     let quickFactsHTML = `
       <div class="quick-facts-panel">
         <h4>Quick Facts</h4>
-
         <div class="quick-fact">
           <span class="fact-label">Status</span>
           <span class="status-pill status-${statusClass}">${DOMPurify.sanitize(analysis.status)}</span>
         </div>
-
         <div class="quick-fact">
           <span class="fact-label">Timeline</span>
           <span class="fact-value">${DOMPurify.sanitize(analysis.startDate || 'N/A')} - ${DOMPurify.sanitize(analysis.endDate || 'N/A')}</span>
         </div>
     `;
-
-    // Add progress for in-progress tasks
     if (analysis.status === 'in-progress' && analysis.percentComplete !== undefined) {
       quickFactsHTML += `
         <div class="quick-fact">
@@ -321,8 +190,6 @@ export class TaskAnalyzer {
         </div>
       `;
     }
-
-    // Add velocity for in-progress tasks
     if (analysis.status === 'in-progress' && analysis.velocity) {
       const velocityIcon = analysis.velocity === 'on-track' ? '✓' : analysis.velocity === 'ahead' ? '▲' : '▼';
       quickFactsHTML += `
@@ -332,8 +199,6 @@ export class TaskAnalyzer {
         </div>
       `;
     }
-
-    // Add financial ROI summary if available
     if (analysis.roiSummary) {
       quickFactsHTML += `
         <div class="quick-fact">
@@ -342,23 +207,12 @@ export class TaskAnalyzer {
         </div>
       `;
     }
-
     quickFactsHTML += `</div>`;
-
     return quickFactsHTML;
   }
-
-  /**
-   * Builds financial impact section HTML (simplified schema)
-   * @param {Object} analysis - The analysis data
-   * @returns {string} HTML for financial impact section
-   * @private
-   */
   _buildFinancialSection(analysis) {
     if (!analysis.totalCost && !analysis.totalBenefit && !analysis.roiSummary) return '';
-
     let html = '<div class="analysis-section financial-impact-section"><h4>💰 Financial Impact</h4>';
-
     if (analysis.totalCost) {
       html += `<p><strong>Total Cost:</strong> ${DOMPurify.sanitize(analysis.totalCost)}</p>`;
     }
@@ -368,44 +222,24 @@ export class TaskAnalyzer {
     if (analysis.roiSummary) {
       html += `<p><strong>ROI:</strong> ${DOMPurify.sanitize(analysis.roiSummary)}</p>`;
     }
-
     html += '</div>';
     return html;
   }
-
-  /**
-   * Builds stakeholder and change management section HTML (simplified schema)
-   * @param {Object} analysis - The analysis data
-   * @returns {string} HTML for stakeholder section
-   * @private
-   */
   _buildStakeholderSection(analysis) {
     if (!analysis.stakeholderSummary && !analysis.changeReadiness) return '';
-
     let html = '<div class="analysis-section stakeholder-impact-section"><h4>👥 Stakeholder & Change Management</h4>';
-
     if (analysis.stakeholderSummary) {
       html += `<p>${DOMPurify.sanitize(analysis.stakeholderSummary)}</p>`;
     }
     if (analysis.changeReadiness) {
       html += `<p><strong>Change Readiness:</strong> ${DOMPurify.sanitize(analysis.changeReadiness)}</p>`;
     }
-
     html += '</div>';
     return html;
   }
-
-  /**
-   * Builds timeline section HTML (simplified schema)
-   * @param {Object} analysis - The analysis data
-   * @returns {string} HTML for timeline section
-   * @private
-   */
   _buildTimelineSection(analysis) {
     if (!analysis.expectedDate && !analysis.bestCaseDate && !analysis.worstCaseDate) return '';
-
     let html = '<div class="analysis-section timeline-scenarios-section"><h4>📅 Timeline Scenarios</h4>';
-
     if (analysis.bestCaseDate) {
       html += `<p><strong>Best Case:</strong> ${DOMPurify.sanitize(analysis.bestCaseDate)}</p>`;
     }
@@ -415,22 +249,12 @@ export class TaskAnalyzer {
     if (analysis.worstCaseDate) {
       html += `<p><strong>Worst Case:</strong> ${DOMPurify.sanitize(analysis.worstCaseDate)}</p>`;
     }
-
     html += '</div>';
     return html;
   }
-
-  /**
-   * Builds risks and impact section HTML (simplified schema)
-   * @param {Object} analysis - The analysis data
-   * @returns {string} HTML for risks and impact section
-   * @private
-   */
   _buildRisksImpactSection(analysis) {
     if (!analysis.risksText && !analysis.businessImpact && !analysis.strategicImpact) return '';
-
     let html = '<div class="analysis-section risks-section"><h4>⚠️ Risks & Impact</h4>';
-
     if (analysis.risksText) {
       html += `<div><strong>Key Risks:</strong><div>${DOMPurify.sanitize(analysis.risksText)}</div></div>`;
     }
@@ -440,22 +264,12 @@ export class TaskAnalyzer {
     if (analysis.strategicImpact) {
       html += `<p><strong>Strategic Impact:</strong> ${DOMPurify.sanitize(analysis.strategicImpact)}</p>`;
     }
-
     html += '</div>';
     return html;
   }
-
-  /**
-   * Builds progress section HTML (simplified schema)
-   * @param {Object} analysis - The analysis data
-   * @returns {string} HTML for progress section
-   * @private
-   */
   _buildProgressSection(analysis) {
     if (analysis.status !== 'in-progress' || (!analysis.percentComplete && !analysis.velocity)) return '';
-
     let html = '<div class="analysis-section progress-section"><h4>📊 Progress</h4>';
-
     if (analysis.percentComplete !== undefined) {
       html += `<p><strong>Completion:</strong> ${analysis.percentComplete}%</p>`;
     }
@@ -463,28 +277,17 @@ export class TaskAnalyzer {
       const velocityIcon = analysis.velocity === 'on-track' ? '✓' : analysis.velocity === 'ahead' ? '▲' : '▼';
       html += `<p><strong>Velocity:</strong> ${velocityIcon} ${DOMPurify.sanitize(analysis.velocity)}</p>`;
     }
-
     html += '</div>';
     return html;
   }
-
-  /**
-   * Initializes collapsible functionality for analysis sections
-   * @private
-   */
   _initializeCollapsibleSections() {
     const sections = document.querySelectorAll('.analysis-section.timeline-scenarios-section, .analysis-section.risks-section, .analysis-section.impact-section, .analysis-section.scheduling-section, .analysis-section.progress-section, .analysis-section.accelerators-section, .analysis-section.financial-impact-section, .analysis-section.stakeholder-impact-section');
-
     sections.forEach(section => {
       const header = section.querySelector('h4');
       if (!header) return;
-
-      // Add collapsible class and toggle icon
       section.classList.add('collapsible');
       header.classList.add('collapsible-header');
       header.innerHTML += ' <span class="collapse-toggle">▼</span>';
-
-      // Add click handler
       header.addEventListener('click', () => {
         section.classList.toggle('collapsed');
         const toggle = header.querySelector('.collapse-toggle');
@@ -494,38 +297,26 @@ export class TaskAnalyzer {
       });
     });
   }
-
-  /**
-   * Displays an error message in the modal
-   * @param {string} errorMessage - The error message to display
-   * @private
-   */
   _displayError(errorMessage) {
     const modalBody = document.getElementById('modal-body-content');
     if (modalBody) {
       const errorDiv = document.createElement('div');
       errorDiv.className = 'modal-error';
-
-      // Check if this is a quota/rate limit error
       const isQuotaError = errorMessage.includes('quota') ||
                           errorMessage.includes('rate limit') ||
                           errorMessage.includes('429');
-
       if (isQuotaError) {
-        // Create a more helpful error display for quota errors
         errorDiv.innerHTML = `
           <div style="text-align: left;">
             <h3 style="color: #da291c; margin-top: 0;">⚠️ API Quota Exceeded</h3>
             <p><strong>What happened?</strong></p>
             <p>The Google Gemini API has rate limits to prevent abuse. You've reached the free tier limit.</p>
-
             <p><strong>What can you do?</strong></p>
             <ol style="margin: 10px 0; padding-left: 20px;">
               <li><strong>Wait a few minutes</strong> and try again (the quota resets automatically)</li>
               <li><strong>Upgrade your API plan</strong> at <a href="https://ai.google.dev/pricing" target="_blank" style="color: #0066cc;">https://ai.google.dev/pricing</a></li>
               <li><strong>Check your usage</strong> at <a href="https://ai.dev/usage?tab=rate-limit" target="_blank" style="color: #0066cc;">https://ai.dev/usage</a></li>
             </ol>
-
             <p style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-left: 3px solid #da291c; font-size: 0.9em;">
               <strong>Technical details:</strong><br>
               ${DOMPurify.sanitize(errorMessage)}
@@ -533,10 +324,8 @@ export class TaskAnalyzer {
           </div>
         `;
       } else {
-        // Regular error display
         errorDiv.textContent = `Failed to load analysis: ${errorMessage}`;
       }
-
       modalBody.innerHTML = '';
       modalBody.appendChild(errorDiv);
     }

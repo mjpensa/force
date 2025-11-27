@@ -1,18 +1,6 @@
-/**
- * AI Prompts and Schemas Module
- * Phase 4 Enhancement: Extracted from server.js
- * Centralizes all AI prompts and JSON schemas
- */
-
-/**
- * Gantt Chart Generation System Prompt
- */
 export const CHART_GENERATION_SYSTEM_PROMPT = `You are an expert project management analyst. Your job is to analyze a user's prompt and research files to build a complete Gantt chart data object.
-
 You MUST respond with *only* a valid JSON object matching the schema.
-
 **CONSISTENCY REQUIREMENTS:** This system requires DETERMINISTIC output. Given the same inputs, you MUST produce the same output every time. Follow the rules below EXACTLY without deviation.
-
 **CRITICAL LOGIC:**
 1.  **TIME HORIZON (INCLUDE ALL DATES):**
     - First, scan ALL research files to identify EVERY date mentioned (past, present, and future).
@@ -100,15 +88,8 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - If dates are mentioned for ANY activity, that activity MUST appear in the chart
     - Err on the side of INCLUSION - when in doubt, add it to the chart
     - **VERIFY EARLY DATES:** After extraction, confirm that events from the BEGINNING of the timeline are included with correct startCol values (startCol=1 for the earliest events).`;
-
-/**
- * Task Analysis System Prompt
- * Simplified to match the reduced schema complexity
- */
 export const TASK_ANALYSIS_SYSTEM_PROMPT = `You are a senior project management analyst analyzing a specific task from research documents.
-
 Respond with ONLY a valid JSON object matching the schema. Keep your analysis concise and factual.
-
 **REQUIRED FIELDS:**
 - taskName: The task name
 - startDate: Start date if found (or "Unknown")
@@ -116,7 +97,6 @@ Respond with ONLY a valid JSON object matching the schema. Keep your analysis co
 - status: "completed", "in-progress", or "not-started"
 - rationale: Brief analysis of timeline likelihood (2-3 sentences)
 - summary: Concise task summary (2-3 sentences)
-
 **OPTIONAL FIELDS (provide if data available):**
 - factsText: Key facts from research, formatted as a bulleted list
 - assumptionsText: Key assumptions, formatted as a bulleted list
@@ -134,22 +114,13 @@ Respond with ONLY a valid JSON object matching the schema. Keep your analysis co
 - stakeholderSummary: Key stakeholders and change management notes (2-3 sentences)
 - changeReadiness: Organizational readiness assessment (1-2 sentences)
 - keyMetrics: Top 3-5 success metrics, formatted as a bulleted list
-
 **GUIDELINES:**
 - Extract facts directly from research - no speculation
 - Determine status based on current date (November 2025)
 - Keep all text fields concise - use bullet points for lists
 - Properly escape quotes and newlines in JSON strings`;
-
-/**
- * Q&A System Prompt Template
- * @param {string} taskName - The task name
- * @param {string} entity - The entity/organization
- * @returns {string} The Q&A system prompt
- */
 export function getQASystemPrompt(taskName, entity) {
   return `You are a project analyst. Your job is to answer a user's question about a specific task.
-
 **CRITICAL RULES:**
 1.  **GROUNDING:** You MUST answer the question *only* using the information in the provided 'Research Content'.
 2.  **CONTEXT:** Your answer MUST be in the context of the task: "${taskName}" (for entity: "${entity}").
@@ -157,10 +128,6 @@ export function getQASystemPrompt(taskName, entity) {
 4.  **CONCISE:** Keep your answer concise and to the point.
 5.  **NO PREAMBLE:** Do not start your response with "Based on the research..." just answer the question directly.`;
 }
-
-/**
- * Gantt Chart JSON Schema
- */
 export const GANTT_CHART_SCHEMA = {
   type: "object",
   properties: {
@@ -208,12 +175,6 @@ export const GANTT_CHART_SCHEMA = {
   },
   required: ["title", "timeColumns", "data", "legend"]
 };
-
-/**
- * Task Analysis JSON Schema
- * Aggressively simplified to avoid Gemini API "too many states" error
- * Reduced nesting and complexity while keeping essential fields
- */
 export const TASK_ANALYSIS_SCHEMA = {
   type: "object",
   properties: {
@@ -223,37 +184,22 @@ export const TASK_ANALYSIS_SCHEMA = {
     status: { type: "string" },
     rationale: { type: "string" },
     summary: { type: "string" },
-
-    // Simplified facts and assumptions - reduced nesting
     factsText: { type: "string" },
     assumptionsText: { type: "string" },
-
-    // Timeline information
     expectedDate: { type: "string" },
     bestCaseDate: { type: "string" },
     worstCaseDate: { type: "string" },
-
-    // Risk and impact - simplified to strings
     risksText: { type: "string" },
     businessImpact: { type: "string" },
     strategicImpact: { type: "string" },
-
-    // Progress (for in-progress tasks)
     percentComplete: { type: "number" },
     velocity: { type: "string" },
-
-    // Financial impact - minimal fields
     totalCost: { type: "string" },
     totalBenefit: { type: "string" },
     roiSummary: { type: "string" },
-
-    // Stakeholder and change management
     stakeholderSummary: { type: "string" },
     changeReadiness: { type: "string" },
-
-    // Success metrics
     keyMetrics: { type: "string" }
   },
   required: ["taskName", "status"]
 };
-

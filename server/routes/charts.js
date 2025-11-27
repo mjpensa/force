@@ -24,7 +24,6 @@ router.post('/generate-chart', uploadMiddleware.array('researchFiles'), strictLi
   const requestId = crypto.randomBytes(8).toString('hex');
 
   try {
-    console.log(`[Chart ${requestId}] Starting generation with ${req.files?.length || 0} files`);
 
     const userPrompt = req.body.prompt;
 
@@ -64,7 +63,6 @@ router.post('/generate-chart', uploadMiddleware.array('researchFiles'), strictLi
         researchText += `\n--- End of file: ${processedFile.name} ---\n`;
       }
 
-      console.log(`[Chart ${requestId}] Processed ${processedFiles.length} files (${researchText.length} characters total)`);
     }
 
     // Build user query
@@ -94,12 +92,10 @@ ${researchText}`;
     };
 
     // Call the API
-    console.log(`[Chart ${requestId}] Calling Gemini API...`);
     const ganttData = await callGeminiForJson(
       payload,
       CONFIG.API.RETRY_COUNT,
       (attemptNum, error) => {
-        console.log(`[Chart ${requestId}] Retrying due to error: ${error.message}`);
       }
     );
 
@@ -124,7 +120,6 @@ ${researchText}`;
       throw new Error('AI returned empty data array');
     }
 
-    console.log(`[Chart ${requestId}] Successfully generated - timeColumns: ${ganttData.timeColumns.length}, data: ${ganttData.data.length} tasks`);
 
     // Return chart data directly
     res.json({
@@ -133,7 +128,6 @@ ${researchText}`;
     });
 
   } catch (error) {
-    console.error(`[Chart ${requestId}] Failed:`, error);
     res.status(500).json({
       status: 'error',
       error: error.message
@@ -162,7 +156,6 @@ router.post('/update-task-dates', express.json(), (req, res) => {
       });
     }
 
-    console.log(`Task "${taskName}" dates updated (client-side only)`);
 
     res.json({
       success: true,
@@ -174,7 +167,6 @@ router.post('/update-task-dates', express.json(), (req, res) => {
       endDate
     });
   } catch (error) {
-    console.error('Error updating task dates:', error);
     res.status(500).json({
       error: 'Failed to update task dates',
       details: error.message
@@ -201,7 +193,6 @@ router.post('/update-task-color', express.json(), (req, res) => {
       });
     }
 
-    console.log(`Task "${taskName}" color updated`);
 
     res.json({
       success: true,
@@ -210,7 +201,6 @@ router.post('/update-task-color', express.json(), (req, res) => {
       newColor
     });
   } catch (error) {
-    console.error('Error updating task color:', error);
     res.status(500).json({
       error: 'Failed to update task color',
       details: error.message

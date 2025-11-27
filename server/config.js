@@ -1,58 +1,26 @@
-/**
- * Backend Configuration Module
- * Phase 4 Enhancement: Centralized backend configuration
- * Consolidates magic numbers, API settings, and security configuration
- */
-
 import 'dotenv/config';
-
-/**
- * Validates required environment variables
- * @throws {Error} If required variables are missing
- */
 function validateEnvironment() {
-  // Skip validation in test environment
   if (process.env.NODE_ENV === 'test') {
-    console.log('🧪 Test environment detected - skipping strict validation');
-    // Set dummy API key if not present
     if (!process.env.API_KEY) {
       process.env.API_KEY = 'test_api_key_for_testing';
     }
     return;
   }
-
   const required = ['API_KEY'];
   const missing = required.filter(key => !process.env[key]);
-
   if (missing.length > 0) {
-    console.error('❌ Missing required environment variables:', missing.join(', '));
-    console.error('Please create a .env file with the following:');
     missing.forEach(key => console.error(`  ${key}=your_value_here`));
     process.exit(1);
   }
-
-  // Validate API_KEY format
   if (process.env.API_KEY && process.env.API_KEY.length < 10) {
-    console.warn('⚠️  API_KEY looks suspicious - might be invalid (too short)');
   }
-
-  console.log('✅ Environment variables validated');
 }
-
-// Validate on module load
 validateEnvironment();
-
-/**
- * Backend Configuration Object
- */
 export const CONFIG = {
-  // Server settings
   SERVER: {
     PORT: parseInt(process.env.PORT, 10) || 3000,
     TRUST_PROXY_HOPS: 1 // Railway uses single proxy layer
   },
-
-  // API Configuration
   API: {
     GEMINI_MODEL: 'gemini-2.5-flash-preview-09-2025',
     BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
@@ -68,8 +36,6 @@ export const CONFIG = {
     TOP_K: 1,
     SEED: 42 // Fixed seed for deterministic output - same inputs produce same outputs
   },
-
-  // File upload limits
   FILES: {
     MAX_SIZE_BYTES: 10 * 1024 * 1024, // 10MB per file
     MAX_COUNT: 500, // Increased to support folder uploads with many files
@@ -83,30 +49,19 @@ export const CONFIG = {
     ],
     ALLOWED_EXTENSIONS: ['md', 'txt', 'docx', 'pdf']
   },
-
-  // Timeout settings
   TIMEOUTS: {
     REQUEST_MS: 120000, // 2 minutes
     RESPONSE_MS: 120000
   },
-
-  // Rate limiting
   RATE_LIMIT: {
     WINDOW_MS: 15 * 60 * 1000, // 15 minutes
     MAX_REQUESTS: 100,
     STRICT_MAX_REQUESTS: 20 // For resource-intensive endpoints
   },
-
-  // Cache control
   CACHE: {
     STATIC_ASSETS_MAX_AGE: 86400 // 1 day in seconds
   },
-
-  // Security patterns
   SECURITY: {
-    // Prompt injection patterns
-    // IMPORTANT: These patterns must be kept in sync with Public/config.js
-    // Any changes here should be reflected in the client-side config
     INJECTION_PATTERNS: [
       { pattern: /ignore\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
       { pattern: /disregard\s+(all\s+)?(previous|prior|above)\s+instructions?/gi, replacement: '[REDACTED]' },
@@ -120,21 +75,15 @@ export const CONFIG = {
       { pattern: /act\s+as\s+if\s+you\s+are\s+/gi, replacement: '[REDACTED]' },
       { pattern: /pretend\s+(you\s+are|to\s+be)\s+/gi, replacement: '[REDACTED]' }
     ],
-
-    // ID validation patterns
     PATTERNS: {
       CHART_ID: /^[a-f0-9]{32}$/i,
       JOB_ID: /^[a-f0-9]{32}$/i,
       SESSION_ID: /^[a-f0-9]{32}$/i
     }
   },
-
-  // Validation limits
   VALIDATION: {
     MAX_QUESTION_LENGTH: 1000
   },
-
-  // Error messages
   ERRORS: {
     MISSING_TASK_NAME: 'Missing taskName or entity',
     MISSING_SESSION_ID: 'Missing sessionId',
@@ -156,8 +105,6 @@ export const CONFIG = {
     INVALID_FILE_TYPE: (type) => `Invalid file type: ${type}. Only .md, .txt, and .docx files are allowed.`
   }
 };
-
-// Freeze configuration to prevent modifications
 Object.freeze(CONFIG);
 Object.freeze(CONFIG.SERVER);
 Object.freeze(CONFIG.API);
@@ -169,11 +116,6 @@ Object.freeze(CONFIG.SECURITY);
 Object.freeze(CONFIG.SECURITY.PATTERNS);
 Object.freeze(CONFIG.VALIDATION);
 Object.freeze(CONFIG.ERRORS);
-
-/**
- * Builds the Gemini API URL with the API key
- * @returns {string} Full API URL
- */
 export function getGeminiApiUrl() {
   return `${CONFIG.API.BASE_URL}/models/${CONFIG.API.GEMINI_MODEL}:generateContent?key=${process.env.API_KEY}`;
 }

@@ -26,7 +26,6 @@ setInterval(() => {
   for (const [sessionId, session] of sessions) {
     if (now - session.createdAt > SESSION_TTL_MS) {
       sessions.delete(sessionId);
-      console.log(`[Session] Cleaned up expired session: ${sessionId}`);
     }
   }
 }, 5 * 60 * 1000); // Run cleanup every 5 minutes
@@ -112,7 +111,6 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     }
 
     // Process uploaded files to extract content
-    console.log(`Processing ${files.length} uploaded files for content generation`);
     const sortedFiles = files.sort((a, b) => a.originalname.localeCompare(b.originalname));
 
     // Process files in parallel
@@ -136,10 +134,8 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
 
     // Wait for all files to be processed
     const researchFiles = await Promise.all(fileProcessingPromises);
-    console.log(`Processed ${researchFiles.length} files (${researchFiles.reduce((sum, f) => sum + f.content.length, 0)} total characters)`);
 
     // Generate all content synchronously
-    console.log('Starting synchronous content generation...');
     const results = await generateAllContent(prompt, researchFiles);
 
     // Create session and store content
@@ -155,7 +151,6 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
       },
       createdAt: Date.now()
     });
-    console.log(`[Session] Created session: ${sessionId}`);
 
     // Return sessionId for frontend to poll/fetch content
     res.json({
@@ -172,7 +167,6 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     });
 
   } catch (error) {
-    console.error('Generate endpoint error:', error);
     res.status(500).json({
       error: 'Internal server error',
       details: error.message
@@ -254,7 +248,6 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
     });
 
   } catch (error) {
-    console.error('Regenerate content error:', error);
     res.status(500).json({
       error: 'Failed to regenerate content',
       details: error.message
@@ -327,7 +320,6 @@ router.get('/:sessionId/:viewType', (req, res) => {
     }
 
   } catch (error) {
-    console.error('Get content error:', error);
     res.status(500).json({
       error: 'Failed to retrieve content',
       details: error.message
@@ -367,7 +359,6 @@ router.get('/:sessionId/slides/export', async (req, res) => {
 
     const slides = slidesResult.data;
 
-    console.log(`[PPT Export] Generating PPTX with ${slides.slides?.length || 0} slides from session ${sessionId}`);
 
     // Generate the PowerPoint file
     const pptxBuffer = await generatePptx(slides, {
@@ -385,12 +376,10 @@ router.get('/:sessionId/slides/export', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', pptxBuffer.length);
 
-    console.log(`[PPT Export] Sending PPTX file: ${filename} (${pptxBuffer.length} bytes)`);
 
     res.send(pptxBuffer);
 
   } catch (error) {
-    console.error('PPT Export error:', error);
     res.status(500).json({
       error: 'Failed to generate PowerPoint file',
       details: error.message
@@ -418,7 +407,6 @@ router.post('/slides/export', express.json({ limit: '50mb' }), async (req, res) 
       });
     }
 
-    console.log(`[PPT Export] Generating PPTX with ${slides.slides.length} slides`);
 
     // Generate the PowerPoint file
     const pptxBuffer = await generatePptx(slides, {
@@ -436,12 +424,10 @@ router.post('/slides/export', express.json({ limit: '50mb' }), async (req, res) 
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', pptxBuffer.length);
 
-    console.log(`[PPT Export] Sending PPTX file: ${filename} (${pptxBuffer.length} bytes)`);
 
     res.send(pptxBuffer);
 
   } catch (error) {
-    console.error('PPT Export error:', error);
     res.status(500).json({
       error: 'Failed to generate PowerPoint file',
       details: error.message
