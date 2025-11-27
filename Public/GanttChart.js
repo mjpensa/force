@@ -32,6 +32,7 @@ export class GanttChart {
     this.chartWrapper = document.createElement('div');
     this.chartWrapper.id = 'gantt-chart-container';
     renderTimer.mark('Container setup complete');
+    this._addHeaderSVG(); // Header stripe graphic at top of chart
     this._addTitle();
     this._addLogo(); // Logo added after title so we can calculate proper alignment
     renderTimer.mark('Header components added');
