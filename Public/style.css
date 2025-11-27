@@ -410,6 +410,34 @@ select:focus-visible {
   box-shadow: 0 6px 16px rgba(0,0,0,0.4);
   transform: translateY(-2px);
 }
+.export-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  color: white;
+  font-family: 'Work Sans', sans-serif;
+}
+.export-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #50AF7B;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+.export-loading-message {
+  font-size: 16px;
+  font-weight: 500;
+}
 .gantt-today-line {
   position: absolute;
   width: 1px; 

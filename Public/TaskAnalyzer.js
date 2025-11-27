@@ -1,4 +1,4 @@
-import { safeGetElement, safeQuerySelector, buildAnalysisSection, buildAnalysisList, buildTimelineScenarios, buildRiskAnalysis, buildImpactAnalysis, buildSchedulingContext, buildProgressIndicators, buildAccelerators } from './Utils.js';
+import { safeGetElement, safeQuerySelector, buildAnalysisSection, buildAnalysisList, buildTimelineScenarios, buildRiskAnalysis, buildImpactAnalysis, buildSchedulingContext, buildProgressIndicators, buildAccelerators, createModal } from './Utils.js';
 import { ChatInterface } from './ChatInterface.js';
 export class TaskAnalyzer {
   constructor() {
@@ -7,43 +7,15 @@ export class TaskAnalyzer {
   }
   async showAnalysis(taskIdentifier) {
     document.getElementById('analysis-modal')?.remove();
-    this._createModal();
-    this._attachCloseListeners();
+    const { overlay, body, close } = createModal({
+      id: 'analysis-modal',
+      title: 'Analyzing...',
+      showSpinner: true,
+      actions: [{ id: 'modal-export-btn', label: '📥', title: 'Export Analysis', className: 'modal-export-btn' }]
+    });
+    this.modal = overlay;
+    this.modalClose = close;
     await this._fetchAndDisplayAnalysis(taskIdentifier);
-  }
-  _createModal() {
-    const modalOverlay = document.createElement('div');
-    modalOverlay.id = 'analysis-modal';
-    modalOverlay.className = 'modal-overlay';
-    const modalContent = document.createElement('div');
-    modalContent.className = 'modal-content';
-    modalContent.innerHTML = `
-      <div class="modal-header">
-        <h3 class="modal-title">Analyzing...</h3>
-        <div class="modal-actions">
-          <button class="modal-export-btn" id="modal-export-btn" title="Export Analysis">📥</button>
-          <button class="modal-close" id="modal-close-btn">&times;</button>
-        </div>
-      </div>
-      <div class="modal-body" id="modal-body-content">
-        <div class="modal-spinner"></div>
-      </div>
-    `;
-    modalOverlay.appendChild(modalContent);
-    document.body.appendChild(modalOverlay);
-    this.modal = modalOverlay;
-  }
-  _attachCloseListeners() {
-    if (!this.modal) return;
-    this.modal.addEventListener('click', (e) => {
-      if (e.target === this.modal) {
-        this.modal?.remove();
-      }
-    });
-    const closeBtn = document.getElementById('modal-close-btn');
-    closeBtn?.addEventListener('click', () => {
-      this.modal?.remove();
-    });
   }
   async _fetchAndDisplayAnalysis(taskIdentifier) {
     try {

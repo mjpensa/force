@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js';
-import { safeGetElement, findTodayColumnPosition, buildLegend, PerformanceTimer } from './Utils.js';
+import { safeGetElement, findTodayColumnPosition, buildLegend, PerformanceTimer, createButton, fetchJSON } from './Utils.js';
 import { DraggableGantt } from './DraggableGantt.js';
 import { ResizableGantt } from './ResizableGantt.js';
 import { ContextMenu } from './ContextMenu.js';
@@ -42,33 +42,37 @@ export class GanttChart {
     this._addFooterSVG();
     const exportContainer = document.createElement('div');
     exportContainer.className = 'export-container';
-    const editModeBtn = document.createElement('button');
-    editModeBtn.id = 'edit-mode-toggle-btn';
-    editModeBtn.className = 'edit-mode-toggle-button';
-    editModeBtn.textContent = this.isEditMode ? '🔓 Edit Mode: ON' : '🔒 Edit Mode: OFF';
-    editModeBtn.title = 'Toggle edit mode to enable/disable chart customization';
-    editModeBtn.setAttribute('aria-label', 'Toggle edit mode to enable or disable chart customization');
-    editModeBtn.setAttribute('aria-pressed', this.isEditMode ? 'true' : 'false');
-    editModeBtn.style.backgroundColor = this.isEditMode ? '#50AF7B' : '#BA3930';
+    const editModeBtn = createButton({
+      id: 'edit-mode-toggle-btn',
+      className: 'edit-mode-toggle-button',
+      text: this.isEditMode ? '🔓 Edit Mode: ON' : '🔒 Edit Mode: OFF',
+      title: 'Toggle edit mode to enable/disable chart customization',
+      ariaLabel: 'Toggle edit mode to enable or disable chart customization',
+      style: { backgroundColor: this.isEditMode ? '#50AF7B' : '#BA3930' },
+      attributes: { 'aria-pressed': this.isEditMode ? 'true' : 'false' }
+    });
     exportContainer.appendChild(editModeBtn);
-    const exportBtn = document.createElement('button');
-    exportBtn.id = 'export-png-btn';
-    exportBtn.className = 'export-button';
-    exportBtn.textContent = 'Export as PNG';
-    exportBtn.setAttribute('aria-label', 'Export Gantt chart as PNG image');
+    const exportBtn = createButton({
+      id: 'export-png-btn',
+      className: 'export-button',
+      text: 'Export as PNG',
+      ariaLabel: 'Export Gantt chart as PNG image'
+    });
     exportContainer.appendChild(exportBtn);
-    const svgExportBtn = document.createElement('button');
-    svgExportBtn.id = 'export-svg-btn';
-    svgExportBtn.className = 'export-button';
-    svgExportBtn.textContent = 'Export as SVG';
-    svgExportBtn.setAttribute('aria-label', 'Export Gantt chart as SVG vector image');
+    const svgExportBtn = createButton({
+      id: 'export-svg-btn',
+      className: 'export-button',
+      text: 'Export as SVG',
+      ariaLabel: 'Export Gantt chart as SVG vector image'
+    });
     exportContainer.appendChild(svgExportBtn);
-    const copyUrlBtn = document.createElement('button');
-    copyUrlBtn.id = 'copy-url-btn';
-    copyUrlBtn.className = 'copy-url-button';
-    copyUrlBtn.textContent = '🔗 Copy Share URL';
-    copyUrlBtn.title = 'Copy shareable URL to clipboard (chart is saved to database)';
-    copyUrlBtn.setAttribute('aria-label', 'Copy shareable URL to clipboard');
+    const copyUrlBtn = createButton({
+      id: 'copy-url-btn',
+      className: 'copy-url-button',
+      text: '🔗 Copy Share URL',
+      title: 'Copy shareable URL to clipboard (chart is saved to database)',
+      ariaLabel: 'Copy shareable URL to clipboard'
+    });
     exportContainer.appendChild(copyUrlBtn);
     this.container.appendChild(this.chartWrapper);
     this.container.appendChild(exportContainer);
@@ -727,41 +731,14 @@ export class GanttChart {
       }
     });
   }
-  _createExportLoadingOverlay() {
+  _createExportLoadingOverlay(messageText = 'Generating high-resolution PNG...') {
     const overlay = document.createElement('div');
     overlay.className = 'export-loading-overlay';
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      color: white;
-      font-family: 'Work Sans', sans-serif;
-    `;
     const spinner = document.createElement('div');
     spinner.className = 'export-spinner';
-    spinner.style.cssText = `
-      width: 50px;
-      height: 50px;
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top-color: #50AF7B;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
-    `;
     const message = document.createElement('div');
-    message.textContent = 'Generating high-resolution PNG...';
-    message.style.cssText = `
-      font-size: 16px;
-      font-weight: 500;
-    `;
+    message.className = 'export-loading-message';
+    message.textContent = messageText;
     overlay.appendChild(spinner);
     overlay.appendChild(message);
     return overlay;
@@ -776,7 +753,7 @@ export class GanttChart {
       const startTime = performance.now();
       exportBtn.textContent = 'Exporting...';
       exportBtn.disabled = true;
-      const loadingOverlay = this._createSvgExportLoadingOverlay();
+      const loadingOverlay = this._createExportLoadingOverlay('Generating vector SVG...');
       document.body.appendChild(loadingOverlay);
       try {
         await new Promise(resolve => requestAnimationFrame(resolve));
@@ -831,45 +808,6 @@ export class GanttChart {
         alert('Error exporting chart as SVG. See console for details.');
       }
     });
-  }
-  _createSvgExportLoadingOverlay() {
-    const overlay = document.createElement('div');
-    overlay.className = 'export-loading-overlay';
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      color: white;
-      font-family: 'Work Sans', sans-serif;
-    `;
-    const spinner = document.createElement('div');
-    spinner.className = 'export-spinner';
-    spinner.style.cssText = `
-      width: 50px;
-      height: 50px;
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top-color: #50AF7B;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
-    `;
-    const message = document.createElement('div');
-    message.textContent = 'Generating vector SVG...';
-    message.style.cssText = `
-      font-size: 16px;
-      font-weight: 500;
-    `;
-    overlay.appendChild(spinner);
-    overlay.appendChild(message);
-    return overlay;
   }
   _addCopyUrlListener() {
     const copyUrlBtn = document.getElementById('copy-url-btn');
@@ -998,54 +936,27 @@ export class GanttChart {
     }
     const onTaskUpdate = async (taskInfo) => {
       if (taskInfo.sessionId) {
-        try {
-          const response = await fetch('/update-task-dates', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(taskInfo)
-          });
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-          }
-          const result = await response.json();
-        } catch (error) {
-          throw error; // Re-throw to trigger rollback in DraggableGantt
-        }
+        await fetchJSON('/update-task-dates', {
+          method: 'POST',
+          body: JSON.stringify(taskInfo)
+        });
       }
     };
     const onTaskResize = async (taskInfo) => {
       if (taskInfo.sessionId) {
-        try {
-          const response = await fetch('/update-task-dates', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(taskInfo)
-          });
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-          }
-          const result = await response.json();
-        } catch (error) {
-          throw error; // Re-throw to trigger rollback in ResizableGantt
-        }
+        await fetchJSON('/update-task-dates', {
+          method: 'POST',
+          body: JSON.stringify(taskInfo)
+        });
       }
     };
     const onColorChange = async (taskInfo) => {
       if (taskInfo.sessionId) {
-        try {
-          const response = await fetch('/update-task-color', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(taskInfo)
-          });
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-          }
-          const result = await response.json();
-          this._refreshLegend();
-        } catch (error) {
-          throw error; // Re-throw to trigger rollback in ContextMenu
-        }
+        await fetchJSON('/update-task-color', {
+          method: 'POST',
+          body: JSON.stringify(taskInfo)
+        });
+        this._refreshLegend();
       }
     };
     this.draggableGantt = new DraggableGantt(
