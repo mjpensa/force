@@ -3,6 +3,8 @@ import { safeGetElement, findTodayColumnPosition, buildLegend, PerformanceTimer,
 import { DraggableGantt } from './DraggableGantt.js';
 import { ResizableGantt } from './ResizableGantt.js';
 import { ContextMenu } from './ContextMenu.js';
+import { GanttExporter } from './GanttExporter.js';
+import { GanttEditor } from './GanttEditor.js';
 export class GanttChart {
   constructor(container, ganttData, footerSVG, onTaskClick) {
     this.container = container;
@@ -11,12 +13,17 @@ export class GanttChart {
     this.onTaskClick = onTaskClick;
     this.chartWrapper = null;
     this.gridElement = null;
-    this.draggableGantt = null; // Phase 5: Drag-to-edit functionality
-    this.resizableGantt = null; // Phase 2: Bar resizing functionality
-    this.contextMenu = null; // Phase 5: Context menu for color changing
-    this.isEditMode = false; // Edit mode toggle - default is read-only
-    this.titleElement = null; // Reference to the title element for edit mode
-    this.legendElement = null; // Reference to the legend element for edit mode
+    this.draggableGantt = null;
+    this.resizableGantt = null;
+    this.contextMenu = null;
+    this.titleElement = null;
+    this.legendElement = null;
+    this.exporter = null;
+    this.editor = null;
+  }
+
+  get isEditMode() {
+    return this.editor ? this.editor.isEditMode : false;
   }
   render() {
     const renderTimer = new PerformanceTimer('Gantt Chart Render');
@@ -76,17 +83,16 @@ export class GanttChart {
     this.container.appendChild(this.chartWrapper);
     this.container.appendChild(exportContainer);
     this._addResearchAnalysis();
-    this._addEditModeToggleListener();
-    this._addExportListener(); // PNG export
-    this._addSvgExportListener(); // SVG export
-    this._addCopyUrlListener(); // FEATURE #8: Copy share URL
-    this._addKeyboardShortcuts(); // ADVANCED GANTT: Keyboard navigation
+    this._initializeExporter();
+    this._initializeEditor();
+    this._addKeyboardShortcuts();
     const today = new Date();
     this.addTodayLine(today);
     this._updateStickyHeaderPosition();
     this._initializeDragToEdit();
-    if (this.isEditMode) {
-      this._enableAllEditFeatures();
+    this._updateEditorRefs();
+    if (this.isEditMode && this.editor) {
+      this.editor.enableAllEditFeatures();
     }
     renderTimer.mark('All components and listeners initialized');
     renderTimer.end();
@@ -124,8 +130,8 @@ export class GanttChart {
     this.titleElement.style.borderRadius = '0'; // Remove border radius since container has it
     this.titleElement.addEventListener('dblclick', (e) => {
       e.stopPropagation();
-      if (this.isEditMode) {
-        this._makeChartTitleEditable();
+      if (this.isEditMode && this.editor) {
+        this.editor.makeChartTitleEditable();
       }
     });
     this.titleContainer.appendChild(this.titleElement);
@@ -202,7 +208,7 @@ export class GanttChart {
         addBtn.textContent = '+';
         addBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          this.addNewTaskRow(dataIndex);
+          if (this.editor) this.editor.addNewTaskRow(dataIndex);
         });
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'row-action-btn delete-task';
@@ -210,7 +216,7 @@ export class GanttChart {
         deleteBtn.textContent = '×';
         deleteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          this.removeTaskRow(dataIndex);
+          if (this.editor) this.editor.removeTaskRow(dataIndex);
         });
         actionsDiv.appendChild(addBtn);
         actionsDiv.appendChild(deleteBtn);
@@ -220,8 +226,8 @@ export class GanttChart {
       labelEl.setAttribute('data-task-index', dataIndex);
       labelContent.addEventListener('dblclick', (e) => {
         e.stopPropagation();
-        if (this.isEditMode) {
-          this._makeEditable(labelContent, dataIndex);
+        if (this.isEditMode && this.editor) {
+          this.editor.makeEditable(labelContent, dataIndex);
         }
       });
       const barAreaEl = this._createBarArea(row, numCols, isSwimlane, dataIndex);
@@ -445,8 +451,8 @@ export class GanttChart {
       label.textContent = item.label;
       label.addEventListener('dblclick', (e) => {
         e.stopPropagation();
-        if (this.isEditMode) {
-          this._makeLegendLabelEditable(label, index);
+        if (this.isEditMode && this.editor) {
+          this.editor.makeLegendLabelEditable(label, index);
         }
       });
       labelWrapper.appendChild(label);
@@ -659,209 +665,44 @@ export class GanttChart {
     div.textContent = text;
     return div.innerHTML;
   }
-  _addEditModeToggleListener() {
-    const editModeBtn = document.getElementById('edit-mode-toggle-btn');
-    if (!editModeBtn) {
-      return;
-    }
-    editModeBtn.addEventListener('click', () => {
-      this.isEditMode = !this.isEditMode;
-      editModeBtn.textContent = this.isEditMode ? '🔓 Edit Mode: ON' : '🔒 Edit Mode: OFF';
-      editModeBtn.style.backgroundColor = this.isEditMode ? '#50AF7B' : '#BA3930';
-      editModeBtn.setAttribute('aria-pressed', this.isEditMode ? 'true' : 'false');
-      if (this.isEditMode) {
-        this._enableAllEditFeatures();
-        this._announceToScreenReader('Edit mode enabled. You can now drag, resize, and customize chart elements.');
-      } else {
-        this._disableAllEditFeatures();
-        this._announceToScreenReader('Edit mode disabled. Chart is now read-only.');
-      }
-    });
-  }
-  _addExportListener() {
-    const exportBtn = document.getElementById('export-png-btn');
+  _initializeExporter() {
     const chartContainer = document.getElementById('gantt-chart-container');
-    if (!exportBtn || !chartContainer) {
-      return;
-    }
-    exportBtn.addEventListener('click', async () => {
-      const startTime = performance.now();
-      exportBtn.textContent = 'Exporting...';
-      exportBtn.disabled = true;
-      const loadingOverlay = this._createExportLoadingOverlay();
-      document.body.appendChild(loadingOverlay);
-      try {
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        const rect = chartContainer.getBoundingClientRect();
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-        const canvas = await html2canvas(chartContainer, {
-          useCORS: true,
-          logging: false,
-          scale: 2, // Render at 2x resolution for quality
-          allowTaint: false,
-          backgroundColor: null,
-          scrollY: -scrollY,
-          scrollX: -scrollX,
-          windowWidth: chartContainer.scrollWidth,
-          windowHeight: chartContainer.scrollHeight,
-          width: chartContainer.scrollWidth,
-          height: chartContainer.scrollHeight
-        });
-        const link = document.createElement('a');
-        link.download = 'gantt-chart.png';
-        link.href = canvas.toDataURL('image/png');
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        const duration = Math.round(performance.now() - startTime);
-        exportBtn.textContent = 'Export as PNG';
-        exportBtn.disabled = false;
-        document.body.removeChild(loadingOverlay);
-      } catch (err) {
-        exportBtn.textContent = 'Export as PNG';
-        exportBtn.disabled = false;
-        if (loadingOverlay.parentNode) {
-          document.body.removeChild(loadingOverlay);
-        }
-        alert('Error exporting chart. See console for details.');
-      }
+    if (!chartContainer) return;
+
+    this.exporter = new GanttExporter(chartContainer, {
+      onAnnounce: (msg) => this._announceToScreenReader(msg)
     });
+    this.exporter.initializeListeners();
   }
-  _createExportLoadingOverlay(messageText = 'Generating high-resolution PNG...') {
-    const overlay = document.createElement('div');
-    overlay.className = 'export-loading-overlay';
-    const spinner = document.createElement('div');
-    spinner.className = 'export-spinner';
-    const message = document.createElement('div');
-    message.className = 'export-loading-message';
-    message.textContent = messageText;
-    overlay.appendChild(spinner);
-    overlay.appendChild(message);
-    return overlay;
-  }
-  _addSvgExportListener() {
-    const exportBtn = document.getElementById('export-svg-btn');
-    const chartContainer = document.getElementById('gantt-chart-container');
-    if (!exportBtn || !chartContainer) {
-      return;
+
+  _initializeEditor() {
+    if (!this.editor) {
+      this.editor = new GanttEditor({
+        ganttData: this.ganttData,
+        gridElement: this.gridElement,
+        titleElement: this.titleElement,
+        legendElement: this.legendElement,
+        draggableGantt: this.draggableGantt,
+        resizableGantt: this.resizableGantt,
+        contextMenu: this.contextMenu,
+        onRender: () => this.render(),
+        onAnnounce: (msg) => this._announceToScreenReader(msg)
+      });
     }
-    exportBtn.addEventListener('click', async () => {
-      const startTime = performance.now();
-      exportBtn.textContent = 'Exporting...';
-      exportBtn.disabled = true;
-      const loadingOverlay = this._createExportLoadingOverlay('Generating vector SVG...');
-      document.body.appendChild(loadingOverlay);
-      try {
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        const bbox = chartContainer.getBoundingClientRect();
-        const width = bbox.width;
-        const height = bbox.height;
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-        const canvas = await html2canvas(chartContainer, {
-          useCORS: true,
-          logging: false,
-          scale: 2,
-          allowTaint: false,
-          backgroundColor: null,
-          scrollY: -scrollY,
-          scrollX: -scrollX,
-          windowWidth: chartContainer.scrollWidth,
-          windowHeight: chartContainer.scrollHeight,
-          width: chartContainer.scrollWidth,
-          height: chartContainer.scrollHeight
-        });
-        const imageData = canvas.toDataURL('image/png');
-        const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-     width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <title>Gantt Chart Export</title>
-  <desc>AI-generated Gantt chart exported as SVG with embedded raster image</desc>
-  <image x="0" y="0" width="${width}" height="${height}"
-         xlink:href="${imageData}"
-         preserveAspectRatio="xMidYMid meet"/>
-</svg>`;
-        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = 'gantt-chart.svg';
-        link.href = url;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        const duration = Math.round(performance.now() - startTime);
-        exportBtn.textContent = 'Export as SVG';
-        exportBtn.disabled = false;
-        document.body.removeChild(loadingOverlay);
-      } catch (err) {
-        exportBtn.textContent = 'Export as SVG';
-        exportBtn.disabled = false;
-        if (loadingOverlay.parentNode) {
-          document.body.removeChild(loadingOverlay);
-        }
-        alert('Error exporting chart as SVG. See console for details.');
-      }
-    });
+    this.editor.initializeToggleListener();
   }
-  _addCopyUrlListener() {
-    const copyUrlBtn = document.getElementById('copy-url-btn');
-    if (!copyUrlBtn) {
-      return;
+
+  _updateEditorRefs() {
+    if (this.editor) {
+      this.editor.updateRefs({
+        gridElement: this.gridElement,
+        titleElement: this.titleElement,
+        legendElement: this.legendElement,
+        draggableGantt: this.draggableGantt,
+        resizableGantt: this.resizableGantt,
+        contextMenu: this.contextMenu
+      });
     }
-    copyUrlBtn.addEventListener('click', async () => {
-      const currentUrl = window.location.href;
-      try {
-        await navigator.clipboard.writeText(currentUrl);
-        const originalText = copyUrlBtn.textContent;
-        copyUrlBtn.textContent = '✓ URL Copied!';
-        copyUrlBtn.style.backgroundColor = '#50AF7B'; // Green
-        this._showNotification('Chart URL copied to clipboard! Share this link to give others access to this chart.', 'success');
-        this._announceToScreenReader('Chart URL copied to clipboard');
-        setTimeout(() => {
-          copyUrlBtn.textContent = originalText;
-          copyUrlBtn.style.backgroundColor = ''; // Reset to default
-        }, 2000);
-      } catch (err) {
-        alert(`Copy this URL to share:\n\n${currentUrl}`);
-        this._showNotification('Could not copy URL automatically. Please copy it from the address bar.', 'error');
-      }
-    });
-  }
-  _showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `chart-notification chart-notification-${type}`;
-    notification.textContent = message;
-    notification.setAttribute('role', 'alert');
-    notification.setAttribute('aria-live', 'polite');
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 16px 24px;
-      background: ${type === 'success' ? '#50AF7B' : type === 'error' ? '#DC3545' : '#1976D2'};
-      color: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      z-index: 10001;
-      max-width: 400px;
-      font-family: 'Work Sans', sans-serif;
-      font-size: 14px;
-      line-height: 1.5;
-      animation: slideInRight 0.3s ease-out;
-    `;
-    document.body.appendChild(notification);
-    setTimeout(() => {
-      notification.style.animation = 'slideOutRight 0.3s ease-in';
-      setTimeout(() => {
-        if (notification.parentNode) {
-          document.body.removeChild(notification);
-        }
-      }, 300);
-    }, 5000);
   }
   _addKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
@@ -996,193 +837,6 @@ export class GanttChart {
       }
     });
   }
-  _enableAllEditFeatures() {
-      draggable: !!this.draggableGantt,
-      resizable: !!this.resizableGantt,
-      contextMenu: !!this.contextMenu
-    });
-    if (this.draggableGantt) {
-      this.draggableGantt.enableDragging();
-    }
-    if (this.resizableGantt) {
-      this.resizableGantt.enableResizing();
-    }
-    if (this.contextMenu) {
-      this.contextMenu.enable();
-    }
-    this.gridElement.classList.add('edit-mode-enabled');
-    this.gridElement.setAttribute('aria-readonly', 'false');
-    if (this.titleElement) {
-      this.titleElement.classList.add('edit-mode-enabled');
-    }
-    if (this.legendElement) {
-      this.legendElement.classList.add('edit-mode-enabled');
-    }
-  }
-  _disableAllEditFeatures() {
-    if (this.draggableGantt) {
-      this.draggableGantt.disableDragging();
-    }
-    if (this.resizableGantt) {
-      this.resizableGantt.disableResizing();
-    }
-    if (this.contextMenu) {
-      this.contextMenu.disable();
-    }
-    this.gridElement.classList.remove('edit-mode-enabled');
-    this.gridElement.setAttribute('aria-readonly', 'true');
-    if (this.titleElement) {
-      this.titleElement.classList.remove('edit-mode-enabled');
-    }
-    if (this.legendElement) {
-      this.legendElement.classList.remove('edit-mode-enabled');
-    }
-    const bars = this.gridElement.querySelectorAll('.gantt-bar');
-    bars.forEach(bar => {
-      bar.style.cursor = 'pointer';
-    });
-  }
-  enableDragToEdit() {
-    if (this.draggableGantt) {
-      this.draggableGantt.enableDragging();
-    }
-  }
-  disableDragToEdit() {
-    if (this.draggableGantt) {
-      this.draggableGantt.disableDragging();
-    }
-  }
-  addNewTaskRow(afterIndex) {
-    const newTask = {
-      title: 'New Task',
-      entity: 'New Entity',
-      isSwimlane: false,
-      bar: {
-        startCol: 2,
-        endCol: 4,
-        color: 'mid-grey'
-      }
-    };
-    this.ganttData.data.splice(afterIndex + 1, 0, newTask);
-    this.render();
-  }
-  removeTaskRow(taskIndex) {
-    const taskData = this.ganttData.data[taskIndex];
-    if (!taskData) {
-      return;
-    }
-    if (taskData.isSwimlane) {
-      return;
-    }
-    if (!confirm(`Delete task "${taskData.title}"?`)) {
-      return;
-    }
-    this.ganttData.data.splice(taskIndex, 1);
-    this.render();
-  }
-  _updateRowIndices() {
-    const allLabels = Array.from(this.gridElement.querySelectorAll('.gantt-row-label'));
-    const allBarAreas = Array.from(this.gridElement.querySelectorAll('.gantt-bar-area'));
-    allLabels.forEach((label, index) => {
-      label.setAttribute('data-task-index', index);
-      label.setAttribute('data-row-id', `row-${index}`);
-    });
-    allBarAreas.forEach((barArea, index) => {
-      barArea.setAttribute('data-task-index', index);
-      barArea.setAttribute('data-row-id', `row-${index}`);
-    });
-  }
-  _makeEditable(labelElement, taskIndex) {
-    const originalText = labelElement.textContent;
-    labelElement.setAttribute('contenteditable', 'true');
-    labelElement.classList.add('editing');
-    labelElement.focus();
-    const range = document.createRange();
-    range.selectNodeContents(labelElement);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    const saveChanges = async () => {
-      labelElement.setAttribute('contenteditable', 'false');
-      labelElement.classList.remove('editing');
-      const newText = labelElement.textContent.trim();
-      labelElement.textContent = newText;
-      if (newText && newText !== originalText) {
-        this.ganttData.data[taskIndex].title = newText;
-      } else {
-        labelElement.textContent = originalText;
-      }
-    };
-    const cancelEdit = () => {
-      labelElement.setAttribute('contenteditable', 'false');
-      labelElement.classList.remove('editing');
-      labelElement.textContent = originalText;
-    };
-    const blurHandler = () => {
-      saveChanges();
-      labelElement.removeEventListener('blur', blurHandler);
-    };
-    labelElement.addEventListener('blur', blurHandler);
-    const keyHandler = (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        labelElement.blur(); // Trigger save
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        labelElement.removeEventListener('blur', blurHandler);
-        cancelEdit();
-        labelElement.removeEventListener('keydown', keyHandler);
-      }
-    };
-    labelElement.addEventListener('keydown', keyHandler);
-  }
-  _makeChartTitleEditable() {
-    if (!this.titleElement) return;
-    const originalText = this.titleElement.textContent;
-    this.titleElement.setAttribute('contenteditable', 'true');
-    this.titleElement.classList.add('editing');
-    this.titleElement.focus();
-    const range = document.createRange();
-    range.selectNodeContents(this.titleElement);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    const saveChanges = async () => {
-      this.titleElement.setAttribute('contenteditable', 'false');
-      this.titleElement.classList.remove('editing');
-      const newText = this.titleElement.textContent.trim();
-      this.titleElement.textContent = newText;
-      if (newText && newText !== originalText) {
-        this.ganttData.title = newText;
-      } else {
-        this.titleElement.textContent = originalText;
-      }
-    };
-    const cancelEdit = () => {
-      this.titleElement.setAttribute('contenteditable', 'false');
-      this.titleElement.classList.remove('editing');
-      this.titleElement.textContent = originalText;
-    };
-    const blurHandler = () => {
-      saveChanges();
-      this.titleElement.removeEventListener('blur', blurHandler);
-    };
-    this.titleElement.addEventListener('blur', blurHandler);
-    const keyHandler = (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.titleElement.blur(); // Trigger save
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        this.titleElement.removeEventListener('blur', blurHandler);
-        cancelEdit();
-        this.titleElement.removeEventListener('keydown', keyHandler);
-      }
-    };
-    this.titleElement.addEventListener('keydown', keyHandler);
-  }
   _updateLegendWithUsedColors() {
     const usedColors = new Set();
     this.ganttData.data.forEach(row => {
@@ -1205,50 +859,5 @@ export class GanttChart {
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
-  }
-  _makeLegendLabelEditable(labelElement, legendIndex) {
-    const originalText = labelElement.textContent;
-    labelElement.setAttribute('contenteditable', 'true');
-    labelElement.classList.add('editing');
-    labelElement.focus();
-    const range = document.createRange();
-    range.selectNodeContents(labelElement);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    const saveChanges = async () => {
-      labelElement.setAttribute('contenteditable', 'false');
-      labelElement.classList.remove('editing');
-      const newText = labelElement.textContent.trim();
-      labelElement.textContent = newText;
-      if (newText && newText !== originalText) {
-        this.ganttData.legend[legendIndex].label = newText;
-      } else {
-        labelElement.textContent = originalText;
-      }
-    };
-    const cancelEdit = () => {
-      labelElement.setAttribute('contenteditable', 'false');
-      labelElement.classList.remove('editing');
-      labelElement.textContent = originalText;
-    };
-    const blurHandler = () => {
-      saveChanges();
-      labelElement.removeEventListener('blur', blurHandler);
-    };
-    labelElement.addEventListener('blur', blurHandler);
-    const keyHandler = (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        labelElement.blur(); // Trigger save
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        labelElement.removeEventListener('blur', blurHandler);
-        cancelEdit();
-        labelElement.removeEventListener('keydown', keyHandler);
-      }
-    };
-    labelElement.addEventListener('keydown', keyHandler);
   }
 }
