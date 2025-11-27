@@ -60,8 +60,12 @@ export default [
         Headers: 'readonly',
         Request: 'readonly',
         Response: 'readonly',
+        // Drag and drop API
+        DataTransfer: 'readonly',
+        DragEvent: 'readonly',
         // External libraries loaded via CDN
         DOMPurify: 'readonly',
+        html2canvas: 'readonly',
         // Node.js globals
         process: 'readonly',
         Buffer: 'readonly',
