@@ -167,8 +167,13 @@ export class GanttChart {
     requestAnimationFrame(() => {
       this._applyStickyHeaderPosition();
       if (window.ResizeObserver && !this._titleResizeObserver) {
+        // Debounced callback to prevent excessive updates during resize
+        let resizeTimeout;
         this._titleResizeObserver = new ResizeObserver(() => {
-          this._applyStickyHeaderPosition();
+          if (resizeTimeout) clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            this._applyStickyHeaderPosition();
+          }, 16); // ~1 frame at 60fps
         });
         this._titleResizeObserver.observe(this.titleContainer);
       }
