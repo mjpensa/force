@@ -95,8 +95,9 @@ export class GanttChart {
     logoImg.style.height = `${CONFIG.SIZES.LOGO_HEIGHT}px`;
     logoImg.style.width = 'auto';
     logoImg.style.flexShrink = '0'; // Prevent logo from shrinking
-    if (this.titleContainer) {
-      this.titleContainer.appendChild(logoImg);
+    if (this.titleContainer && this.titleElement) {
+      // Insert logo before title to position it on the left
+      this.titleContainer.insertBefore(logoImg, this.titleElement);
     }
   }
   _addTitle() {
