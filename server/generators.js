@@ -5,6 +5,22 @@ import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
 import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
 import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompts/research-analysis.js';
 import { PerformanceLogger, createTimer, globalMetrics } from './utils/performanceLogger.js';
+import { getCachedContent, setCachedContent, getCacheMetrics } from './cache/contentCache.js';
+
+// Feature flag for caching - can be disabled for testing
+const ENABLE_CACHE = true;
+
+/**
+ * Combine research files into a single content string for cache key
+ * @param {Array} researchFiles - Array of { filename, content } objects
+ * @returns {string} Combined content
+ */
+function combineResearchContent(researchFiles) {
+  return researchFiles
+    .map(f => `${f.filename}:${f.content}`)
+    .sort() // Sort for consistent hashing regardless of file order
+    .join('\n---\n');
+}
 
 // Initialize Gemini API (using API_KEY from environment to match server/config.js)
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
@@ -262,36 +278,123 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
   }
 }
 async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
+  const contentType = 'roadmap';
+
   try {
+    // Check cache first
+    if (ENABLE_CACHE) {
+      const combinedContent = combineResearchContent(researchFiles);
+      const cached = getCachedContent(contentType, combinedContent, userPrompt);
+      if (cached) {
+        if (perfLogger) {
+          perfLogger.setMetadata(`cache-hit-${contentType}`, true);
+        }
+        return { success: true, data: cached, _cached: true };
+      }
+    }
+
     const prompt = generateRoadmapPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger);
+
+    // Store in cache
+    if (ENABLE_CACHE && data) {
+      const combinedContent = combineResearchContent(researchFiles);
+      setCachedContent(contentType, combinedContent, userPrompt, data);
+    }
+
     return { success: true, data };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
+
 async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
+  const contentType = 'slides';
+
   try {
+    // Check cache first
+    if (ENABLE_CACHE) {
+      const combinedContent = combineResearchContent(researchFiles);
+      const cached = getCachedContent(contentType, combinedContent, userPrompt);
+      if (cached) {
+        if (perfLogger) {
+          perfLogger.setMetadata(`cache-hit-${contentType}`, true);
+        }
+        return { success: true, data: cached, _cached: true };
+      }
+    }
+
     const prompt = generateSlidesPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger);
+
+    // Store in cache
+    if (ENABLE_CACHE && data) {
+      const combinedContent = combineResearchContent(researchFiles);
+      setCachedContent(contentType, combinedContent, userPrompt, data);
+    }
+
     return { success: true, data };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
+
 async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
+  const contentType = 'document';
+
   try {
+    // Check cache first
+    if (ENABLE_CACHE) {
+      const combinedContent = combineResearchContent(researchFiles);
+      const cached = getCachedContent(contentType, combinedContent, userPrompt);
+      if (cached) {
+        if (perfLogger) {
+          perfLogger.setMetadata(`cache-hit-${contentType}`, true);
+        }
+        return { success: true, data: cached, _cached: true };
+      }
+    }
+
     const prompt = generateDocumentPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger);
+
+    // Store in cache
+    if (ENABLE_CACHE && data) {
+      const combinedContent = combineResearchContent(researchFiles);
+      setCachedContent(contentType, combinedContent, userPrompt, data);
+    }
+
     return { success: true, data };
   } catch (error) {
     return { success: false, error: error.message };
   }
 }
+
 async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = null) {
+  const contentType = 'researchAnalysis';
+
   try {
+    // Check cache first
+    if (ENABLE_CACHE) {
+      const combinedContent = combineResearchContent(researchFiles);
+      const cached = getCachedContent(contentType, combinedContent, userPrompt);
+      if (cached) {
+        if (perfLogger) {
+          perfLogger.setMetadata(`cache-hit-${contentType}`, true);
+        }
+        return { success: true, data: cached, _cached: true };
+      }
+    }
+
     const prompt = generateResearchAnalysisPrompt(userPrompt, researchFiles);
     const data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger);
+
+    // Store in cache
+    if (ENABLE_CACHE && data) {
+      const combinedContent = combineResearchContent(researchFiles);
+      setCachedContent(contentType, combinedContent, userPrompt, data);
+    }
+
     return { success: true, data };
   } catch (error) {
     return { success: false, error: error.message };
@@ -392,7 +495,7 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
 }
 
 // Export metrics for monitoring endpoints
-export { globalMetrics, apiQueue };
+export { globalMetrics, apiQueue, getCacheMetrics };
 
 /**
  * Generate all content types with streaming - emits results as each completes

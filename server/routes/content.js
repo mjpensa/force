@@ -14,10 +14,11 @@
 import express from 'express';
 import mammoth from 'mammoth';
 import crypto from 'crypto';
-import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue } from '../generators.js';
+import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue, getCacheMetrics } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { generatePptx } from '../templates/ppt-export-service.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
+import { generateETag, clearAllCaches, clearExpiredEntries } from '../cache/contentCache.js';
 
 const router = express.Router();
 
@@ -635,13 +636,30 @@ router.get('/:sessionId/:viewType', (req, res) => {
 
     // Performance: Add cache control headers for completed content
     if (contentResult.success && contentResult.data) {
-      // Cache successful responses for 5 minutes on the client
-      res.set('Cache-Control', 'private, max-age=300');
-      res.set('ETag', `"${sessionId}-${viewType}-${session.lastAccessed}"`);
+      // Generate content-based ETag for reliable caching
+      const dataHash = crypto.createHash('md5')
+        .update(JSON.stringify(contentResult.data))
+        .digest('hex')
+        .substring(0, 16);
+      const etag = `"${viewType}-${dataHash}"`;
+
+      // Check for conditional request (If-None-Match)
+      const clientEtag = req.get('If-None-Match');
+      if (clientEtag === etag) {
+        // Content unchanged - return 304 Not Modified
+        res.set('ETag', etag);
+        res.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=3600');
+        return res.status(304).end();
+      }
+
+      // Cache successful responses with improved headers
+      res.set('Cache-Control', 'private, max-age=300, stale-while-revalidate=3600');
+      res.set('ETag', etag);
 
       return res.json({
         status: 'completed',
-        data: contentResult.data
+        data: contentResult.data,
+        _cached: contentResult._cached || false  // Indicate if result was from cache
       });
     } else {
       // Don't cache error responses
@@ -807,15 +825,59 @@ router.get('/metrics', (req, res) => {
   try {
     const metrics = globalMetrics.getAggregatedMetrics();
     const queueMetrics = apiQueue.getMetrics();
+    const cacheMetrics = getCacheMetrics();
     res.json({
       status: 'ok',
       metrics,
       queue: queueMetrics,
+      cache: cacheMetrics.aggregate,
       sessionCount: sessions.size,
       maxSessions: MAX_SESSIONS
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve metrics', details: error.message });
+  }
+});
+
+/**
+ * GET /api/content/metrics/cache
+ * Returns detailed cache metrics by content type
+ */
+router.get('/metrics/cache', (req, res) => {
+  try {
+    const cacheMetrics = getCacheMetrics();
+    res.json({
+      status: 'ok',
+      ...cacheMetrics
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve cache metrics', details: error.message });
+  }
+});
+
+/**
+ * POST /api/content/cache/clear
+ * Clears all caches (admin endpoint)
+ */
+router.post('/cache/clear', (req, res) => {
+  try {
+    clearAllCaches();
+    res.json({ status: 'ok', message: 'All caches cleared' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear caches', details: error.message });
+  }
+});
+
+/**
+ * POST /api/content/cache/clear-expired
+ * Clears only expired cache entries
+ */
+router.post('/cache/clear-expired', (req, res) => {
+  try {
+    const cleared = clearExpiredEntries();
+    res.json({ status: 'ok', message: `Cleared ${cleared} expired entries` });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear expired entries', details: error.message });
   }
 });
 
