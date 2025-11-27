@@ -47,6 +47,7 @@ export const CONFIG = {
     BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
     RETRY_COUNT: 3,
     RETRY_BASE_DELAY_MS: 1000, // 1 second base delay
+    TIMEOUT_MS: 90000, // 90 second timeout to prevent 502 gateway errors
     MAX_OUTPUT_TOKENS_CHART: 65536,
     MAX_OUTPUT_TOKENS_ANALYSIS: 65536,
     MAX_OUTPUT_TOKENS_QA: 8192,

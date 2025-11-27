@@ -56,11 +56,24 @@ export async function retryWithBackoff(operation, retryCount = CONFIG.API.RETRY_
 }
 export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_COUNT, onRetry = null) {
   return retryWithBackoff(async () => {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`API request timed out after ${CONFIG.API.TIMEOUT_MS / 1000} seconds`);
+      }
+      throw error;
+    }
+    clearTimeout(timeoutId);
     if (!response.ok) {
       let errorText = 'Unknown error';
       let errorData = null;
@@ -140,11 +153,24 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
 }
 export async function callGeminiForText(payload, retryCount = CONFIG.API.RETRY_COUNT) {
   return retryWithBackoff(async () => {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`API request timed out after ${CONFIG.API.TIMEOUT_MS / 1000} seconds`);
+      }
+      throw error;
+    }
+    clearTimeout(timeoutId);
     if (!response.ok) {
       let errorText = 'Unknown error';
       let errorData = null;
