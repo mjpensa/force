@@ -1,4 +1,3 @@
-import { CONFIG } from './config.js';
 import { PerformanceTimer, fetchJSON } from './Utils.js';
 import {
   DraggableGantt,

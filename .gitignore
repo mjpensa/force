@@ -34,3 +34,6 @@ data/*.db-wal
 data/*.db-journal
 *.sqlite
 *.sqlite3
+
+# Code analysis reports
+reports/

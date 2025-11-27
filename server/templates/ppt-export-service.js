@@ -5,7 +5,7 @@
  */
 
 import PptxGenJS from 'pptxgenjs';
-import { COLORS, FONTS, SLIDE_SIZE, LAYOUTS, DEFAULT_METADATA } from './ppt-template-config.js';
+import { SLIDE_SIZE, LAYOUTS, DEFAULT_METADATA } from './ppt-template-config.js';
 
 // ============================================================================
 // HELPERS

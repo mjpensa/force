@@ -7,9 +7,7 @@ import { SidebarNav } from './components/SidebarNav.js';
 import {
   markPerformance,
   measurePerformance,
-  logPerformanceMetrics,
-  reportWebVitals,
-  debounce
+  reportWebVitals
 } from './components/shared/Performance.js';
 import {
   initAccessibility,
@@ -727,7 +725,7 @@ class ContentViewer {
     return urlParams.get('sessionId');
   }
   _addStatusIndicatorStyles() {
-    return;
+    
   }
   _updateProgressLine() {
   }
