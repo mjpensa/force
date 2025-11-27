@@ -24,6 +24,11 @@ export const CONFIG = {
     MAX_FILE_COUNT: 10,
     MAX_QUESTION_LENGTH: 1000
   },
+  EXPORT: {
+    ASPECT_RATIO: { width: 9, height: 16 }, // Target aspect ratio for exports (9:16 portrait)
+    SCALE: 2, // Resolution scale factor for high-quality exports
+    BACKGROUND_COLOR: '#0c2340' // Background color for padding areas
+  },
   API: {
     TIMEOUT_MS: 120000, // 2 minutes
     RETRY_COUNT: 3,
@@ -83,6 +88,8 @@ Object.freeze(CONFIG);
 Object.freeze(CONFIG.COLORS);
 Object.freeze(CONFIG.COLORS.BAR_COLORS);
 Object.freeze(CONFIG.SIZES);
+Object.freeze(CONFIG.EXPORT);
+Object.freeze(CONFIG.EXPORT.ASPECT_RATIO);
 Object.freeze(CONFIG.API);
 Object.freeze(CONFIG.FILES);
 Object.freeze(CONFIG.UI);

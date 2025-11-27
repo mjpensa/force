@@ -4,10 +4,85 @@
  * Contains: PNG export, SVG export, URL copy, notifications
  */
 
+import { CONFIG } from './config.js';
+
 export class GanttExporter {
   constructor(chartContainer, callbacks = {}) {
     this.chartContainer = chartContainer;
     this.onAnnounce = callbacks.onAnnounce || (() => {});
+  }
+
+  /**
+   * Calculate dimensions for target aspect ratio with perfect scaling
+   * @param {number} sourceWidth - Original content width
+   * @param {number} sourceHeight - Original content height
+   * @returns {Object} Target dimensions and scaling info
+   */
+  _calculateAspectRatioDimensions(sourceWidth, sourceHeight) {
+    const { width: ratioW, height: ratioH } = CONFIG.EXPORT.ASPECT_RATIO;
+    const targetRatio = ratioW / ratioH; // 9:16 = 0.5625
+    const sourceRatio = sourceWidth / sourceHeight;
+
+    let targetWidth, targetHeight, scale, offsetX, offsetY;
+
+    if (sourceRatio > targetRatio) {
+      // Source is wider than target ratio - fit to width, add vertical padding
+      targetWidth = sourceWidth;
+      targetHeight = sourceWidth / targetRatio;
+      scale = 1;
+      offsetX = 0;
+      offsetY = (targetHeight - sourceHeight) / 2;
+    } else {
+      // Source is taller than target ratio - fit to height, add horizontal padding
+      targetHeight = sourceHeight;
+      targetWidth = sourceHeight * targetRatio;
+      scale = 1;
+      offsetX = (targetWidth - sourceWidth) / 2;
+      offsetY = 0;
+    }
+
+    return {
+      targetWidth: Math.ceil(targetWidth),
+      targetHeight: Math.ceil(targetHeight),
+      scale,
+      offsetX: Math.ceil(offsetX),
+      offsetY: Math.ceil(offsetY),
+      sourceWidth,
+      sourceHeight
+    };
+  }
+
+  /**
+   * Create a canvas with the target aspect ratio and scaled content
+   * @param {HTMLCanvasElement} sourceCanvas - The original captured canvas
+   * @returns {HTMLCanvasElement} New canvas with 9:16 aspect ratio
+   */
+  _createAspectRatioCanvas(sourceCanvas) {
+    const dims = this._calculateAspectRatioDimensions(
+      sourceCanvas.width,
+      sourceCanvas.height
+    );
+
+    const targetCanvas = document.createElement('canvas');
+    targetCanvas.width = dims.targetWidth;
+    targetCanvas.height = dims.targetHeight;
+
+    const ctx = targetCanvas.getContext('2d');
+
+    // Fill background with the chart's background color
+    ctx.fillStyle = CONFIG.EXPORT.BACKGROUND_COLOR;
+    ctx.fillRect(0, 0, dims.targetWidth, dims.targetHeight);
+
+    // Draw the source canvas centered on the target canvas
+    ctx.drawImage(
+      sourceCanvas,
+      dims.offsetX,
+      dims.offsetY,
+      dims.sourceWidth,
+      dims.sourceHeight
+    );
+
+    return targetCanvas;
   }
 
   /**
@@ -27,7 +102,6 @@ export class GanttExporter {
     if (!exportBtn || !this.chartContainer) return;
 
     exportBtn.addEventListener('click', async () => {
-      const startTime = performance.now();
       exportBtn.textContent = 'Exporting...';
       exportBtn.disabled = true;
 
@@ -40,12 +114,13 @@ export class GanttExporter {
         const scrollY = window.pageYOffset || document.documentElement.scrollTop;
         const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
 
-        const canvas = await html2canvas(this.chartContainer, {
+        // Capture the chart at its natural size
+        const sourceCanvas = await html2canvas(this.chartContainer, {
           useCORS: true,
           logging: false,
-          scale: 2,
+          scale: CONFIG.EXPORT.SCALE,
           allowTaint: false,
-          backgroundColor: null,
+          backgroundColor: CONFIG.EXPORT.BACKGROUND_COLOR,
           scrollY: -scrollY,
           scrollX: -scrollX,
           windowWidth: this.chartContainer.scrollWidth,
@@ -54,9 +129,12 @@ export class GanttExporter {
           height: this.chartContainer.scrollHeight
         });
 
+        // Apply 9:16 aspect ratio scaling
+        const aspectRatioCanvas = this._createAspectRatioCanvas(sourceCanvas);
+
         const link = document.createElement('a');
         link.download = 'gantt-chart.png';
-        link.href = canvas.toDataURL('image/png');
+        link.href = aspectRatioCanvas.toDataURL('image/png');
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
@@ -93,18 +171,16 @@ export class GanttExporter {
       try {
         await new Promise(resolve => requestAnimationFrame(resolve));
 
-        const bbox = this.chartContainer.getBoundingClientRect();
-        const width = bbox.width;
-        const height = bbox.height;
         const scrollY = window.pageYOffset || document.documentElement.scrollTop;
         const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
 
-        const canvas = await html2canvas(this.chartContainer, {
+        // Capture the chart at its natural size
+        const sourceCanvas = await html2canvas(this.chartContainer, {
           useCORS: true,
           logging: false,
-          scale: 2,
+          scale: CONFIG.EXPORT.SCALE,
           allowTaint: false,
-          backgroundColor: null,
+          backgroundColor: CONFIG.EXPORT.BACKGROUND_COLOR,
           scrollY: -scrollY,
           scrollX: -scrollX,
           windowWidth: this.chartContainer.scrollWidth,
@@ -113,12 +189,20 @@ export class GanttExporter {
           height: this.chartContainer.scrollHeight
         });
 
-        const imageData = canvas.toDataURL('image/png');
+        // Apply 9:16 aspect ratio scaling
+        const aspectRatioCanvas = this._createAspectRatioCanvas(sourceCanvas);
+        const imageData = aspectRatioCanvas.toDataURL('image/png');
+
+        // Use the aspect ratio canvas dimensions for SVG
+        const width = aspectRatioCanvas.width;
+        const height = aspectRatioCanvas.height;
+
         const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <title>Gantt Chart Export</title>
-  <desc>AI-generated Gantt chart exported as SVG with embedded raster image</desc>
+  <desc>AI-generated Gantt chart exported as SVG with embedded raster image (9:16 aspect ratio)</desc>
+  <rect x="0" y="0" width="${width}" height="${height}" fill="${CONFIG.EXPORT.BACKGROUND_COLOR}"/>
   <image x="0" y="0" width="${width}" height="${height}"
          xlink:href="${imageData}"
          preserveAspectRatio="xMidYMid meet"/>
