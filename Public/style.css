@@ -62,8 +62,8 @@ select:focus-visible {
 }
 #gantt-chart-container {
   width: 100%;
-  max-width: calc(100vw - 32px); 
-  border: 1px solid #0D0D0D; 
+  max-width: calc(100vw - 32px);
+  border: 2px solid var(--color-navy-brand, #002040);
   border-radius: 8px;
   background-color: transparent; 
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -1320,11 +1320,10 @@ select:focus-visible {
   background: linear-gradient(135deg, var(--color-background-dark, #1A1A1A) 0%, #242424 100%);
 }
 .gantt-legend {
-  padding: 8px 12px; 
-  margin-top: 8px; 
-  border-radius: 4px; 
-  border-top: 1px solid #0D0D0D; 
-  background-color: var(--color-navy-deep); 
+  padding: 8px 12px;
+  margin: 0;
+  border-radius: 0 0 6px 6px;
+  background-color: var(--color-navy-brand, #002040);
   color: var(--glass-text-primary);
 }
 .legend-line {
