@@ -51,6 +51,73 @@ export function createButton(config) {
   return btn;
 }
 
+/**
+ * Create a modal dialog with standard structure and close behavior
+ * @param {Object} config - Modal configuration
+ * @param {string} [config.id] - Modal overlay ID
+ * @param {string} [config.title] - Modal title text
+ * @param {string} [config.content] - Initial body content HTML
+ * @param {string} [config.bodyId] - ID for the modal body element
+ * @param {Array} [config.actions] - Header action buttons [{id, label, title, className}]
+ * @param {boolean} [config.showSpinner] - Show loading spinner initially
+ * @returns {{overlay: HTMLElement, body: HTMLElement, close: Function}}
+ */
+export function createModal(config = {}) {
+  const {
+    id = 'modal-overlay',
+    title = '',
+    content = '',
+    bodyId = 'modal-body-content',
+    actions = [],
+    showSpinner = false
+  } = config;
+
+  const overlay = document.createElement('div');
+  overlay.id = id;
+  overlay.className = 'modal-overlay';
+
+  const modalContent = document.createElement('div');
+  modalContent.className = 'modal-content';
+
+  const actionsHtml = actions.map(action =>
+    `<button class="${action.className || 'modal-action-btn'}" id="${action.id}" title="${action.title || ''}">${action.label}</button>`
+  ).join('');
+
+  const bodyContent = showSpinner ? '<div class="modal-spinner"></div>' : content;
+
+  modalContent.innerHTML = `
+    <div class="modal-header">
+      <h3 class="modal-title">${title}</h3>
+      <div class="modal-actions">
+        ${actionsHtml}
+        <button class="modal-close" id="${id}-close-btn">&times;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="${bodyId}">${bodyContent}</div>
+  `;
+
+  overlay.appendChild(modalContent);
+
+  const close = () => overlay.remove();
+
+  // Close on overlay click
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
+
+  // Close on close button click
+  const closeBtn = modalContent.querySelector(`#${id}-close-btn`);
+  closeBtn?.addEventListener('click', close);
+
+  document.body.appendChild(overlay);
+
+  return {
+    overlay,
+    body: modalContent.querySelector(`#${bodyId}`),
+    close
+  };
+}
+
 export function safeGetElement(id, context = '') {
   const element = document.getElementById(id);
   if (!element) {
