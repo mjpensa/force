@@ -9,7 +9,7 @@ import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompt
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
 
 // Timeout configuration for AI generation
-const GENERATION_TIMEOUT_MS = 120000; // 2 minutes - faster with thinking disabled
+const GENERATION_TIMEOUT_MS = 180000; // 3 minutes - increased for API variability
 
 // ============================================================================
 // REQUEST QUEUE - Controls concurrent API calls to prevent overload
@@ -111,7 +111,7 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     if (topP !== undefined) generationConfig.topP = topP;
     if (topK !== undefined) generationConfig.topK = topK;
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-preview-09-2025',
+      model: 'gemini-2.0-flash',
       generationConfig
     });
     const result = await withTimeout(
