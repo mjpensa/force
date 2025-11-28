@@ -76,7 +76,37 @@ app.use(createJsonOptimizerMiddleware());
 // Resource preload hints for critical assets
 app.use(createPreloadHintsMiddleware());
 
-// CORS configuration - secure by default
+// Security headers (apply early for all responses)
+app.use(configureHelmet());
+
+// Remove X-Powered-By header
+app.disable('x-powered-by');
+
+// Cache control
+app.use(configureCacheControl);
+
+// Static file serving with optimized options
+// IMPORTANT: Static files are served BEFORE CORS middleware
+// This ensures ES modules and other static assets load without CORS restrictions
+// (they are same-origin by design since they're served from the same server)
+app.use(express.static(join(__dirname, 'Public'), {
+  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
+  etag: true,
+  lastModified: true
+}));
+
+// Serve minified JS in production
+if (process.env.NODE_ENV === 'production') {
+  app.use('/dist', express.static(join(__dirname, 'Public', 'dist'), {
+    maxAge: '7d',
+    immutable: true
+  }));
+}
+
+// JSON parsing with size limit (only needed for API routes)
+app.use(express.json({ limit: '50mb' }));
+
+// CORS configuration - secure by default (only applies to API routes now)
 const getAllowedOrigins = () => {
   // In production, ALLOWED_ORIGINS must be set
   if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
@@ -107,34 +137,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Session-Id'],
   credentials: true,
   maxAge: 86400 // 24 hours
-}));
-
-// Security headers
-app.use(configureHelmet());
-
-// Remove X-Powered-By header
-app.disable('x-powered-by');
-
-// Cache control
-app.use(configureCacheControl);
-
-// JSON parsing with size limit
-app.use(express.json({ limit: '50mb' }));
-
-// Static file serving with optimized options
-app.use(express.static(join(__dirname, 'Public'), {
-  maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
-  etag: true,
-  lastModified: true
-}));
-
-// Serve minified JS in production
-if (process.env.NODE_ENV === 'production') {
-  app.use('/dist', express.static(join(__dirname, 'Public', 'dist'), {
-    maxAge: '7d',
-    immutable: true
-  }));
-}
+}))
 
 // Request timeout
 app.use(configureTimeout);
