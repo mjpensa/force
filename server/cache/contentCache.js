@@ -169,7 +169,16 @@ class LRUCache {
     this.metrics.exactHits++;
     this.metrics.totalSaved++;
 
-    return entry.data;
+    // Return deep copy to prevent cache mutation by callers
+    // This is critical - returning reference would allow callers to corrupt cached data
+    try {
+      return JSON.parse(JSON.stringify(entry.data));
+    } catch (error) {
+      console.error('[Cache] Failed to clone cached data:', error.message);
+      // If clone fails, delete potentially corrupted entry and return null
+      this.cache.delete(hash);
+      return null;
+    }
   }
 
   /**
