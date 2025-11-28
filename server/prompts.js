@@ -13,7 +13,13 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - 0-3 months total (≤90 days): Use "Weeks" (e.g., ["W1 2026", "W2 2026"])
     - 4-12 months total (91-365 days): Use "Months" (e.g., ["Jan 2026", "Feb 2026"])
     - 1-3 years total (366-1095 days): Use "Quarters" (e.g., ["Q1 2026", "Q2 2026"])
-    - 3+ years total (>1095 days): You MUST use "Years" (e.g., ["2020", "2021", "2022"])
+    - 3+ years total (>1095 days): You MUST use "Years" (e.g., ["2020", "2021", "2022", "2023", "2024", "2025"])
+    **INTERVAL CALCULATION (MANDATORY STEPS):**
+    a. Calculate: end_year - start_year + 1 = total_years (e.g., 2030-2025+1 = 6 years)
+    b. If total_years > 3: You MUST use "Years" interval. This is NON-NEGOTIABLE.
+    c. Examples: 4 years = Years, 5 years = Years, 6 years = Years, 10 years = Years
+    d. WRONG: Using "Quarters" for a 5-year range (20 quarters is too granular)
+    e. RIGHT: Using "Years" for a 5-year range (5 columns: ["2026", "2027", "2028", "2029", "2030"])
 3.  **SWIMLANE IDENTIFICATION (DETERMINISTIC):** Identify swimlanes using this EXACT priority order:
     a.  **Priority 1 - Named Entities:** Extract ALL explicitly named organizations, companies, or entities from the research (e.g., "JPMorgan Chase", "Acme Corp", "Federal Reserve"). Use these as swimlanes.
     b.  **Priority 2 - Departmental Categories:** If no named entities are found, OR if tasks clearly belong to internal departments, use EXACTLY these standard categories (only include categories that have tasks):
