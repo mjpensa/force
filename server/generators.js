@@ -28,6 +28,10 @@ import {
   getOutputProcessor,
   quickCheckOutput
 } from './layers/output/index.js';
+import {
+  getObservabilityPipeline,
+  LayerSpan
+} from './layers/observability/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
@@ -40,6 +44,9 @@ const ENABLE_SIGNATURES = process.env.ENABLE_SIGNATURES === 'true';
 
 // Feature flag for output validation (PROMPT ML Layer 6)
 const ENABLE_OUTPUT_VALIDATION = process.env.ENABLE_OUTPUT_VALIDATION !== 'false';
+
+// Feature flag for observability (PROMPT ML Layer 7)
+const ENABLE_OBSERVABILITY = process.env.ENABLE_OBSERVABILITY !== 'false';
 
 /**
  * Map content types to StrategyType for context engineering
@@ -331,6 +338,51 @@ function validateGeneratedOutput(data, contentType, schema, context = {}, perfLo
         error: error.message
       }
     };
+  }
+}
+
+/**
+ * Get observability pipeline for request tracking
+ *
+ * Provides distributed tracing, structured logging, and metrics
+ * collection for the entire generation pipeline.
+ *
+ * @returns {Object|null} Observability pipeline or null if disabled
+ */
+function getObservability() {
+  if (!ENABLE_OBSERVABILITY) {
+    return null;
+  }
+  return getObservabilityPipeline();
+}
+
+/**
+ * Record LLM call metrics in observability
+ *
+ * @param {Object} context - Observability context
+ * @param {Object} details - Call details
+ */
+function recordLLMMetrics(context, details) {
+  if (!ENABLE_OBSERVABILITY || !context) return;
+
+  const observability = getObservability();
+  if (observability) {
+    observability.observeLLMCall(context, details);
+  }
+}
+
+/**
+ * Record validation results in observability
+ *
+ * @param {Object} context - Observability context
+ * @param {Object} validation - Validation result
+ */
+function recordValidationMetrics(context, validation) {
+  if (!ENABLE_OBSERVABILITY || !context || !validation) return;
+
+  const observability = getObservability();
+  if (observability) {
+    observability.observeValidation(context, validation);
   }
 }
 
@@ -921,6 +973,15 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
   perfLogger.setMetadata('totalInputSize', researchFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0));
   perfLogger.setMetadata('promptLength', userPrompt.length);
 
+  // Start observability tracking (PROMPT ML Layer 7)
+  const observability = getObservability();
+  const obsContext = observability?.startRequest({
+    sessionId: options.sessionId,
+    contentTypes: ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
+    userPrompt,
+    fileCount: researchFiles.length
+  });
+
   try {
     // Use apiQueue.runAll to control concurrency and prevent rate limiting
     const tasks = [
@@ -932,6 +993,22 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
 
     const [roadmap, slides, document, researchAnalysis] = await apiQueue.runAll(tasks);
 
+    // Record validation metrics for each content type
+    if (obsContext) {
+      if (roadmap._validation) {
+        recordValidationMetrics({ ...obsContext, contentType: 'Roadmap' }, roadmap._validation);
+      }
+      if (slides._validation) {
+        recordValidationMetrics({ ...obsContext, contentType: 'Slides' }, slides._validation);
+      }
+      if (document._validation) {
+        recordValidationMetrics({ ...obsContext, contentType: 'Document' }, document._validation);
+      }
+      if (researchAnalysis._validation) {
+        recordValidationMetrics({ ...obsContext, contentType: 'ResearchAnalysis' }, researchAnalysis._validation);
+      }
+    }
+
     // Complete performance logging
     const perfReport = perfLogger.complete();
 
@@ -941,17 +1018,34 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
     // Log performance report
     perfLogger.logReport();
 
+    // End observability tracking
+    if (observability && obsContext) {
+      await observability.endRequest(obsContext, {
+        success: true,
+        contentTypes: ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
+        cached: roadmap._cached || slides._cached || document._cached || researchAnalysis._cached
+      });
+    }
+
     return {
       roadmap,
       slides,
       document,
       researchAnalysis,
-      _performanceMetrics: perfReport
+      _performanceMetrics: perfReport,
+      _observability: obsContext ? { traceId: obsContext.traceId } : null
     };
   } catch (error) {
     perfLogger.setMetadata('fatalError', error.message);
     perfLogger.complete();
     perfLogger.logReport();
+
+    // Record error in observability
+    if (observability && obsContext) {
+      observability.observeError(obsContext, error);
+      await observability.endRequest(obsContext, { success: false, error: error.message });
+    }
+
     throw error;
   }
 }
@@ -995,6 +1089,53 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
 
 // Export metrics for monitoring endpoints
 export { globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator };
+
+/**
+ * Get observability metrics summary
+ * Returns tracing stats, LLM metrics, and recent traces
+ *
+ * @returns {Object} Observability summary
+ */
+export function getObservabilityMetrics() {
+  const observability = getObservability();
+  if (!observability) {
+    return { enabled: false };
+  }
+
+  return {
+    enabled: true,
+    ...observability.getSummary()
+  };
+}
+
+/**
+ * Get recent traces for debugging
+ *
+ * @param {number} count - Number of traces to return
+ * @returns {Array} Recent traces
+ */
+export function getRecentTraces(count = 10) {
+  const observability = getObservability();
+  if (!observability) {
+    return [];
+  }
+
+  return observability.getRecentTraces(count);
+}
+
+/**
+ * Get metrics in Prometheus format
+ *
+ * @returns {string} Prometheus-formatted metrics
+ */
+export function getPrometheusMetrics() {
+  const observability = getObservability();
+  if (!observability) {
+    return '# Observability disabled\n';
+  }
+
+  return observability.getPrometheusMetrics();
+}
 
 /**
  * Generate all content types with streaming - emits results as each completes
