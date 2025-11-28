@@ -285,8 +285,20 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
 
   // Helper to send SSE events with optimized JSON
   const sendEvent = (event, data) => {
-    // Clean the data to remove null/undefined values before sending
+    // Clean the data but preserve 'data' and 'error' fields even if null
+    // This prevents the client from receiving responses with missing expected fields
     const cleanedData = cleanJsonResponse(data, { removeNull: true, removeUndefined: true });
+
+    // Restore critical fields that should always be present in content events
+    if (event === 'content') {
+      if (!('data' in cleanedData) && 'data' in data) {
+        cleanedData.data = null;
+      }
+      if (!('error' in cleanedData) && 'error' in data) {
+        cleanedData.error = null;
+      }
+    }
+
     res.write(`event: ${event}\n`);
     res.write(`data: ${JSON.stringify(cleanedData)}\n\n`);
   };
@@ -389,6 +401,17 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
       onContentReady: async (type, result) => {
         // Update session content incrementally
         const contentKey = contentKeyMap[type] || type;
+
+        // Fix: If success is true but data is null/undefined, treat as error
+        // This prevents confusing "success with no data" responses
+        if (result.success && (result.data === null || result.data === undefined)) {
+          result = {
+            success: false,
+            data: null,
+            error: `${type} generation completed but returned no data. Please try again.`
+          };
+        }
+
         session.content[contentKey] = result;
         session.lastAccessed = Date.now();
 
@@ -635,6 +658,16 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       return res.status(404).json({
         error: 'Content not found',
         message: `No ${viewType} content available for this session`
+      });
+    }
+
+    // Fix: Handle case where success is true but data is null/undefined
+    // This should not happen after generator fixes, but provides defense in depth
+    if (contentResult.success && (contentResult.data === null || contentResult.data === undefined)) {
+      res.set('Cache-Control', 'no-store');
+      return res.json({
+        status: 'error',
+        error: `${viewType} generation completed but returned no data. Please try regenerating.`
       });
     }
 

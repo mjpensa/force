@@ -480,16 +480,16 @@ class ContentViewer {
     try {
       const { GanttChart } = await import('./GanttChart.js');
       if (data === null || data === undefined) {
-        throw new Error('Invalid chart data structure: received ' + (data === null ? 'null' : 'undefined'));
+        throw new Error('Chart rendering failed: No data received. Please try regenerating. (received ' + (data === null ? 'null' : 'undefined') + ')');
       }
       if (typeof data !== 'object' || Array.isArray(data)) {
-        throw new Error('Invalid chart data structure: received ' + (Array.isArray(data) ? 'array' : typeof data));
+        throw new Error('Chart rendering failed: Invalid data format. Please try regenerating. (received ' + (Array.isArray(data) ? 'array' : typeof data) + ')');
       }
       if (!data.timeColumns || !Array.isArray(data.timeColumns)) {
-        throw new Error('Invalid timeColumns in chart data');
+        throw new Error('Chart rendering failed: Missing or invalid time columns. Please try regenerating.');
       }
       if (!data.data || !Array.isArray(data.data)) {
-        throw new Error('Invalid data array in chart data');
+        throw new Error('Chart rendering failed: Missing or invalid task data. Please try regenerating.');
       }
       const handleTaskClick = (taskIdentifier) => {
         this.taskAnalyzer.showAnalysis(taskIdentifier);

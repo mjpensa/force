@@ -36,16 +36,16 @@ async function loadChartFromServer(chartId) {
       }
       ganttData = await response.json();
       if (ganttData === null || ganttData === undefined) {
-        throw new Error('Invalid chart data structure: received ' + (ganttData === null ? 'null' : 'undefined'));
+        throw new Error('Chart loading failed: No data received from server. (received ' + (ganttData === null ? 'null' : 'undefined') + ')');
       }
       if (typeof ganttData !== 'object' || Array.isArray(ganttData)) {
-        throw new Error('Invalid chart data structure: received ' + (Array.isArray(ganttData) ? 'array' : typeof ganttData));
+        throw new Error('Chart loading failed: Invalid data format from server. (received ' + (Array.isArray(ganttData) ? 'array' : typeof ganttData) + ')');
       }
       if (!ganttData.timeColumns || !Array.isArray(ganttData.timeColumns)) {
-        throw new Error('Invalid timeColumns in chart data');
+        throw new Error('Chart loading failed: Missing or invalid time columns in data.');
       }
       if (!ganttData.data || !Array.isArray(ganttData.data)) {
-        throw new Error('Invalid data array in chart data');
+        throw new Error('Chart loading failed: Missing or invalid task data.');
       }
       return;
     } catch (error) {

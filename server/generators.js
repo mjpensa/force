@@ -1148,6 +1148,11 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
     }, perfLogger);
     const validatedData = validationResult.data;
 
+    // Fix: Ensure we have valid data before returning success
+    if (validatedData === null || validatedData === undefined) {
+      throw new Error('Roadmap generation completed but returned no data. The AI response may have been malformed.');
+    }
+
     // Store in cache
     if (ENABLE_CACHE && validatedData) {
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
@@ -1250,6 +1255,11 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
       researchFiles: processedFiles
     }, perfLogger);
     const validatedData = validationResult.data;
+
+    // Fix: Ensure we have valid data before returning success
+    if (validatedData === null || validatedData === undefined) {
+      throw new Error('Slides generation completed but returned no data. The AI response may have been malformed.');
+    }
 
     // Store in cache
     if (ENABLE_CACHE && validatedData) {
@@ -1354,6 +1364,11 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
     }, perfLogger);
     const validatedData = validationResult.data;
 
+    // Fix: Ensure we have valid data before returning success
+    if (validatedData === null || validatedData === undefined) {
+      throw new Error('Document generation completed but returned no data. The AI response may have been malformed.');
+    }
+
     // Store in cache
     if (ENABLE_CACHE && validatedData) {
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
@@ -1456,6 +1471,11 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       researchFiles: processedFiles
     }, perfLogger);
     const validatedData = validationResult.data;
+
+    // Fix: Ensure we have valid data before returning success
+    if (validatedData === null || validatedData === undefined) {
+      throw new Error('Research analysis generation completed but returned no data. The AI response may have been malformed.');
+    }
 
     // Store in cache
     if (ENABLE_CACHE && validatedData) {
