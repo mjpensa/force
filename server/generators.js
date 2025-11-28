@@ -40,6 +40,11 @@ import {
   getOptimizationPipeline,
   TuningMode
 } from './layers/optimization/index.js';
+import {
+  getMonitoringPipeline,
+  quickHealthCheck,
+  quickDashboard
+} from './layers/monitoring/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
@@ -61,6 +66,9 @@ const ENABLE_EVALUATION = process.env.ENABLE_EVALUATION !== 'false';
 
 // Feature flag for optimization (PROMPT ML Layer 9)
 const ENABLE_OPTIMIZATION = process.env.ENABLE_OPTIMIZATION !== 'false';
+
+// Feature flag for monitoring (PROMPT ML Layer 10)
+const ENABLE_MONITORING = process.env.ENABLE_MONITORING !== 'false';
 
 /**
  * Map content types to StrategyType for context engineering
@@ -550,6 +558,59 @@ function trackOptimizationRequestEnd() {
   const optimization = getOptimization();
   if (optimization) {
     optimization.trackRequestEnd();
+  }
+}
+
+/**
+ * Get monitoring pipeline for system monitoring
+ *
+ * Provides health checks, metrics dashboard, and alerting
+ * for the PROMPT ML system.
+ *
+ * @returns {Object|null} Monitoring pipeline or null if disabled
+ */
+function getMonitoring() {
+  if (!ENABLE_MONITORING) {
+    return null;
+  }
+  return getMonitoringPipeline();
+}
+
+/**
+ * Record request metrics for monitoring dashboard
+ *
+ * @param {Object} data - Request metrics
+ */
+function recordMonitoringMetrics(data) {
+  if (!ENABLE_MONITORING) return;
+
+  const monitoring = getMonitoring();
+  if (monitoring) {
+    monitoring.recordRequest(data);
+  }
+}
+
+/**
+ * Start monitoring system
+ */
+function startMonitoring() {
+  if (!ENABLE_MONITORING) return;
+
+  const monitoring = getMonitoring();
+  if (monitoring) {
+    monitoring.start();
+  }
+}
+
+/**
+ * Stop monitoring system
+ */
+function stopMonitoring() {
+  if (!ENABLE_MONITORING) return;
+
+  const monitoring = getMonitoring();
+  if (monitoring) {
+    monitoring.stop();
   }
 }
 
@@ -1411,6 +1472,142 @@ export function setOptimizationMode(mode) {
 
   const tuningMode = modeMap[mode] || TuningMode.BALANCED;
   optimization.setTuningMode(tuningMode);
+}
+
+/**
+ * Get monitoring health report
+ *
+ * @returns {Object} Health report
+ */
+export async function getHealthReport() {
+  const monitoring = getMonitoring();
+  if (!monitoring) {
+    return { enabled: false };
+  }
+
+  return {
+    enabled: true,
+    ...(await monitoring.getHealthReport())
+  };
+}
+
+/**
+ * Get monitoring liveness status (for Kubernetes probes)
+ *
+ * @returns {Object} Liveness status
+ */
+export async function getLiveness() {
+  const monitoring = getMonitoring();
+  if (!monitoring) {
+    return { alive: true, status: 'unknown' };
+  }
+
+  return monitoring.getLiveness();
+}
+
+/**
+ * Get monitoring readiness status (for Kubernetes probes)
+ *
+ * @returns {Object} Readiness status
+ */
+export async function getReadiness() {
+  const monitoring = getMonitoring();
+  if (!monitoring) {
+    return { ready: true, status: 'unknown' };
+  }
+
+  return monitoring.getReadiness();
+}
+
+/**
+ * Get monitoring dashboard data
+ *
+ * @returns {Object} Dashboard data
+ */
+export function getMonitoringDashboard() {
+  const monitoring = getMonitoring();
+  if (!monitoring) {
+    return { enabled: false };
+  }
+
+  return {
+    enabled: true,
+    ...monitoring.getDashboardData()
+  };
+}
+
+/**
+ * Get active alerts from monitoring
+ *
+ * @param {string} minSeverity - Minimum severity filter
+ * @returns {Array} Active alerts
+ */
+export function getMonitoringAlerts(minSeverity = null) {
+  const monitoring = getMonitoring();
+  if (!monitoring) {
+    return [];
+  }
+
+  return monitoring.getActiveAlerts(minSeverity);
+}
+
+/**
+ * Get monitoring summary including health, metrics, and alerts
+ *
+ * @returns {Object} Comprehensive monitoring summary
+ */
+export async function getMonitoringSummary() {
+  const monitoring = getMonitoring();
+  if (!monitoring) {
+    return { enabled: false };
+  }
+
+  return {
+    enabled: true,
+    ...(await monitoring.getSummary())
+  };
+}
+
+/**
+ * Export monitoring metrics in Prometheus format
+ *
+ * @returns {string} Prometheus-formatted metrics
+ */
+export function getMonitoringMetrics() {
+  const monitoring = getMonitoring();
+  if (!monitoring) {
+    return '# Monitoring disabled\n';
+  }
+
+  return monitoring.exportMetrics('prometheus');
+}
+
+/**
+ * Acknowledge a monitoring alert
+ *
+ * @param {string} alertId - Alert ID
+ * @param {string} by - Acknowledger
+ * @returns {Object|null} Updated alert
+ */
+export function acknowledgeAlert(alertId, by = 'user') {
+  const monitoring = getMonitoring();
+  if (!monitoring) return null;
+
+  return monitoring.acknowledgeAlert(alertId, by);
+}
+
+/**
+ * Resolve a monitoring alert
+ *
+ * @param {string} alertId - Alert ID
+ * @param {string} resolution - Resolution note
+ * @returns {Object|null} Updated alert
+ */
+export function resolveAlert(alertId, resolution = '') {
+  const monitoring = getMonitoring();
+  if (!monitoring) return null;
+
+  return monitoring.resolveAlert(alertId, resolution);
 }
 
 /**

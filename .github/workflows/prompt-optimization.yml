@@ -1,0 +1,395 @@
+name: Prompt Optimization Pipeline
+
+on:
+  # Weekly scheduled optimization
+  schedule:
+    - cron: '0 2 * * 0'  # Every Sunday at 2 AM UTC
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      content_type:
+        description: 'Content type to optimize (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - all
+          - roadmap
+          - slides
+          - document
+          - research-analysis
+        default: all
+      force:
+        description: 'Force optimization even without new data'
+        required: false
+        type: boolean
+        default: false
+      run_benchmarks:
+        description: 'Run performance benchmarks'
+        required: false
+        type: boolean
+        default: true
+
+  # Trigger on evaluation dataset changes
+  push:
+    paths:
+      - 'evaluation/datasets/**'
+      - 'server/prompts/**'
+    branches:
+      - main
+
+env:
+  NODE_VERSION: '20.x'
+  API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+jobs:
+  # Job 1: Evaluate current performance (baseline)
+  evaluate-baseline:
+    runs-on: ubuntu-latest
+    outputs:
+      baseline_score: ${{ steps.eval.outputs.score }}
+      baseline_latency: ${{ steps.eval.outputs.latency }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run baseline evaluation
+        id: eval
+        run: |
+          node scripts/evaluate.js \
+            --content-type "${{ github.event.inputs.content_type || 'all' }}" \
+            --output baseline_metrics.json
+
+          # Extract scores for output
+          SCORE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('baseline_metrics.json')).averageScore)")
+          LATENCY=$(node -e "console.log(JSON.parse(require('fs').readFileSync('baseline_metrics.json')).averageLatency)")
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+          echo "latency=$LATENCY" >> $GITHUB_OUTPUT
+        env:
+          API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Upload baseline metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-metrics
+          path: baseline_metrics.json
+          retention-days: 30
+
+  # Job 2: Run optimization
+  optimize:
+    needs: evaluate-baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for new data
+        id: check-data
+        run: |
+          # Check if evaluation datasets or prompts have been updated
+          CHANGES=$(git diff HEAD~1 --name-only | grep -E 'evaluation/datasets|server/prompts' || true)
+          if [ -n "$CHANGES" ] || [ "${{ github.event.inputs.force }}" == "true" ]; then
+            echo "should_optimize=true" >> $GITHUB_OUTPUT
+            echo "Changes detected or force flag set, will run optimization"
+          else
+            echo "should_optimize=false" >> $GITHUB_OUTPUT
+            echo "No changes detected, skipping optimization"
+          fi
+
+      - name: Run optimization
+        if: steps.check-data.outputs.should_optimize == 'true'
+        run: |
+          node scripts/optimize.js \
+            --content-type "${{ github.event.inputs.content_type || 'all' }}" \
+            --output optimization_results.json
+        env:
+          API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Upload optimization results
+        if: steps.check-data.outputs.should_optimize == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: optimization-results
+          path: |
+            optimization_results.json
+            optimization/artifacts/**/*.json
+          retention-days: 30
+
+  # Job 3: Evaluate optimized configuration
+  evaluate-optimized:
+    needs: optimize
+    runs-on: ubuntu-latest
+    outputs:
+      optimized_score: ${{ steps.eval.outputs.score }}
+      optimized_latency: ${{ steps.eval.outputs.latency }}
+      improvement: ${{ steps.eval.outputs.improvement }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download optimization artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: optimization-results
+          path: optimization/
+        continue-on-error: true
+
+      - name: Download baseline metrics
+        uses: actions/download-artifact@v4
+        with:
+          name: baseline-metrics
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run evaluation on optimized config
+        id: eval
+        run: |
+          node scripts/evaluate.js \
+            --content-type "${{ github.event.inputs.content_type || 'all' }}" \
+            --use-optimized \
+            --output optimized_metrics.json
+
+          # Calculate improvement
+          BASELINE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('baseline_metrics.json')).averageScore)")
+          OPTIMIZED=$(node -e "console.log(JSON.parse(require('fs').readFileSync('optimized_metrics.json')).averageScore)")
+          IMPROVEMENT=$(node -e "console.log((($OPTIMIZED - $BASELINE) / $BASELINE * 100).toFixed(2))")
+          LATENCY=$(node -e "console.log(JSON.parse(require('fs').readFileSync('optimized_metrics.json')).averageLatency)")
+
+          echo "score=$OPTIMIZED" >> $GITHUB_OUTPUT
+          echo "latency=$LATENCY" >> $GITHUB_OUTPUT
+          echo "improvement=$IMPROVEMENT" >> $GITHUB_OUTPUT
+        env:
+          API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Upload optimized metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: optimized-metrics
+          path: optimized_metrics.json
+          retention-days: 30
+
+  # Job 4: Regression check
+  regression-check:
+    needs: [evaluate-baseline, evaluate-optimized]
+    runs-on: ubuntu-latest
+    outputs:
+      has_regression: ${{ steps.check.outputs.has_regression }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all metrics
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-metrics'
+          merge-multiple: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run regression check
+        id: check
+        run: |
+          node scripts/regression-check.js \
+            --baseline baseline_metrics.json \
+            --current optimized_metrics.json \
+            --threshold 0.05 \
+            --output regression_report.json
+
+          HAS_REGRESSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('regression_report.json')).hasRegression)")
+          echo "has_regression=$HAS_REGRESSION" >> $GITHUB_OUTPUT
+
+      - name: Generate markdown report
+        run: |
+          node scripts/generate-report.js \
+            --baseline baseline_metrics.json \
+            --optimized optimized_metrics.json \
+            --regression regression_report.json \
+            --output regression_report.md
+
+      - name: Upload regression report
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report
+          path: |
+            regression_report.json
+            regression_report.md
+          retention-days: 30
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('regression_report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+  # Job 5: Run benchmarks (optional)
+  benchmarks:
+    needs: [evaluate-baseline, evaluate-optimized]
+    if: github.event.inputs.run_benchmarks == 'true' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run performance benchmarks
+        run: |
+          node scripts/benchmark.js \
+            --iterations 10 \
+            --output benchmark_results.json
+        env:
+          API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark_results.json
+          retention-days: 30
+
+  # Job 6: Deploy if improved (only on schedule or manual trigger)
+  deploy:
+    needs: [evaluate-optimized, regression-check]
+    if: |
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      needs.regression-check.outputs.has_regression != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download optimization artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: optimization-results
+          path: optimization/
+        continue-on-error: true
+
+      - name: Check for improvements
+        id: check-improvement
+        run: |
+          IMPROVEMENT="${{ needs.evaluate-optimized.outputs.improvement }}"
+          if (( $(echo "$IMPROVEMENT > 0" | bc -l) )); then
+            echo "has_improvement=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_improvement=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update optimized configuration
+        if: steps.check-improvement.outputs.has_improvement == 'true'
+        run: |
+          # Copy optimized artifacts to tracked location
+          mkdir -p optimization/artifacts/deployed
+          cp optimization/artifacts/**/*_latest.json optimization/artifacts/deployed/ 2>/dev/null || true
+
+      - name: Commit and push
+        if: steps.check-improvement.outputs.has_improvement == 'true'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          git add optimization/artifacts/deployed/ || true
+
+          IMPROVEMENT="${{ needs.evaluate-optimized.outputs.improvement }}"
+          git commit -m "chore: update optimized configuration [+${IMPROVEMENT}% improvement]" || exit 0
+
+          git push
+
+      - name: Create release tag
+        if: steps.check-improvement.outputs.has_improvement == 'true'
+        run: |
+          VERSION=$(date +%Y%m%d.%H%M%S)
+          git tag "prompts-v${VERSION}"
+          git push origin "prompts-v${VERSION}"
+
+  # Job 7: Notify on completion
+  notify:
+    needs: [evaluate-baseline, evaluate-optimized, regression-check]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare summary
+        run: |
+          echo "## Prompt Optimization Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Baseline | Optimized | Change |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Score | ${{ needs.evaluate-baseline.outputs.baseline_score }} | ${{ needs.evaluate-optimized.outputs.optimized_score }} | ${{ needs.evaluate-optimized.outputs.improvement }}% |" >> $GITHUB_STEP_SUMMARY
+          echo "| Latency | ${{ needs.evaluate-baseline.outputs.baseline_latency }}ms | ${{ needs.evaluate-optimized.outputs.optimized_latency }}ms | - |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.regression-check.outputs.has_regression }}" == "true" ]; then
+            echo "⚠️ **Regression detected!** Review the detailed report in artifacts." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No regressions detected." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Send Slack notification (on failure)
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        continue-on-error: true
+        with:
+          payload: |
+            {
+              "text": "Prompt optimization pipeline failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "❌ *Prompt Optimization Failed*\n\nWorkflow: ${{ github.workflow }}\nRun: ${{ github.run_id }}\nBranch: ${{ github.ref_name }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
