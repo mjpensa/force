@@ -615,9 +615,13 @@ async function handleChartGenerate(event) {
       ganttData = await pollForPhase2Content(sessionId, 'roadmap', generateBtn);
     }
 
-    // Validate roadmap data
+    // Validate roadmap data - this should never trigger if earlier checks work
     if (ganttData === null || ganttData === undefined) {
-      throw new Error('Chart generation failed: The server returned no data. Please try again. (received ' + (ganttData === null ? 'null' : 'undefined') + ')');
+      // Log debug info to help diagnose the issue
+      console.error('[Chart] Final null check triggered - this indicates a bug in earlier handling');
+      console.error('[Chart] sessionId:', sessionId);
+      console.error('[Chart] roadmapError:', roadmapError);
+      throw new Error('Chart generation failed: No data was returned. This may be a temporary issue. Please try again.');
     }
     if (typeof ganttData !== 'object' || Array.isArray(ganttData)) {
       throw new Error('Chart generation failed: Invalid response format. Please try again. (received ' + (Array.isArray(ganttData) ? 'array' : typeof ganttData) + ')');
