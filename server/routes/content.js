@@ -94,7 +94,8 @@ const ERROR_PATTERNS = Object.freeze([
   { pattern: /empty.*content|no.*section|invalid.*content/i, message: 'The AI could not generate valid content. Try providing more detailed source material.' },
   { pattern: /network|connection|ECONNREFUSED/i, message: 'Network error occurred. Please check your connection and try again.' },
   { pattern: /quota|exceeded/i, message: 'API quota exceeded. Please try again later.' },
-  { pattern: /invalid.*schema|validation.*failed/i, message: 'Generated content did not match expected format. Please try again.' }
+  { pattern: /invalid.*schema|validation.*failed/i, message: 'Generated content did not match expected format. Please try again.' },
+  { pattern: /invalid.*data.*structure|expected.*received.*null/i, message: 'The AI returned invalid or empty data. Please try again with different source material.' }
 ]);
 
 /**
@@ -741,11 +742,18 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       res.set('ETag', etag);
 
       // Use cleanJsonResponse to remove null/undefined values and reduce payload size
-      const responseData = cleanJsonResponse({
+      const originalData = {
         status: 'completed',
         data: contentResult.data,
         _cached: contentResult._cached || false  // Indicate if result was from cache
-      }, { removeNull: true, removeUndefined: true });
+      };
+      const responseData = cleanJsonResponse(originalData, { removeNull: true, removeUndefined: true });
+
+      // Restore critical 'data' field if it was stripped by cleanJsonResponse
+      // This prevents clients from receiving responses with missing expected fields
+      if (!('data' in responseData) && 'data' in originalData) {
+        responseData.data = null;
+      }
 
       return res.json(responseData);
     } else {
