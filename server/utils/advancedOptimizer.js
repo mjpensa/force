@@ -301,16 +301,25 @@ class WorkerPool {
     const worker = new Worker(this.workerPath);
     this.stats.workersCreated++;
 
+    // Track if this worker has already been removed (prevents double-removal)
+    let removed = false;
+
     worker.on('error', (error) => {
       console.error('[WorkerPool] Worker error:', error);
-      this._removeWorker(worker);
+      if (!removed) {
+        removed = true;
+        this._removeWorker(worker);
+      }
     });
 
     worker.on('exit', (code) => {
       if (code !== 0) {
         console.warn(`[WorkerPool] Worker exited with code ${code}`);
       }
-      this._removeWorker(worker);
+      if (!removed) {
+        removed = true;
+        this._removeWorker(worker);
+      }
     });
 
     this.workers.push(worker);
@@ -353,15 +362,24 @@ class WorkerPool {
    * Return worker to idle pool
    */
   _returnWorker(worker) {
+    // Only add to idle pool if worker is still in main pool
+    if (!this.workers.includes(worker)) {
+      return;
+    }
+
     this.idleWorkers.push(worker);
 
     // Set idle timeout
     setTimeout(() => {
-      const idx = this.idleWorkers.indexOf(worker);
-      if (idx !== -1 && this.workers.length > this.minWorkers) {
-        this.idleWorkers.splice(idx, 1);
-        worker.terminate();
-        this._removeWorker(worker);
+      // Verify worker is still idle and still in pool before terminating
+      const idleIdx = this.idleWorkers.indexOf(worker);
+      const mainIdx = this.workers.indexOf(worker);
+
+      if (idleIdx !== -1 && mainIdx !== -1 && this.workers.length > this.minWorkers) {
+        this.idleWorkers.splice(idleIdx, 1);
+        this.workers.splice(mainIdx, 1);
+        this.stats.workersTerminated++;
+        worker.terminate().catch(() => {});  // Gracefully handle termination errors
       }
     }, this.idleTimeout);
   }
@@ -477,10 +495,13 @@ class SpeculativeGenerator {
       this.sessionFirstViews.set(sessionId, viewType);
       this.viewStats[viewType].firstViews++;
 
-      // Limit session tracking memory
+      // Limit session tracking memory - batch cleanup to prevent exceeding limit
       if (this.sessionFirstViews.size > 1000) {
-        const oldest = this.sessionFirstViews.keys().next().value;
-        this.sessionFirstViews.delete(oldest);
+        // Remove oldest 100 entries in batch to avoid frequent cleanup
+        const keysToDelete = [...this.sessionFirstViews.keys()].slice(0, 100);
+        for (const key of keysToDelete) {
+          this.sessionFirstViews.delete(key);
+        }
       }
     }
   }

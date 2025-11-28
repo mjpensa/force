@@ -511,9 +511,19 @@ export function resetCacheMetrics() {
 }
 
 // Periodic cleanup of expired entries (every 5 minutes)
-setInterval(() => {
+let cleanupIntervalId = setInterval(() => {
   clearExpiredEntries();
 }, 5 * 60 * 1000);
+
+/**
+ * Stop the cleanup interval (for graceful shutdown)
+ */
+export function stopCleanupInterval() {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+  }
+}
 
 export { LRUCache, caches };
 export default {
@@ -524,6 +534,7 @@ export default {
   clearAllCaches,
   clearExpiredEntries,
   resetCacheMetrics,
+  stopCleanupInterval,
   LRUCache,
   caches
 };
