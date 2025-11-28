@@ -35,8 +35,11 @@ async function loadChartFromServer(chartId) {
         throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
       ganttData = await response.json();
-      if (!ganttData || typeof ganttData !== 'object') {
-        throw new Error('Invalid chart data structure');
+      if (ganttData === null || ganttData === undefined) {
+        throw new Error('Invalid chart data structure: received ' + (ganttData === null ? 'null' : 'undefined'));
+      }
+      if (typeof ganttData !== 'object' || Array.isArray(ganttData)) {
+        throw new Error('Invalid chart data structure: received ' + (Array.isArray(ganttData) ? 'array' : typeof ganttData));
       }
       if (!ganttData.timeColumns || !Array.isArray(ganttData.timeColumns)) {
         throw new Error('Invalid timeColumns in chart data');
