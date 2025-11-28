@@ -32,6 +32,10 @@ import {
   getObservabilityPipeline,
   LayerSpan
 } from './layers/observability/index.js';
+import {
+  getEvaluationPipeline,
+  FeedbackType
+} from './layers/evaluation/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
@@ -47,6 +51,9 @@ const ENABLE_OUTPUT_VALIDATION = process.env.ENABLE_OUTPUT_VALIDATION !== 'false
 
 // Feature flag for observability (PROMPT ML Layer 7)
 const ENABLE_OBSERVABILITY = process.env.ENABLE_OBSERVABILITY !== 'false';
+
+// Feature flag for evaluation (PROMPT ML Layer 8)
+const ENABLE_EVALUATION = process.env.ENABLE_EVALUATION !== 'false';
 
 /**
  * Map content types to StrategyType for context engineering
@@ -383,6 +390,61 @@ function recordValidationMetrics(context, validation) {
   const observability = getObservability();
   if (observability) {
     observability.observeValidation(context, validation);
+  }
+}
+
+/**
+ * Get evaluation pipeline for output evaluation
+ *
+ * @returns {Object|null} Evaluation pipeline or null if disabled
+ */
+function getEvaluation() {
+  if (!ENABLE_EVALUATION) {
+    return null;
+  }
+  return getEvaluationPipeline();
+}
+
+/**
+ * Run evaluation on generated output
+ *
+ * @param {*} output - Generated output
+ * @param {Object} context - Evaluation context
+ * @returns {Object|null} Evaluation result
+ */
+function evaluateGeneratedOutput(output, context = {}) {
+  if (!ENABLE_EVALUATION) return null;
+
+  const evaluation = getEvaluation();
+  if (!evaluation) return null;
+
+  try {
+    return evaluation.runFullEvaluation(output, context);
+  } catch (error) {
+    console.warn('[Evaluation] Failed:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Record user feedback
+ *
+ * @param {string} feedbackType - Type of feedback
+ * @param {string} contentType - Content type
+ * @param {*} value - Feedback value
+ * @param {Object} context - Additional context
+ */
+function recordUserFeedback(feedbackType, contentType, value, context = {}) {
+  if (!ENABLE_EVALUATION) return null;
+
+  const evaluation = getEvaluation();
+  if (!evaluation) return null;
+
+  try {
+    return evaluation.recordFeedback(feedbackType, contentType, value, context);
+  } catch (error) {
+    console.warn('[Feedback] Failed to record:', error.message);
+    return null;
   }
 }
 
@@ -1135,6 +1197,50 @@ export function getPrometheusMetrics() {
   }
 
   return observability.getPrometheusMetrics();
+}
+
+/**
+ * Get evaluation summary including feedback and suggestions
+ *
+ * @returns {Object} Evaluation summary
+ */
+export function getEvaluationSummary() {
+  const evaluation = getEvaluation();
+  if (!evaluation) {
+    return { enabled: false };
+  }
+
+  return {
+    enabled: true,
+    ...evaluation.getSummary()
+  };
+}
+
+/**
+ * Record user feedback for generated content
+ *
+ * @param {string} feedbackType - Type of feedback (rating, thumbs, comment, etc.)
+ * @param {string} contentType - Content type (roadmap, slides, document, research-analysis)
+ * @param {*} value - Feedback value
+ * @param {Object} context - Additional context (sessionId, traceId)
+ * @returns {Object|null} Feedback entry
+ */
+export function submitFeedback(feedbackType, contentType, value, context = {}) {
+  return recordUserFeedback(feedbackType, contentType, value, context);
+}
+
+/**
+ * Get improvement suggestions based on collected feedback
+ *
+ * @returns {Array} Improvement suggestions
+ */
+export function getImprovementSuggestions() {
+  const evaluation = getEvaluation();
+  if (!evaluation || !evaluation.feedbackCollector) {
+    return [];
+  }
+
+  return evaluation.feedbackCollector.getImprovementSuggestions();
 }
 
 /**
