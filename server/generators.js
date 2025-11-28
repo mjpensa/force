@@ -1682,6 +1682,20 @@ export {
   SchedulerState
 } from './layers/optimization/evolution/index.js';
 
+// Export dashboard functions
+export {
+  getDashboardData,
+  getDashboardSummary,
+  getInsights,
+  getRecommendations,
+  getVariantPerformance,
+  getExperimentStatus,
+  getEvolutionStatus,
+  getTrends,
+  clearDashboardCache,
+  TimePeriod
+} from './layers/optimization/dashboard/index.js';
+
 /**
  * Get observability metrics summary
  * Returns tracing stats, LLM metrics, and recent traces

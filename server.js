@@ -43,6 +43,7 @@ import chartRoutes from './server/routes/charts.js';
 import analysisRoutes from './server/routes/analysis.js';
 import contentRoutes from './server/routes/content.js';
 import feedbackRoutes from './server/routes/feedback.js';
+import autoOptimizeRoutes from './server/routes/auto-optimize.js';
 
 // Import advanced optimizers
 import { initializeOptimizers, shutdownOptimizers } from './server/utils/advancedOptimizer.js';
@@ -129,6 +130,7 @@ app.use('/', chartRoutes);
 app.use('/', analysisRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/auto-optimize', autoOptimizeRoutes);
 
 // --- Error Handling ---
 app.use(handleUploadErrors);
