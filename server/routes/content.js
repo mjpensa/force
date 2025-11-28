@@ -415,6 +415,7 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
     }
     try {
       heartbeatCount++;
+      console.log(`[Streaming] Sending heartbeat #${heartbeatCount}`);
       // Send actual progress event every 3rd heartbeat (30s) to ensure proxies see activity
       // Use SSE comments for other heartbeats to minimize payload
       if (heartbeatCount % 3 === 0) {

@@ -1035,11 +1035,13 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
       perfLogger.setMetadata(`prompt-size-${contentType.toLowerCase()}`, prompt.length);
     }
 
+    console.log(`[Gemini] Starting ${contentType} generation with model ${modelId}...`);
     const result = await withTimeout(
       model.generateContent(prompt),
       GENERATION_TIMEOUT_MS,
       `${contentType} generation`
     );
+    console.log(`[Gemini] ${contentType} generation complete`);
     const response = result.response;
 
     // Track token usage if available
