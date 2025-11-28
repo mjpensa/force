@@ -283,8 +283,28 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
   res.flushHeaders();
 
+  // Track client connection state
+  let clientConnected = true;
+
+  // Handle client disconnect
+  res.on('close', () => {
+    clientConnected = false;
+    console.log('[Streaming] Client disconnected');
+  });
+
+  res.on('error', (err) => {
+    clientConnected = false;
+    console.error('[Streaming] Response error:', err.message);
+  });
+
   // Helper to send SSE events with optimized JSON
   const sendEvent = (event, data) => {
+    // Don't send if client disconnected
+    if (!clientConnected || !res.writable) {
+      console.warn(`[Streaming] Cannot send ${event} event - client disconnected`);
+      return false;
+    }
+
     // Clean the data but preserve 'data' and 'error' fields even if null
     // This prevents the client from receiving responses with missing expected fields
     const cleanedData = cleanJsonResponse(data, { removeNull: true, removeUndefined: true });
@@ -299,8 +319,15 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
       }
     }
 
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(cleanedData)}\n\n`);
+    try {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(cleanedData)}\n\n`);
+      return true;
+    } catch (writeError) {
+      console.error(`[Streaming] Failed to write ${event} event:`, writeError.message);
+      clientConnected = false;
+      return false;
+    }
   };
 
   // Send initial heartbeat
@@ -308,7 +335,17 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
 
   // Keep-alive heartbeat to prevent connection timeout
   const heartbeatInterval = setInterval(() => {
-    res.write(': heartbeat\n\n');
+    if (!clientConnected || !res.writable) {
+      clearInterval(heartbeatInterval);
+      return;
+    }
+    try {
+      res.write(': heartbeat\n\n');
+    } catch (err) {
+      console.error('[Streaming] Heartbeat failed:', err.message);
+      clientConnected = false;
+      clearInterval(heartbeatInterval);
+    }
   }, 15000);
 
   try {
@@ -415,8 +452,18 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
         session.content[contentKey] = result;
         session.lastAccessed = Date.now();
 
-        // Persist updated session to storage
-        await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
+        // Persist updated session to storage with error handling
+        try {
+          const storageSuccess = await sessionStorage.set(sessionId, session, SESSION_TTL_MS);
+          if (!storageSuccess) {
+            console.error(`[Streaming] Failed to persist ${type} for session ${sessionId}`);
+            // Still send the content to client even if storage failed
+            // but log for monitoring
+          }
+        } catch (storageError) {
+          console.error(`[Streaming] Storage error for ${type}:`, storageError.message);
+          // Continue - content is still in memory and can be sent to client
+        }
 
         // Stream to client
         sendEvent('content', {

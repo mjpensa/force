@@ -127,8 +127,15 @@ class MemoryStorage {
     // Update access time for LRU
     entry.lastAccessed = Date.now();
 
-    // Decompress if needed
-    return maybeDecompress(entry.data, entry.compressed);
+    // Decompress if needed - handle errors gracefully
+    try {
+      return maybeDecompress(entry.data, entry.compressed);
+    } catch (error) {
+      // Data corruption - log and delete
+      console.error(`[Storage] CRITICAL: Corrupted in-memory session ${key}: ${error.message}`);
+      this.store.delete(key);
+      return null;
+    }
   }
 
   async set(key, value, ttlMs = CONFIG.session.ttlMs) {
@@ -319,7 +326,19 @@ class RedisStorage {
       const entry = JSON.parse(raw);
       return maybeDecompress(entry.data, entry.compressed);
     } catch (error) {
-      console.error(`[Storage] Redis get error: ${error.message}`);
+      // Distinguish between "not found" errors and data corruption
+      if (error.message.includes('decompress') || error.message.includes('JSON')) {
+        // Data corruption - log critical error and delete corrupted entry
+        console.error(`[Storage] CRITICAL: Corrupted session data for key ${key}: ${error.message}`);
+        try {
+          await this.client.del(this._key(key));
+          console.log(`[Storage] Deleted corrupted session: ${key}`);
+        } catch (delError) {
+          console.error(`[Storage] Failed to delete corrupted session: ${delError.message}`);
+        }
+      } else {
+        console.error(`[Storage] Redis get error for ${key}: ${error.message}`);
+      }
       return null;
     }
   }
