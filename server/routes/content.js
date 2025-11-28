@@ -349,7 +349,9 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=600'); // 10 minute keep-alive for proxies
   res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+  res.setHeader('X-Content-Type-Options', 'nosniff'); // Prevent content sniffing issues with SSE
   res.flushHeaders();
 
   // Track client connection state
@@ -402,20 +404,29 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   // Send initial heartbeat
   sendEvent('progress', { message: 'Connection established' });
 
-  // Keep-alive heartbeat to prevent connection timeout
+  // Keep-alive heartbeat to prevent connection timeout (every 10 seconds)
+  // Reduced from 15s to 10s for better compatibility with Railway/cloud proxy timeouts
+  let heartbeatCount = 0;
   const heartbeatInterval = setInterval(() => {
     if (!clientConnected || !res.writable) {
       clearInterval(heartbeatInterval);
       return;
     }
     try {
-      res.write(': heartbeat\n\n');
+      heartbeatCount++;
+      // Send actual progress event every 3rd heartbeat (30s) to ensure proxies see activity
+      // Use SSE comments for other heartbeats to minimize payload
+      if (heartbeatCount % 3 === 0) {
+        sendEvent('progress', { message: 'Generation in progress...', heartbeat: true });
+      } else {
+        res.write(': heartbeat\n\n');
+      }
     } catch (err) {
       console.error('[Streaming] Heartbeat failed:', err.message);
       clientConnected = false;
       clearInterval(heartbeatInterval);
     }
-  }, 15000);
+  }, 10000);
 
   try {
     // Note: prompt and files already validated before SSE headers were set

@@ -45,6 +45,11 @@ export function configureCacheControl(req, res, next) {
   next();
 }
 export function configureTimeout(req, res, next) {
+  // Skip global timeout for streaming routes - they set their own extended timeouts
+  // This prevents the global 2-minute timeout from interfering with long-running SSE connections
+  if (req.path.includes('/generate/stream')) {
+    return next();
+  }
   req.setTimeout(CONFIG.TIMEOUTS.REQUEST_MS);
   res.setTimeout(CONFIG.TIMEOUTS.RESPONSE_MS);
   next();
