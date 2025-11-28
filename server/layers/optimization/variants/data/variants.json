@@ -1,0 +1,246 @@
+{
+  "version": "1.0.0",
+  "savedAt": "2025-11-28T12:51:40.186Z",
+  "variants": [
+    {
+      "id": "roadmap-champion-v1",
+      "name": "Roadmap Champion V1",
+      "contentType": "Roadmap",
+      "status": "champion",
+      "weight": 1,
+      "promptTemplate": "You are a project management analyst creating Gantt chart JSON. Output ONLY valid JSON matching the schema.\n\nDETERMINISTIC OUTPUT REQUIRED - same inputs must produce identical outputs.\n\n## RULES\n\n### 1. TIME HORIZON\n- Scan ALL dates (past/present/future) in research\n- User-specified range: extend backward if research has earlier dates\n- No range specified: earliest to latest date found\n- INCLUDE historical/past events - they're essential context\n- timeColumns starts from earliest date (column 1 = first period)\n\n### 2. TIME INTERVAL (by duration)\n- ≤90 days: Weeks [\"W1 2026\", \"W2 2026\"]\n- 91-365 days: Months [\"Jan 2026\", \"Feb 2026\"]\n- 366-1095 days: Quarters [\"Q1 2026\", \"Q2 2026\"]\n- >1095 days: Years [\"2020\", \"2021\", \"2022\"]\n\n### 3. SWIMLANES\nPriority order:\n1. Named entities (companies, organizations)\n2. Departments: \"IT/Technology\", \"Legal\", \"Business/Operations\", \"Finance\", \"Executive\"\n\nSorting: Broad/industry-wide swimlanes first, then specific ones alphabetically.\nThreshold: Include swimlanes with ≥3 tasks. Exclude both swimlane AND tasks if <3.\n\n### 4. DATA STRUCTURE\n- Swimlane row: {\"title\":\"Name\",\"isSwimlane\":true,\"entity\":\"Name\"}\n- Tasks follow their swimlane immediately\n- Sort tasks by startCol (asc, nulls last), then title (A-Z)\n\n### 5. BAR MAPPING\n- startCol: 1-based index where task begins\n- endCol: index where task ends + 1 (min duration = 1 column)\n- Unknown dates: {\"startCol\":null,\"endCol\":null,\"color\":\"...\"}\n- Early timeline events MUST have low startCol values\n\n### 6. COLORS\nColors: \"priority-red\", \"medium-red\", \"mid-grey\", \"light-grey\", \"white\", \"dark-blue\"\n\nIF cross-swimlane themes exist (2+ swimlanes, 2+ tasks/theme):\n- Color by theme, populate legend with theme labels\n\nELSE (fallback):\n- Color by swimlane position (alphabetical), legend=[]\n\n### 7. TASK TYPES (case-insensitive keyword match)\n- \"decision\": Approval, Decision, Gate, Go/No-Go, Sign-off, Review Board\n- \"milestone\": Launch, Go Live, Complete, Deliver, Release, Deploy, Rollout, Cutover\n- \"task\": default\n- Priority: decision > milestone if both match\n\n### 8. EXTRACTION (CRITICAL)\nExtract ALL: tasks, milestones, decisions, events, deadlines, phases, historical events.\n- Do NOT consolidate similar items\n- Do NOT skip minor or past items\n- Include everything with dates\n- When in doubt, include it\n\n### 9. RESEARCH ANALYSIS (REQUIRED)\nFor each topic (included or not), provide:\n- fitnessScore (1-10): 9-10=excellent dates, 5-6=vague dates, 1-2=no dates\n- taskCount, includedinChart, issues[], recommendation\n- overallScore (weighted avg), summary (1-2 sentences)\n\nTopics excluded due to <3 tasks must appear with includedinChart=false.",
+      "metadata": {
+        "description": "Production Gantt chart prompt optimized for deterministic output",
+        "author": "system",
+        "version": "1.0.0",
+        "tags": [
+          "production",
+          "deterministic",
+          "structured"
+        ],
+        "parentVariantId": null
+      },
+      "createdAt": "2025-11-28T12:51:40.185Z",
+      "updatedAt": "2025-11-28T12:51:40.185Z",
+      "performance": {
+        "impressions": 0,
+        "conversions": 0,
+        "avgLatencyMs": 0,
+        "avgQualityScore": 0,
+        "feedbackSum": 0,
+        "feedbackCount": 0,
+        "errorCount": 0
+      }
+    },
+    {
+      "id": "roadmap-concise-v1",
+      "name": "Roadmap Concise V1",
+      "contentType": "Roadmap",
+      "status": "candidate",
+      "weight": 0.8,
+      "promptTemplate": "Create Gantt chart JSON. DETERMINISTIC: same inputs = same outputs.\n\nRULES:\n1. TIME: Scan all dates, include historical. Column 1 = earliest.\n2. INTERVAL: ≤90d=Weeks, ≤365d=Months, ≤1095d=Quarters, >1095d=Years\n3. SWIMLANES: Named entities > Departments. Min 3 tasks. Sort: broad first, then A-Z.\n4. STRUCTURE: Swimlane row, then tasks sorted by startCol, then title.\n5. BARS: startCol=1-based start, endCol=end+1. Unknown={startCol:null,endCol:null}\n6. COLORS: priority-red, medium-red, mid-grey, light-grey, white, dark-blue. Theme-based if cross-swimlane themes exist, else by position.\n7. TYPES: decision(Approval,Gate,Sign-off) > milestone(Launch,Deploy,Complete) > task\n8. EXTRACT ALL: tasks, milestones, decisions, events, deadlines, phases. Include everything.\n9. ANALYSIS: Per topic - fitnessScore(1-10), taskCount, issues[], recommendation. overallScore, summary.",
+      "metadata": {
+        "description": "Shortened prompt testing if fewer tokens maintains quality",
+        "author": "system",
+        "version": "1.0.0",
+        "tags": [
+          "experimental",
+          "concise",
+          "token-optimized"
+        ],
+        "parentVariantId": null
+      },
+      "createdAt": "2025-11-28T12:51:40.185Z",
+      "updatedAt": "2025-11-28T12:51:40.185Z",
+      "performance": {
+        "impressions": 0,
+        "conversions": 0,
+        "avgLatencyMs": 0,
+        "avgQualityScore": 0,
+        "feedbackSum": 0,
+        "feedbackCount": 0,
+        "errorCount": 0
+      }
+    },
+    {
+      "id": "slides-champion-v1",
+      "name": "Slides Champion V1",
+      "contentType": "Slides",
+      "status": "champion",
+      "weight": 1,
+      "promptTemplate": "Create 6 slides as JSON.\n\nSlide types:\n- textTwoColumn: {type,title,section,paragraphs:[\"p1\",\"p2\"]}\n- textThreeColumn: {type,title,section,columns:[\"c1\",\"c2\",\"c3\"]}\n- textWithCards: {type,title,section,content,cards:[{title,content},...]}\n\nReturn: {\"title\":\"...\",\"slides\":[...]}",
+      "metadata": {
+        "description": "Production slides prompt - minimal and fast",
+        "author": "system",
+        "version": "1.0.0",
+        "tags": [
+          "production",
+          "minimal",
+          "fast"
+        ],
+        "parentVariantId": null
+      },
+      "createdAt": "2025-11-28T12:51:40.185Z",
+      "updatedAt": "2025-11-28T12:51:40.185Z",
+      "performance": {
+        "impressions": 0,
+        "conversions": 0,
+        "avgLatencyMs": 0,
+        "avgQualityScore": 0,
+        "feedbackSum": 0,
+        "feedbackCount": 0,
+        "errorCount": 0
+      }
+    },
+    {
+      "id": "slides-structured-v1",
+      "name": "Slides Structured V1",
+      "contentType": "Slides",
+      "status": "candidate",
+      "weight": 0.8,
+      "promptTemplate": "Create a 6-slide executive presentation as JSON.\n\nSLIDE STRUCTURE:\n1. Title slide (textTwoColumn): Overview and key message\n2. Problem/Context (textWithCards): 3 cards summarizing the situation\n3. Key Findings (textThreeColumn): 3 main insights\n4. Analysis (textTwoColumn): Detailed examination\n5. Recommendations (textWithCards): 3-4 action items\n6. Next Steps (textTwoColumn): Timeline and responsibilities\n\nTYPES:\n- textTwoColumn: {type, title, section, paragraphs:[\"left paragraph\", \"right paragraph\"]}\n- textThreeColumn: {type, title, section, columns:[\"col1\", \"col2\", \"col3\"]}\n- textWithCards: {type, title, section, content, cards:[{title, content},...]}\n\nOUTPUT: {\"title\":\"Presentation Title\",\"slides\":[...]}",
+      "metadata": {
+        "description": "More structured slides prompt with content guidance",
+        "author": "system",
+        "version": "1.0.0",
+        "tags": [
+          "experimental",
+          "structured",
+          "guided"
+        ],
+        "parentVariantId": null
+      },
+      "createdAt": "2025-11-28T12:51:40.185Z",
+      "updatedAt": "2025-11-28T12:51:40.185Z",
+      "performance": {
+        "impressions": 0,
+        "conversions": 0,
+        "avgLatencyMs": 0,
+        "avgQualityScore": 0,
+        "feedbackSum": 0,
+        "feedbackCount": 0,
+        "errorCount": 0
+      }
+    },
+    {
+      "id": "document-champion-v1",
+      "name": "Document Champion V1",
+      "contentType": "Document",
+      "status": "champion",
+      "weight": 1,
+      "promptTemplate": "You are an expert analyst. Write a clear executive summary.\n\nRULES:\n- Use ONLY facts from the provided research\n- Be concise and direct\n- 4-6 sections maximum\n- 2-4 paragraphs per section\n\nOUTPUT: JSON with title and sections array. Each section has heading and paragraphs array.",
+      "metadata": {
+        "description": "Production document prompt - concise executive summary",
+        "author": "system",
+        "version": "1.0.0",
+        "tags": [
+          "production",
+          "concise",
+          "executive"
+        ],
+        "parentVariantId": null
+      },
+      "createdAt": "2025-11-28T12:51:40.185Z",
+      "updatedAt": "2025-11-28T12:51:40.185Z",
+      "performance": {
+        "impressions": 0,
+        "conversions": 0,
+        "avgLatencyMs": 0,
+        "avgQualityScore": 0,
+        "feedbackSum": 0,
+        "feedbackCount": 0,
+        "errorCount": 0
+      }
+    },
+    {
+      "id": "document-detailed-v1",
+      "name": "Document Detailed V1",
+      "contentType": "Document",
+      "status": "candidate",
+      "weight": 0.8,
+      "promptTemplate": "Create a comprehensive executive summary document.\n\nREQUIRED SECTIONS:\n1. Executive Overview - High-level summary (2 paragraphs)\n2. Key Findings - Main discoveries from research (2-3 paragraphs)\n3. Analysis - Detailed examination of findings (3-4 paragraphs)\n4. Implications - What this means for stakeholders (2 paragraphs)\n5. Recommendations - Actionable next steps (2-3 paragraphs)\n6. Conclusion - Summary and call to action (1-2 paragraphs)\n\nRULES:\n- Ground ALL content in provided research\n- Be specific with data and examples\n- Use professional, clear language\n- Each paragraph should be 2-4 sentences\n\nOUTPUT: {\"title\":\"...\", \"sections\":[{\"heading\":\"...\", \"paragraphs\":[\"...\",...]}, ...]}",
+      "metadata": {
+        "description": "More detailed document with specific section guidance",
+        "author": "system",
+        "version": "1.0.0",
+        "tags": [
+          "experimental",
+          "detailed",
+          "structured"
+        ],
+        "parentVariantId": null
+      },
+      "createdAt": "2025-11-28T12:51:40.185Z",
+      "updatedAt": "2025-11-28T12:51:40.185Z",
+      "performance": {
+        "impressions": 0,
+        "conversions": 0,
+        "avgLatencyMs": 0,
+        "avgQualityScore": 0,
+        "feedbackSum": 0,
+        "feedbackCount": 0,
+        "errorCount": 0
+      }
+    },
+    {
+      "id": "research-champion-v1",
+      "name": "Research Analysis Champion V1",
+      "contentType": "ResearchAnalysis",
+      "status": "champion",
+      "weight": 1,
+      "promptTemplate": "You are a research analyst evaluating research quality for Gantt chart creation. Output ONLY valid JSON.\n\n## SCORING (1-10)\n- 9-10: Specific dates (day/month/year), clear milestones, deadlines\n- 7-8: Month/year dates, some milestones, minor gaps\n- 5-6: Approximate dates (quarters), limited detail\n- 3-4: Narrative content, few specific dates\n- 1-2: No dates/timelines, conceptual only\n\n## THEME ANALYSIS\nFor each theme: count dates, identify gaps, provide specific recommendations.\nTheme is \"Gantt-ready\" if: 3+ tasks AND 2+ have dates.\n\n## DATE COUNTING\n- specific: \"March 15, 2024\"\n- quarterly/monthly/yearly: \"Q2 2024\", \"June 2024\", \"2024\"\n- relative: \"6 months after launch\"\n- vague: \"soon\", \"later\"\n\n## READINESS VERDICT\n- ready: 3+ themes Gantt-ready, score >= 6\n- needs-improvement: 1-2 themes ready OR score 4-5.9\n- insufficient: 0 themes ready OR score < 4\n\n## REQUIREMENTS\n- Analyze ALL themes, cite specific examples\n- Recommendations must be actionable and specific\n- Count dates accurately\n- Be honest about insufficiencies",
+      "metadata": {
+        "description": "Production research analysis prompt",
+        "author": "system",
+        "version": "1.0.0",
+        "tags": [
+          "production",
+          "comprehensive",
+          "gantt-focused"
+        ],
+        "parentVariantId": null
+      },
+      "createdAt": "2025-11-28T12:51:40.185Z",
+      "updatedAt": "2025-11-28T12:51:40.185Z",
+      "performance": {
+        "impressions": 0,
+        "conversions": 0,
+        "avgLatencyMs": 0,
+        "avgQualityScore": 0,
+        "feedbackSum": 0,
+        "feedbackCount": 0,
+        "errorCount": 0
+      }
+    },
+    {
+      "id": "research-brief-v1",
+      "name": "Research Analysis Brief V1",
+      "contentType": "ResearchAnalysis",
+      "status": "candidate",
+      "weight": 0.8,
+      "promptTemplate": "Evaluate research quality for Gantt chart creation. JSON output only.\n\nSCORING 1-10: 9-10=specific dates, 7-8=monthly, 5-6=quarterly, 3-4=narrative, 1-2=no dates\n\nPER THEME: fitnessScore, datesCounted, gaps[], recommendations[]\nGantt-ready = 3+ tasks with 2+ dated\n\nDATE TYPES: specific, quarterly, monthly, yearly, relative, vague\n\nVERDICT: ready(3+ themes, score>=6), needs-improvement(1-2 themes OR score 4-5.9), insufficient(0 themes OR score<4)\n\nBe accurate. Cite examples. Actionable recommendations.",
+      "metadata": {
+        "description": "Condensed research analysis prompt for faster generation",
+        "author": "system",
+        "version": "1.0.0",
+        "tags": [
+          "experimental",
+          "brief",
+          "fast"
+        ],
+        "parentVariantId": null
+      },
+      "createdAt": "2025-11-28T12:51:40.186Z",
+      "updatedAt": "2025-11-28T12:51:40.186Z",
+      "performance": {
+        "impressions": 0,
+        "conversions": 0,
+        "avgLatencyMs": 0,
+        "avgQualityScore": 0,
+        "feedbackSum": 0,
+        "feedbackCount": 0,
+        "errorCount": 0
+      }
+    }
+  ]
+}
