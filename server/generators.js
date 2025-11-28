@@ -45,9 +45,40 @@ import {
   quickHealthCheck,
   quickDashboard
 } from './layers/monitoring/index.js';
+import {
+  getMetricsCollector
+} from './layers/optimization/metrics/index.js';
+import {
+  selectVariant,
+  recordVariantPerformance,
+  initializeVariants,
+  ContentType
+} from './layers/optimization/variants/index.js';
+import {
+  recordExperimentMetric,
+  getActiveExperiment
+} from './layers/optimization/experiments/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
+
+// Feature flag for auto-optimization metrics collection
+const ENABLE_AUTO_OPTIMIZATION = process.env.ENABLE_AUTO_OPTIMIZATION !== 'false';
+
+// Feature flag for variant selection (A/B testing)
+const ENABLE_VARIANT_SELECTION = process.env.ENABLE_VARIANT_SELECTION !== 'false';
+
+// Initialize variants on module load if enabled
+if (ENABLE_VARIANT_SELECTION) {
+  try {
+    const result = initializeVariants();
+    if (result.initialized) {
+      console.log(`[Variants] Initialized ${result.registered} variants`);
+    }
+  } catch (error) {
+    console.warn('[Variants] Failed to initialize:', error.message);
+  }
+}
 
 // Feature flag for context engineering layer
 const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING !== 'false';
@@ -89,6 +120,115 @@ const CONTENT_TYPE_TO_SIGNATURE = {
   'Document': SignatureType.DOCUMENT,
   'ResearchAnalysis': SignatureType.RESEARCH_ANALYSIS
 };
+
+/**
+ * Record generation metrics for auto-optimization
+ *
+ * Captures metrics about prompt performance for A/B testing
+ * and automatic prompt improvement.
+ *
+ * @param {Object} data - Generation data to record
+ * @returns {string|null} Generation ID for feedback tracking
+ */
+function recordGenerationMetrics(data) {
+  if (!ENABLE_AUTO_OPTIMIZATION) {
+    return null;
+  }
+
+  try {
+    const collector = getMetricsCollector();
+    const generationId = collector.recordGeneration({
+      contentType: data.contentType,
+      variantId: data.variantId || 'default',
+      prompt: data.prompt,
+      userPrompt: data.userPrompt,
+      fileCount: data.fileCount || 0,
+      complexity: data.complexity || 0,
+      model: data.model || 'gemini-1.5-pro',
+      latencyMs: data.latencyMs || 0,
+      inputTokens: data.inputTokens || 0,
+      outputTokens: data.outputTokens || 0,
+      retryCount: data.retryCount || 0,
+      cacheHit: data.cacheHit || false,
+      validation: data.validation,
+      topics: data.topics || []
+    });
+
+    return generationId;
+  } catch (error) {
+    console.warn('[AutoOptimization] Failed to record metrics:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Select and apply a variant's prompt template
+ *
+ * Uses variant selection for A/B testing when enabled,
+ * falls back to traditional prompt generation when disabled.
+ *
+ * @param {string} contentType - Content type (Roadmap, Slides, Document, ResearchAnalysis)
+ * @param {string} userPrompt - User's prompt
+ * @param {Array} researchFiles - Research files
+ * @param {Function} fallbackGenerator - Fallback prompt generator function
+ * @returns {Object} {prompt, variantId, variantName, usedVariant}
+ */
+function selectAndApplyVariant(contentType, userPrompt, researchFiles, fallbackGenerator) {
+  if (!ENABLE_VARIANT_SELECTION) {
+    return {
+      prompt: fallbackGenerator(userPrompt, researchFiles),
+      variantId: 'default',
+      variantName: 'Default',
+      usedVariant: false
+    };
+  }
+
+  try {
+    const variant = selectVariant(contentType);
+
+    if (!variant || !variant.promptTemplate) {
+      // Fallback if no variant found
+      return {
+        prompt: fallbackGenerator(userPrompt, researchFiles),
+        variantId: 'default',
+        variantName: 'Default (no variant)',
+        usedVariant: false
+      };
+    }
+
+    // Build the prompt using the variant template
+    const researchContent = researchFiles
+      .map(file => `=== ${file.filename} ===\n${file.content}`)
+      .join('\n\n');
+
+    // Apply the variant template with user prompt and research
+    const prompt = `${variant.promptTemplate}
+
+**USER PROMPT:**
+${userPrompt}
+
+**RESEARCH CONTENT:**
+${researchContent}
+
+Respond with ONLY the JSON object.`;
+
+    return {
+      prompt,
+      variantId: variant.id,
+      variantName: variant.name,
+      usedVariant: true
+    };
+  } catch (error) {
+    console.warn(`[Variants] Selection failed for ${contentType}:`, error.message);
+    return {
+      prompt: fallbackGenerator(userPrompt, researchFiles),
+      variantId: 'default',
+      variantName: 'Default (error)',
+      usedVariant: false,
+      error: error.message
+    };
+  }
+}
 
 /**
  * Combine research files into a single content string for cache key
@@ -955,6 +1095,7 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
 async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'roadmap';
   const combinedContent = combineResearchContent(researchFiles);
+  const startTime = Date.now();
 
   try {
     // Check cache first
@@ -964,7 +1105,16 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-        return { success: true, data: cached, _cached: true };
+        // Record cache hit metrics
+        const generationId = recordGenerationMetrics({
+          contentType: 'Roadmap',
+          variantId: 'default',
+          userPrompt,
+          fileCount: researchFiles.length,
+          cacheHit: true,
+          latencyMs: Date.now() - startTime
+        });
+        return { success: true, data: cached, _cached: true, _generationId: generationId };
       }
     }
 
@@ -972,10 +1122,16 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'Roadmap', perfLogger);
     const processedFiles = contextResult.files;
 
-    // Generate prompt (optionally using signatures)
-    const promptResult = generatePromptWithSignature(
-      'Roadmap', userPrompt, processedFiles, generateRoadmapPrompt, perfLogger
-    );
+    // Select variant and generate prompt (A/B testing)
+    const variantResult = selectAndApplyVariant('Roadmap', userPrompt, processedFiles, generateRoadmapPrompt);
+
+    // Log variant selection
+    if (perfLogger && variantResult.usedVariant) {
+      perfLogger.setMetadata('variant-roadmap', {
+        id: variantResult.variantId,
+        name: variantResult.variantName
+      });
+    }
 
     // Build routing options for model selection
     const routingOptions = {
@@ -983,7 +1139,7 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
       fileCount: researchFiles.length
     };
 
-    const data = await generateWithGemini(promptResult.prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger, routingOptions);
+    const data = await generateWithGemini(variantResult.prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger, routingOptions);
 
     // Validate generated output (PROMPT ML Layer 6)
     const validationResult = validateGeneratedOutput(data, 'Roadmap', roadmapSchema, {
@@ -997,12 +1153,42 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
+    const latencyMs = Date.now() - startTime;
+
+    // Record variant performance for A/B testing
+    if (variantResult.usedVariant) {
+      const perfMetrics = {
+        latencyMs,
+        qualityScore: validationResult.validation?.quality?.score || 0,
+        success: validationResult.validation?.valid !== false
+      };
+      recordVariantPerformance(variantResult.variantId, perfMetrics);
+
+      // Also record to active experiment if one exists
+      recordExperimentMetric(variantResult.variantId, perfMetrics);
+    }
+
+    // Record generation metrics for auto-optimization
+    const generationId = recordGenerationMetrics({
+      contentType: 'Roadmap',
+      variantId: variantResult.variantId,
+      prompt: variantResult.prompt,
+      userPrompt,
+      fileCount: researchFiles.length,
+      complexity: contextResult.metadata?.complexity || 0,
+      latencyMs,
+      inputTokens: contextResult.metadata?.tokensUsed || 0,
+      cacheHit: false,
+      validation: validationResult.validation
+    });
+
     return {
       success: true,
       data: validatedData,
       _contextEngineering: contextResult.metadata,
-      _signature: promptResult.usedSignature ? promptResult.signatureType : null,
-      _validation: validationResult.validation
+      _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
+      _validation: validationResult.validation,
+      _generationId: generationId
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -1012,6 +1198,7 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
 async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'slides';
   const combinedContent = combineResearchContent(researchFiles);
+  const startTime = Date.now();
 
   try {
     // Check cache first
@@ -1021,7 +1208,16 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-        return { success: true, data: cached, _cached: true };
+        // Record cache hit metrics
+        const generationId = recordGenerationMetrics({
+          contentType: 'Slides',
+          variantId: 'default',
+          userPrompt,
+          fileCount: researchFiles.length,
+          cacheHit: true,
+          latencyMs: Date.now() - startTime
+        });
+        return { success: true, data: cached, _cached: true, _generationId: generationId };
       }
     }
 
@@ -1029,10 +1225,16 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'Slides', perfLogger);
     const processedFiles = contextResult.files;
 
-    // Generate prompt (optionally using signatures)
-    const promptResult = generatePromptWithSignature(
-      'Slides', userPrompt, processedFiles, generateSlidesPrompt, perfLogger
-    );
+    // Select variant and generate prompt (A/B testing)
+    const variantResult = selectAndApplyVariant('Slides', userPrompt, processedFiles, generateSlidesPrompt);
+
+    // Log variant selection
+    if (perfLogger && variantResult.usedVariant) {
+      perfLogger.setMetadata('variant-slides', {
+        id: variantResult.variantId,
+        name: variantResult.variantName
+      });
+    }
 
     // Build routing options for model selection
     const routingOptions = {
@@ -1040,7 +1242,7 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
       fileCount: researchFiles.length
     };
 
-    const data = await generateWithGemini(promptResult.prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
+    const data = await generateWithGemini(variantResult.prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
 
     // Validate generated output (PROMPT ML Layer 6)
     const validationResult = validateGeneratedOutput(data, 'Slides', slidesSchema, {
@@ -1054,12 +1256,42 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
+    const latencyMs = Date.now() - startTime;
+
+    // Record variant performance for A/B testing
+    if (variantResult.usedVariant) {
+      const perfMetrics = {
+        latencyMs,
+        qualityScore: validationResult.validation?.quality?.score || 0,
+        success: validationResult.validation?.valid !== false
+      };
+      recordVariantPerformance(variantResult.variantId, perfMetrics);
+
+      // Also record to active experiment if one exists
+      recordExperimentMetric(variantResult.variantId, perfMetrics);
+    }
+
+    // Record generation metrics for auto-optimization
+    const generationId = recordGenerationMetrics({
+      contentType: 'Slides',
+      variantId: variantResult.variantId,
+      prompt: variantResult.prompt,
+      userPrompt,
+      fileCount: researchFiles.length,
+      complexity: contextResult.metadata?.complexity || 0,
+      latencyMs,
+      inputTokens: contextResult.metadata?.tokensUsed || 0,
+      cacheHit: false,
+      validation: validationResult.validation
+    });
+
     return {
       success: true,
       data: validatedData,
       _contextEngineering: contextResult.metadata,
-      _signature: promptResult.usedSignature ? promptResult.signatureType : null,
-      _validation: validationResult.validation
+      _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
+      _validation: validationResult.validation,
+      _generationId: generationId
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -1069,6 +1301,7 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
 async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'document';
   const combinedContent = combineResearchContent(researchFiles);
+  const startTime = Date.now();
 
   try {
     // Check cache first
@@ -1078,7 +1311,16 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-        return { success: true, data: cached, _cached: true };
+        // Record cache hit metrics
+        const generationId = recordGenerationMetrics({
+          contentType: 'Document',
+          variantId: 'default',
+          userPrompt,
+          fileCount: researchFiles.length,
+          cacheHit: true,
+          latencyMs: Date.now() - startTime
+        });
+        return { success: true, data: cached, _cached: true, _generationId: generationId };
       }
     }
 
@@ -1086,10 +1328,16 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'Document', perfLogger);
     const processedFiles = contextResult.files;
 
-    // Generate prompt (optionally using signatures)
-    const promptResult = generatePromptWithSignature(
-      'Document', userPrompt, processedFiles, generateDocumentPrompt, perfLogger
-    );
+    // Select variant and generate prompt (A/B testing)
+    const variantResult = selectAndApplyVariant('Document', userPrompt, processedFiles, generateDocumentPrompt);
+
+    // Log variant selection
+    if (perfLogger && variantResult.usedVariant) {
+      perfLogger.setMetadata('variant-document', {
+        id: variantResult.variantId,
+        name: variantResult.variantName
+      });
+    }
 
     // Build routing options for model selection
     const routingOptions = {
@@ -1097,7 +1345,7 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
       fileCount: researchFiles.length
     };
 
-    const data = await generateWithGemini(promptResult.prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger, routingOptions);
+    const data = await generateWithGemini(variantResult.prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger, routingOptions);
 
     // Validate generated output (PROMPT ML Layer 6)
     const validationResult = validateGeneratedOutput(data, 'Document', documentSchema, {
@@ -1111,12 +1359,42 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
+    const latencyMs = Date.now() - startTime;
+
+    // Record variant performance for A/B testing
+    if (variantResult.usedVariant) {
+      const perfMetrics = {
+        latencyMs,
+        qualityScore: validationResult.validation?.quality?.score || 0,
+        success: validationResult.validation?.valid !== false
+      };
+      recordVariantPerformance(variantResult.variantId, perfMetrics);
+
+      // Also record to active experiment if one exists
+      recordExperimentMetric(variantResult.variantId, perfMetrics);
+    }
+
+    // Record generation metrics for auto-optimization
+    const generationId = recordGenerationMetrics({
+      contentType: 'Document',
+      variantId: variantResult.variantId,
+      prompt: variantResult.prompt,
+      userPrompt,
+      fileCount: researchFiles.length,
+      complexity: contextResult.metadata?.complexity || 0,
+      latencyMs,
+      inputTokens: contextResult.metadata?.tokensUsed || 0,
+      cacheHit: false,
+      validation: validationResult.validation
+    });
+
     return {
       success: true,
       data: validatedData,
       _contextEngineering: contextResult.metadata,
-      _signature: promptResult.usedSignature ? promptResult.signatureType : null,
-      _validation: validationResult.validation
+      _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
+      _validation: validationResult.validation,
+      _generationId: generationId
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -1126,6 +1404,7 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
 async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'researchAnalysis';
   const combinedContent = combineResearchContent(researchFiles);
+  const startTime = Date.now();
 
   try {
     // Check cache first
@@ -1135,7 +1414,16 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-        return { success: true, data: cached, _cached: true };
+        // Record cache hit metrics
+        const generationId = recordGenerationMetrics({
+          contentType: 'ResearchAnalysis',
+          variantId: 'default',
+          userPrompt,
+          fileCount: researchFiles.length,
+          cacheHit: true,
+          latencyMs: Date.now() - startTime
+        });
+        return { success: true, data: cached, _cached: true, _generationId: generationId };
       }
     }
 
@@ -1143,10 +1431,16 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'ResearchAnalysis', perfLogger);
     const processedFiles = contextResult.files;
 
-    // Generate prompt (optionally using signatures)
-    const promptResult = generatePromptWithSignature(
-      'ResearchAnalysis', userPrompt, processedFiles, generateResearchAnalysisPrompt, perfLogger
-    );
+    // Select variant and generate prompt (A/B testing)
+    const variantResult = selectAndApplyVariant('ResearchAnalysis', userPrompt, processedFiles, generateResearchAnalysisPrompt);
+
+    // Log variant selection
+    if (perfLogger && variantResult.usedVariant) {
+      perfLogger.setMetadata('variant-researchanalysis', {
+        id: variantResult.variantId,
+        name: variantResult.variantName
+      });
+    }
 
     // Build routing options for model selection
     const routingOptions = {
@@ -1154,7 +1448,7 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       fileCount: researchFiles.length
     };
 
-    const data = await generateWithGemini(promptResult.prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger, routingOptions);
+    const data = await generateWithGemini(variantResult.prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger, routingOptions);
 
     // Validate generated output (PROMPT ML Layer 6)
     const validationResult = validateGeneratedOutput(data, 'ResearchAnalysis', researchAnalysisSchema, {
@@ -1168,12 +1462,42 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
+    const latencyMs = Date.now() - startTime;
+
+    // Record variant performance for A/B testing
+    if (variantResult.usedVariant) {
+      const perfMetrics = {
+        latencyMs,
+        qualityScore: validationResult.validation?.quality?.score || 0,
+        success: validationResult.validation?.valid !== false
+      };
+      recordVariantPerformance(variantResult.variantId, perfMetrics);
+
+      // Also record to active experiment if one exists
+      recordExperimentMetric(variantResult.variantId, perfMetrics);
+    }
+
+    // Record generation metrics for auto-optimization
+    const generationId = recordGenerationMetrics({
+      contentType: 'ResearchAnalysis',
+      variantId: variantResult.variantId,
+      prompt: variantResult.prompt,
+      userPrompt,
+      fileCount: researchFiles.length,
+      complexity: contextResult.metadata?.complexity || 0,
+      latencyMs,
+      inputTokens: contextResult.metadata?.tokensUsed || 0,
+      cacheHit: false,
+      validation: validationResult.validation
+    });
+
     return {
       success: true,
       data: validatedData,
       _contextEngineering: contextResult.metadata,
-      _signature: promptResult.usedSignature ? promptResult.signatureType : null,
-      _validation: validationResult.validation
+      _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
+      _validation: validationResult.validation,
+      _generationId: generationId
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -1317,6 +1641,60 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
 
 // Export metrics for monitoring endpoints
 export { globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator };
+
+// Export variant management functions
+export {
+  selectVariant,
+  recordVariantPerformance,
+  initializeVariants,
+  getVariantStats,
+  getSelectionHistory,
+  promoteVariant,
+  registerVariant,
+  getVariant,
+  getVariants,
+  getChampion,
+  ContentType as VariantContentType
+} from './layers/optimization/variants/index.js';
+
+// Export experiment management functions
+export {
+  startExperiment,
+  concludeExperiment,
+  getActiveExperiment,
+  getExperimentSummary,
+  checkAndConcludeExperiments,
+  ExperimentStatus
+} from './layers/optimization/experiments/index.js';
+
+// Export evolution/auto-optimization functions
+export {
+  startEvolution,
+  stopEvolution,
+  runOptimizationCycle,
+  generateVariant,
+  getMutationStrategies,
+  getEvolutionSummary,
+  getEvolutionStats,
+  getEvolutionHistory,
+  updateEvolutionConfig,
+  MutationStrategy,
+  SchedulerState
+} from './layers/optimization/evolution/index.js';
+
+// Export dashboard functions
+export {
+  getDashboardData,
+  getDashboardSummary,
+  getInsights,
+  getRecommendations,
+  getVariantPerformance,
+  getExperimentStatus,
+  getEvolutionStatus,
+  getTrends,
+  clearDashboardCache,
+  TimePeriod
+} from './layers/optimization/dashboard/index.js';
 
 /**
  * Get observability metrics summary
