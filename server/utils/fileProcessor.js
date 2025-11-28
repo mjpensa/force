@@ -8,10 +8,16 @@
  * - Smart content truncation with section preservation
  * - Per-file-type metrics tracking
  * - Size limits to prevent memory issues
+ *
+ * Security features (PROMPT ML Layer 1):
+ * - Input sanitization with risk scoring
+ * - Prompt injection detection
+ * - Content safety validation
  */
 
 import mammoth from 'mammoth';
 import crypto from 'crypto';
+import { createSanitizer, createDetector, InjectionType } from '../layers/input-safety/index.js';
 
 // ============================================================================
 // CONFIGURATION
@@ -31,8 +37,103 @@ const CONFIG = {
   dedupeHashSampleSize: 100,
 
   // Concurrency limit for file processing
-  maxConcurrentProcessing: 10
+  maxConcurrentProcessing: 10,
+
+  // Safety check configuration
+  safety: {
+    enabled: true,
+    sanitizer: {
+      riskThreshold: 0.7,
+      escapeDelimiters: true,
+      removeControlChars: true
+    },
+    detector: {
+      threshold: 0.5,
+      useStatistical: true
+    }
+  }
 };
+
+// ============================================================================
+// SAFETY LAYER INITIALIZATION
+// ============================================================================
+
+// Create safety layer instances (lazy initialization)
+let _sanitizer = null;
+let _detector = null;
+
+/**
+ * Get or create sanitizer instance
+ * @returns {InputSanitizer}
+ */
+function getSanitizer() {
+  if (!_sanitizer) {
+    _sanitizer = createSanitizer(CONFIG.safety.sanitizer);
+  }
+  return _sanitizer;
+}
+
+/**
+ * Get or create injection detector instance
+ * @returns {InjectionDetector}
+ */
+function getDetector() {
+  if (!_detector) {
+    _detector = createDetector(CONFIG.safety.detector);
+  }
+  return _detector;
+}
+
+/**
+ * Check content safety (sanitization + injection detection)
+ * @param {string} content - Content to check
+ * @param {string} filename - Source filename for logging
+ * @returns {object} Safety check result
+ */
+function checkContentSafety(content, filename) {
+  if (!CONFIG.safety.enabled) {
+    return {
+      isSafe: true,
+      sanitizedContent: content,
+      riskScore: 0,
+      injectionDetected: false,
+      warnings: []
+    };
+  }
+
+  const warnings = [];
+
+  // Step 1: Sanitize content
+  const sanitizer = getSanitizer();
+  const sanitizationResult = sanitizer.sanitize(content);
+
+  if (sanitizationResult.modifications.length > 0) {
+    warnings.push(`Sanitization applied: ${sanitizationResult.modifications.join(', ')}`);
+  }
+
+  // Step 2: Check for injection
+  const detector = getDetector();
+  const injectionResult = detector.detect(sanitizationResult.sanitized, `file: ${filename}`);
+
+  if (injectionResult.isInjection) {
+    warnings.push(`Injection detected (${injectionResult.injectionType}): ${injectionResult.explanation}`);
+  } else if (injectionResult.confidence > 0.3) {
+    warnings.push(`Elevated injection risk (${(injectionResult.confidence * 100).toFixed(0)}%)`);
+  }
+
+  // Determine overall safety
+  const isSafe = sanitizationResult.isSafe && !injectionResult.isInjection;
+
+  return {
+    isSafe,
+    sanitizedContent: sanitizationResult.sanitized,
+    riskScore: sanitizationResult.riskScore,
+    injectionDetected: injectionResult.isInjection,
+    injectionType: injectionResult.injectionType,
+    injectionConfidence: injectionResult.confidence,
+    warnings
+  };
+}
 
 // ============================================================================
 // TEXT PREPROCESSING
@@ -493,16 +594,68 @@ export async function processFiles(files, options = {}) {
     });
   }
 
+  // =========================================================================
+  // SAFETY CHECK (PROMPT ML Layer 1)
+  // =========================================================================
+  const safetyResults = [];
+  const safetyRejected = [];
+
+  researchFiles = researchFiles.map(file => {
+    const safetyResult = checkContentSafety(file.content, file.filename);
+    safetyResults.push({
+      filename: file.filename,
+      ...safetyResult
+    });
+
+    if (!safetyResult.isSafe) {
+      safetyRejected.push({
+        filename: file.filename,
+        reason: safetyResult.warnings.join('; '),
+        riskScore: safetyResult.riskScore,
+        injectionType: safetyResult.injectionType
+      });
+      // Return file with sanitized content but flag it
+      return {
+        ...file,
+        content: safetyResult.sanitizedContent,
+        safetyWarnings: safetyResult.warnings,
+        rejected: true
+      };
+    }
+
+    return {
+      ...file,
+      content: safetyResult.sanitizedContent,
+      safetyWarnings: safetyResult.warnings,
+      rejected: false
+    };
+  });
+
+  // Filter out rejected files (those with detected injections)
+  const safeResearchFiles = researchFiles.filter(f => !f.rejected);
+
   // Aggregate metrics
+  const finalTotalSize = safeResearchFiles.reduce((sum, f) => sum + f.content.length, 0);
+
   const metrics = {
     totalProcessingTime: Date.now() - startTime,
     filesProcessed: results.length,
     filesSuccessful: successful.length,
     filesFailed: failed.length,
     totalOriginalSize: results.reduce((sum, r) => sum + (r.metrics?.originalSize || 0), 0),
-    totalExtractedSize: totalSize,
+    totalExtractedSize: finalTotalSize,
     totalDuplicatesRemoved: results.reduce((sum, r) => sum + (r.metrics?.duplicatesRemoved || 0), 0),
-    byFileType: {}
+    byFileType: {},
+    // Safety metrics (PROMPT ML)
+    safety: {
+      filesChecked: safetyResults.length,
+      filesRejected: safetyRejected.length,
+      averageRiskScore: safetyResults.length > 0
+        ? safetyResults.reduce((sum, r) => sum + r.riskScore, 0) / safetyResults.length
+        : 0,
+      injectionsDetected: safetyResults.filter(r => r.injectionDetected).length,
+      sanitizationsApplied: safetyResults.filter(r => r.warnings.length > 0).length
+    }
   };
 
   // Group metrics by file type
@@ -521,14 +674,17 @@ export async function processFiles(files, options = {}) {
   }
 
   return {
-    researchFiles: researchFiles.map(f => ({
+    researchFiles: safeResearchFiles.map(f => ({
       filename: f.filename,
-      content: f.content
+      content: f.content,
+      safetyWarnings: f.safetyWarnings || []
     })),
     failed: failed.map(f => ({
       filename: f.filename,
       error: f.error
     })),
+    // Files rejected by safety checks (PROMPT ML)
+    safetyRejected: safetyRejected,
     metrics
   };
 }
@@ -548,5 +704,10 @@ export default {
   normalizeWhitespace,
   deduplicateParagraphs,
   smartTruncate,
-  extractKeySections
+  extractKeySections,
+  // Safety exports (PROMPT ML)
+  checkContentSafety
 };
+
+// Named export for safety check
+export { checkContentSafety };
