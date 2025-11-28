@@ -54,6 +54,10 @@ import {
   initializeVariants,
   ContentType
 } from './layers/optimization/variants/index.js';
+import {
+  recordExperimentMetric,
+  getActiveExperiment
+} from './layers/optimization/experiments/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
@@ -1153,11 +1157,15 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
 
     // Record variant performance for A/B testing
     if (variantResult.usedVariant) {
-      recordVariantPerformance(variantResult.variantId, {
+      const perfMetrics = {
         latencyMs,
         qualityScore: validationResult.validation?.quality?.score || 0,
         success: validationResult.validation?.valid !== false
-      });
+      };
+      recordVariantPerformance(variantResult.variantId, perfMetrics);
+
+      // Also record to active experiment if one exists
+      recordExperimentMetric(variantResult.variantId, perfMetrics);
     }
 
     // Record generation metrics for auto-optimization
@@ -1252,11 +1260,15 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
 
     // Record variant performance for A/B testing
     if (variantResult.usedVariant) {
-      recordVariantPerformance(variantResult.variantId, {
+      const perfMetrics = {
         latencyMs,
         qualityScore: validationResult.validation?.quality?.score || 0,
         success: validationResult.validation?.valid !== false
-      });
+      };
+      recordVariantPerformance(variantResult.variantId, perfMetrics);
+
+      // Also record to active experiment if one exists
+      recordExperimentMetric(variantResult.variantId, perfMetrics);
     }
 
     // Record generation metrics for auto-optimization
@@ -1351,11 +1363,15 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
 
     // Record variant performance for A/B testing
     if (variantResult.usedVariant) {
-      recordVariantPerformance(variantResult.variantId, {
+      const perfMetrics = {
         latencyMs,
         qualityScore: validationResult.validation?.quality?.score || 0,
         success: validationResult.validation?.valid !== false
-      });
+      };
+      recordVariantPerformance(variantResult.variantId, perfMetrics);
+
+      // Also record to active experiment if one exists
+      recordExperimentMetric(variantResult.variantId, perfMetrics);
     }
 
     // Record generation metrics for auto-optimization
@@ -1450,11 +1466,15 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
 
     // Record variant performance for A/B testing
     if (variantResult.usedVariant) {
-      recordVariantPerformance(variantResult.variantId, {
+      const perfMetrics = {
         latencyMs,
         qualityScore: validationResult.validation?.quality?.score || 0,
         success: validationResult.validation?.valid !== false
-      });
+      };
+      recordVariantPerformance(variantResult.variantId, perfMetrics);
+
+      // Also record to active experiment if one exists
+      recordExperimentMetric(variantResult.variantId, perfMetrics);
     }
 
     // Record generation metrics for auto-optimization
@@ -1636,6 +1656,16 @@ export {
   getChampion,
   ContentType as VariantContentType
 } from './layers/optimization/variants/index.js';
+
+// Export experiment management functions
+export {
+  startExperiment,
+  concludeExperiment,
+  getActiveExperiment,
+  getExperimentSummary,
+  checkAndConcludeExperiments,
+  ExperimentStatus
+} from './layers/optimization/experiments/index.js';
 
 /**
  * Get observability metrics summary
