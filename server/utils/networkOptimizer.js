@@ -76,6 +76,11 @@ function shouldCompress(req, res) {
   if (contentType) {
     const type = contentType.toString().split(';')[0].trim();
 
+    // CRITICAL: Never compress SSE - it breaks real-time streaming
+    if (type === 'text/event-stream') {
+      return false;
+    }
+
     // Skip already compressed formats (images, video, etc.)
     if (/^(image\/(jpeg|png|gif|webp)|video\/|audio\/|application\/(zip|gzip|pdf))/.test(type)) {
       return false;
