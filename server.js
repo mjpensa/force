@@ -108,15 +108,36 @@ app.use(express.json({ limit: '50mb' }));
 
 // CORS configuration - secure by default (only applies to API routes now)
 const getAllowedOrigins = () => {
-  // In production, ALLOWED_ORIGINS must be set
-  if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
-    console.warn('[SECURITY] ALLOWED_ORIGINS not set in production - using restrictive default');
-    return []; // No origins allowed if not configured in production
+  // If explicitly configured, use that
+  if (process.env.ALLOWED_ORIGINS) {
+    return process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
   }
-  // Parse comma-separated origins or use localhost for development
-  return process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+  // In production, auto-detect from Railway environment variables
+  if (process.env.NODE_ENV === 'production') {
+    const origins = [];
+
+    // Railway provides RAILWAY_PUBLIC_DOMAIN for the deployed service
+    if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+      origins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+      console.log(`[CORS] Auto-detected Railway origin: https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+    }
+
+    // Also check for custom domain if configured
+    if (process.env.RAILWAY_STATIC_URL) {
+      origins.push(process.env.RAILWAY_STATIC_URL);
+    }
+
+    if (origins.length > 0) {
+      return origins;
+    }
+
+    console.warn('[SECURITY] ALLOWED_ORIGINS not set and Railway domain not detected - using restrictive default');
+    return [];
+  }
+
+  // Development defaults
+  return ['http://localhost:3000', 'http://127.0.0.1:3000'];
 };
 
 app.use(cors({
