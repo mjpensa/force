@@ -109,6 +109,12 @@ DETERMINISTIC OUTPUT REQUIRED - same inputs must produce identical outputs.
 - 366-1095 days: Quarters ["Q1 2026", "Q2 2026"]
 - >1095 days: Years ["2020", "2021", "2022"]
 
+**MANDATORY INTERVAL CHECK:**
+- Calculate: end_year - start_year + 1 = total_years
+- If total_years > 3: MUST use "Years" (NON-NEGOTIABLE)
+- WRONG: Quarters for 5-year range (too granular)
+- RIGHT: Years for 5-year range ["2026","2027","2028","2029","2030"]
+
 ### 3. SWIMLANES
 Priority order:
 1. Named entities (companies, organizations)
