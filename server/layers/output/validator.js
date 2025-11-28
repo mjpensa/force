@@ -80,13 +80,15 @@ export class OutputValidator {
     try {
       // Check if output is null/undefined
       if (output === null || output === undefined) {
-        errors.push('Output is null or undefined');
+        const actualType = output === null ? 'null' : 'undefined';
+        errors.push(`Invalid data structure: Expected object, received ${actualType}`);
         return this._buildResult(ValidationLevel.INVALID, errors, warnings, details);
       }
 
       // Check root type
       if (schema.type && !this._checkType(output, schema.type)) {
-        errors.push(`Expected ${schema.type}, got ${typeof output}`);
+        const actualType = output === null ? 'null' : typeof output;
+        errors.push(`Invalid data structure: Expected ${schema.type}, received ${actualType}`);
         return this._buildResult(ValidationLevel.INVALID, errors, warnings, details);
       }
 
