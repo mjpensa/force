@@ -42,6 +42,7 @@ import {
 import chartRoutes from './server/routes/charts.js';
 import analysisRoutes from './server/routes/analysis.js';
 import contentRoutes from './server/routes/content.js';
+import feedbackRoutes from './server/routes/feedback.js';
 
 // Import advanced optimizers
 import { initializeOptimizers, shutdownOptimizers } from './server/utils/advancedOptimizer.js';
@@ -127,6 +128,7 @@ app.get('/api/health', (req, res) => {
 app.use('/', chartRoutes);
 app.use('/', analysisRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // --- Error Handling ---
 app.use(handleUploadErrors);

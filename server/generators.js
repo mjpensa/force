@@ -45,9 +45,15 @@ import {
   quickHealthCheck,
   quickDashboard
 } from './layers/monitoring/index.js';
+import {
+  getMetricsCollector
+} from './layers/optimization/metrics/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
+
+// Feature flag for auto-optimization metrics collection
+const ENABLE_AUTO_OPTIMIZATION = process.env.ENABLE_AUTO_OPTIMIZATION !== 'false';
 
 // Feature flag for context engineering layer
 const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING !== 'false';
@@ -89,6 +95,46 @@ const CONTENT_TYPE_TO_SIGNATURE = {
   'Document': SignatureType.DOCUMENT,
   'ResearchAnalysis': SignatureType.RESEARCH_ANALYSIS
 };
+
+/**
+ * Record generation metrics for auto-optimization
+ *
+ * Captures metrics about prompt performance for A/B testing
+ * and automatic prompt improvement.
+ *
+ * @param {Object} data - Generation data to record
+ * @returns {string|null} Generation ID for feedback tracking
+ */
+function recordGenerationMetrics(data) {
+  if (!ENABLE_AUTO_OPTIMIZATION) {
+    return null;
+  }
+
+  try {
+    const collector = getMetricsCollector();
+    const generationId = collector.recordGeneration({
+      contentType: data.contentType,
+      variantId: data.variantId || 'default',
+      prompt: data.prompt,
+      userPrompt: data.userPrompt,
+      fileCount: data.fileCount || 0,
+      complexity: data.complexity || 0,
+      model: data.model || 'gemini-1.5-pro',
+      latencyMs: data.latencyMs || 0,
+      inputTokens: data.inputTokens || 0,
+      outputTokens: data.outputTokens || 0,
+      retryCount: data.retryCount || 0,
+      cacheHit: data.cacheHit || false,
+      validation: data.validation,
+      topics: data.topics || []
+    });
+
+    return generationId;
+  } catch (error) {
+    console.warn('[AutoOptimization] Failed to record metrics:', error.message);
+    return null;
+  }
+}
 
 /**
  * Combine research files into a single content string for cache key
@@ -955,6 +1001,7 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
 async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'roadmap';
   const combinedContent = combineResearchContent(researchFiles);
+  const startTime = Date.now();
 
   try {
     // Check cache first
@@ -964,7 +1011,16 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-        return { success: true, data: cached, _cached: true };
+        // Record cache hit metrics
+        const generationId = recordGenerationMetrics({
+          contentType: 'Roadmap',
+          variantId: 'default',
+          userPrompt,
+          fileCount: researchFiles.length,
+          cacheHit: true,
+          latencyMs: Date.now() - startTime
+        });
+        return { success: true, data: cached, _cached: true, _generationId: generationId };
       }
     }
 
@@ -997,12 +1053,27 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
+    // Record generation metrics for auto-optimization
+    const generationId = recordGenerationMetrics({
+      contentType: 'Roadmap',
+      variantId: promptResult.usedSignature ? `signature-${promptResult.signatureType}` : 'default',
+      prompt: promptResult.prompt,
+      userPrompt,
+      fileCount: researchFiles.length,
+      complexity: contextResult.metadata?.complexity || 0,
+      latencyMs: Date.now() - startTime,
+      inputTokens: contextResult.metadata?.tokensUsed || 0,
+      cacheHit: false,
+      validation: validationResult.validation
+    });
+
     return {
       success: true,
       data: validatedData,
       _contextEngineering: contextResult.metadata,
       _signature: promptResult.usedSignature ? promptResult.signatureType : null,
-      _validation: validationResult.validation
+      _validation: validationResult.validation,
+      _generationId: generationId
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -1012,6 +1083,7 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
 async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'slides';
   const combinedContent = combineResearchContent(researchFiles);
+  const startTime = Date.now();
 
   try {
     // Check cache first
@@ -1021,7 +1093,16 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-        return { success: true, data: cached, _cached: true };
+        // Record cache hit metrics
+        const generationId = recordGenerationMetrics({
+          contentType: 'Slides',
+          variantId: 'default',
+          userPrompt,
+          fileCount: researchFiles.length,
+          cacheHit: true,
+          latencyMs: Date.now() - startTime
+        });
+        return { success: true, data: cached, _cached: true, _generationId: generationId };
       }
     }
 
@@ -1054,12 +1135,27 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
+    // Record generation metrics for auto-optimization
+    const generationId = recordGenerationMetrics({
+      contentType: 'Slides',
+      variantId: promptResult.usedSignature ? `signature-${promptResult.signatureType}` : 'default',
+      prompt: promptResult.prompt,
+      userPrompt,
+      fileCount: researchFiles.length,
+      complexity: contextResult.metadata?.complexity || 0,
+      latencyMs: Date.now() - startTime,
+      inputTokens: contextResult.metadata?.tokensUsed || 0,
+      cacheHit: false,
+      validation: validationResult.validation
+    });
+
     return {
       success: true,
       data: validatedData,
       _contextEngineering: contextResult.metadata,
       _signature: promptResult.usedSignature ? promptResult.signatureType : null,
-      _validation: validationResult.validation
+      _validation: validationResult.validation,
+      _generationId: generationId
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -1069,6 +1165,7 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
 async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'document';
   const combinedContent = combineResearchContent(researchFiles);
+  const startTime = Date.now();
 
   try {
     // Check cache first
@@ -1078,7 +1175,16 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-        return { success: true, data: cached, _cached: true };
+        // Record cache hit metrics
+        const generationId = recordGenerationMetrics({
+          contentType: 'Document',
+          variantId: 'default',
+          userPrompt,
+          fileCount: researchFiles.length,
+          cacheHit: true,
+          latencyMs: Date.now() - startTime
+        });
+        return { success: true, data: cached, _cached: true, _generationId: generationId };
       }
     }
 
@@ -1111,12 +1217,27 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
+    // Record generation metrics for auto-optimization
+    const generationId = recordGenerationMetrics({
+      contentType: 'Document',
+      variantId: promptResult.usedSignature ? `signature-${promptResult.signatureType}` : 'default',
+      prompt: promptResult.prompt,
+      userPrompt,
+      fileCount: researchFiles.length,
+      complexity: contextResult.metadata?.complexity || 0,
+      latencyMs: Date.now() - startTime,
+      inputTokens: contextResult.metadata?.tokensUsed || 0,
+      cacheHit: false,
+      validation: validationResult.validation
+    });
+
     return {
       success: true,
       data: validatedData,
       _contextEngineering: contextResult.metadata,
       _signature: promptResult.usedSignature ? promptResult.signatureType : null,
-      _validation: validationResult.validation
+      _validation: validationResult.validation,
+      _generationId: generationId
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -1126,6 +1247,7 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
 async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'researchAnalysis';
   const combinedContent = combineResearchContent(researchFiles);
+  const startTime = Date.now();
 
   try {
     // Check cache first
@@ -1135,7 +1257,16 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-        return { success: true, data: cached, _cached: true };
+        // Record cache hit metrics
+        const generationId = recordGenerationMetrics({
+          contentType: 'ResearchAnalysis',
+          variantId: 'default',
+          userPrompt,
+          fileCount: researchFiles.length,
+          cacheHit: true,
+          latencyMs: Date.now() - startTime
+        });
+        return { success: true, data: cached, _cached: true, _generationId: generationId };
       }
     }
 
@@ -1168,12 +1299,27 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
+    // Record generation metrics for auto-optimization
+    const generationId = recordGenerationMetrics({
+      contentType: 'ResearchAnalysis',
+      variantId: promptResult.usedSignature ? `signature-${promptResult.signatureType}` : 'default',
+      prompt: promptResult.prompt,
+      userPrompt,
+      fileCount: researchFiles.length,
+      complexity: contextResult.metadata?.complexity || 0,
+      latencyMs: Date.now() - startTime,
+      inputTokens: contextResult.metadata?.tokensUsed || 0,
+      cacheHit: false,
+      validation: validationResult.validation
+    });
+
     return {
       success: true,
       data: validatedData,
       _contextEngineering: contextResult.metadata,
       _signature: promptResult.usedSignature ? promptResult.signatureType : null,
-      _validation: validationResult.validation
+      _validation: validationResult.validation,
+      _generationId: generationId
     };
   } catch (error) {
     return { success: false, error: error.message };
