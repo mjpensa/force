@@ -803,6 +803,16 @@ router.get('/:sessionId/:viewType', async (req, res) => {
         responseData.data = null;
       }
 
+      // CRITICAL: Never send completed status with null data - this causes client errors
+      // This is a defense-in-depth check that should never trigger if earlier checks work
+      if (responseData.data === null || responseData.data === undefined) {
+        console.error(`[Content] CRITICAL: Attempted to send completed status with null data for ${viewType}`);
+        return res.json({
+          status: 'error',
+          error: `${viewType} generation completed but produced no data. Please try again.`
+        });
+      }
+
       return res.json(responseData);
     } else {
       // Don't cache error responses
