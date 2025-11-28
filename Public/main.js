@@ -551,8 +551,11 @@ async function handleChartGenerate(event) {
     }
 
     // Validate roadmap data
-    if (!ganttData || typeof ganttData !== 'object') {
-      throw new Error('Invalid chart data structure: Expected object, received ' + typeof ganttData);
+    if (ganttData === null || ganttData === undefined) {
+      throw new Error('Invalid chart data structure: Expected object, received ' + (ganttData === null ? 'null' : 'undefined'));
+    }
+    if (typeof ganttData !== 'object' || Array.isArray(ganttData)) {
+      throw new Error('Invalid chart data structure: Expected object, received ' + (Array.isArray(ganttData) ? 'array' : typeof ganttData));
     }
     if (!ganttData.timeColumns) {
       throw new Error('Invalid chart data structure: Missing timeColumns field');

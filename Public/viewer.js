@@ -479,8 +479,11 @@ class ContentViewer {
     this.contentContainer.appendChild(chartContainer);
     try {
       const { GanttChart } = await import('./GanttChart.js');
-      if (!data || typeof data !== 'object') {
-        throw new Error('Invalid chart data structure');
+      if (data === null || data === undefined) {
+        throw new Error('Invalid chart data structure: received ' + (data === null ? 'null' : 'undefined'));
+      }
+      if (typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error('Invalid chart data structure: received ' + (Array.isArray(data) ? 'array' : typeof data));
       }
       if (!data.timeColumns || !Array.isArray(data.timeColumns)) {
         throw new Error('Invalid timeColumns in chart data');
