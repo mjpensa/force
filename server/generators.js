@@ -36,6 +36,10 @@ import {
   getEvaluationPipeline,
   FeedbackType
 } from './layers/evaluation/index.js';
+import {
+  getOptimizationPipeline,
+  TuningMode
+} from './layers/optimization/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
@@ -54,6 +58,9 @@ const ENABLE_OBSERVABILITY = process.env.ENABLE_OBSERVABILITY !== 'false';
 
 // Feature flag for evaluation (PROMPT ML Layer 8)
 const ENABLE_EVALUATION = process.env.ENABLE_EVALUATION !== 'false';
+
+// Feature flag for optimization (PROMPT ML Layer 9)
+const ENABLE_OPTIMIZATION = process.env.ENABLE_OPTIMIZATION !== 'false';
 
 /**
  * Map content types to StrategyType for context engineering
@@ -445,6 +452,104 @@ function recordUserFeedback(feedbackType, contentType, value, context = {}) {
   } catch (error) {
     console.warn('[Feedback] Failed to record:', error.message);
     return null;
+  }
+}
+
+/**
+ * Get optimization pipeline for request optimization
+ *
+ * Provides prompt optimization, caching, and performance tuning
+ * for the generation pipeline.
+ *
+ * @returns {Object|null} Optimization pipeline or null if disabled
+ */
+function getOptimization() {
+  if (!ENABLE_OPTIMIZATION) {
+    return null;
+  }
+  return getOptimizationPipeline();
+}
+
+/**
+ * Optimize a request before execution
+ *
+ * @param {Object} request - Request details
+ * @returns {Object} Optimized request
+ */
+function optimizeRequest(request) {
+  if (!ENABLE_OPTIMIZATION) {
+    return { ...request, optimizations: { applied: [] } };
+  }
+
+  const optimization = getOptimization();
+  if (!optimization) {
+    return { ...request, optimizations: { applied: [] } };
+  }
+
+  try {
+    return optimization.optimizeRequest(request);
+  } catch (error) {
+    console.warn('[Optimization] Request optimization failed:', error.message);
+    return { ...request, optimizations: { applied: [], error: error.message } };
+  }
+}
+
+/**
+ * Record optimization result for learning
+ *
+ * @param {Object} request - Original request
+ * @param {Object} result - Request result
+ */
+function recordOptimizationResult(request, result) {
+  if (!ENABLE_OPTIMIZATION) return;
+
+  const optimization = getOptimization();
+  if (!optimization) return;
+
+  try {
+    optimization.recordResult(request, result);
+  } catch (error) {
+    console.warn('[Optimization] Failed to record result:', error.message);
+  }
+}
+
+/**
+ * Get optimized timeout for content type
+ *
+ * @param {string} contentType - Content type
+ * @returns {number} Timeout in ms
+ */
+function getOptimizedTimeout(contentType) {
+  if (!ENABLE_OPTIMIZATION) {
+    return GENERATION_TIMEOUT_MS;
+  }
+
+  const optimization = getOptimization();
+  if (!optimization) {
+    return GENERATION_TIMEOUT_MS;
+  }
+
+  return optimization.getOptimizedTimeout(contentType);
+}
+
+/**
+ * Track request lifecycle for optimization
+ */
+function trackOptimizationRequestStart() {
+  if (!ENABLE_OPTIMIZATION) return;
+
+  const optimization = getOptimization();
+  if (optimization) {
+    optimization.trackRequestStart();
+  }
+}
+
+function trackOptimizationRequestEnd() {
+  if (!ENABLE_OPTIMIZATION) return;
+
+  const optimization = getOptimization();
+  if (optimization) {
+    optimization.trackRequestEnd();
   }
 }
 
@@ -1241,6 +1346,71 @@ export function getImprovementSuggestions() {
   }
 
   return evaluation.feedbackCollector.getImprovementSuggestions();
+}
+
+/**
+ * Get optimization summary including prompt, cache, and performance optimization
+ *
+ * @returns {Object} Optimization summary
+ */
+export function getOptimizationSummary() {
+  const optimization = getOptimization();
+  if (!optimization) {
+    return { enabled: false };
+  }
+
+  return {
+    enabled: true,
+    ...optimization.getSummary()
+  };
+}
+
+/**
+ * Get all optimization recommendations
+ *
+ * @returns {Array} Optimization recommendations
+ */
+export function getOptimizationRecommendations() {
+  const optimization = getOptimization();
+  if (!optimization) {
+    return [];
+  }
+
+  return optimization.getAllRecommendations();
+}
+
+/**
+ * Run auto-tuning cycle for optimization
+ *
+ * @returns {Object} Tuning results
+ */
+export function runAutoTuning() {
+  const optimization = getOptimization();
+  if (!optimization) {
+    return { enabled: false };
+  }
+
+  return optimization.autoTune();
+}
+
+/**
+ * Set optimization tuning mode
+ *
+ * @param {string} mode - Tuning mode (conservative, balanced, aggressive, auto)
+ */
+export function setOptimizationMode(mode) {
+  const optimization = getOptimization();
+  if (!optimization) return;
+
+  const modeMap = {
+    'conservative': TuningMode.CONSERVATIVE,
+    'balanced': TuningMode.BALANCED,
+    'aggressive': TuningMode.AGGRESSIVE,
+    'auto': TuningMode.AUTO
+  };
+
+  const tuningMode = modeMap[mode] || TuningMode.BALANCED;
+  optimization.setTuningMode(tuningMode);
 }
 
 /**
