@@ -307,6 +307,33 @@ export class StateManager {
           );
         }
       }
+      if (viewName === 'roadmap') {
+        // Validate roadmap data structure to prevent "Invalid chart data structure" errors
+        if (!data || typeof data !== 'object') {
+          throw new AppError(
+            `Roadmap generation completed but returned invalid data. Please try regenerating.`,
+            ErrorTypes.VALIDATION,
+            ErrorSeverity.MEDIUM,
+            { viewName, emptyContent: true, canRetry: true }
+          );
+        }
+        if (!data.timeColumns || !Array.isArray(data.timeColumns) || data.timeColumns.length === 0) {
+          throw new AppError(
+            `Roadmap generation completed but produced no time columns. Please try regenerating with different source material.`,
+            ErrorTypes.VALIDATION,
+            ErrorSeverity.MEDIUM,
+            { viewName, emptyContent: true, canRetry: true }
+          );
+        }
+        if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
+          throw new AppError(
+            `Roadmap generation completed but produced no tasks. Please try regenerating with different source material.`,
+            ErrorTypes.VALIDATION,
+            ErrorSeverity.MEDIUM,
+            { viewName, emptyContent: true, canRetry: true }
+          );
+        }
+      }
       this.setState({
         content: { ...this.state.content, [viewName]: data },
         loading: { ...this.state.loading, [viewName]: false }
