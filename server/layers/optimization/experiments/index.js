@@ -15,7 +15,7 @@ export {
   resetExperimentManager
 } from './manager.js';
 
-import { getExperimentManager, ExperimentStatus } from './manager.js';
+import { getExperimentManager, ExperimentStatus, analyzeExperiment } from './manager.js';
 import { getVariantRegistry } from '../variants/index.js';
 
 /**
@@ -108,7 +108,6 @@ export function getExperimentSummary() {
   // Get running experiments with their current analysis
   const activeExperiments = manager.getAll({ status: ExperimentStatus.RUNNING });
   const runningAnalysis = activeExperiments.map(exp => {
-    const { analyzeExperiment } = require('./manager.js');
     return {
       id: exp.id,
       name: exp.name,

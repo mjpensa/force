@@ -287,19 +287,19 @@ export class MetricsCollector {
     }
 
     // Execution metrics
-    const latencies = metrics.map(m => m.execution.latencyMs);
+    const latencies = metrics.map(m => m.execution?.latencyMs || 0);
     const avgLatency = latencies.reduce((a, b) => a + b, 0) / n;
     const sortedLatencies = [...latencies].sort((a, b) => a - b);
 
-    // Quality metrics
-    const qualityScores = metrics.map(m => m.quality.qualityScore);
+    // Quality metrics (with null checks)
+    const qualityScores = metrics.map(m => m.quality?.qualityScore || 0);
     const avgQuality = qualityScores.reduce((a, b) => a + b, 0) / n;
-    const successRate = metrics.filter(m => m.quality.validationPassed).length / n;
+    const successRate = metrics.filter(m => m.quality?.validationPassed).length / n;
 
-    // Feedback metrics (only for items with feedback)
-    const withRating = metrics.filter(m => m.feedback.rating !== null);
-    const withEdit = metrics.filter(m => m.feedback.wasEdited !== null);
-    const withExport = metrics.filter(m => m.feedback.wasExported !== null);
+    // Feedback metrics (only for items with feedback, with null checks)
+    const withRating = metrics.filter(m => m.feedback?.rating !== null && m.feedback?.rating !== undefined);
+    const withEdit = metrics.filter(m => m.feedback?.wasEdited !== null && m.feedback?.wasEdited !== undefined);
+    const withExport = metrics.filter(m => m.feedback?.wasExported !== null && m.feedback?.wasExported !== undefined);
 
     const avgRating = withRating.length > 0
       ? withRating.reduce((s, m) => s + m.feedback.rating, 0) / withRating.length
@@ -313,7 +313,7 @@ export class MetricsCollector {
       ? withExport.filter(m => m.feedback.wasExported).length / withExport.length
       : null;
 
-    const regenerateRate = metrics.filter(m => m.feedback.wasRegenerated).length / n;
+    const regenerateRate = metrics.filter(m => m.feedback?.wasRegenerated).length / n;
 
     // Grade distribution
     const gradeDistribution = this._countGrades(metrics);
@@ -321,27 +321,30 @@ export class MetricsCollector {
     // Dimension averages
     const dimensionAverages = this._averageDimensions(metrics);
 
+    // Calculate time range safely (convert dates to timestamps)
+    const timestamps = metrics.map(m => m.timestamp?.getTime?.() || Date.now());
+
     return {
       sampleCount: n,
       feedbackCount: withRating.length,
       timeRange: {
-        start: new Date(Math.min(...metrics.map(m => m.timestamp))),
-        end: new Date(Math.max(...metrics.map(m => m.timestamp)))
+        start: new Date(Math.min(...timestamps)),
+        end: new Date(Math.max(...timestamps))
       },
       execution: {
         avgLatencyMs: Math.round(avgLatency),
         p50LatencyMs: this._percentile(sortedLatencies, 50),
         p95LatencyMs: this._percentile(sortedLatencies, 95),
         p99LatencyMs: this._percentile(sortedLatencies, 99),
-        avgInputTokens: Math.round(metrics.reduce((s, m) => s + m.execution.inputTokens, 0) / n),
-        avgOutputTokens: Math.round(metrics.reduce((s, m) => s + m.execution.outputTokens, 0) / n),
-        cacheHitRate: metrics.filter(m => m.execution.cacheHit).length / n,
-        avgRetries: metrics.reduce((s, m) => s + m.execution.retryCount, 0) / n
+        avgInputTokens: Math.round(metrics.reduce((s, m) => s + (m.execution?.inputTokens || 0), 0) / n),
+        avgOutputTokens: Math.round(metrics.reduce((s, m) => s + (m.execution?.outputTokens || 0), 0) / n),
+        cacheHitRate: metrics.filter(m => m.execution?.cacheHit).length / n,
+        avgRetries: metrics.reduce((s, m) => s + (m.execution?.retryCount || 0), 0) / n
       },
       quality: {
         avgScore: avgQuality,
         successRate,
-        safetyPassRate: metrics.filter(m => m.quality.safetyPassed).length / n,
+        safetyPassRate: metrics.filter(m => m.quality?.safetyPassed).length / n,
         gradeDistribution,
         dimensions: dimensionAverages
       },
@@ -366,7 +369,7 @@ export class MetricsCollector {
 
   _countGrades(metrics) {
     return metrics.reduce((acc, m) => {
-      const grade = m.quality.qualityGrade || 'N/A';
+      const grade = m.quality?.qualityGrade || 'N/A';
       acc[grade] = (acc[grade] || 0) + 1;
       return acc;
     }, {});
@@ -377,7 +380,7 @@ export class MetricsCollector {
     const counts = {};
 
     for (const metric of metrics) {
-      for (const [key, value] of Object.entries(metric.quality.dimensions || {})) {
+      for (const [key, value] of Object.entries(metric.quality?.dimensions || {})) {
         if (typeof value === 'number') {
           dimensions[key] = (dimensions[key] || 0) + value;
           counts[key] = (counts[key] || 0) + 1;
