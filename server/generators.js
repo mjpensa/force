@@ -19,12 +19,20 @@ import {
   StrategyType,
   countTokens
 } from './layers/context/index.js';
+import {
+  SignatureType,
+  generateSignaturePrompt,
+  validateSignatureInputs
+} from './layers/signatures/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
 
 // Feature flag for context engineering layer
 const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING !== 'false';
+
+// Feature flag for DSPy-style signatures (experimental)
+const ENABLE_SIGNATURES = process.env.ENABLE_SIGNATURES === 'true';
 
 /**
  * Map content types to StrategyType for context engineering
@@ -34,6 +42,16 @@ const CONTENT_TYPE_TO_STRATEGY = {
   'Slides': StrategyType.SLIDES,
   'Document': StrategyType.DOCUMENT,
   'ResearchAnalysis': StrategyType.RESEARCH_ANALYSIS
+};
+
+/**
+ * Map content types to SignatureType for DSPy-style signatures
+ */
+const CONTENT_TYPE_TO_SIGNATURE = {
+  'Roadmap': SignatureType.ROADMAP,
+  'Slides': SignatureType.SLIDES,
+  'Document': SignatureType.DOCUMENT,
+  'ResearchAnalysis': SignatureType.RESEARCH_ANALYSIS
 };
 
 /**
@@ -143,6 +161,69 @@ function getTokenBudgetForType(contentType) {
     'ResearchAnalysis': 8000  // Quality assessment
   };
   return budgets[contentType] || 8000;
+}
+
+/**
+ * Generate prompt using either traditional or signature-based method
+ *
+ * When ENABLE_SIGNATURES is true, uses DSPy-style structured signatures
+ * for more consistent, typed prompt generation with validation.
+ *
+ * @param {string} contentType - Type of content (Roadmap, Slides, etc.)
+ * @param {string} userPrompt - User's prompt
+ * @param {Array} researchFiles - Research files
+ * @param {Function} traditionalGenerator - Traditional prompt generator function
+ * @param {object} perfLogger - Performance logger
+ * @returns {object} {prompt, usedSignature, validationResult}
+ */
+function generatePromptWithSignature(contentType, userPrompt, researchFiles, traditionalGenerator, perfLogger = null) {
+  if (ENABLE_SIGNATURES) {
+    const signatureType = CONTENT_TYPE_TO_SIGNATURE[contentType];
+
+    if (signatureType) {
+      try {
+        // Validate inputs first
+        const validation = validateSignatureInputs(signatureType, userPrompt, researchFiles);
+
+        if (!validation.valid) {
+          // Log validation errors but continue with traditional prompt
+          if (perfLogger) {
+            perfLogger.setMetadata(`signature-validation-${contentType.toLowerCase()}`, {
+              valid: false,
+              errors: validation.errors
+            });
+          }
+        }
+
+        // Generate using signature
+        const prompt = generateSignaturePrompt(signatureType, userPrompt, researchFiles);
+
+        if (perfLogger) {
+          perfLogger.setMetadata(`signature-used-${contentType.toLowerCase()}`, true);
+        }
+
+        return {
+          prompt,
+          usedSignature: true,
+          signatureType,
+          validationResult: validation
+        };
+      } catch (error) {
+        // Fall back to traditional on signature error
+        if (perfLogger) {
+          perfLogger.setMetadata(`signature-error-${contentType.toLowerCase()}`, error.message);
+        }
+      }
+    }
+  }
+
+  // Traditional prompt generation
+  return {
+    prompt: traditionalGenerator(userPrompt, researchFiles),
+    usedSignature: false,
+    signatureType: null,
+    validationResult: null
+  };
 }
 
 // Initialize Gemini API (using API_KEY from environment to match server/config.js)
@@ -503,7 +584,10 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'Roadmap', perfLogger);
     const processedFiles = contextResult.files;
 
-    const prompt = generateRoadmapPrompt(userPrompt, processedFiles);
+    // Generate prompt (optionally using signatures)
+    const promptResult = generatePromptWithSignature(
+      'Roadmap', userPrompt, processedFiles, generateRoadmapPrompt, perfLogger
+    );
 
     // Build routing options for model selection
     const routingOptions = {
@@ -511,14 +595,19 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
       fileCount: researchFiles.length
     };
 
-    const data = await generateWithGemini(prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger, routingOptions);
+    const data = await generateWithGemini(promptResult.prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger, routingOptions);
 
     // Store in cache
     if (ENABLE_CACHE && data) {
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
-    return { success: true, data, _contextEngineering: contextResult.metadata };
+    return {
+      success: true,
+      data,
+      _contextEngineering: contextResult.metadata,
+      _signature: promptResult.usedSignature ? promptResult.signatureType : null
+    };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -544,7 +633,10 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'Slides', perfLogger);
     const processedFiles = contextResult.files;
 
-    const prompt = generateSlidesPrompt(userPrompt, processedFiles);
+    // Generate prompt (optionally using signatures)
+    const promptResult = generatePromptWithSignature(
+      'Slides', userPrompt, processedFiles, generateSlidesPrompt, perfLogger
+    );
 
     // Build routing options for model selection
     const routingOptions = {
@@ -552,14 +644,19 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
       fileCount: researchFiles.length
     };
 
-    const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
+    const data = await generateWithGemini(promptResult.prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
 
     // Store in cache
     if (ENABLE_CACHE && data) {
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
-    return { success: true, data, _contextEngineering: contextResult.metadata };
+    return {
+      success: true,
+      data,
+      _contextEngineering: contextResult.metadata,
+      _signature: promptResult.usedSignature ? promptResult.signatureType : null
+    };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -585,7 +682,10 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'Document', perfLogger);
     const processedFiles = contextResult.files;
 
-    const prompt = generateDocumentPrompt(userPrompt, processedFiles);
+    // Generate prompt (optionally using signatures)
+    const promptResult = generatePromptWithSignature(
+      'Document', userPrompt, processedFiles, generateDocumentPrompt, perfLogger
+    );
 
     // Build routing options for model selection
     const routingOptions = {
@@ -593,14 +693,19 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
       fileCount: researchFiles.length
     };
 
-    const data = await generateWithGemini(prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger, routingOptions);
+    const data = await generateWithGemini(promptResult.prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger, routingOptions);
 
     // Store in cache
     if (ENABLE_CACHE && data) {
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
-    return { success: true, data, _contextEngineering: contextResult.metadata };
+    return {
+      success: true,
+      data,
+      _contextEngineering: contextResult.metadata,
+      _signature: promptResult.usedSignature ? promptResult.signatureType : null
+    };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -626,7 +731,10 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'ResearchAnalysis', perfLogger);
     const processedFiles = contextResult.files;
 
-    const prompt = generateResearchAnalysisPrompt(userPrompt, processedFiles);
+    // Generate prompt (optionally using signatures)
+    const promptResult = generatePromptWithSignature(
+      'ResearchAnalysis', userPrompt, processedFiles, generateResearchAnalysisPrompt, perfLogger
+    );
 
     // Build routing options for model selection
     const routingOptions = {
@@ -634,14 +742,19 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       fileCount: researchFiles.length
     };
 
-    const data = await generateWithGemini(prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger, routingOptions);
+    const data = await generateWithGemini(promptResult.prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger, routingOptions);
 
     // Store in cache
     if (ENABLE_CACHE && data) {
       setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
-    return { success: true, data, _contextEngineering: contextResult.metadata };
+    return {
+      success: true,
+      data,
+      _contextEngineering: contextResult.metadata,
+      _signature: promptResult.usedSignature ? promptResult.signatureType : null
+    };
   } catch (error) {
     return { success: false, error: error.message };
   }
