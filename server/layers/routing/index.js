@@ -9,8 +9,8 @@
  * Based on PROMPT ML design specification.
  */
 
-// Classifier exports
-export {
+// Import all symbols for local use and re-export
+import {
   ComplexityClassifier,
   ComplexityLevel,
   TaskType,
@@ -20,8 +20,7 @@ export {
   analyzeComplexity
 } from './classifier.js';
 
-// Router exports
-export {
+import {
   ModelRouter,
   ModelTier,
   createRouter,
@@ -30,8 +29,7 @@ export {
   routeRequest
 } from './router.js';
 
-// Fallback exports
-export {
+import {
   FallbackManager,
   ErrorType,
   FallbackAction,
@@ -40,9 +38,31 @@ export {
   getFallback
 } from './fallback.js';
 
-// Import for internal use
-import { getRouter } from './router.js';
-import { getFallbackManager } from './fallback.js';
+// Re-export all symbols
+export {
+  // Classifier
+  ComplexityClassifier,
+  ComplexityLevel,
+  TaskType,
+  createClassifier,
+  getClassifier,
+  classifyComplexity,
+  analyzeComplexity,
+  // Router
+  ModelRouter,
+  ModelTier,
+  createRouter,
+  getRouter,
+  routeToModel,
+  routeRequest,
+  // Fallback
+  FallbackManager,
+  ErrorType,
+  FallbackAction,
+  createFallbackManager,
+  getFallbackManager,
+  getFallback
+};
 
 /**
  * Convenience function for complete routing with fallback support
