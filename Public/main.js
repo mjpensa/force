@@ -241,6 +241,10 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
         generateBtn.textContent = `Generating ${viewType}... (${attempts}s)`;
       }
       if (content.status === 'completed') {
+        // Handle edge case where server returns completed but data is null
+        if (content.data === null || content.data === undefined) {
+          throw new Error(`${viewType} generation completed but returned no data. Please try again.`);
+        }
         return content.data; // Return the content data
       } else if (content.status === 'error' || content.status === 'failed') {
         throw new Error(content.error || `${viewType} generation failed with unknown error`);
@@ -496,6 +500,10 @@ async function handleChartGenerate(event) {
             if (!roadmapError && !ganttData && results.roadmap?.success && (results.roadmap.data === null || results.roadmap.data === undefined)) {
               roadmapError = 'Chart generation completed but returned no data. Please try again.';
             }
+            // Handle case where roadmap content was never received in results
+            if (!roadmapError && !ganttData && !results.roadmap) {
+              roadmapError = 'Chart generation did not complete. The roadmap content was not received.';
+            }
           },
           onError: (error) => {
             throw error;
@@ -514,6 +522,10 @@ async function handleChartGenerate(event) {
         // Handle edge case where success is true but data is null
         if (!roadmapError && !ganttData && streamResult.content?.roadmap?.success && (streamResult.content.roadmap.data === null || streamResult.content.roadmap.data === undefined)) {
           roadmapError = 'Chart generation completed but returned no data. Please try again.';
+        }
+        // Handle case where roadmap content was never received
+        if (!roadmapError && !ganttData && !streamResult.content?.roadmap) {
+          roadmapError = 'Chart generation did not complete. The roadmap content was not received. Please try again.';
         }
 
         // If roadmap generation failed, throw the actual error message
