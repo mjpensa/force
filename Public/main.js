@@ -472,6 +472,9 @@ async function handleChartGenerate(event) {
             if (type === 'roadmap') {
               if (result.success && result.data) {
                 ganttData = result.data;
+              } else if (result.success && (result.data === null || result.data === undefined)) {
+                // Handle edge case where server returns success but with null data
+                roadmapError = 'Chart generation completed but returned no data. Please try again.';
               } else if (!result.success && result.error) {
                 roadmapError = result.error;
               }
@@ -489,6 +492,10 @@ async function handleChartGenerate(event) {
             if (!roadmapError && results.roadmap && !results.roadmap.success && results.roadmap.error) {
               roadmapError = results.roadmap.error;
             }
+            // Handle edge case where success is true but data is null
+            if (!roadmapError && !ganttData && results.roadmap?.success && (results.roadmap.data === null || results.roadmap.data === undefined)) {
+              roadmapError = 'Chart generation completed but returned no data. Please try again.';
+            }
           },
           onError: (error) => {
             throw error;
@@ -503,6 +510,10 @@ async function handleChartGenerate(event) {
         // Check for roadmap error from stream result
         if (!roadmapError && streamResult.content?.roadmap && !streamResult.content.roadmap.success && streamResult.content.roadmap.error) {
           roadmapError = streamResult.content.roadmap.error;
+        }
+        // Handle edge case where success is true but data is null
+        if (!roadmapError && !ganttData && streamResult.content?.roadmap?.success && (streamResult.content.roadmap.data === null || streamResult.content.roadmap.data === undefined)) {
+          roadmapError = 'Chart generation completed but returned no data. Please try again.';
         }
 
         // If roadmap generation failed, throw the actual error message
