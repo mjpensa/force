@@ -354,6 +354,11 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   res.setHeader('X-Content-Type-Options', 'nosniff'); // Prevent content sniffing issues with SSE
   res.flushHeaders();
 
+  // Disable Nagle's algorithm for immediate packet delivery (critical for SSE)
+  if (res.socket) {
+    res.socket.setNoDelay(true);
+  }
+
   // Track client connection state
   let clientConnected = true;
 
