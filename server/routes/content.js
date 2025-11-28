@@ -354,6 +354,11 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   res.setHeader('X-Content-Type-Options', 'nosniff'); // Prevent content sniffing issues with SSE
   res.flushHeaders();
 
+  // Disable Nagle's algorithm for immediate packet delivery (critical for SSE)
+  if (res.socket) {
+    res.socket.setNoDelay(true);
+  }
+
   // Track client connection state
   let clientConnected = true;
 
@@ -393,6 +398,10 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
     try {
       res.write(`event: ${event}\n`);
       res.write(`data: ${JSON.stringify(cleanedData)}\n\n`);
+      // Force flush to ensure data is sent immediately (critical for SSE)
+      if (typeof res.flush === 'function') {
+        res.flush();
+      }
       return true;
     } catch (writeError) {
       console.error(`[Streaming] Failed to write ${event} event:`, writeError.message);
@@ -422,6 +431,10 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
         sendEvent('progress', { message: 'Generation in progress...', heartbeat: true });
       } else {
         res.write(': heartbeat\n\n');
+        // Force flush for heartbeat comments too
+        if (typeof res.flush === 'function') {
+          res.flush();
+        }
       }
     } catch (err) {
       console.error('[Streaming] Heartbeat failed:', err.message);
