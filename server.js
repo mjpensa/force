@@ -104,7 +104,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // JSON parsing with size limit (only needed for API routes)
-app.use(express.json({ limit: '50mb' }));
+const bodyLimit = process.env.REQUEST_BODY_LIMIT || '50mb';
+app.use(express.json({ limit: bodyLimit }));
 
 // CORS configuration - secure by default (only applies to API routes now)
 const getAllowedOrigins = () => {

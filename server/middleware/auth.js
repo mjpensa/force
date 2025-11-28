@@ -8,9 +8,20 @@
 
 import crypto from 'crypto';
 
-// Use environment variable or generate secure random secret
-// In production, JWT_SECRET should be set in environment
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
+// JWT secret configuration
+// In production, JWT_SECRET MUST be set to prevent token invalidation on restart
+const JWT_SECRET = (() => {
+  if (process.env.JWT_SECRET) {
+    return process.env.JWT_SECRET;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[AUTH] CRITICAL: JWT_SECRET not set in production!');
+    console.error('[AUTH] All user sessions will be invalidated on server restart.');
+    console.error('[AUTH] Set JWT_SECRET environment variable to fix this.');
+  }
+  // Generate random secret for development (will change on restart)
+  return crypto.randomBytes(64).toString('hex');
+})();
 
 // API keys for admin access (should be set in environment)
 const ADMIN_API_KEYS = process.env.ADMIN_API_KEYS

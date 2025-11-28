@@ -45,7 +45,7 @@ import {
 const router = express.Router();
 
 // Session TTL constant (used in storage abstraction)
-const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+const SESSION_TTL_MS = parseInt(process.env.SESSION_TTL_MS, 10) || 60 * 60 * 1000; // Default 1 hour
 
 // ============================================================================
 // REGISTER METRIC COLLECTORS FOR MONITORING DASHBOARD

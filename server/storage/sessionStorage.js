@@ -37,8 +37,8 @@ const CONFIG = {
   },
   // Session settings
   session: {
-    ttlMs: 60 * 60 * 1000,  // 1 hour default TTL
-    maxSessions: 100,  // Max sessions for in-memory storage
+    ttlMs: parseInt(process.env.SESSION_TTL_MS, 10) || 60 * 60 * 1000,  // Default 1 hour
+    maxSessions: parseInt(process.env.MAX_SESSIONS, 10) || 100,  // Max sessions for in-memory storage
     compressionThreshold: 10000  // Compress content > 10KB
   },
   // Feature flags
@@ -534,6 +534,12 @@ class StorageManager {
     } else {
       this.primary = this.fallback;
       console.log('[Storage] Using in-memory storage (Redis not configured)');
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('[Storage] WARNING: In-memory storage is not suitable for production');
+        console.warn('[Storage] - Sessions will be lost on server restart');
+        console.warn('[Storage] - Multiple instances will not share sessions');
+        console.warn('[Storage] Set REDIS_URL environment variable for persistent storage');
+      }
     }
   }
 
