@@ -76,11 +76,35 @@ app.use(createJsonOptimizerMiddleware());
 // Resource preload hints for critical assets
 app.use(createPreloadHintsMiddleware());
 
-// CORS configuration
+// CORS configuration - secure by default
+const getAllowedOrigins = () => {
+  // In production, ALLOWED_ORIGINS must be set
+  if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
+    console.warn('[SECURITY] ALLOWED_ORIGINS not set in production - using restrictive default');
+    return []; // No origins allowed if not configured in production
+  }
+  // Parse comma-separated origins or use localhost for development
+  return process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+};
+
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : '*',
+  origin: (origin, callback) => {
+    const allowedOrigins = getAllowedOrigins();
+    // Allow requests with no origin (same-origin, Postman, curl, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Session-Id'],
   credentials: true,
   maxAge: 86400 // 24 hours
 }));

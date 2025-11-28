@@ -85,6 +85,45 @@ function generateSessionId() {
   return crypto.randomUUID();
 }
 
+/**
+ * Sanitize error message for client response
+ * In production, hide internal error details to prevent information disclosure
+ * @param {Error|string} error - Error object or message
+ * @param {string} context - Context description for generic message
+ * @returns {string|null} Sanitized error message or null in production
+ */
+function sanitizeErrorForClient(error, context = 'operation') {
+  const message = error?.message || String(error);
+
+  // In production, don't expose internal error details
+  if (process.env.NODE_ENV === 'production') {
+    // Only return generic user-facing errors, not internal details
+    console.error(`[${context}] Error:`, message); // Log full error server-side
+    return null; // Don't include details in response
+  }
+
+  // In development, return truncated error for debugging
+  return message.substring(0, 200);
+}
+
+/**
+ * Create error response object with optional sanitized details
+ * @param {string} errorMessage - User-facing error message
+ * @param {Error|string} error - Original error for details (dev only)
+ * @param {string} context - Context for logging
+ * @returns {Object} Error response object
+ */
+function createErrorResponse(errorMessage, error = null, context = 'request') {
+  const response = { error: errorMessage };
+  const sanitizedDetails = error ? sanitizeErrorForClient(error, context) : null;
+
+  if (sanitizedDetails) {
+    response.details = sanitizedDetails;
+  }
+
+  return response;
+}
+
 // Pre-compiled error message patterns (module-level constant for performance)
 // Patterns are compiled once at module load instead of on every function call
 const ERROR_PATTERNS = Object.freeze([
@@ -246,10 +285,7 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
     requestPerf.complete();
     requestPerf.logReport();
 
-    res.status(500).json({
-      error: 'Internal server error',
-      details: error.message
-    });
+    res.status(500).json(createErrorResponse('Internal server error', error, 'content-generate'));
   }
 });
 
@@ -586,10 +622,7 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
     res.json(responseData);
 
   } catch (error) {
-    res.status(500).json({
-      error: 'Failed to regenerate content',
-      details: error.message
-    });
+    res.status(500).json(createErrorResponse('Failed to regenerate content', error, 'content-regenerate'));
   }
 });
 
@@ -646,10 +679,7 @@ router.get('/:sessionId/slides/export', async (req, res) => {
     res.send(pptxBuffer);
 
   } catch (error) {
-    res.status(500).json({
-      error: 'Failed to generate PowerPoint file',
-      details: error.message
-    });
+    res.status(500).json(createErrorResponse('Failed to generate PowerPoint file', error, 'pptx-export'));
   }
 });
 
@@ -766,10 +796,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
     }
 
   } catch (error) {
-    res.status(500).json({
-      error: 'Failed to retrieve content',
-      details: error.message
-    });
+    res.status(500).json(createErrorResponse('Failed to retrieve content', error, 'content-retrieve'));
   }
 });
 
@@ -814,10 +841,7 @@ router.post('/slides/export', express.json({ limit: '50mb' }), async (req, res) 
     res.send(pptxBuffer);
 
   } catch (error) {
-    res.status(500).json({
-      error: 'Failed to generate PowerPoint file',
-      details: error.message
-    });
+    res.status(500).json(createErrorResponse('Failed to generate PowerPoint file', error, 'pptx-export-direct'));
   }
 });
 
@@ -862,7 +886,7 @@ router.post('/update-task-dates', express.json(), async (req, res) => {
 
     res.json({ success: true, task });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update task dates', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to update task dates', error, 'update-task-dates'));
   }
 });
 
@@ -905,7 +929,7 @@ router.post('/update-task-color', express.json(), async (req, res) => {
 
     res.json({ success: true, task });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update task color', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to update task color', error, 'update-task-color'));
   }
 });
 
@@ -935,7 +959,7 @@ router.get('/metrics', async (req, res) => {
       storage: storageStats
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve metrics', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to retrieve metrics', error, 'metrics'));
   }
 });
 
@@ -951,7 +975,7 @@ router.get('/metrics/cache', (req, res) => {
       ...cacheMetrics
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve cache metrics', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to retrieve cache metrics', error, 'cache-metrics'));
   }
 });
 
@@ -964,7 +988,7 @@ router.post('/cache/clear', (req, res) => {
     clearAllCaches();
     res.json({ status: 'ok', message: 'All caches cleared' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to clear caches', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to clear caches', error, 'cache-clear'));
   }
 });
 
@@ -977,7 +1001,7 @@ router.post('/cache/clear-expired', (req, res) => {
     const cleared = clearExpiredEntries();
     res.json({ status: 'ok', message: `Cleared ${cleared} expired entries` });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to clear expired entries', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to clear expired entries', error, 'cache-clear-expired'));
   }
 });
 
@@ -998,7 +1022,7 @@ router.get('/metrics/recent', (req, res) => {
       requests: recentRequests
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve recent metrics', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to retrieve recent metrics', error, 'metrics-recent'));
   }
 });
 
@@ -1014,7 +1038,7 @@ router.get('/metrics/advanced', (req, res) => {
       ...advancedStats
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve advanced metrics', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to retrieve advanced metrics', error, 'metrics-advanced'));
   }
 });
 
@@ -1028,7 +1052,7 @@ router.get('/dashboard', async (req, res) => {
     const dashboard = await getDashboardData();
     res.json(dashboard);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve dashboard', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to retrieve dashboard', error, 'dashboard'));
   }
 });
 
@@ -1049,7 +1073,7 @@ router.get('/alerts', (req, res) => {
       recentHistory: history
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve alerts', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to retrieve alerts', error, 'alerts'));
   }
 });
 
@@ -1065,7 +1089,7 @@ router.get('/feature-flags', (req, res) => {
       flags
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve feature flags', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to retrieve feature flags', error, 'feature-flags'));
   }
 });
 
@@ -1095,7 +1119,7 @@ router.post('/feature-flags/:flagName', express.json(), (req, res) => {
       newRolloutPercentage: rolloutPercentage
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update feature flag', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to update feature flag', error, 'feature-flag-update'));
   }
 });
 
@@ -1119,7 +1143,7 @@ router.get('/feature-flags/check/:flagName', (req, res) => {
       sessionId: sessionId || null
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to check feature flag', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to check feature flag', error, 'feature-flag-check'));
   }
 });
 
@@ -1153,7 +1177,7 @@ router.post('/storage/clear', async (req, res) => {
     await sessionStorage.clear();
     res.json({ status: 'ok', message: 'Session storage cleared' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to clear storage', details: error.message });
+    res.status(500).json(createErrorResponse('Failed to clear storage', error, 'storage-clear'));
   }
 });
 

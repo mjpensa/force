@@ -5,8 +5,33 @@ import { CONFIG } from './config.js';
 import { getFileExtension } from './utils.js';
 export function configureHelmet() {
   return helmet({
-    contentSecurityPolicy: false, // Disabled to allow Tailwind CDN (will be removed in production)
-    crossOriginEmbedderPolicy: false // Required for some external resources
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "https://cdn.tailwindcss.com",
+          "https://cdnjs.cloudflare.com",
+          "'unsafe-inline'" // Required for Tailwind config - TODO: Replace with nonces
+        ],
+        styleSrc: [
+          "'self'",
+          "https://cdn.tailwindcss.com",
+          "'unsafe-inline'" // Required for inline styles
+        ],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "https://fonts.googleapis.com"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Required for CDN resources
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   });
 }
 export function configureCacheControl(req, res, next) {

@@ -1,6 +1,7 @@
-import { CONFIG, getGeminiApiUrl } from './config.js';
+import { CONFIG, getGeminiApiUrl, getGeminiApiHeaders } from './config.js';
 import { jsonrepair } from 'jsonrepair';
 const API_URL = getGeminiApiUrl();
+const API_HEADERS = getGeminiApiHeaders();
 
 function isRateLimitError(error) {
   return error.message && error.message.includes('status: 429');
@@ -66,7 +67,7 @@ export async function callGeminiForJson(payload, retryCount = CONFIG.API.RETRY_C
     try {
       response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: API_HEADERS, // Use headers with API key instead of URL parameter
         body: JSON.stringify(payload),
         signal: controller.signal
       });
@@ -157,7 +158,7 @@ export async function callGeminiForText(payload, retryCount = CONFIG.API.RETRY_C
     try {
       response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: API_HEADERS, // Use headers with API key instead of URL parameter
         body: JSON.stringify(payload),
         signal: controller.signal
       });

@@ -172,19 +172,33 @@ Object.freeze(CONFIG.ERRORS);
 
 /**
  * Get Gemini API URL for default model (legacy)
- * @returns {string} API URL
+ * Note: API key is now passed via headers, not URL parameter
+ * @returns {string} API URL (without API key)
  */
 export function getGeminiApiUrl() {
-  return `${CONFIG.API.BASE_URL}/models/${CONFIG.API.GEMINI_MODEL}:generateContent?key=${process.env.API_KEY}`;
+  return `${CONFIG.API.BASE_URL}/models/${CONFIG.API.GEMINI_MODEL}:generateContent`;
 }
 
 /**
  * Get Gemini API URL for a specific model (PROMPT ML model routing)
+ * Note: API key is now passed via headers, not URL parameter
  * @param {string} modelId - Model identifier
- * @returns {string} API URL for the specified model
+ * @returns {string} API URL for the specified model (without API key)
  */
 export function getGeminiApiUrlForModel(modelId) {
-  return `${CONFIG.API.BASE_URL}/models/${modelId}:generateContent?key=${process.env.API_KEY}`;
+  return `${CONFIG.API.BASE_URL}/models/${modelId}:generateContent`;
+}
+
+/**
+ * Get headers for Gemini API requests
+ * API key is passed via header instead of URL for security
+ * @returns {Object} Headers object for fetch requests
+ */
+export function getGeminiApiHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'x-goog-api-key': process.env.API_KEY
+  };
 }
 
 /**
