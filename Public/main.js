@@ -552,22 +552,22 @@ async function handleChartGenerate(event) {
 
     // Validate roadmap data
     if (ganttData === null || ganttData === undefined) {
-      throw new Error('Invalid chart data structure: Expected object, received ' + (ganttData === null ? 'null' : 'undefined'));
+      throw new Error('Chart generation failed: The server returned no data. Please try again. (received ' + (ganttData === null ? 'null' : 'undefined') + ')');
     }
     if (typeof ganttData !== 'object' || Array.isArray(ganttData)) {
-      throw new Error('Invalid chart data structure: Expected object, received ' + (Array.isArray(ganttData) ? 'array' : typeof ganttData));
+      throw new Error('Chart generation failed: Invalid response format. Please try again. (received ' + (Array.isArray(ganttData) ? 'array' : typeof ganttData) + ')');
     }
     if (!ganttData.timeColumns) {
-      throw new Error('Invalid chart data structure: Missing timeColumns field');
+      throw new Error('Chart generation failed: Missing time columns in response. Please try again.');
     }
     if (!Array.isArray(ganttData.timeColumns)) {
-      throw new Error('Invalid chart data structure: timeColumns is not an array (type: ' + typeof ganttData.timeColumns + ')');
+      throw new Error('Chart generation failed: Invalid time columns format. Please try again. (type: ' + typeof ganttData.timeColumns + ')');
     }
     if (!ganttData.data) {
-      throw new Error('Invalid chart data structure: Missing data field');
+      throw new Error('Chart generation failed: Missing task data in response. Please try again.');
     }
     if (!Array.isArray(ganttData.data)) {
-      throw new Error('Invalid chart data structure: data is not an array (type: ' + typeof ganttData.data + ')');
+      throw new Error('Chart generation failed: Invalid task data format. Please try again. (type: ' + typeof ganttData.data + ')');
     }
     if (ganttData.timeColumns.length === 0 || ganttData.data.length === 0) {
       throw new Error('The AI was unable to find any tasks or time columns in the provided documents. Please check your files or try a different prompt.');
