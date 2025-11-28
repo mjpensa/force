@@ -172,10 +172,19 @@ class MemoryStorage {
     return true;
   }
 
-  async touch(key) {
+  async touch(key, extendTtl = true) {
     const entry = this.store.get(key);
     if (entry) {
-      entry.lastAccessed = Date.now();
+      const now = Date.now();
+      entry.lastAccessed = now;
+
+      // Extend TTL if requested (sliding expiration)
+      // This keeps active sessions alive longer
+      if (extendTtl && entry.expiresAt) {
+        const originalTtl = CONFIG.session.ttlMs;
+        entry.expiresAt = now + originalTtl;
+      }
+
       return true;
     }
     return false;
