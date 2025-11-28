@@ -24,6 +24,10 @@ import {
   generateSignaturePrompt,
   validateSignatureInputs
 } from './layers/signatures/index.js';
+import {
+  getOutputProcessor,
+  quickCheckOutput
+} from './layers/output/index.js';
 
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
@@ -33,6 +37,9 @@ const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING !== 'f
 
 // Feature flag for DSPy-style signatures (experimental)
 const ENABLE_SIGNATURES = process.env.ENABLE_SIGNATURES === 'true';
+
+// Feature flag for output validation (PROMPT ML Layer 6)
+const ENABLE_OUTPUT_VALIDATION = process.env.ENABLE_OUTPUT_VALIDATION !== 'false';
 
 /**
  * Map content types to StrategyType for context engineering
@@ -224,6 +231,107 @@ function generatePromptWithSignature(contentType, userPrompt, researchFiles, tra
     signatureType: null,
     validationResult: null
   };
+}
+
+/**
+ * Map content types to output types for validation
+ */
+const CONTENT_TYPE_TO_OUTPUT_TYPE = {
+  'Roadmap': 'roadmap',
+  'Slides': 'slides',
+  'Document': 'document',
+  'ResearchAnalysis': 'research-analysis'
+};
+
+/**
+ * Validate and process generated output
+ *
+ * Runs output through PROMPT ML Layer 6 validation pipeline:
+ * - Schema validation
+ * - Safety checking
+ * - Quality scoring
+ *
+ * @param {*} data - Generated data to validate
+ * @param {string} contentType - Type of content
+ * @param {Object} schema - JSON schema for validation
+ * @param {Object} context - Additional context (userPrompt, researchFiles)
+ * @param {object} perfLogger - Performance logger
+ * @returns {object} {data, validation}
+ */
+function validateGeneratedOutput(data, contentType, schema, context = {}, perfLogger = null) {
+  if (!ENABLE_OUTPUT_VALIDATION || !data) {
+    return {
+      data,
+      validation: null
+    };
+  }
+
+  const validationTimer = perfLogger ? createTimer(perfLogger, `validation-${contentType.toLowerCase()}`) : null;
+
+  try {
+    const outputProcessor = getOutputProcessor();
+    const outputType = CONTENT_TYPE_TO_OUTPUT_TYPE[contentType];
+
+    // Process through validation pipeline
+    const result = outputProcessor.process(data, {
+      outputType,
+      schema,
+      userPrompt: context.userPrompt,
+      sourceFiles: context.researchFiles
+    });
+
+    // Log validation metrics
+    if (perfLogger) {
+      perfLogger.setMetadata(`output-valid-${contentType.toLowerCase()}`, result.valid);
+      perfLogger.setMetadata(`output-safe-${contentType.toLowerCase()}`, result.safe);
+
+      if (result.quality) {
+        perfLogger.setMetadata(`output-quality-${contentType.toLowerCase()}`, {
+          grade: result.quality.grade,
+          score: result.quality.overall
+        });
+      }
+
+      if (result.validation?.errors?.length > 0) {
+        perfLogger.setMetadata(`output-errors-${contentType.toLowerCase()}`, result.validation.errors.slice(0, 3));
+      }
+
+      if (result.safety?.concerns?.length > 0) {
+        perfLogger.setMetadata(`output-concerns-${contentType.toLowerCase()}`, result.safety.concerns.length);
+      }
+    }
+
+    if (validationTimer) validationTimer.stop();
+
+    return {
+      data: result.output,
+      validation: {
+        valid: result.valid,
+        safe: result.safe,
+        quality: result.quality ? {
+          grade: result.quality.grade,
+          score: result.quality.overall,
+          strengths: result.quality.strengths,
+          weaknesses: result.quality.weaknesses
+        } : null,
+        errors: result.validation?.errors || [],
+        concerns: result.safety?.concerns || []
+      }
+    };
+  } catch (error) {
+    // Validation failed - return original data
+    if (perfLogger) {
+      perfLogger.setMetadata(`validation-error-${contentType.toLowerCase()}`, error.message);
+    }
+    if (validationTimer) validationTimer.stop();
+
+    return {
+      data,
+      validation: {
+        error: error.message
+      }
+    };
+  }
 }
 
 // Initialize Gemini API (using API_KEY from environment to match server/config.js)
@@ -597,16 +705,24 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
 
     const data = await generateWithGemini(promptResult.prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger, routingOptions);
 
+    // Validate generated output (PROMPT ML Layer 6)
+    const validationResult = validateGeneratedOutput(data, 'Roadmap', roadmapSchema, {
+      userPrompt,
+      researchFiles: processedFiles
+    }, perfLogger);
+    const validatedData = validationResult.data;
+
     // Store in cache
-    if (ENABLE_CACHE && data) {
-      setCachedContent(contentType, combinedContent, userPrompt, data);
+    if (ENABLE_CACHE && validatedData) {
+      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
     return {
       success: true,
-      data,
+      data: validatedData,
       _contextEngineering: contextResult.metadata,
-      _signature: promptResult.usedSignature ? promptResult.signatureType : null
+      _signature: promptResult.usedSignature ? promptResult.signatureType : null,
+      _validation: validationResult.validation
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -646,16 +762,24 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
 
     const data = await generateWithGemini(promptResult.prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
 
+    // Validate generated output (PROMPT ML Layer 6)
+    const validationResult = validateGeneratedOutput(data, 'Slides', slidesSchema, {
+      userPrompt,
+      researchFiles: processedFiles
+    }, perfLogger);
+    const validatedData = validationResult.data;
+
     // Store in cache
-    if (ENABLE_CACHE && data) {
-      setCachedContent(contentType, combinedContent, userPrompt, data);
+    if (ENABLE_CACHE && validatedData) {
+      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
     return {
       success: true,
-      data,
+      data: validatedData,
       _contextEngineering: contextResult.metadata,
-      _signature: promptResult.usedSignature ? promptResult.signatureType : null
+      _signature: promptResult.usedSignature ? promptResult.signatureType : null,
+      _validation: validationResult.validation
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -695,16 +819,24 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
 
     const data = await generateWithGemini(promptResult.prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger, routingOptions);
 
+    // Validate generated output (PROMPT ML Layer 6)
+    const validationResult = validateGeneratedOutput(data, 'Document', documentSchema, {
+      userPrompt,
+      researchFiles: processedFiles
+    }, perfLogger);
+    const validatedData = validationResult.data;
+
     // Store in cache
-    if (ENABLE_CACHE && data) {
-      setCachedContent(contentType, combinedContent, userPrompt, data);
+    if (ENABLE_CACHE && validatedData) {
+      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
     return {
       success: true,
-      data,
+      data: validatedData,
       _contextEngineering: contextResult.metadata,
-      _signature: promptResult.usedSignature ? promptResult.signatureType : null
+      _signature: promptResult.usedSignature ? promptResult.signatureType : null,
+      _validation: validationResult.validation
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -744,16 +876,24 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
 
     const data = await generateWithGemini(promptResult.prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger, routingOptions);
 
+    // Validate generated output (PROMPT ML Layer 6)
+    const validationResult = validateGeneratedOutput(data, 'ResearchAnalysis', researchAnalysisSchema, {
+      userPrompt,
+      researchFiles: processedFiles
+    }, perfLogger);
+    const validatedData = validationResult.data;
+
     // Store in cache
-    if (ENABLE_CACHE && data) {
-      setCachedContent(contentType, combinedContent, userPrompt, data);
+    if (ENABLE_CACHE && validatedData) {
+      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
     }
 
     return {
       success: true,
-      data,
+      data: validatedData,
       _contextEngineering: contextResult.metadata,
-      _signature: promptResult.usedSignature ? promptResult.signatureType : null
+      _signature: promptResult.usedSignature ? promptResult.signatureType : null,
+      _validation: validationResult.validation
     };
   } catch (error) {
     return { success: false, error: error.message };
