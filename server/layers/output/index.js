@@ -40,6 +40,11 @@ export {
   scoreQuality
 } from './quality-scorer.js';
 
+// Import for internal use
+import { getValidator } from './validator.js';
+import { getSafetyChecker } from './safety-checker.js';
+import { getQualityScorer } from './quality-scorer.js';
+
 /**
  * @typedef {Object} OutputProcessingResult
  * @property {boolean} valid - Whether output is valid
@@ -90,7 +95,6 @@ export class OutputProcessor {
    */
   get validator() {
     if (!this._validator) {
-      const { getValidator } = require('./validator.js');
       this._validator = getValidator();
     }
     return this._validator;
@@ -101,7 +105,6 @@ export class OutputProcessor {
    */
   get safetyChecker() {
     if (!this._safetyChecker) {
-      const { getSafetyChecker } = require('./safety-checker.js');
       this._safetyChecker = getSafetyChecker();
     }
     return this._safetyChecker;
@@ -112,7 +115,6 @@ export class OutputProcessor {
    */
   get qualityScorer() {
     if (!this._qualityScorer) {
-      const { getQualityScorer } = require('./quality-scorer.js');
       this._qualityScorer = getQualityScorer();
     }
     return this._qualityScorer;

@@ -50,6 +50,12 @@ export {
   getStrategyManager
 } from './strategies.js';
 
+// Import for internal use
+import { getTokenCounter } from './token-counter.js';
+import { getAssembler } from './assembler.js';
+import { getCompressor } from './compressor.js';
+import { getStrategyManager, getBudgetAllocation, buildTaskDescription } from './strategies.js';
+
 /**
  * @typedef {Object} ContextEngineeringResult
  * @property {string} prompt - Final assembled prompt
@@ -84,7 +90,6 @@ export class ContextEngineeringLayer {
    */
   get tokenCounter() {
     if (!this._tokenCounter) {
-      const { getTokenCounter } = require('./token-counter.js');
       this._tokenCounter = getTokenCounter();
     }
     return this._tokenCounter;
@@ -95,7 +100,6 @@ export class ContextEngineeringLayer {
    */
   get assembler() {
     if (!this._assembler) {
-      const { getAssembler } = require('./assembler.js');
       this._assembler = getAssembler();
     }
     return this._assembler;
@@ -106,7 +110,6 @@ export class ContextEngineeringLayer {
    */
   get compressor() {
     if (!this._compressor) {
-      const { getCompressor } = require('./compressor.js');
       this._compressor = getCompressor();
     }
     return this._compressor;
@@ -117,7 +120,6 @@ export class ContextEngineeringLayer {
    */
   get strategyManager() {
     if (!this._strategyManager) {
-      const { getStrategyManager } = require('./strategies.js');
       this._strategyManager = getStrategyManager();
     }
     return this._strategyManager;
@@ -165,7 +167,6 @@ export class ContextEngineeringLayer {
     }
 
     // Step 2: Calculate budget allocation
-    const { getBudgetAllocation } = require('./strategies.js');
     const budgetAllocation = getBudgetAllocation(taskType, tokenBudget);
 
     // Step 3: Preprocess content if strategy defines it
@@ -204,7 +205,6 @@ export class ContextEngineeringLayer {
     }
 
     // Step 5: Build task description with strategy guidance
-    const { buildTaskDescription } = require('./strategies.js');
     const taskDescription = buildTaskDescription(taskType, userPrompt);
 
     // Step 6: Assemble context

@@ -244,13 +244,14 @@ export class InputSanitizer {
     const escapedPatterns = [];
 
     for (const { pattern, replacement } of DELIMITER_PATTERNS) {
+      // Reset regex lastIndex BEFORE test() to ensure all matches are found
+      pattern.lastIndex = 0;
       if (pattern.test(result)) {
+        pattern.lastIndex = 0; // Reset again before replace()
         result = result.replace(pattern, replacement);
         modified = true;
         escapedPatterns.push(pattern.source);
       }
-      // Reset regex lastIndex for global patterns
-      pattern.lastIndex = 0;
     }
 
     if (modified) {

@@ -47,6 +47,12 @@ export {
   getResearchAnalysisOutputSchema
 } from './research-analysis.js';
 
+// Import for internal use
+import { RoadmapSignature } from './roadmap.js';
+import { SlidesSignature } from './slides.js';
+import { DocumentSignature } from './document.js';
+import { ResearchAnalysisSignature } from './research-analysis.js';
+
 /**
  * Signature types enum
  * @readonly
@@ -70,22 +76,22 @@ const SIGNATURE_REGISTRY = {
 };
 
 /**
- * Lazy-load signatures to avoid circular dependencies
+ * Get signature from registry
  */
 function getSignatureFromRegistry(type) {
   if (!SIGNATURE_REGISTRY[type]) {
     switch (type) {
       case SignatureType.ROADMAP:
-        SIGNATURE_REGISTRY[type] = require('./roadmap.js').RoadmapSignature;
+        SIGNATURE_REGISTRY[type] = RoadmapSignature;
         break;
       case SignatureType.SLIDES:
-        SIGNATURE_REGISTRY[type] = require('./slides.js').SlidesSignature;
+        SIGNATURE_REGISTRY[type] = SlidesSignature;
         break;
       case SignatureType.DOCUMENT:
-        SIGNATURE_REGISTRY[type] = require('./document.js').DocumentSignature;
+        SIGNATURE_REGISTRY[type] = DocumentSignature;
         break;
       case SignatureType.RESEARCH_ANALYSIS:
-        SIGNATURE_REGISTRY[type] = require('./research-analysis.js').ResearchAnalysisSignature;
+        SIGNATURE_REGISTRY[type] = ResearchAnalysisSignature;
         break;
     }
   }

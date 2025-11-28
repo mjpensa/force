@@ -40,6 +40,10 @@ export {
   getFallback
 } from './fallback.js';
 
+// Import for internal use
+import { getRouter } from './router.js';
+import { getFallbackManager } from './fallback.js';
+
 /**
  * Convenience function for complete routing with fallback support
  *
@@ -49,9 +53,6 @@ export {
  * @returns {Object} Complete routing decision
  */
 export function routeWithFallback(content, taskType, options = {}) {
-  const { getRouter } = require('./router.js');
-  const { getFallbackManager } = require('./fallback.js');
-
   const router = getRouter();
   const fallbackManager = getFallbackManager();
 
@@ -79,9 +80,6 @@ export function routeWithFallback(content, taskType, options = {}) {
  * @param {Object} config.fallback - Fallback configuration
  */
 export function initializeRoutingLayer(config = {}) {
-  const { getRouter } = require('./router.js');
-  const { getFallbackManager } = require('./fallback.js');
-
   // Initialize with config (singletons will pick up config on first call)
   if (config.router) {
     getRouter(config.router);
