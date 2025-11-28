@@ -59,7 +59,14 @@ export class StateManager {
     this._contentHashes = new Map();
   }
   getState() {
-    return { ...this.state };
+    // Deep clone to prevent mutation of internal state
+    // Uses structuredClone for better performance (falls back for older browsers)
+    try {
+      return structuredClone(this.state);
+    } catch {
+      // Fallback for older browsers or non-cloneable objects
+      return JSON.parse(JSON.stringify(this.state));
+    }
   }
   setState(updates) {
     const previousState = { ...this.state };

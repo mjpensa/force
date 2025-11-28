@@ -50,20 +50,79 @@ export function addKeyboardShortcuts(shortcuts) {
   document.addEventListener('keydown', handleKey);
   return () => document.removeEventListener('keydown', handleKey);
 }
+
+// Module-level references for cleanup (prevents memory leaks)
+let focusTrapObserver = null;
+let hashChangeHandler = null;
+
+/**
+ * Initialize focus trap observer for dialogs
+ * Stores reference for cleanup
+ */
+function initFocusTrapObserver() {
+  if (focusTrapObserver) {
+    return; // Already initialized
+  }
+
+  focusTrapObserver = new MutationObserver((mutations) => {
+    mutations.forEach((m) => m.addedNodes.forEach((node) => {
+      if (node.nodeType === 1 &&
+          (node.getAttribute('role') === 'dialog' ||
+           node.getAttribute('role') === 'alertdialog')) {
+        trapFocus(node);
+      }
+    }));
+  });
+
+  focusTrapObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+/**
+ * Destroy focus trap observer
+ * Call this on cleanup to prevent memory leaks
+ */
+export function destroyFocusTrapObserver() {
+  if (focusTrapObserver) {
+    focusTrapObserver.disconnect();
+    focusTrapObserver = null;
+  }
+}
+
+/**
+ * Destroy hashchange listener
+ * Call this on cleanup to prevent memory leaks
+ */
+export function destroyHashChangeHandler() {
+  if (hashChangeHandler) {
+    window.removeEventListener('hashchange', hashChangeHandler);
+    hashChangeHandler = null;
+  }
+}
+
+/**
+ * Cleanup all accessibility features
+ * Call this before page unload or component destruction
+ */
+export function destroyAccessibility() {
+  destroyFocusTrapObserver();
+  destroyHashChangeHandler();
+}
+
 export function initAccessibility(options = {}) {
   const config = { skipLink: true, skipLinkTarget: 'main-content', announceRouteChanges: true, focusManagement: true, ...options };
   if (config.skipLink) addSkipLink(config.skipLinkTarget);
   if (config.announceRouteChanges) {
-    window.addEventListener('hashchange', () => {
+    // Store reference for cleanup
+    hashChangeHandler = () => {
       announceToScreenReader(`Navigated to ${window.location.hash.slice(1) || 'roadmap'} view`);
-    });
+    };
+    window.addEventListener('hashchange', hashChangeHandler);
   }
   if (config.focusManagement) {
-    new MutationObserver((mutations) => {
-      mutations.forEach((m) => m.addedNodes.forEach((node) => {
-        if (node.nodeType === 1 && (node.getAttribute('role') === 'dialog' || node.getAttribute('role') === 'alertdialog')) trapFocus(node);
-      }));
-    }).observe(document.body, { childList: true, subtree: true });
+    initFocusTrapObserver();
   }
+
+  // Return cleanup function
+  return destroyAccessibility;
 }
-export default { announceToScreenReader, trapFocus, addSkipLink, addKeyboardShortcuts, initAccessibility };
+export default { announceToScreenReader, trapFocus, addSkipLink, addKeyboardShortcuts, initAccessibility, destroyAccessibility, destroyFocusTrapObserver, destroyHashChangeHandler };

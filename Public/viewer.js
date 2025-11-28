@@ -130,6 +130,10 @@ class ContentViewer {
     this.pollingService = new PollingService();
     this._renderQueue = new Map(); // Batch DOM updates
     this._isRendering = false;
+
+    // Store bound handlers for cleanup (prevents memory leaks)
+    this._boundHashChangeHandler = null;
+    this._cleanupAccessibility = null;
   }
   async init() {
     try {
@@ -137,7 +141,7 @@ class ContentViewer {
       markPerformance('generation-started'); // Mark for TTFC calculation
       addLazyLoadingStyles();
       this.footerSVG = await loadFooterSVG();
-      initAccessibility({
+      this._cleanupAccessibility = initAccessibility({
         skipLink: true,
         skipLinkTarget: 'main-content',
         announceRouteChanges: true,
@@ -210,7 +214,9 @@ class ContentViewer {
     this.navContainer = sidebarElement;
   }
   _setupRouting() {
-    window.addEventListener('hashchange', () => this._handleRouteChange());
+    // Store bound handler for cleanup (prevents memory leak)
+    this._boundHashChangeHandler = () => this._handleRouteChange();
+    window.addEventListener('hashchange', this._boundHashChangeHandler);
   }
   _setupKeyboardShortcuts() {
     this.removeShortcuts = addKeyboardShortcuts({
@@ -994,6 +1000,25 @@ class ContentViewer {
       this.sidebarNav.destroy();
       this.sidebarNav = null;
     }
+
+    // Clean up hashchange listener (prevents memory leak)
+    if (this._boundHashChangeHandler) {
+      window.removeEventListener('hashchange', this._boundHashChangeHandler);
+      this._boundHashChangeHandler = null;
+    }
+
+    // Clean up accessibility features
+    if (this._cleanupAccessibility) {
+      this._cleanupAccessibility();
+      this._cleanupAccessibility = null;
+    }
+
+    // Clean up current view component
+    if (this.currentViewComponent && this.currentViewComponent.destroy) {
+      this.currentViewComponent.destroy();
+      this.currentViewComponent = null;
+    }
+
     // Clear render queue
     this._renderQueue.clear();
   }

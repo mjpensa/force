@@ -483,11 +483,32 @@ class StorageManager {
     this.primary = null;
     this.fallback = new MemoryStorage();
     this._initialized = false;
+    this._initPromise = null; // Mutex for concurrent initialization
   }
 
   async initialize() {
-    if (this._initialized) return;
+    // Return existing promise if initialization in progress (prevents race condition)
+    if (this._initPromise) {
+      return this._initPromise;
+    }
 
+    // Already initialized
+    if (this._initialized) {
+      return;
+    }
+
+    // Create and store the initialization promise
+    this._initPromise = this._doInitialize();
+
+    try {
+      await this._initPromise;
+      this._initialized = true;
+    } finally {
+      this._initPromise = null;
+    }
+  }
+
+  async _doInitialize() {
     if (CONFIG.features.redisEnabled) {
       const redis = new RedisStorage();
       const connected = await redis.connect();
@@ -505,8 +526,6 @@ class StorageManager {
       this.primary = this.fallback;
       console.log('[Storage] Using in-memory storage (Redis not configured)');
     }
-
-    this._initialized = true;
   }
 
   _getStorage() {
