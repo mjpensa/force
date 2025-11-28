@@ -12,11 +12,13 @@ export function configureHelmet() {
           "'self'",
           "https://cdn.tailwindcss.com",
           "https://cdnjs.cloudflare.com",
+          "https://cdn.jsdelivr.net",
           "'unsafe-inline'" // Required for Tailwind config - TODO: Replace with nonces
         ],
         styleSrc: [
           "'self'",
           "https://cdn.tailwindcss.com",
+          "https://fonts.googleapis.com",
           "'unsafe-inline'" // Required for inline styles
         ],
         imgSrc: ["'self'", "data:", "blob:"],
