@@ -374,7 +374,7 @@ export function resetInputSafetyLayer() {
 
 // Re-export components for direct access
 export { InputSanitizer, createSanitizer } from './sanitizer.js';
-export { InjectionDetector, createDetector, InjectionType } from './injection-detector.js';
+export { InjectionDetector, createDetector, InjectionType, detectAsync } from './injection-detector.js';
 export { RateLimiter, createRateLimiter, TokenEstimator } from './rate-limiter.js';
 
 export default InputSafetyLayer;

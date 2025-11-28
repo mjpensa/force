@@ -83,8 +83,8 @@ if (ENABLE_VARIANT_SELECTION) {
 // Feature flag for context engineering layer
 const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING !== 'false';
 
-// Feature flag for DSPy-style signatures (experimental)
-const ENABLE_SIGNATURES = process.env.ENABLE_SIGNATURES === 'true';
+// Feature flag for DSPy-style signatures
+const ENABLE_SIGNATURES = process.env.ENABLE_SIGNATURES !== 'false';
 
 // Feature flag for output validation (PROMPT ML Layer 6)
 const ENABLE_OUTPUT_VALIDATION = process.env.ENABLE_OUTPUT_VALIDATION !== 'false';
