@@ -119,3 +119,27 @@ export function handleUploadErrors(error, req, res, next) {
   }
   next();
 }
+
+// Re-export authentication and CSRF middleware
+export {
+  generateSecureSessionId,
+  generateSecureToken,
+  generateToken,
+  verifyToken,
+  verifyApiKey,
+  requireAdmin,
+  optionalAuth,
+  getRateLimitKey
+} from './middleware/auth.js';
+
+export {
+  generateCsrfToken,
+  validateCsrfToken,
+  invalidateSessionTokens,
+  cleanupExpiredTokens,
+  csrfProtection,
+  attachCsrfToken,
+  getCsrfTokenHandler,
+  startCleanupInterval,
+  stopCleanupInterval
+} from './middleware/csrf.js';

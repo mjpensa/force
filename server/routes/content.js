@@ -30,6 +30,8 @@ import {
   featureFlags,
   getDashboardData
 } from '../utils/monitoring.js';
+import { generateSecureSessionId, verifyApiKey } from '../middleware/auth.js';
+import { generateCsrfToken, getCsrfTokenHandler } from '../middleware/csrf.js';
 
 const router = express.Router();
 
@@ -80,9 +82,10 @@ async function touchSession(sessionId) {
 
 /**
  * Generate a unique session ID
+ * Uses cryptographically secure random bytes instead of UUID
  */
 function generateSessionId() {
-  return crypto.randomUUID();
+  return generateSecureSessionId();
 }
 
 /**
@@ -981,11 +984,12 @@ router.get('/metrics/cache', (req, res) => {
 
 /**
  * POST /api/content/cache/clear
- * Clears all caches (admin endpoint)
+ * Clears all caches (admin endpoint - requires API key)
  */
-router.post('/cache/clear', (req, res) => {
+router.post('/cache/clear', verifyApiKey, (req, res) => {
   try {
     clearAllCaches();
+    console.log(`[Admin] Cache cleared by ${req.ip}`);
     res.json({ status: 'ok', message: 'All caches cleared' });
   } catch (error) {
     res.status(500).json(createErrorResponse('Failed to clear caches', error, 'cache-clear'));
@@ -994,11 +998,12 @@ router.post('/cache/clear', (req, res) => {
 
 /**
  * POST /api/content/cache/clear-expired
- * Clears only expired cache entries
+ * Clears only expired cache entries (admin endpoint - requires API key)
  */
-router.post('/cache/clear-expired', (req, res) => {
+router.post('/cache/clear-expired', verifyApiKey, (req, res) => {
   try {
     const cleared = clearExpiredEntries();
+    console.log(`[Admin] Cleared ${cleared} expired cache entries by ${req.ip}`);
     res.json({ status: 'ok', message: `Cleared ${cleared} expired entries` });
   } catch (error) {
     res.status(500).json(createErrorResponse('Failed to clear expired entries', error, 'cache-clear-expired'));
@@ -1095,11 +1100,11 @@ router.get('/feature-flags', (req, res) => {
 
 /**
  * POST /api/content/feature-flags/:flagName
- * Update a feature flag's rollout percentage
+ * Update a feature flag's rollout percentage (admin endpoint - requires API key)
  *
  * Body: { rolloutPercentage: number }
  */
-router.post('/feature-flags/:flagName', express.json(), (req, res) => {
+router.post('/feature-flags/:flagName', verifyApiKey, express.json(), (req, res) => {
   try {
     const { flagName } = req.params;
     const { rolloutPercentage } = req.body;
@@ -1112,6 +1117,7 @@ router.post('/feature-flags/:flagName', express.json(), (req, res) => {
     }
 
     featureFlags.setRollout(flagName, rolloutPercentage);
+    console.log(`[Admin] Feature flag ${flagName} set to ${rolloutPercentage}% by ${req.ip}`);
 
     res.json({
       status: 'ok',
@@ -1170,16 +1176,26 @@ router.get('/storage/health', async (req, res) => {
 
 /**
  * POST /api/content/storage/clear
- * Clears all session storage (admin endpoint)
+ * Clears all session storage (admin endpoint - requires API key)
  */
-router.post('/storage/clear', async (req, res) => {
+router.post('/storage/clear', verifyApiKey, async (req, res) => {
   try {
     await sessionStorage.clear();
+    console.log(`[Admin] Session storage cleared by ${req.ip}`);
     res.json({ status: 'ok', message: 'Session storage cleared' });
   } catch (error) {
     res.status(500).json(createErrorResponse('Failed to clear storage', error, 'storage-clear'));
   }
 });
+
+/**
+ * GET /api/content/csrf-token
+ * Get a CSRF token for the current session
+ *
+ * Query: sessionId (required)
+ * Response: { csrfToken, expiresIn, headerName }
+ */
+router.get('/csrf-token', getCsrfTokenHandler);
 
 // Apply upload error handling middleware
 router.use(handleUploadErrors);
