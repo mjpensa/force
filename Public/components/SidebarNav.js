@@ -377,6 +377,12 @@ export class SidebarNav {
    * Destroy the sidebar and clean up
    */
   destroy() {
+    // Clear tooltip timeout to prevent memory leaks
+    if (this.tooltipTimeout) {
+      clearTimeout(this.tooltipTimeout);
+      this.tooltipTimeout = null;
+    }
+
     // Remove event listeners
     document.removeEventListener('keydown', this._handleKeyDown);
 

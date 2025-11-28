@@ -268,7 +268,16 @@ export class VirtualScroller {
       }
     }
 
-    this.viewport.replaceChildren(fragment);
+    // Use replaceChildren with fallback for older browsers
+    if (typeof this.viewport.replaceChildren === 'function') {
+      this.viewport.replaceChildren(fragment);
+    } else {
+      // Fallback for older browsers
+      while (this.viewport.firstChild) {
+        this.viewport.removeChild(this.viewport.firstChild);
+      }
+      this.viewport.appendChild(fragment);
+    }
   }
 
   destroy() {

@@ -1,3 +1,14 @@
+// Module-level state for announcement queue (prevents race conditions)
+let announcementQueue = [];
+let announcementTimeoutId = null;
+let isAnnouncing = false;
+
+/**
+ * Announce message to screen readers using ARIA live region
+ * Uses a queue system to prevent overlapping announcements
+ * @param {string} message - Message to announce
+ * @param {string} priority - 'polite' or 'assertive'
+ */
 export function announceToScreenReader(message, priority = 'polite') {
   let liveRegion = document.getElementById('aria-live-region');
   if (!liveRegion) {
@@ -9,9 +20,59 @@ export function announceToScreenReader(message, priority = 'polite') {
     liveRegion.style.cssText = 'position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;';
     document.body.appendChild(liveRegion);
   }
+
+  // Queue the announcement
+  announcementQueue.push({ message, priority });
+
+  // Process queue if not already processing
+  if (!isAnnouncing) {
+    processAnnouncementQueue(liveRegion);
+  }
+}
+
+/**
+ * Process the announcement queue sequentially
+ * @param {HTMLElement} liveRegion - The ARIA live region element
+ */
+function processAnnouncementQueue(liveRegion) {
+  if (announcementQueue.length === 0) {
+    isAnnouncing = false;
+    return;
+  }
+
+  isAnnouncing = true;
+  const { message, priority } = announcementQueue.shift();
+
+  // Clear any pending timeout
+  if (announcementTimeoutId) {
+    clearTimeout(announcementTimeoutId);
+  }
+
+  // Update priority and clear content
   liveRegion.setAttribute('aria-live', priority);
   liveRegion.textContent = '';
-  setTimeout(() => { liveRegion.textContent = message; }, 100);
+
+  // Set message after brief delay (allows screen reader to notice the change)
+  announcementTimeoutId = setTimeout(() => {
+    liveRegion.textContent = message;
+
+    // Process next announcement after giving screen reader time to read
+    announcementTimeoutId = setTimeout(() => {
+      processAnnouncementQueue(liveRegion);
+    }, 500); // Wait for screen reader to finish before next announcement
+  }, 100);
+}
+
+/**
+ * Clear all pending announcements (call on cleanup)
+ */
+export function clearAnnouncements() {
+  if (announcementTimeoutId) {
+    clearTimeout(announcementTimeoutId);
+    announcementTimeoutId = null;
+  }
+  announcementQueue = [];
+  isAnnouncing = false;
 }
 export function trapFocus(container) {
   const focusable = container.querySelectorAll('a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])');
@@ -106,6 +167,7 @@ export function destroyHashChangeHandler() {
 export function destroyAccessibility() {
   destroyFocusTrapObserver();
   destroyHashChangeHandler();
+  clearAnnouncements();
 }
 
 export function initAccessibility(options = {}) {
@@ -125,4 +187,4 @@ export function initAccessibility(options = {}) {
   // Return cleanup function
   return destroyAccessibility;
 }
-export default { announceToScreenReader, trapFocus, addSkipLink, addKeyboardShortcuts, initAccessibility, destroyAccessibility, destroyFocusTrapObserver, destroyHashChangeHandler };
+export default { announceToScreenReader, clearAnnouncements, trapFocus, addSkipLink, addKeyboardShortcuts, initAccessibility, destroyAccessibility, destroyFocusTrapObserver, destroyHashChangeHandler };

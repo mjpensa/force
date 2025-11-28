@@ -1,5 +1,17 @@
 import { fetchWithRetry, AppError, ErrorTypes, ErrorSeverity } from './ErrorHandler.js';
 
+// ============================================================================
+// BROWSER COMPATIBILITY POLYFILLS
+// ============================================================================
+
+/**
+ * Polyfill for queueMicrotask (not available in IE11 and older browsers)
+ * Falls back to Promise.resolve().then() which has similar microtask timing
+ */
+const queueTask = typeof queueMicrotask === 'function'
+  ? queueMicrotask
+  : (callback) => Promise.resolve().then(callback);
+
 /**
  * Simple hash function for content comparison
  * @param {*} obj - Object to hash
@@ -123,7 +135,7 @@ export class StateManager {
     if (!this._updateScheduled) {
       this._updateScheduled = true;
       // Use microtask to batch updates within the same event loop
-      queueMicrotask(() => this._flushStateUpdates());
+      queueTask(() => this._flushStateUpdates());
     }
   }
 
