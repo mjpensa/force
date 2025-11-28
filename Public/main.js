@@ -241,6 +241,10 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
         generateBtn.textContent = `Generating ${viewType}... (${attempts}s)`;
       }
       if (content.status === 'completed') {
+        // Handle edge case where server returns completed but data is null
+        if (content.data === null || content.data === undefined) {
+          throw new Error(`${viewType} generation completed but returned no data. Please try again.`);
+        }
         return content.data; // Return the content data
       } else if (content.status === 'error' || content.status === 'failed') {
         throw new Error(content.error || `${viewType} generation failed with unknown error`);
@@ -477,6 +481,12 @@ async function handleChartGenerate(event) {
                 roadmapError = 'Chart generation completed but returned no data. Please try again.';
               } else if (!result.success && result.error) {
                 roadmapError = result.error;
+              } else if (!result.success) {
+                // Handle case where success is false but no error message provided
+                roadmapError = 'Chart generation failed. Please try again.';
+              } else {
+                // Catch-all for unexpected result format
+                roadmapError = 'Chart generation returned an unexpected response. Please try again.';
               }
             }
           },
@@ -496,6 +506,16 @@ async function handleChartGenerate(event) {
             if (!roadmapError && !ganttData && results.roadmap?.success && (results.roadmap.data === null || results.roadmap.data === undefined)) {
               roadmapError = 'Chart generation completed but returned no data. Please try again.';
             }
+            // Handle case where roadmap content was never received in results
+            if (!roadmapError && !ganttData && !results.roadmap) {
+              roadmapError = 'Chart generation did not complete. The roadmap content was not received.';
+            }
+            // Catch-all: if we still don't have ganttData and no error, something unexpected happened
+            if (!roadmapError && !ganttData) {
+              roadmapError = results.roadmap
+                ? 'Chart generation returned an unexpected response format. Please try again.'
+                : 'Chart generation failed with no response. Please try again.';
+            }
           },
           onError: (error) => {
             throw error;
@@ -514,6 +534,16 @@ async function handleChartGenerate(event) {
         // Handle edge case where success is true but data is null
         if (!roadmapError && !ganttData && streamResult.content?.roadmap?.success && (streamResult.content.roadmap.data === null || streamResult.content.roadmap.data === undefined)) {
           roadmapError = 'Chart generation completed but returned no data. Please try again.';
+        }
+        // Handle case where roadmap content was never received
+        if (!roadmapError && !ganttData && !streamResult.content?.roadmap) {
+          roadmapError = 'Chart generation did not complete. The roadmap content was not received. Please try again.';
+        }
+        // Catch-all: if we still don't have ganttData and no error, something unexpected happened
+        if (!roadmapError && !ganttData) {
+          roadmapError = streamResult.content?.roadmap
+            ? 'Chart generation returned an unexpected response format. Please try again.'
+            : 'Chart generation failed with no response. Please try again.';
         }
 
         // If roadmap generation failed, throw the actual error message
