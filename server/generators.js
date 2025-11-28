@@ -1667,6 +1667,21 @@ export {
   ExperimentStatus
 } from './layers/optimization/experiments/index.js';
 
+// Export evolution/auto-optimization functions
+export {
+  startEvolution,
+  stopEvolution,
+  runOptimizationCycle,
+  generateVariant,
+  getMutationStrategies,
+  getEvolutionSummary,
+  getEvolutionStats,
+  getEvolutionHistory,
+  updateEvolutionConfig,
+  MutationStrategy,
+  SchedulerState
+} from './layers/optimization/evolution/index.js';
+
 /**
  * Get observability metrics summary
  * Returns tracing stats, LLM metrics, and recent traces
