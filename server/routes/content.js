@@ -32,6 +32,15 @@ import {
 } from '../utils/monitoring.js';
 import { generateSecureSessionId, verifyApiKey } from '../middleware/auth.js';
 import { generateCsrfToken, getCsrfTokenHandler } from '../middleware/csrf.js';
+import {
+  validateSchema,
+  isValidArrayIndex,
+  isNonEmptyString,
+  parseIntSafe,
+  ValidationError,
+  NotFoundError,
+  handleRouteError
+} from '../utils/validation.js';
 
 const router = express.Router();
 
@@ -308,6 +317,26 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
  * - event: error, data: { message: string }
  */
 router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (req, res) => {
+  // Early validation BEFORE setting SSE headers (allows proper HTTP status codes)
+  const { prompt } = req.body;
+  const files = req.files;
+
+  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: ['prompt is required and must be a non-empty string'],
+      code: 'VALIDATION_ERROR'
+    });
+  }
+
+  if (!files || files.length === 0) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      details: ['At least one research file is required'],
+      code: 'VALIDATION_ERROR'
+    });
+  }
+
   // Extend timeout for streaming (content types emit as they complete)
   const STREAM_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes
   req.setTimeout(STREAM_TIMEOUT_MS);
@@ -316,7 +345,7 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   // Initialize performance logging
   const requestPerf = new PerformanceLogger('content-generate-stream', { enabled: true });
 
-  // Set SSE headers
+  // Set SSE headers (only after validation passes)
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -389,21 +418,7 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   }, 15000);
 
   try {
-    const { prompt } = req.body;
-    const files = req.files;
-
-    // Validate input
-    if (!prompt || typeof prompt !== 'string') {
-      sendEvent('error', { message: 'Invalid request. Required: prompt (string)' });
-      clearInterval(heartbeatInterval);
-      return res.end();
-    }
-
-    if (!files || files.length === 0) {
-      sendEvent('error', { message: 'At least one research file is required' });
-      clearInterval(heartbeatInterval);
-      return res.end();
-    }
+    // Note: prompt and files already validated before SSE headers were set
 
     // Track file metadata
     requestPerf.setMetadata('fileCount', files.length);
@@ -862,8 +877,24 @@ router.post('/update-task-dates', express.json(), async (req, res) => {
   try {
     const { sessionId, taskIndex, startCol, endCol } = req.body;
 
-    if (!sessionId || taskIndex === undefined) {
-      return res.status(400).json({ error: 'sessionId and taskIndex are required' });
+    // Comprehensive validation
+    const errors = validateSchema(req.body, {
+      sessionId: { required: true, type: 'string', minLength: 1 },
+      taskIndex: { required: true, type: 'number', min: 0, integer: true },
+      startCol: { type: 'number', min: 0, integer: true },
+      endCol: { type: 'number', min: 0, integer: true }
+    });
+
+    if (errors) {
+      return res.status(400).json({ error: 'Validation failed', details: errors });
+    }
+
+    // Validate startCol <= endCol if both provided
+    if (startCol !== undefined && endCol !== undefined && startCol > endCol) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: ['startCol must be less than or equal to endCol']
+      });
     }
 
     const session = await sessionStorage.get(sessionId);
@@ -873,15 +904,25 @@ router.post('/update-task-dates', express.json(), async (req, res) => {
 
     // Update the task in roadmap data
     const roadmapData = session.content.roadmap?.data;
-    if (!roadmapData || !roadmapData.data || !roadmapData.data[taskIndex]) {
-      return res.status(400).json({ error: 'Task not found in roadmap data' });
+    if (!roadmapData || !Array.isArray(roadmapData.data)) {
+      return res.status(400).json({ error: 'No roadmap data found' });
+    }
+
+    // Validate array bounds
+    if (!isValidArrayIndex(taskIndex, roadmapData.data.length)) {
+      return res.status(400).json({
+        error: 'Invalid task index',
+        details: [`taskIndex must be between 0 and ${roadmapData.data.length - 1}`]
+      });
     }
 
     const task = roadmapData.data[taskIndex];
-    if (task.bar) {
-      if (startCol !== undefined) task.bar.startCol = startCol;
-      if (endCol !== undefined) task.bar.endCol = endCol;
+    if (!task.bar) {
+      return res.status(400).json({ error: 'Task has no bar property' });
     }
+
+    if (startCol !== undefined) task.bar.startCol = startCol;
+    if (endCol !== undefined) task.bar.endCol = endCol;
 
     // Persist updated session
     session.lastAccessed = Date.now();
@@ -906,8 +947,15 @@ router.post('/update-task-color', express.json(), async (req, res) => {
   try {
     const { sessionId, taskIndex, color } = req.body;
 
-    if (!sessionId || taskIndex === undefined || !color) {
-      return res.status(400).json({ error: 'sessionId, taskIndex, and color are required' });
+    // Comprehensive validation
+    const errors = validateSchema(req.body, {
+      sessionId: { required: true, type: 'string', minLength: 1 },
+      taskIndex: { required: true, type: 'number', min: 0, integer: true },
+      color: { required: true, type: 'string', minLength: 1, maxLength: 50 }
+    });
+
+    if (errors) {
+      return res.status(400).json({ error: 'Validation failed', details: errors });
     }
 
     const session = await sessionStorage.get(sessionId);
@@ -917,14 +965,24 @@ router.post('/update-task-color', express.json(), async (req, res) => {
 
     // Update the task in roadmap data
     const roadmapData = session.content.roadmap?.data;
-    if (!roadmapData || !roadmapData.data || !roadmapData.data[taskIndex]) {
-      return res.status(400).json({ error: 'Task not found in roadmap data' });
+    if (!roadmapData || !Array.isArray(roadmapData.data)) {
+      return res.status(400).json({ error: 'No roadmap data found' });
+    }
+
+    // Validate array bounds
+    if (!isValidArrayIndex(taskIndex, roadmapData.data.length)) {
+      return res.status(400).json({
+        error: 'Invalid task index',
+        details: [`taskIndex must be between 0 and ${roadmapData.data.length - 1}`]
+      });
     }
 
     const task = roadmapData.data[taskIndex];
-    if (task.bar) {
-      task.bar.color = color;
+    if (!task.bar) {
+      return res.status(400).json({ error: 'Task has no bar property' });
     }
+
+    task.bar.color = color;
 
     // Persist updated session
     session.lastAccessed = Date.now();
