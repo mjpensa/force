@@ -284,8 +284,21 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
   res.flushHeaders();
 
+  // Track client connection state
+  let clientConnected = true;
+  req.on('close', () => {
+    clientConnected = false;
+    console.log('[Streaming] Client disconnected');
+  });
+
   // Helper to send SSE events with optimized JSON
   const sendEvent = (event, data) => {
+    // Check if client is still connected before sending
+    if (!clientConnected) {
+      console.log(`[Streaming] Cannot send ${event} event - client disconnected`);
+      return false;
+    }
+
     // Clean the data but preserve 'data' and 'error' fields even if null
     // This prevents the client from receiving responses with missing expected fields
     const cleanedData = cleanJsonResponse(data, { removeNull: true, removeUndefined: true });
@@ -300,8 +313,15 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
       }
     }
 
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(cleanedData)}\n\n`);
+    try {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(cleanedData)}\n\n`);
+      return true;
+    } catch (writeError) {
+      console.log(`[Streaming] Write error for ${event} event:`, writeError.message);
+      clientConnected = false;
+      return false;
+    }
   };
 
   // Send initial heartbeat
