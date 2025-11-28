@@ -92,7 +92,7 @@ export const CONFIG = {
       enabled: process.env.ENABLE_MODEL_ROUTING !== 'false', // Enable by default
       defaultTier: 'standard',
       maxCostPerRequest: 0.50, // USD
-      enableAdvancedTier: process.env.ENABLE_ADVANCED_TIER === 'true', // Disabled by default (expensive)
+      enableAdvancedTier: process.env.ENABLE_ADVANCED_TIER !== 'false', // Enabled by default
 
       // Task-specific tier preferences
       taskPreferences: {
