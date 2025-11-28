@@ -71,6 +71,11 @@ function shouldCompress(req, res) {
     return false;
   }
 
+  // CRITICAL: Never compress streaming endpoints - check URL early before headers are set
+  if (req.url && req.url.includes('/stream')) {
+    return false;
+  }
+
   // Skip compression for already compressed formats
   const contentType = res.getHeader('Content-Type');
   if (contentType) {
