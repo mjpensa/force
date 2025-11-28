@@ -402,6 +402,7 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
   };
 
   // Send initial heartbeat
+  console.log('[Streaming] SSE connection established, sending initial heartbeat');
   sendEvent('progress', { message: 'Connection established' });
 
   // Keep-alive heartbeat to prevent connection timeout (every 10 seconds)
@@ -435,6 +436,7 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
     requestPerf.setMetadata('fileCount', files.length);
     requestPerf.setMetadata('totalUploadSize', files.reduce((sum, f) => sum + f.size, 0));
 
+    console.log(`[Streaming] Processing ${files.length} file(s)...`);
     sendEvent('progress', { message: 'Processing uploaded files...' });
 
     // Time file processing with optimized processor
@@ -444,6 +446,7 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
     const processingResult = await processFiles(files);
     const researchFiles = processingResult.researchFiles;
     fileProcessingTimer.stop();
+    console.log(`[Streaming] File processing complete. ${researchFiles.length} files ready.`);
 
     // Track processing metrics
     requestPerf.setMetadata('processedContentSize', processingResult.metrics.totalExtractedSize);
@@ -461,6 +464,7 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
     const sessionId = generateSessionId();
     requestPerf.setMetadata('sessionId', sessionId);
 
+    console.log(`[Streaming] Starting content generation for session ${sessionId}`);
     sendEvent('progress', { message: 'Starting content generation...', sessionId });
 
     // Initialize session with empty content (will be populated as results stream in)
