@@ -1,5 +1,17 @@
 import { fetchWithRetry, AppError, ErrorTypes, ErrorSeverity } from './ErrorHandler.js';
 
+// ============================================================================
+// BROWSER COMPATIBILITY POLYFILLS
+// ============================================================================
+
+/**
+ * Polyfill for queueMicrotask (not available in IE11 and older browsers)
+ * Falls back to Promise.resolve().then() which has similar microtask timing
+ */
+const queueTask = typeof queueMicrotask === 'function'
+  ? queueMicrotask
+  : (callback) => Promise.resolve().then(callback);
+
 /**
  * Simple hash function for content comparison
  * @param {*} obj - Object to hash
@@ -57,9 +69,59 @@ export class StateManager {
     // Memoization cache for computed values
     this._memoCache = new Map();
     this._contentHashes = new Map();
+    this._maxMemoSize = 100; // Limit memoization cache size
+
+    // Start periodic cleanup of memoization cache
+    this._cleanupInterval = setInterval(() => this._cleanupMemoCache(), 60000);
+  }
+
+  /**
+   * Cleanup memoization cache to prevent memory leaks
+   * Uses simple size-based eviction (removes oldest entries)
+   */
+  _cleanupMemoCache() {
+    // Limit cache size with LRU-like eviction (oldest entries first)
+    if (this._memoCache.size > this._maxMemoSize) {
+      const keysToDelete = [...this._memoCache.keys()]
+        .slice(0, this._memoCache.size - this._maxMemoSize);
+
+      for (const key of keysToDelete) {
+        this._memoCache.delete(key);
+        this._contentHashes.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Destroy the StateManager and clean up resources
+   * Call this when unmounting or before page unload
+   */
+  destroy() {
+    // Clear cleanup interval
+    if (this._cleanupInterval) {
+      clearInterval(this._cleanupInterval);
+      this._cleanupInterval = null;
+    }
+
+    // Clear all caches
+    this._memoCache.clear();
+    this._contentHashes.clear();
+    this._pendingRequests.clear();
+    this._pendingStateUpdates = [];
+
+    // Clear listeners
+    this.listeners = [];
+    this.viewListeners = {};
   }
   getState() {
-    return { ...this.state };
+    // Deep clone to prevent mutation of internal state
+    // Uses structuredClone for better performance (falls back for older browsers)
+    try {
+      return structuredClone(this.state);
+    } catch {
+      // Fallback for older browsers or non-cloneable objects
+      return JSON.parse(JSON.stringify(this.state));
+    }
   }
   setState(updates) {
     const previousState = { ...this.state };
@@ -73,7 +135,7 @@ export class StateManager {
     if (!this._updateScheduled) {
       this._updateScheduled = true;
       // Use microtask to batch updates within the same event loop
-      queueMicrotask(() => this._flushStateUpdates());
+      queueTask(() => this._flushStateUpdates());
     }
   }
 

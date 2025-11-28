@@ -205,7 +205,13 @@ class LRUCache {
       this.metrics.similarityHits++;
       this.metrics.totalSaved++;
 
-      return similar.entry.data;
+      // Return deep copy to prevent mutation of cached data
+      try {
+        return JSON.parse(JSON.stringify(similar.entry.data));
+      } catch (error) {
+        console.error('[Cache] Failed to clone similarity match data:', error.message);
+        return null;
+      }
     }
 
     this.metrics.misses++;
@@ -283,18 +289,28 @@ class LRUCache {
    */
   clearExpired() {
     const now = Date.now();
-    let cleared = 0;
+    const expiredKeys = [];
 
+    // Collect expired keys first (avoid modifying map while iterating)
     for (const [hash, entry] of this.cache) {
       if (now > entry.expiresAt) {
-        this.cache.delete(hash);
-        this.accessOrder = this.accessOrder.filter(h => h !== hash);
-        this.metrics.expirations++;
-        cleared++;
+        expiredKeys.push(hash);
       }
     }
 
-    return cleared;
+    // Batch delete from cache
+    for (const hash of expiredKeys) {
+      this.cache.delete(hash);
+      this.metrics.expirations++;
+    }
+
+    // Rebuild accessOrder once - O(n) instead of O(n*m) with repeated filter calls
+    if (expiredKeys.length > 0) {
+      const expiredSet = new Set(expiredKeys);
+      this.accessOrder = this.accessOrder.filter(h => !expiredSet.has(h));
+    }
+
+    return expiredKeys.length;
   }
 
   /**
