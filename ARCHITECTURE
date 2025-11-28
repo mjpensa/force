@@ -1,0 +1,13 @@
+# System Architecture: Gold Standard Stack
+- **Orchestrator:** LangGraph (StateGraph)
+- **Intelligence:** DSPy (Signatures & Modules)
+- **Memory:** Redis (LangGraph Checkpointer & DSPy Cache)
+- **Observability:** LangSmith (Tracing)
+
+## Critical Data Flow (E2E B2F)
+1. **Frontend:** User sends input -> API Route.
+2. **LangGraph:** Loads State from Redis (thread_id).
+3. **Nodes:** Graph executes step.
+4. **DSPy:** Node calls DSPy Module -> Redis Cache Check -> LLM Call.
+5. **Persistence:** LangGraph saves updated State -> Redis.
+6. **Response:** Streamed back to Frontend.
