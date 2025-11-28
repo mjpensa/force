@@ -39,18 +39,17 @@ const CONFIG = {
     max: 100  // Max requests per connection
   },
   // Critical resources for preloading
+  // Note: JS files with cache-busting query params are excluded to avoid preload/use mismatch
   criticalResources: {
-    // Main entry point preloads
+    // Main entry point preloads (CSS only - JS has cache-busting params)
     '/': [
       { href: '/styles/design-system.css', as: 'style' },
-      { href: '/style.css', as: 'style' },
-      { href: '/main.js', as: 'script', crossorigin: 'anonymous' }
+      { href: '/style.css', as: 'style' }
     ],
-    // Viewer page preloads
+    // Viewer page preloads (CSS only - JS has cache-busting params)
     '/viewer.html': [
       { href: '/styles/design-system.css', as: 'style' },
-      { href: '/style.css', as: 'style' },
-      { href: '/viewer.js', as: 'script', crossorigin: 'anonymous' }
+      { href: '/style.css', as: 'style' }
     ]
   }
 };
