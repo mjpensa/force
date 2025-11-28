@@ -442,6 +442,7 @@ async function handleChartGenerate(event) {
         // Track which content types have completed
         const completedContent = new Set();
         const contentTypes = ['document', 'slides', 'roadmap', 'research-analysis'];
+        let roadmapError = null; // Track roadmap-specific errors
 
         const streamResult = await streamContentGeneration(formData, {
           onProgress: (message) => {
@@ -467,9 +468,13 @@ async function handleChartGenerate(event) {
             const readyList = Array.from(completedContent).map(t => typeLabels[t] || t).join(', ');
             generateBtn.textContent = `Ready: ${readyList} [${progressCount}] (${formatElapsed(elapsedSeconds)})`;
 
-            // Store roadmap data when it arrives
-            if (type === 'roadmap' && result.success && result.data) {
-              ganttData = result.data;
+            // Store roadmap data when it arrives, or track error
+            if (type === 'roadmap') {
+              if (result.success && result.data) {
+                ganttData = result.data;
+              } else if (!result.success && result.error) {
+                roadmapError = result.error;
+              }
             }
           },
           onComplete: (sid, results, performance) => {
@@ -479,6 +484,10 @@ async function handleChartGenerate(event) {
             // Extract roadmap data from final results if not already set
             if (!ganttData && results.roadmap?.data) {
               ganttData = results.roadmap.data;
+            }
+            // Track roadmap error from final results if not already tracked
+            if (!roadmapError && results.roadmap && !results.roadmap.success && results.roadmap.error) {
+              roadmapError = results.roadmap.error;
             }
           },
           onError: (error) => {
@@ -491,9 +500,24 @@ async function handleChartGenerate(event) {
         if (!ganttData && streamResult.content?.roadmap?.data) {
           ganttData = streamResult.content.roadmap.data;
         }
+        // Check for roadmap error from stream result
+        if (!roadmapError && streamResult.content?.roadmap && !streamResult.content.roadmap.success && streamResult.content.roadmap.error) {
+          roadmapError = streamResult.content.roadmap.error;
+        }
+
+        // If roadmap generation failed, throw the actual error message
+        if (roadmapError && !ganttData) {
+          throw new Error(`Chart generation failed: ${roadmapError}`);
+        }
 
       } catch (streamError) {
-        // Fall back to synchronous endpoint
+        // If the error is a roadmap generation error (not a streaming transport error),
+        // re-throw it instead of falling back to synchronous
+        if (streamError.message && streamError.message.startsWith('Chart generation failed:')) {
+          throw streamError;
+        }
+
+        // Fall back to synchronous endpoint for transport/streaming errors
         console.warn('Streaming failed, falling back to synchronous:', streamError.message);
         const response = await fetch('/api/content/generate', {
           method: 'POST',
