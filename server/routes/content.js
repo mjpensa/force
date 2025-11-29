@@ -15,7 +15,7 @@
 import express from 'express';
 import mammoth from 'mammoth';
 import crypto from 'crypto';
-import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator } from '../generators.js';
+import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator, enforceYearlyIntervalsForLongRanges } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { generatePptx } from '../templates/ppt-export-service.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
@@ -798,9 +798,17 @@ router.get('/:sessionId/:viewType', async (req, res) => {
 
     // Performance: Add cache control headers for completed content
     if (contentResult.success && contentResult.data) {
-      // Generate content-based ETag for reliable caching
+      // For roadmap data, enforce yearly intervals for long time ranges
+      // This handles old session data that was stored before the enforcement fix
+      // MUST happen before ETag calculation so hash reflects corrected data
+      let finalData = contentResult.data;
+      if (viewType === 'roadmap' && finalData) {
+        finalData = enforceYearlyIntervalsForLongRanges(finalData);
+      }
+
+      // Generate content-based ETag for reliable caching (after enforcement)
       const dataHash = crypto.createHash('md5')
-        .update(JSON.stringify(contentResult.data))
+        .update(JSON.stringify(finalData))
         .digest('hex')
         .substring(0, 16);
       const etag = `"${viewType}-${dataHash}"`;
@@ -821,7 +829,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       // Use cleanJsonResponse to remove null/undefined values and reduce payload size
       const originalData = {
         status: 'completed',
-        data: contentResult.data,
+        data: finalData,
         _cached: contentResult._cached || false  // Indicate if result was from cache
       };
       const responseData = cleanJsonResponse(originalData, { removeNull: true, removeUndefined: true });
