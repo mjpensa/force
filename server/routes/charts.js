@@ -23,7 +23,8 @@ const router = express.Router();
  */
 function detectIntervalType(timeColumns) {
   if (!timeColumns || timeColumns.length === 0) return 'unknown';
-  const sample = timeColumns[0];
+  // Trim whitespace to handle AI-generated strings with leading/trailing spaces
+  const sample = timeColumns[0].trim();
   if (/^Q[1-4]\s+\d{4}$/.test(sample)) return 'quarters';
   if (/^\d{4}$/.test(sample)) return 'years';
   if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/.test(sample)) return 'months';
@@ -51,7 +52,7 @@ function extractYearRange(timeColumns, intervalType) {
 }
 
 /**
- * Converts quarterly timeColumns to yearly when span > 3 years
+ * Converts quarterly or monthly timeColumns to yearly when span > 3 years
  * Also remaps all task bar columns to match new yearly intervals
  * @param {object} ganttData - The gantt chart data object
  * @returns {object} - Corrected gantt data
@@ -59,26 +60,39 @@ function extractYearRange(timeColumns, intervalType) {
 function enforceYearlyIntervalsForLongRanges(ganttData) {
   const intervalType = detectIntervalType(ganttData.timeColumns);
 
-  // Only process quarterly intervals
-  if (intervalType !== 'quarters') return ganttData;
+  // Only process quarterly or monthly intervals
+  if (intervalType !== 'quarters' && intervalType !== 'months') return ganttData;
 
   const { startYear, endYear, yearSpan } = extractYearRange(ganttData.timeColumns, intervalType);
 
   // Only convert if span > 3 years (threshold for yearly intervals)
   if (yearSpan <= 3) return ganttData;
 
-  // Build mapping from old quarter columns to new year columns
-  // Old: ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", ...] (1-indexed)
+  // Build mapping from old columns to new year columns
+  // Old quarters: ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", ...] (1-indexed)
+  // Old months: ["Jan 2020", "Feb 2020", ..., "Dec 2020", "Jan 2021", ...] (1-indexed)
   // New: ["2020", "2021", "2022", ...] (1-indexed)
-  const quarterToYearMap = {};
-  ganttData.timeColumns.forEach((col, index) => {
-    const match = col.match(/Q[1-4]\s+(\d{4})/);
-    if (match) {
-      const year = parseInt(match[1], 10);
-      const newColIndex = year - startYear + 1; // 1-indexed
-      quarterToYearMap[index + 1] = newColIndex; // old 1-indexed -> new 1-indexed
-    }
-  });
+  const columnToYearMap = {};
+
+  if (intervalType === 'quarters') {
+    ganttData.timeColumns.forEach((col, index) => {
+      const match = col.trim().match(/Q[1-4]\s+(\d{4})/);
+      if (match) {
+        const year = parseInt(match[1], 10);
+        const newColIndex = year - startYear + 1; // 1-indexed
+        columnToYearMap[index + 1] = newColIndex; // old 1-indexed -> new 1-indexed
+      }
+    });
+  } else if (intervalType === 'months') {
+    ganttData.timeColumns.forEach((col, index) => {
+      const match = col.trim().match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/);
+      if (match) {
+        const year = parseInt(match[2], 10);
+        const newColIndex = year - startYear + 1; // 1-indexed
+        columnToYearMap[index + 1] = newColIndex; // old 1-indexed -> new 1-indexed
+      }
+    });
+  }
 
   // Generate new yearly timeColumns
   const newTimeColumns = [];
@@ -92,11 +106,11 @@ function enforceYearlyIntervalsForLongRanges(ganttData) {
 
     const newItem = { ...item, bar: { ...item.bar } };
 
-    if (item.bar.startCol !== null && quarterToYearMap[item.bar.startCol]) {
-      newItem.bar.startCol = quarterToYearMap[item.bar.startCol];
+    if (item.bar.startCol !== null && columnToYearMap[item.bar.startCol]) {
+      newItem.bar.startCol = columnToYearMap[item.bar.startCol];
     }
-    if (item.bar.endCol !== null && quarterToYearMap[item.bar.endCol]) {
-      newItem.bar.endCol = quarterToYearMap[item.bar.endCol];
+    if (item.bar.endCol !== null && columnToYearMap[item.bar.endCol]) {
+      newItem.bar.endCol = columnToYearMap[item.bar.endCol];
     } else if (item.bar.endCol !== null && item.bar.startCol !== null) {
       // If endCol doesn't map directly, calculate based on startCol
       newItem.bar.endCol = newItem.bar.startCol + 1;
