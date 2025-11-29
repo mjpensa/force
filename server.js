@@ -48,6 +48,9 @@ import autoOptimizeRoutes from './server/routes/auto-optimize.js';
 // Import advanced optimizers
 import { initializeOptimizers, shutdownOptimizers } from './server/utils/advancedOptimizer.js';
 
+// Import cache management
+import { clearAllCaches } from './server/cache/contentCache.js';
+
 // Import monitoring system
 import { initializeMonitoring, shutdownMonitoring } from './server/utils/monitoring.js';
 
@@ -224,6 +227,10 @@ app.listen(port, () => {
   console.log(`Server started at: ${serverStartTime}`);
   console.log('All modules loaded successfully');
   console.log('No persistence - content generated on demand');
+
+  // Clear stale cache data on startup to ensure fresh generation with latest fixes
+  clearAllCaches();
+  console.log('Cache cleared on startup');
 
   // Initialize advanced optimizers (connection prewarming, etc.)
   initializeOptimizers();

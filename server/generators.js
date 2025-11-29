@@ -246,6 +246,81 @@ function enforceYearlyIntervalsForLongRanges(ganttData) {
 }
 
 /**
+ * Ensures all task rows have valid bar objects with startCol, endCol, and color.
+ * Tasks missing bars or with invalid bar properties get default values.
+ * @param {object} ganttData - The gantt chart data object
+ * @returns {object} - Gantt data with all tasks having valid bars
+ */
+function ensureTaskBars(ganttData) {
+  if (!ganttData || !ganttData.data || !ganttData.timeColumns) return ganttData;
+
+  const numCols = ganttData.timeColumns.length;
+  if (numCols === 0) return ganttData;
+
+  const defaultColors = ['priority-red', 'medium-red', 'mid-grey', 'light-grey', 'dark-blue', 'white'];
+  let colorIndex = 0;
+  let taskIndex = 0;
+
+  // Count non-swimlane tasks to distribute them if needed
+  const taskCount = ganttData.data.filter(item => !item.isSwimlane).length;
+
+  const newData = ganttData.data.map(item => {
+    // Skip swimlanes - they don't have bars
+    if (item.isSwimlane) return item;
+
+    taskIndex++;
+
+    // Check if bar exists with valid types
+    const hasBarWithNumbers = item.bar &&
+      typeof item.bar.startCol === 'number' &&
+      typeof item.bar.endCol === 'number';
+
+    if (hasBarWithNumbers) {
+      // Clamp bar values to valid bounds
+      let startCol = Math.max(1, Math.min(numCols, item.bar.startCol));
+      let endCol = item.bar.endCol;
+
+      // Ensure endCol is greater than startCol
+      if (endCol <= startCol) {
+        endCol = startCol + 1;
+      }
+
+      // Clamp endCol to valid range (max is numCols + 1 for CSS Grid)
+      endCol = Math.min(numCols + 1, endCol);
+
+      // After clamping, ensure we still have a valid bar
+      if (endCol <= startCol) {
+        // Edge case: startCol was at numCols, so shift both back
+        startCol = Math.max(1, numCols - 1);
+        endCol = startCol + 1;
+      }
+
+      const color = item.bar.color || defaultColors[colorIndex++ % defaultColors.length];
+
+      return {
+        ...item,
+        bar: { startCol, endCol, color }
+      };
+    }
+
+    // Generate default bar - distribute tasks across available columns
+    const startCol = Math.max(1, Math.min(numCols, Math.ceil((taskIndex / taskCount) * numCols)));
+    const endCol = Math.min(numCols + 1, startCol + 1);
+    const color = item.bar?.color || defaultColors[colorIndex++ % defaultColors.length];
+
+    return {
+      ...item,
+      bar: { startCol, endCol, color }
+    };
+  });
+
+  return {
+    ...ganttData,
+    data: newData
+  };
+}
+
+/**
  * Record generation metrics for auto-optimization
  *
  * Captures metrics about prompt performance for A/B testing
@@ -1233,8 +1308,9 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-        // Apply interval enforcement to cached data (in case old cache entries exist)
-        const correctedCached = enforceYearlyIntervalsForLongRanges(cached);
+        // Apply interval enforcement and ensure bars exist in cached data
+        const intervalCorrected = enforceYearlyIntervalsForLongRanges(cached);
+        const correctedCached = ensureTaskBars(intervalCorrected);
         // Record cache hit metrics
         const generationId = recordGenerationMetrics({
           contentType: 'Roadmap',
@@ -1285,9 +1361,12 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
 
     // Enforce yearly intervals for long time ranges (5+ years)
     // This corrects AI-generated quarterly/monthly intervals to yearly when appropriate
-    const correctedData = enforceYearlyIntervalsForLongRanges(validatedData);
+    const intervalCorrectedData = enforceYearlyIntervalsForLongRanges(validatedData);
 
-    // Store in cache (use corrected data so cached results also have yearly intervals)
+    // Ensure all tasks have valid bar objects with bounds checking
+    const correctedData = ensureTaskBars(intervalCorrectedData);
+
+    // Store in cache (use corrected data so cached results also have valid bars)
     if (ENABLE_CACHE && correctedData) {
       setCachedContent(contentType, combinedContent, userPrompt, correctedData);
     }
