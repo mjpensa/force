@@ -29,10 +29,11 @@ export const roadmapSchema = {
           bar: {
             type: "object",
             properties: {
-              startCol: { type: "number" },
-              endCol: { type: "number" },
+              startCol: { type: "integer" },
+              endCol: { type: "integer" },
               color: { type: "string" }
             },
+            required: ["startCol", "endCol", "color"]
           },
           taskType: {
             type: "string",
