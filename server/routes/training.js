@@ -100,6 +100,7 @@ function sleep(ms) {
 // Training state (to prevent multiple concurrent runs)
 let isTraining = false;
 let trainingProgress = null;
+let shouldStop = false;
 
 /**
  * GET /api/train/status
@@ -107,6 +108,36 @@ let trainingProgress = null;
  */
 router.get('/status', (req, res) => {
   res.json({
+    isTraining,
+    progress: trainingProgress
+  });
+});
+
+/**
+ * GET /api/train/stop
+ * Stop current training run
+ */
+router.get('/stop', (req, res) => {
+  const secret = req.query.secret;
+  const expectedSecret = process.env.TRAIN_SECRET || 'train123';
+
+  if (secret !== expectedSecret) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing secret.'
+    });
+  }
+
+  if (!isTraining) {
+    return res.json({
+      message: 'No training in progress',
+      isTraining: false
+    });
+  }
+
+  shouldStop = true;
+  res.json({
+    message: 'Stop signal sent. Training will stop after current generation.',
     isTraining,
     progress: trainingProgress
   });
@@ -147,6 +178,7 @@ router.get('/', async (req, res) => {
 
   // Start training in background
   isTraining = true;
+  shouldStop = false;  // Reset stop flag
   trainingProgress = {
     status: 'starting',
     iterations,
@@ -224,7 +256,18 @@ async function runTraining(iterations, delay) {
   trainingProgress.current = 0;
 
   for (let i = 0; i < iterations; i++) {
+    // Check for stop signal
+    if (shouldStop) {
+      console.log('\n⛔ [API] Training stopped by user');
+      trainingProgress.status = 'stopped';
+      trainingProgress.stoppedAt = new Date().toISOString();
+      break;
+    }
+
     for (const sampleSet of sampleSets) {
+      // Check for stop signal
+      if (shouldStop) break;
+
       currentIteration++;
       trainingProgress.current = currentIteration;
       trainingProgress.percent = Math.round((currentIteration / totalIterations) * 100);
@@ -273,8 +316,10 @@ async function runTraining(iterations, delay) {
     : 0;
 
   // Update progress with final results
-  trainingProgress.status = 'completed';
-  trainingProgress.completedAt = new Date().toISOString();
+  if (!shouldStop) {
+    trainingProgress.status = 'completed';
+    trainingProgress.completedAt = new Date().toISOString();
+  }
   trainingProgress.results = {
     totalGenerations: stats.totalGenerations,
     successful: stats.successful,
@@ -287,7 +332,8 @@ async function runTraining(iterations, delay) {
     errors: stats.errors.slice(-10) // Last 10 errors
   };
 
-  console.log('\n✅ [API] Training Complete');
+  const statusMsg = shouldStop ? '⛔ Stopped' : '✅ Complete';
+  console.log(`\n${statusMsg} [API] Training`);
   console.log(`   Success: ${stats.successful}/${stats.totalGenerations}`);
   console.log(`   Avg Quality: ${avgQuality.toFixed(2)}/5`);
 }
