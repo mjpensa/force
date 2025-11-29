@@ -240,11 +240,12 @@ export function categorizeEmptyError(contentType, details = {}) {
  * Categorize low quality content
  */
 export function categorizeQualityError(score, threshold, details = {}) {
+  const safeScore = typeof score === 'number' ? score : 0;
   return new TrainingError(
     ErrorCategory.LLM_QUALITY_ERROR,
-    `Quality score ${score.toFixed(2)} below threshold ${threshold}`,
+    `Quality score ${safeScore.toFixed(2)} below threshold ${threshold}`,
     null,
-    { score, threshold, ...details }
+    { score: safeScore, threshold, ...details }
   );
 }
 
@@ -306,11 +307,19 @@ export class ErrorStatsCollector {
     this.totalIterations++;
     this.successfulIterations++;
 
+    // Track by variant
     if (!this.byVariant[variant]) {
       this.byVariant[variant] = { total: 0, successful: 0, errors: {} };
     }
     this.byVariant[variant].total++;
     this.byVariant[variant].successful++;
+
+    // Track by content type
+    if (!this.byContentType[contentType]) {
+      this.byContentType[contentType] = { total: 0, successful: 0, errors: {} };
+    }
+    this.byContentType[contentType].total++;
+    this.byContentType[contentType].successful++;
   }
 
   recordError(error, variant, contentType) {
@@ -339,7 +348,7 @@ export class ErrorStatsCollector {
 
     // By content type
     if (!this.byContentType[contentType]) {
-      this.byContentType[contentType] = { total: 0, errors: {} };
+      this.byContentType[contentType] = { total: 0, successful: 0, errors: {} };
     }
     this.byContentType[contentType].total++;
     if (!this.byContentType[contentType].errors[category]) {

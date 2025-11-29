@@ -20,9 +20,7 @@ import {
   categorizeSchemaError,
   categorizeEmptyError,
   categorizeQualityError,
-  categorizeValidationBug,
   categorizeScoringBug,
-  categorizeIOError,
   isSystemBug,
   getRetryDelay
 } from '../utils/trainingErrors.js';
@@ -178,21 +176,6 @@ function checkRequiredFields(data, contentType) {
   }
 
   return missing;
-}
-
-/**
- * Wrap validation with error handling
- */
-function validateWithErrorHandling(result, contentType) {
-  try {
-    // Validation is already done during generation (result._validation)
-    return { validation: result._validation, error: null };
-  } catch (error) {
-    return {
-      validation: null,
-      error: categorizeValidationBug(error, { contentType })
-    };
-  }
 }
 
 /**
@@ -642,6 +625,7 @@ function calculateResearchAnalysisFeedback(result, validationResult) {
 function calculateRealisticFeedback(result, validationResult, contentType) {
   const feedback = {
     rating: 3,
+    qualityScore: 3,  // Raw score before rounding (for quality error detection)
     wasExported: false,
     wasEdited: false,
     wasRegenerated: false,
@@ -651,6 +635,7 @@ function calculateRealisticFeedback(result, validationResult, contentType) {
   // No result = bad
   if (!result || !result.success) {
     feedback.rating = 1;
+    feedback.qualityScore = 0;
     feedback.wasRegenerated = true;
     feedback.thumbsUp = false;
     return feedback;
@@ -680,7 +665,8 @@ function calculateRealisticFeedback(result, validationResult, contentType) {
   if (latency > 30000) score -= 0.5;
   if (latency > 60000) score -= 0.5;
 
-  // Clamp to 1-5
+  // Store raw score and clamp rating to 1-5
+  feedback.qualityScore = score;
   feedback.rating = Math.max(1, Math.min(5, Math.round(score)));
 
   // Simulate user behavior
