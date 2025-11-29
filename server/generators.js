@@ -1875,6 +1875,9 @@ export { globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator };
 // Export interval enforcement for use in content retrieval
 export { enforceYearlyIntervalsForLongRanges };
 
+// Export generation functions for training script
+export { generateRoadmap };
+
 // Export variant management functions
 export {
   selectVariant,
