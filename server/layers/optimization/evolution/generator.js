@@ -142,7 +142,8 @@ export function applyMutation(template, strategy) {
   // Apply highlighting
   if (transform.highlight) {
     for (const { pattern, wrapper } of transform.highlight) {
-      result = result.replace(pattern, (match) => wrapper.replace('**', match));
+      // Replace matched text with the wrapper (e.g., "must" -> "**MUST**")
+      result = result.replace(pattern, wrapper);
     }
   }
 

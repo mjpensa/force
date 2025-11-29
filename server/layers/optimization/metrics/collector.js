@@ -100,13 +100,18 @@ export class MetricsCollector {
       this._stats.errors++;
     }
 
+    // Store variantId at top level for easier access
+    metric.variantId = metric.promptVersion.variantId;
+
     // Add to buffer
     this._buffer.push(metric);
     this._stats.totalRecorded++;
 
-    // Auto-flush if buffer is full
+    // Auto-flush if buffer is full (fire and forget with error handling)
     if (this._buffer.length >= this.batchSize) {
-      this._flush();
+      this._flush().catch(err => {
+        console.warn('[MetricsCollector] Background flush error:', err.message);
+      });
     }
 
     return metric.generationId;
