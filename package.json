@@ -23,7 +23,9 @@
     "analyze:deps-graph": "madge Public/main.js --image reports/main-deps.svg && madge Public/viewer.js --image reports/viewer-deps.svg && madge server.js --image reports/server-deps.svg",
     "analyze:all": "npm run lint && npm run analyze:deps && npm run analyze:dead-code",
     "cleanup:find-todos": "grep -rn 'TODO\\|FIXME\\|HACK\\|XXX' Public/ server/ --include='*.js' || true",
-    "cleanup:find-console": "grep -rn 'console\\.log' Public/ server/ --include='*.js' || true"
+    "cleanup:find-console": "grep -rn 'console\\.log' Public/ server/ --include='*.js' || true",
+    "train": "node scripts/train-prompts.js --iterations=50 --delay=1000",
+    "train:quick": "node scripts/train-prompts.js --iterations=10 --delay=500"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
