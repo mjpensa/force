@@ -11,6 +11,22 @@ import { dirname, join, extname } from 'path';
 import { readdir, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import mammoth from 'mammoth';
+import {
+  ErrorCategory,
+  TrainingError,
+  ErrorStatsCollector,
+  categorizeApiError,
+  categorizeParseError,
+  categorizeSchemaError,
+  categorizeEmptyError,
+  categorizeQualityError,
+  categorizeValidationBug,
+  categorizeScoringBug,
+  categorizeIOError,
+  isSystemBug,
+  getRetryDelay
+} from '../utils/trainingErrors.js';
+import { runPreflightChecks } from '../utils/preflightChecks.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -58,6 +74,153 @@ const TRAINING_CONFIG = {
 
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['.md', '.txt', '.docx'];
+
+// Quality score threshold for LLM_QUALITY_ERROR
+const QUALITY_THRESHOLD = 2.0;
+
+// =============================================================================
+// ERROR-WRAPPED FUNCTIONS
+// =============================================================================
+
+/**
+ * Wrap generator function with error categorization
+ */
+async function generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt = 0) {
+  try {
+    const result = await generatorFn(prompt, research);
+
+    // Check for empty/minimal content
+    if (!result.success && !result.data) {
+      return {
+        result: null,
+        error: categorizeEmptyError(contentType, { hasSuccess: result.success })
+      };
+    }
+
+    // Check for schema issues (missing required fields)
+    const missingFields = checkRequiredFields(result.data, contentType);
+    if (missingFields.length > 0) {
+      return {
+        result,
+        error: categorizeSchemaError(missingFields, result.data)
+      };
+    }
+
+    return { result, error: null };
+
+  } catch (error) {
+    // Categorize the error
+    const categorizedError = categorizeGeneratorError(error, contentType);
+
+    // Check if we should retry
+    const retryDelay = getRetryDelay(categorizedError, retryAttempt);
+    if (retryDelay && retryAttempt < (categorizedError.retryStrategy?.maxRetries || 0)) {
+      console.log(`   ⏳ Retry ${retryAttempt + 1} after ${retryDelay}ms (${categorizedError.code})`);
+      await sleep(retryDelay);
+      return generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt + 1);
+    }
+
+    return { result: null, error: categorizedError };
+  }
+}
+
+/**
+ * Categorize errors from generator functions
+ */
+function categorizeGeneratorError(error, contentType) {
+  const message = error?.message?.toLowerCase() || '';
+
+  // JSON parse errors
+  if (message.includes('json') || message.includes('parse') || message.includes('unexpected token')) {
+    return categorizeParseError(error);
+  }
+
+  // API errors (rate limit, timeout, network, etc.)
+  if (message.includes('api') || message.includes('fetch') || message.includes('request') ||
+      message.includes('timeout') || message.includes('rate') || message.includes('quota') ||
+      error?.status || error?.code) {
+    return categorizeApiError(error);
+  }
+
+  // Unknown error from generator
+  return new TrainingError(
+    ErrorCategory.UNKNOWN,
+    `Generator error for ${contentType}: ${error?.message || 'Unknown'}`,
+    error,
+    { contentType }
+  );
+}
+
+/**
+ * Check for required fields based on content type
+ */
+function checkRequiredFields(data, contentType) {
+  if (!data) return ['data'];
+
+  const missing = [];
+
+  switch (contentType) {
+    case 'Roadmap':
+      if (!data.title) missing.push('title');
+      if (!data.swimlanes || data.swimlanes.length === 0) missing.push('swimlanes');
+      break;
+    case 'Slides':
+      if (!data.title) missing.push('title');
+      if (!data.slides || data.slides.length === 0) missing.push('slides');
+      break;
+    case 'Document':
+      if (!data.title) missing.push('title');
+      if (!data.sections || data.sections.length === 0) missing.push('sections');
+      break;
+    case 'ResearchAnalysis':
+      if (!data.themes && !data.insights) missing.push('themes or insights');
+      break;
+  }
+
+  return missing;
+}
+
+/**
+ * Wrap validation with error handling
+ */
+function validateWithErrorHandling(result, contentType) {
+  try {
+    // Validation is already done during generation (result._validation)
+    return { validation: result._validation, error: null };
+  } catch (error) {
+    return {
+      validation: null,
+      error: categorizeValidationBug(error, { contentType })
+    };
+  }
+}
+
+/**
+ * Wrap scoring with error handling
+ */
+function scoreWithErrorHandling(result, validation, contentType, scoringFn) {
+  try {
+    const feedback = scoringFn(result, validation, contentType);
+
+    // Check if quality is below threshold
+    if (feedback.qualityScore !== undefined && feedback.qualityScore < QUALITY_THRESHOLD) {
+      return {
+        feedback,
+        error: categorizeQualityError(feedback.qualityScore, QUALITY_THRESHOLD, {
+          contentType,
+          rating: feedback.rating
+        })
+      };
+    }
+
+    return { feedback, error: null };
+  } catch (error) {
+    return {
+      feedback: null,
+      error: categorizeScoringBug(error, { contentType })
+    };
+  }
+}
 
 // Load research files from a directory
 async function loadResearchFiles(dirPath) {
@@ -678,6 +841,9 @@ async function runTraining(iterations, delay, contentTypes) {
   const collector = getMetricsCollector();
   const registry = getVariantRegistry();
 
+  // Error statistics collector for categorized error tracking
+  const errorStats = new ErrorStatsCollector();
+
   // Stats per content type
   const stats = {
     totalGenerations: 0,
@@ -686,6 +852,7 @@ async function runTraining(iterations, delay, contentTypes) {
     qualityScores: [],
     variantUsage: {},
     errors: [],
+    categorizedErrors: [],  // New: structured error tracking
     feedbackDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
     exports: 0,
     edits: 0,
@@ -722,6 +889,21 @@ async function runTraining(iterations, delay, contentTypes) {
     throw new Error('No sample sets with files found');
   }
 
+  // Run pre-flight checks to catch code bugs early
+  trainingProgress.status = 'preflight';
+  const preflightResults = await runPreflightChecks({
+    scoringFn: calculateRealisticFeedback
+  });
+
+  if (!preflightResults.passed) {
+    trainingProgress.status = 'error';
+    trainingProgress.error = 'Pre-flight checks failed: ' + preflightResults.errors.join('; ');
+    trainingProgress.preflightResults = preflightResults;
+    throw new Error('Pre-flight checks failed - possible code bug detected');
+  }
+
+  trainingProgress.preflightResults = preflightResults;
+
   // Total iterations = iterations × sample sets × content types
   const totalIterations = iterations * sampleSets.length * contentTypes.length;
   let currentIteration = 0;
@@ -752,22 +934,52 @@ async function runTraining(iterations, delay, contentTypes) {
 
         const prompt = sampleSet.prompts[contentType];
         const generator = generators[contentType];
+        const variantId = 'unknown'; // Will be updated from result
 
-        try {
-          const result = await generator(prompt, sampleSet.files);
-          stats.totalGenerations++;
-          stats.byContentType[contentType].total++;
+        // Use error-wrapped generation
+        const { result, error: genError } = await generateWithErrorHandling(
+          generator, contentType, prompt, sampleSet.files
+        );
 
-          if (result.success) {
+        stats.totalGenerations++;
+        stats.byContentType[contentType].total++;
+
+        // Check for system bugs - halt immediately
+        if (genError && isSystemBug(genError)) {
+          console.error(`\n❌ SYSTEM BUG DETECTED: ${genError.toString()}`);
+          errorStats.recordError(genError, variantId, contentType);
+          trainingProgress.status = 'error';
+          trainingProgress.error = `System bug: ${genError.message}`;
+          trainingProgress.errorDetails = genError.toJSON();
+          shouldStop = true;
+          break;
+        }
+
+        if (result?.success) {
+          const currentVariant = result._variant?.id || 'champion';
+
+          // Wrap scoring with error handling
+          const { feedback, error: scoreError } = scoreWithErrorHandling(
+            result, result._validation, contentType, calculateRealisticFeedback
+          );
+
+          if (scoreError && isSystemBug(scoreError)) {
+            console.error(`\n❌ SCORING BUG DETECTED: ${scoreError.toString()}`);
+            errorStats.recordError(scoreError, currentVariant, contentType);
+            trainingProgress.status = 'error';
+            trainingProgress.error = `Scoring bug: ${scoreError.message}`;
+            shouldStop = true;
+            break;
+          }
+
+          if (feedback) {
             stats.successful++;
             stats.byContentType[contentType].successful++;
+            errorStats.recordSuccess(currentVariant, contentType);
 
-            if (result._variant?.id) {
-              stats.variantUsage[result._variant.id] =
-                (stats.variantUsage[result._variant.id] || 0) + 1;
-            }
+            stats.variantUsage[currentVariant] =
+              (stats.variantUsage[currentVariant] || 0) + 1;
 
-            const feedback = calculateRealisticFeedback(result, result._validation, contentType);
             stats.qualityScores.push(feedback.rating);
             stats.byContentType[contentType].qualityScores.push(feedback.rating);
             stats.feedbackDistribution[feedback.rating]++;
@@ -780,23 +992,59 @@ async function runTraining(iterations, delay, contentTypes) {
             if (result._generationId) {
               await collector.updateFeedback(result._generationId, feedback);
             }
+
+            // Record quality error (low score) but don't fail
+            if (scoreError) {
+              errorStats.recordError(scoreError, currentVariant, contentType);
+              stats.categorizedErrors.push(scoreError.toJSON());
+            }
           } else {
+            // Scoring failed completely
             stats.failed++;
             stats.byContentType[contentType].failed++;
+            if (scoreError) {
+              errorStats.recordError(scoreError, currentVariant, contentType);
+              stats.categorizedErrors.push(scoreError.toJSON());
+            }
+          }
+        } else {
+          // Generation failed
+          stats.failed++;
+          stats.byContentType[contentType].failed++;
+
+          if (genError) {
+            errorStats.recordError(genError, variantId, contentType);
+            stats.categorizedErrors.push(genError.toJSON());
             stats.errors.push({
               iteration: currentIteration,
               contentType,
-              error: result.error
+              error: genError.message,
+              category: genError.category,
+              code: genError.code
+            });
+          } else {
+            stats.errors.push({
+              iteration: currentIteration,
+              contentType,
+              error: result?.error || 'Unknown generation failure'
             });
           }
-        } catch (error) {
-          stats.failed++;
-          stats.byContentType[contentType].failed++;
-          stats.errors.push({
-            iteration: currentIteration,
-            contentType,
-            error: error.message
-          });
+        }
+
+        // Check for anomalies periodically
+        if (currentIteration % 10 === 0) {
+          const { anomalies } = errorStats.detectAnomalies();
+          if (anomalies.some(a => a.action === 'HALT_TRAINING')) {
+            console.error('\n❌ ANOMALY DETECTED - HALTING TRAINING');
+            for (const anomaly of anomalies) {
+              console.error(`   ${anomaly.message}`);
+            }
+            trainingProgress.status = 'error';
+            trainingProgress.error = 'System anomaly detected';
+            trainingProgress.anomalies = anomalies;
+            shouldStop = true;
+            break;
+          }
         }
 
         await sleep(delay);
@@ -825,6 +1073,9 @@ async function runTraining(iterations, delay, contentTypes) {
     trainingProgress.completedAt = new Date().toISOString();
   }
 
+  // Get error statistics summary
+  const errorSummary = errorStats.getSummary();
+
   trainingProgress.results = {
     totalGenerations: stats.totalGenerations,
     successful: stats.successful,
@@ -843,7 +1094,15 @@ async function runTraining(iterations, delay, contentTypes) {
     },
     byContentType: stats.byContentType,
     variantUsage: stats.variantUsage,
-    errors: stats.errors.slice(-10)
+    errors: stats.errors.slice(-10),
+    // New: categorized error statistics
+    errorAnalysis: {
+      byCategory: errorSummary.byCategory,
+      byVariant: errorSummary.byVariant,
+      systemBugsDetected: errorSummary.systemBugsDetected,
+      anomalies: errorSummary.anomalies,
+      warnings: errorSummary.warnings
+    }
   };
 
   const statusMsg = shouldStop ? '⛔ Stopped' : '✅ Complete';
@@ -856,6 +1115,9 @@ async function runTraining(iterations, delay, contentTypes) {
     console.log(`     ${type}: ${ts.successful}/${ts.total} (avg: ${ts.avgQuality})`);
   }
   console.log(`   Ratings: 5⭐=${stats.feedbackDistribution[5]} 4⭐=${stats.feedbackDistribution[4]} 3⭐=${stats.feedbackDistribution[3]} 2⭐=${stats.feedbackDistribution[2]} 1⭐=${stats.feedbackDistribution[1]}`);
+
+  // Print error summary
+  console.log(errorStats.formatForConsole());
 }
 
 export default router;
