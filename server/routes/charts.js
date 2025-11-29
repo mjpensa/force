@@ -95,27 +95,45 @@ function enforceYearlyIntervalsForLongRanges(ganttData) {
     newTimeColumns.push(year.toString());
   }
 
+  // Calculate the number of new columns for bounds clamping
+  const newNumCols = newTimeColumns.length;
+
   // Remap all task bar columns
   const newData = ganttData.data.map(item => {
     if (item.isSwimlane || !item.bar) return item;
 
     const newItem = { ...item, bar: { ...item.bar } };
 
-    if (item.bar.startCol !== null && columnToYearMap[item.bar.startCol]) {
-      newItem.bar.startCol = columnToYearMap[item.bar.startCol];
-    }
-    if (item.bar.endCol !== null && columnToYearMap[item.bar.endCol]) {
-      newItem.bar.endCol = columnToYearMap[item.bar.endCol];
-    } else if (item.bar.endCol !== null && item.bar.startCol !== null) {
-      // If endCol doesn't map directly, calculate based on startCol
-      newItem.bar.endCol = newItem.bar.startCol + 1;
+    // Remap startCol - if not in map, clamp the old value proportionally
+    if (item.bar.startCol !== null) {
+      if (columnToYearMap[item.bar.startCol]) {
+        newItem.bar.startCol = columnToYearMap[item.bar.startCol];
+      } else {
+        // Column not in map - clamp to valid range (1 to newNumCols)
+        newItem.bar.startCol = Math.max(1, Math.min(newNumCols, item.bar.startCol));
+      }
     }
 
-    // Ensure minimum duration of 1 column
+    // Remap endCol - if not in map, calculate based on remapped startCol
+    if (item.bar.endCol !== null) {
+      if (columnToYearMap[item.bar.endCol]) {
+        newItem.bar.endCol = columnToYearMap[item.bar.endCol];
+      } else if (newItem.bar.startCol !== null) {
+        // Calculate endCol based on remapped startCol, ensuring at least 1 column duration
+        newItem.bar.endCol = Math.min(newNumCols + 1, newItem.bar.startCol + 1);
+      }
+    }
+
+    // Ensure minimum duration of 1 column and clamp to valid bounds
     if (newItem.bar.startCol !== null && newItem.bar.endCol !== null) {
+      // Clamp startCol to valid range
+      newItem.bar.startCol = Math.max(1, Math.min(newNumCols, newItem.bar.startCol));
+      // Ensure endCol is greater than startCol and within bounds
       if (newItem.bar.endCol <= newItem.bar.startCol) {
         newItem.bar.endCol = newItem.bar.startCol + 1;
       }
+      // Clamp endCol to maximum valid value (numCols + 1 for CSS Grid)
+      newItem.bar.endCol = Math.min(newNumCols + 1, newItem.bar.endCol);
     }
 
     return newItem;
@@ -150,21 +168,38 @@ function ensureTaskBars(ganttData) {
     if (item.isSwimlane) return item;
 
     taskIndex++;
-    const hasValidBar = item.bar &&
-      typeof item.bar.startCol === 'number' &&
-      typeof item.bar.endCol === 'number' &&
-      item.bar.startCol >= 1 &&
-      item.bar.endCol > item.bar.startCol;
 
-    if (hasValidBar) {
-      // Ensure color exists
-      if (!item.bar.color) {
-        return {
-          ...item,
-          bar: { ...item.bar, color: defaultColors[colorIndex++ % defaultColors.length] }
-        };
+    // Check if bar exists with valid types
+    const hasBarWithNumbers = item.bar &&
+      typeof item.bar.startCol === 'number' &&
+      typeof item.bar.endCol === 'number';
+
+    if (hasBarWithNumbers) {
+      // Clamp bar values to valid bounds
+      let startCol = Math.max(1, Math.min(numCols, item.bar.startCol));
+      let endCol = item.bar.endCol;
+
+      // Ensure endCol is greater than startCol
+      if (endCol <= startCol) {
+        endCol = startCol + 1;
       }
-      return item;
+
+      // Clamp endCol to valid range (max is numCols + 1 for CSS Grid)
+      endCol = Math.min(numCols + 1, endCol);
+
+      // After clamping, ensure we still have a valid bar
+      if (endCol <= startCol) {
+        // Edge case: startCol was at numCols, so shift both back
+        startCol = Math.max(1, numCols - 1);
+        endCol = startCol + 1;
+      }
+
+      const color = item.bar.color || defaultColors[colorIndex++ % defaultColors.length];
+
+      return {
+        ...item,
+        bar: { startCol, endCol, color }
+      };
     }
 
     // Generate default bar - distribute tasks across available columns
