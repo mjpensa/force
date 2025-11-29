@@ -22,11 +22,11 @@ export class GanttComponents {
 
     const headerSvgEl = document.createElement('div');
     headerSvgEl.className = 'gantt-header-svg';
-    headerSvgEl.style.height = '16px';
+    headerSvgEl.style.height = '30px';
     headerSvgEl.style.width = '100%';
     headerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
     headerSvgEl.style.backgroundRepeat = 'repeat-x';
-    headerSvgEl.style.backgroundSize = 'auto 100%';
+    headerSvgEl.style.backgroundSize = 'auto 30px';
     headerSvgEl.style.backgroundPosition = 'left center';
 
     chartWrapper.appendChild(headerSvgEl);
@@ -107,11 +107,11 @@ export class GanttComponents {
 
     const footerSvgEl = document.createElement('div');
     footerSvgEl.className = 'gantt-footer-svg';
-    footerSvgEl.style.height = '16px';
+    footerSvgEl.style.height = '30px';
     footerSvgEl.style.width = '100%';
     footerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
     footerSvgEl.style.backgroundRepeat = 'repeat-x';
-    footerSvgEl.style.backgroundSize = 'auto 100%';
+    footerSvgEl.style.backgroundSize = 'auto 30px';
     footerSvgEl.style.backgroundPosition = 'left center';
 
     chartWrapper.appendChild(footerSvgEl);
