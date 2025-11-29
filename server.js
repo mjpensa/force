@@ -55,6 +55,7 @@ import { clearAllCaches } from './server/cache/contentCache.js';
 import { initializeVariants, getVariantRegistry } from './server/layers/optimization/variants/index.js';
 import { startEvolution, stopEvolution } from './server/layers/optimization/evolution/index.js';
 import { getMetricsCollector } from './server/layers/optimization/metrics/index.js';
+import { getExperimentManager } from './server/layers/optimization/experiments/index.js';
 
 // Import monitoring system
 import { initializeMonitoring, shutdownMonitoring } from './server/utils/monitoring.js';
@@ -279,6 +280,13 @@ app.listen(port, () => {
         }
       });
       console.log('[PROMPT ML] Metrics collector initialized with file storage');
+
+      // Initialize experiment manager with persistence
+      getExperimentManager({
+        autoPersist: true,
+        persistPath: join(__dirname, 'data', 'experiments.json')
+      });
+      console.log('[PROMPT ML] Experiment manager initialized with file persistence');
 
       // Start evolution scheduler for auto-improving prompts
       const evolutionStats = startEvolution({
