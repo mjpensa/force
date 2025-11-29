@@ -12,7 +12,7 @@
 
 import { getVariantGenerator } from './generator.js';
 import { getVariantRegistry } from '../variants/index.js';
-import { getExperimentManager, ExperimentStatus } from '../experiments/index.js';
+import { getExperimentManager, ExperimentStatus, analyzeExperiment } from '../experiments/index.js';
 import { getMetricsCollector } from '../metrics/index.js';
 
 /**
@@ -67,6 +67,7 @@ export class EvolutionScheduler {
     this._lastGenerationByType = new Map();
     this._runHistory = [];
     this._maxHistorySize = 100;
+    this._cycleInProgress = false;
   }
 
   /**
@@ -79,16 +80,39 @@ export class EvolutionScheduler {
 
     this._state = SchedulerState.RUNNING;
 
-    // Run immediately
-    this._runCycle();
+    // Schedule next cycle using recursive setTimeout to prevent concurrent execution
+    const scheduleNext = () => {
+      if (this._state !== SchedulerState.RUNNING) {
+        return;
+      }
+      this._intervalHandle = setTimeout(async () => {
+        await this._runCycleGuarded();
+        scheduleNext();
+      }, this._config.intervalMs);
+    };
 
-    // Schedule periodic runs
-    this._intervalHandle = setInterval(
-      () => this._runCycle(),
-      this._config.intervalMs
-    );
+    // Run immediately, then schedule periodic runs
+    this._runCycleGuarded().then(() => scheduleNext());
 
     console.log('[EvolutionScheduler] Started with interval:', this._config.intervalMs);
+  }
+
+  /**
+   * Run cycle with concurrency guard
+   *
+   * @private
+   */
+  async _runCycleGuarded() {
+    if (this._cycleInProgress) {
+      console.log('[EvolutionScheduler] Cycle already in progress, skipping');
+      return null;
+    }
+    this._cycleInProgress = true;
+    try {
+      return await this._runCycle();
+    } finally {
+      this._cycleInProgress = false;
+    }
   }
 
   /**
@@ -96,7 +120,7 @@ export class EvolutionScheduler {
    */
   stop() {
     if (this._intervalHandle) {
-      clearInterval(this._intervalHandle);
+      clearTimeout(this._intervalHandle);
       this._intervalHandle = null;
     }
 
@@ -109,7 +133,7 @@ export class EvolutionScheduler {
    */
   pause() {
     if (this._intervalHandle) {
-      clearInterval(this._intervalHandle);
+      clearTimeout(this._intervalHandle);
       this._intervalHandle = null;
     }
 
@@ -228,9 +252,10 @@ export class EvolutionScheduler {
     const concluded = [];
 
     for (const exp of running) {
-      // Check if experiment should be concluded
-      const analysis = manager.get(exp.id)?.conclusion?.analysis;
+      // Analyze the running experiment directly (not from conclusion field)
+      const analysis = analyzeExperiment(exp);
 
+      // Conclude if statistically significant with sufficient samples
       if (analysis?.hasSufficientSamples && analysis?.isSignificant) {
         try {
           manager.conclude(exp.id, 'scheduler_significant');

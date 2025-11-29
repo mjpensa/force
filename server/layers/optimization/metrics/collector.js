@@ -28,6 +28,7 @@ export class MetricsCollector {
 
     this._buffer = [];
     this._flushTimer = null;
+    this._flushing = false;
     this._startFlushTimer();
 
     // Statistics
@@ -145,7 +146,7 @@ export class MetricsCollector {
     if (variantId && feedback.rating !== undefined) {
       try {
         const registry = getVariantRegistry();
-        registry.recordPerformance(variantId, {
+        registry.updatePerformance(variantId, {
           feedback: feedback.rating
         });
       } catch (error) {
@@ -284,7 +285,9 @@ export class MetricsCollector {
 
   async _flush() {
     if (this._buffer.length === 0) return;
+    if (this._flushing) return; // Prevent concurrent flushes
 
+    this._flushing = true;
     const toFlush = this._buffer.splice(0, this._buffer.length);
 
     try {
@@ -295,11 +298,27 @@ export class MetricsCollector {
       // Put items back in buffer
       this._buffer.unshift(...toFlush);
       this._stats.errors++;
+    } finally {
+      this._flushing = false;
     }
   }
 
   _startFlushTimer() {
-    this._flushTimer = setInterval(() => this._flush(), this.flushIntervalMs);
+    // Use recursive setTimeout to prevent concurrent flushes
+    const scheduleNext = () => {
+      this._flushTimer = setTimeout(async () => {
+        await this._flush();
+        scheduleNext();
+      }, this.flushIntervalMs);
+    };
+    scheduleNext();
+  }
+
+  _stopFlushTimer() {
+    if (this._flushTimer) {
+      clearTimeout(this._flushTimer);
+      this._flushTimer = null;
+    }
   }
 
   _aggregateMetrics(metrics) {

@@ -51,11 +51,11 @@ export function stopEvolution() {
 /**
  * Run a single optimization cycle manually
  *
- * @returns {Object} Cycle results
+ * @returns {Promise<Object>} Cycle results
  */
-export function runOptimizationCycle() {
+export async function runOptimizationCycle() {
   const scheduler = getEvolutionScheduler();
-  return scheduler.runOnce();
+  return await scheduler.runOnce();
 }
 
 /**
