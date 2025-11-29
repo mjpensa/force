@@ -73,17 +73,9 @@ const ENABLE_AUTO_OPTIMIZATION = process.env.ENABLE_AUTO_OPTIMIZATION === 'true'
 // Inherits from ENABLE_PROMPT_ML unless explicitly set
 const ENABLE_VARIANT_SELECTION = process.env.ENABLE_VARIANT_SELECTION === 'true' || ENABLE_PROMPT_ML;
 
-// Initialize variants on module load if enabled
-if (ENABLE_VARIANT_SELECTION) {
-  try {
-    const result = initializeVariants();
-    if (result.initialized) {
-      console.log(`[Variants] Initialized ${result.registered} variants`);
-    }
-  } catch (error) {
-    console.warn('[Variants] Failed to initialize:', error.message);
-  }
-}
+// NOTE: Variant initialization is handled by server.js on startup
+// to ensure proper configuration (persistPath, autoPersist).
+// Do NOT initialize here to avoid race conditions with config.
 
 // Feature flag for context engineering layer - DISABLED by default for consistency
 const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING === 'true';

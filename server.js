@@ -275,7 +275,7 @@ app.listen(port, () => {
       getMetricsCollector({
         storageConfig: {
           type: 'file',
-          path: join(__dirname, 'data', 'metrics.json')
+          dataDir: join(__dirname, 'data', 'metrics')
         }
       });
       console.log('[PROMPT ML] Metrics collector initialized with file storage');
