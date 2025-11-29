@@ -25,6 +25,7 @@ import {
   getRetryDelay
 } from '../utils/trainingErrors.js';
 import { runPreflightChecks } from '../utils/preflightChecks.js';
+import { calculateCorrelatedFeedback } from '../utils/feedbackSimulation.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -620,28 +621,26 @@ function calculateResearchAnalysisFeedback(result, validationResult) {
 }
 
 /**
- * Calculate realistic feedback based on output quality and content type
+ * Calculate realistic feedback based on output quality and content type.
+ *
+ * This function calculates a quality score using content-type-specific metrics,
+ * then uses the correlated feedback simulation to generate realistic user feedback
+ * that correlates with the quality score (Pearson r > 0.85).
  */
 function calculateRealisticFeedback(result, validationResult, contentType) {
-  const feedback = {
-    rating: 3,
-    qualityScore: 3,  // Raw score before rounding (for quality error detection)
-    wasExported: false,
-    wasEdited: false,
-    wasRegenerated: false,
-    thumbsUp: null
-  };
-
-  // No result = bad
+  // No result = bad feedback
   if (!result || !result.success) {
-    feedback.rating = 1;
-    feedback.qualityScore = 0;
-    feedback.wasRegenerated = true;
-    feedback.thumbsUp = false;
-    return feedback;
+    return {
+      rating: 1,
+      qualityScore: 0,
+      wasExported: false,
+      wasEdited: false,
+      wasRegenerated: true,
+      thumbsUp: false
+    };
   }
 
-  // Calculate content-type-specific score
+  // Calculate content-type-specific quality score
   let score;
   switch (contentType) {
     case 'Roadmap':
@@ -660,27 +659,17 @@ function calculateRealisticFeedback(result, validationResult, contentType) {
       score = 3;
   }
 
-  // Latency factor (applies to all types)
+  // Apply latency penalty (high latency degrades user experience)
   const latency = result._latencyMs || 0;
   if (latency > 30000) score -= 0.5;
   if (latency > 60000) score -= 0.5;
 
-  // Store raw score and clamp rating to 1-5
-  feedback.qualityScore = score;
-  feedback.rating = Math.max(1, Math.min(5, Math.round(score)));
+  // Use correlated feedback simulation to generate realistic user feedback
+  // The feedback will correlate with the quality score (higher quality = better feedback)
+  const feedback = calculateCorrelatedFeedback(score, contentType);
 
-  // Simulate user behavior
-  if (feedback.rating >= 4) {
-    feedback.wasExported = Math.random() > 0.2;
-    feedback.thumbsUp = Math.random() > 0.3;
-  } else if (feedback.rating === 3) {
-    feedback.wasExported = Math.random() > 0.6;
-    feedback.wasEdited = Math.random() > 0.5;
-    feedback.thumbsUp = Math.random() > 0.5 ? true : (Math.random() > 0.5 ? false : null);
-  } else {
-    feedback.wasRegenerated = Math.random() > 0.4;
-    feedback.thumbsUp = false;
-  }
+  // Override the qualityScore with our calculated score (for error detection)
+  feedback.qualityScore = score;
 
   return feedback;
 }
