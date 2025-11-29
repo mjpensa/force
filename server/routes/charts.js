@@ -25,10 +25,11 @@ function detectIntervalType(timeColumns) {
   if (!timeColumns || timeColumns.length === 0) return 'unknown';
   // Trim whitespace to handle AI-generated strings with leading/trailing spaces
   const sample = timeColumns[0].trim();
-  if (/^Q[1-4]\s+\d{4}$/.test(sample)) return 'quarters';
+  // Case-insensitive matching with flexible separators (space, dash, slash, etc.)
+  if (/^Q[1-4][\s\-\/]*\d{4}$/i.test(sample)) return 'quarters';
   if (/^\d{4}$/.test(sample)) return 'years';
-  if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/.test(sample)) return 'months';
-  if (/^W\d+\s+\d{4}$/.test(sample)) return 'weeks';
+  if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s\-\/]*\d{4}$/i.test(sample)) return 'months';
+  if (/^W\d+[\s\-\/]*\d{4}$/i.test(sample)) return 'weeks';
   return 'unknown';
 }
 
@@ -59,14 +60,18 @@ function extractYearRange(timeColumns, intervalType) {
  */
 function enforceYearlyIntervalsForLongRanges(ganttData) {
   const intervalType = detectIntervalType(ganttData.timeColumns);
-
-  // Only process quarterly or monthly intervals
-  if (intervalType !== 'quarters' && intervalType !== 'months') return ganttData;
-
   const { startYear, endYear, yearSpan } = extractYearRange(ganttData.timeColumns, intervalType);
 
   // Only convert if span > 3 years (threshold for yearly intervals)
   if (yearSpan <= 3) return ganttData;
+
+  // Already yearly intervals - no conversion needed
+  if (intervalType === 'years') return ganttData;
+
+  // Check if we have more columns than years (indicating non-yearly intervals)
+  // This catches cases where detection returns 'unknown' but data is clearly not yearly
+  const columnCount = ganttData.timeColumns.length;
+  if (columnCount <= yearSpan) return ganttData; // Already appropriate granularity
 
   // Build mapping from old columns to new year columns
   // Old quarters: ["Q1 2020", "Q2 2020", "Q3 2020", "Q4 2020", "Q1 2021", ...] (1-indexed)
@@ -74,25 +79,15 @@ function enforceYearlyIntervalsForLongRanges(ganttData) {
   // New: ["2020", "2021", "2022", ...] (1-indexed)
   const columnToYearMap = {};
 
-  if (intervalType === 'quarters') {
-    ganttData.timeColumns.forEach((col, index) => {
-      const match = col.trim().match(/Q[1-4]\s+(\d{4})/);
-      if (match) {
-        const year = parseInt(match[1], 10);
-        const newColIndex = year - startYear + 1; // 1-indexed
-        columnToYearMap[index + 1] = newColIndex; // old 1-indexed -> new 1-indexed
-      }
-    });
-  } else if (intervalType === 'months') {
-    ganttData.timeColumns.forEach((col, index) => {
-      const match = col.trim().match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/);
-      if (match) {
-        const year = parseInt(match[2], 10);
-        const newColIndex = year - startYear + 1; // 1-indexed
-        columnToYearMap[index + 1] = newColIndex; // old 1-indexed -> new 1-indexed
-      }
-    });
-  }
+  // Extract year from each column regardless of format
+  ganttData.timeColumns.forEach((col, index) => {
+    const match = col.match(/(\d{4})/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const newColIndex = year - startYear + 1; // 1-indexed
+      columnToYearMap[index + 1] = newColIndex; // old 1-indexed -> new 1-indexed
+    }
+  });
 
   // Generate new yearly timeColumns
   const newTimeColumns = [];
