@@ -1876,7 +1876,7 @@ export { globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator };
 export { enforceYearlyIntervalsForLongRanges };
 
 // Export generation functions for training script
-export { generateRoadmap };
+export { generateRoadmap, generateSlides, generateDocument, generateResearchAnalysis };
 
 // Export variant management functions
 export {
