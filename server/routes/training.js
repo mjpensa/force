@@ -121,13 +121,20 @@ function calculateRealisticFeedback(result, validationResult) {
   // === CONTENT RICHNESS ===
   const taskCount = data?.swimlanes?.reduce((sum, s) => sum + (s.tasks?.length || 0), 0) || 0;
   const swimlaneCount = data?.swimlanes?.length || 0;
+  const minTasksPerSwimlane = swimlaneCount > 0
+    ? Math.min(...data.swimlanes.map(s => s.tasks?.length || 0))
+    : 0;
 
-  // More content = better (up to a point)
-  if (taskCount >= 5) score += 0.3;
+  // Penalties for insufficient content (bad)
+  if (swimlaneCount < 2) score -= 1;        // Less than 2 swimlanes = bad
+  if (taskCount < 7) score -= 1;            // Less than 7 tasks = bad
+  if (minTasksPerSwimlane < 2) score -= 0.5; // Less than 2 tasks per swimlane = bad
+
+  // Bonuses for rich content (good)
   if (taskCount >= 10) score += 0.3;
-  if (taskCount >= 15) score += 0.2;
-  if (swimlaneCount >= 2) score += 0.2;
-  if (swimlaneCount >= 3) score += 0.2;
+  if (taskCount >= 15) score += 0.3;
+  if (swimlaneCount >= 3) score += 0.3;
+  if (minTasksPerSwimlane >= 3) score += 0.2;
 
   // === VALIDATION QUALITY ===
   if (validationResult?.valid !== false) score += 0.5;
@@ -135,10 +142,8 @@ function calculateRealisticFeedback(result, validationResult) {
   if (quality?.score > 0.8) score += 0.4;
   if (quality?.score > 0.9) score += 0.3;
 
-  // Penalties
+  // Penalties for validation errors
   if (validationResult?.errors?.length > 0) score -= 0.5 * validationResult.errors.length;
-  if (taskCount === 0) score -= 1;
-  if (swimlaneCount === 0) score -= 1;
 
   // === LATENCY FACTOR ===
   // Very slow responses feel worse to users
