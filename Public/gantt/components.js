@@ -13,7 +13,7 @@ export class GanttComponents {
 
   /**
    * Add the header SVG stripe
-   * Uses <img> element instead of CSS background-image for reliable html2canvas export
+   * Uses background-image with repeat-x to tile the pattern without distortion
    */
   addHeaderSVG(chartWrapper, footerSVG) {
     if (!footerSVG) return;
@@ -22,16 +22,13 @@ export class GanttComponents {
 
     const headerSvgEl = document.createElement('div');
     headerSvgEl.className = 'gantt-header-svg';
+    headerSvgEl.style.height = '16px';
+    headerSvgEl.style.width = '100%';
+    headerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
+    headerSvgEl.style.backgroundRepeat = 'repeat-x';
+    headerSvgEl.style.backgroundSize = 'auto 100%';
+    headerSvgEl.style.backgroundPosition = 'left center';
 
-    const img = document.createElement('img');
-    img.src = `data:image/svg+xml,${encodedFooterSVG}`;
-    img.alt = '';
-    img.style.height = '16px';
-    img.style.width = '100%';
-    img.style.display = 'block';
-    img.style.objectFit = 'fill';
-
-    headerSvgEl.appendChild(img);
     chartWrapper.appendChild(headerSvgEl);
   }
 
@@ -101,7 +98,7 @@ export class GanttComponents {
 
   /**
    * Add the footer SVG stripe
-   * Uses <img> element instead of CSS background-image for reliable html2canvas export
+   * Uses background-image with repeat-x to tile the pattern without distortion
    */
   addFooterSVG(chartWrapper, footerSVG) {
     if (!footerSVG) return;
@@ -110,16 +107,13 @@ export class GanttComponents {
 
     const footerSvgEl = document.createElement('div');
     footerSvgEl.className = 'gantt-footer-svg';
+    footerSvgEl.style.height = '16px';
+    footerSvgEl.style.width = '100%';
+    footerSvgEl.style.backgroundImage = `url("data:image/svg+xml,${encodedFooterSVG}")`;
+    footerSvgEl.style.backgroundRepeat = 'repeat-x';
+    footerSvgEl.style.backgroundSize = 'auto 100%';
+    footerSvgEl.style.backgroundPosition = 'left center';
 
-    const img = document.createElement('img');
-    img.src = `data:image/svg+xml,${encodedFooterSVG}`;
-    img.alt = '';
-    img.style.height = '16px';
-    img.style.width = '100%';
-    img.style.display = 'block';
-    img.style.objectFit = 'fill';
-
-    footerSvgEl.appendChild(img);
     chartWrapper.appendChild(footerSvgEl);
   }
 
