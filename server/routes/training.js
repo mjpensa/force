@@ -245,6 +245,12 @@ function calculateDocumentFeedback(result, validationResult) {
   const conflictPatterns = (allContent.match(/\b(while\s+\[[^\]]+\]|however,?\s+\[[^\]]+\]|in contrast|on the other hand|conversely)/gi) || []).length;
   if (conflictPatterns >= 1) score += 0.2; // Shows nuanced analysis
 
+  // 1f. Projections/forecasts must cite source (forecast words near citations)
+  const forecastWithCitation = (allContent.match(/\b(project(s|ed|ion)?|forecast(s|ed)?|predict(s|ed|ion)?|expect(s|ed)?|anticipate[sd]?)\b[^.]{0,50}\[[^\]]+\]/gi) || []).length;
+  const forecastsTotal = (allContent.match(/\b(project(s|ed|ion)?|forecast(s|ed)?|predict(s|ed|ion)?|expect(s|ed)?|anticipate[sd]?)\b/gi) || []).length;
+  if (forecastsTotal > 0 && forecastWithCitation >= forecastsTotal * 0.5) score += 0.2; // Most forecasts cited
+  else if (forecastsTotal > 2 && forecastWithCitation === 0) score -= 0.2; // Uncited forecasts
+
   // ============================================================
   // 2. OPENING STRATEGIES (Choose ONE compelling approach)
   // ============================================================
@@ -288,7 +294,10 @@ function calculateDocumentFeedback(result, validationResult) {
   // The Choice: Binary decision
   const hasChoice = /\beither\s+\w+\s+or\b|\bchoose\s+(between|to)|\bfork\s+in\s+the\s+road/i.test(lastParagraph);
 
-  const hasStrongClosing = hasCallback || hasPrediction || hasImperative || hasChoice;
+  // The Question: Leave with what matters most
+  const hasClosingQuestion = /\?[^.]*$/.test(lastParagraph.trim()) || /\bthe\s+(real|ultimate|central)\s+question\b/i.test(lastParagraph);
+
+  const hasStrongClosing = hasCallback || hasPrediction || hasImperative || hasChoice || hasClosingQuestion;
   if (hasStrongClosing) score += 0.2;
 
   // ============================================================
@@ -388,6 +397,10 @@ function calculateDocumentFeedback(result, validationResult) {
   // 9b. Bold key terms
   const hasBoldTerms = data?.sections?.some(s => /\*\*[^*]+\*\*/.test(s.content || ''));
   if (hasBoldTerms) score += 0.1;
+
+  // 9c. Level 2 headings (subsections within sections)
+  const hasSubsections = data?.sections?.some(s => /^#{2,3}\s+|^\*\*[^*]+\*\*$/m.test(s.content || ''));
+  if (hasSubsections) score += 0.1;
 
   // 9c. Primarily paragraphs, not excessive lists
   const listMarkers = (allContent.match(/^[\s]*[-•*]\s/gm) || []).length;
