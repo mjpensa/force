@@ -16,9 +16,10 @@
  */
 
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, extname } from 'path';
 import { readdir, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
+import mammoth from 'mammoth';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -67,6 +68,9 @@ function parseArgs() {
   return config;
 }
 
+// Supported file extensions
+const SUPPORTED_EXTENSIONS = ['.md', '.txt', '.docx'];
+
 // Load research files from a directory
 async function loadResearchFiles(dirPath) {
   if (!existsSync(dirPath)) {
@@ -80,10 +84,30 @@ async function loadResearchFiles(dirPath) {
   for (const filename of files) {
     if (filename.startsWith('.')) continue;
 
+    const ext = extname(filename).toLowerCase();
+
+    // Skip unsupported file types (like .png)
+    if (!SUPPORTED_EXTENSIONS.includes(ext)) {
+      continue;
+    }
+
     const filePath = join(dirPath, filename);
     try {
-      const content = await readFile(filePath, 'utf8');
-      researchFiles.push({ filename, content });
+      let content;
+
+      if (ext === '.docx') {
+        // Use mammoth to extract text from docx
+        const buffer = await readFile(filePath);
+        const result = await mammoth.extractRawText({ buffer });
+        content = result.value;
+      } else {
+        // Read as plain text for .md and .txt
+        content = await readFile(filePath, 'utf8');
+      }
+
+      if (content && content.trim().length > 0) {
+        researchFiles.push({ filename, content });
+      }
     } catch (error) {
       console.warn(`  Failed to read ${filename}: ${error.message}`);
     }
