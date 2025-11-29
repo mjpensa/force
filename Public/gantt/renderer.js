@@ -156,12 +156,15 @@ export class GanttRenderer {
     }
     barAreaEl.appendChild(cellsFragment);
 
-    if (!isSwimlane && row.bar && row.bar.startCol != null) {
+    if (!isSwimlane && row.bar && row.bar.startCol != null && row.bar.endCol != null) {
       const bar = row.bar;
+      // Ensure valid column range (startCol >= 1, endCol > startCol)
+      const startCol = Math.max(1, bar.startCol);
+      const endCol = bar.endCol > startCol ? bar.endCol : startCol + 1;
       const barEl = document.createElement('div');
       barEl.className = 'gantt-bar';
       barEl.setAttribute('data-color', bar.color || 'default');
-      barEl.style.gridColumn = `${bar.startCol} / ${bar.endCol}`;
+      barEl.style.gridColumn = `${startCol} / ${endCol}`;
       barAreaEl.appendChild(barEl);
     }
 

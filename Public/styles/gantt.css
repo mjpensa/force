@@ -278,6 +278,7 @@
   height: 10px;
   margin: 3px 1px;
   border-radius: 2px;
+  background-color: #6B7280; /* Default gray - fallback for unrecognized colors */
   color: white;
   z-index: 2;
   overflow: visible;
