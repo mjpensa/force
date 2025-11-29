@@ -1129,6 +1129,8 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     if (topP !== undefined) generationConfig.topP = topP;
     if (topK !== undefined) generationConfig.topK = topK;
     if (maxOutputTokens !== undefined) generationConfig.maxOutputTokens = maxOutputTokens;
+    // Add seed for deterministic output - same inputs produce same outputs
+    if (CONFIG.API.SEED !== undefined) generationConfig.seed = CONFIG.API.SEED;
 
     const model = genAI.getGenerativeModel({
       model: modelId,
