@@ -79,17 +79,91 @@ async function loadResearchFiles(dirPath) {
   return researchFiles;
 }
 
-// Calculate quality score from validation result
-function calculateFeedbackScore(validationResult) {
-  if (!validationResult) return 3;
+/**
+ * Calculate realistic feedback based on output quality
+ * Returns an object with rating and simulated user behavior
+ */
+function calculateRealisticFeedback(result, validationResult) {
+  const feedback = {
+    rating: 3,
+    wasExported: false,
+    wasEdited: false,
+    wasRegenerated: false,
+    thumbsUp: null
+  };
 
+  // No result = bad
+  if (!result || !result.success) {
+    feedback.rating = 1;
+    feedback.wasRegenerated = true;
+    feedback.thumbsUp = false;
+    return feedback;
+  }
+
+  const data = result.data;
+  const quality = validationResult?.quality;
+
+  // Start with base score
   let score = 3;
-  if (validationResult.valid !== false) score += 1;
-  if (validationResult.quality?.score > 0.7) score += 1;
-  if (validationResult.quality?.score > 0.9) score += 0.5;
-  if (validationResult.errors?.length > 0) score -= 1;
 
-  return Math.max(1, Math.min(5, Math.round(score)));
+  // === STRUCTURAL QUALITY ===
+  // Check if we have meaningful content
+  const hasTitle = data?.title && data.title.length > 5;
+  const hasSwimlanes = data?.swimlanes?.length > 0;
+  const hasTasks = data?.swimlanes?.some(s => s.tasks?.length > 0);
+  const hasTimeRange = data?.timeRange?.start && data?.timeRange?.end;
+
+  if (hasTitle) score += 0.3;
+  if (hasSwimlanes) score += 0.3;
+  if (hasTasks) score += 0.4;
+  if (hasTimeRange) score += 0.3;
+
+  // === CONTENT RICHNESS ===
+  const taskCount = data?.swimlanes?.reduce((sum, s) => sum + (s.tasks?.length || 0), 0) || 0;
+  const swimlaneCount = data?.swimlanes?.length || 0;
+
+  // More content = better (up to a point)
+  if (taskCount >= 5) score += 0.3;
+  if (taskCount >= 10) score += 0.3;
+  if (taskCount >= 15) score += 0.2;
+  if (swimlaneCount >= 2) score += 0.2;
+  if (swimlaneCount >= 3) score += 0.2;
+
+  // === VALIDATION QUALITY ===
+  if (validationResult?.valid !== false) score += 0.5;
+  if (quality?.score > 0.6) score += 0.3;
+  if (quality?.score > 0.8) score += 0.4;
+  if (quality?.score > 0.9) score += 0.3;
+
+  // Penalties
+  if (validationResult?.errors?.length > 0) score -= 0.5 * validationResult.errors.length;
+  if (taskCount === 0) score -= 1;
+  if (swimlaneCount === 0) score -= 1;
+
+  // === LATENCY FACTOR ===
+  // Very slow responses feel worse to users
+  const latency = result._latencyMs || 0;
+  if (latency > 30000) score -= 0.5;  // >30s feels bad
+  if (latency > 60000) score -= 0.5;  // >60s feels really bad
+
+  // Clamp to 1-5
+  feedback.rating = Math.max(1, Math.min(5, Math.round(score)));
+
+  // === SIMULATE USER BEHAVIOR ===
+  // High quality = export, thumbs up
+  if (feedback.rating >= 4) {
+    feedback.wasExported = Math.random() > 0.2;  // 80% export good results
+    feedback.thumbsUp = Math.random() > 0.3;     // 70% thumbs up
+  } else if (feedback.rating === 3) {
+    feedback.wasExported = Math.random() > 0.6;  // 40% export mediocre
+    feedback.wasEdited = Math.random() > 0.5;    // 50% edit mediocre
+    feedback.thumbsUp = Math.random() > 0.5 ? true : (Math.random() > 0.5 ? false : null);
+  } else {
+    feedback.wasRegenerated = Math.random() > 0.4;  // 60% regenerate bad
+    feedback.thumbsUp = false;
+  }
+
+  return feedback;
 }
 
 // Sleep utility
@@ -228,7 +302,13 @@ async function runTraining(iterations, delay) {
     failed: 0,
     qualityScores: [],
     variantUsage: {},
-    errors: []
+    errors: [],
+    feedbackDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    exports: 0,
+    edits: 0,
+    regenerations: 0,
+    thumbsUp: 0,
+    thumbsDown: 0
   };
 
   // Load sample sets
@@ -285,14 +365,18 @@ async function runTraining(iterations, delay) {
               (stats.variantUsage[result._variant.id] || 0) + 1;
           }
 
-          const feedbackScore = calculateFeedbackScore(result._validation);
-          stats.qualityScores.push(feedbackScore);
+          // Calculate realistic feedback based on output quality
+          const feedback = calculateRealisticFeedback(result, result._validation);
+          stats.qualityScores.push(feedback.rating);
+          stats.feedbackDistribution[feedback.rating]++;
+          if (feedback.wasExported) stats.exports++;
+          if (feedback.wasEdited) stats.edits++;
+          if (feedback.wasRegenerated) stats.regenerations++;
+          if (feedback.thumbsUp === true) stats.thumbsUp++;
+          if (feedback.thumbsUp === false) stats.thumbsDown++;
 
           if (result._generationId) {
-            await collector.updateFeedback(result._generationId, {
-              rating: feedbackScore,
-              wasExported: feedbackScore >= 4
-            });
+            await collector.updateFeedback(result._generationId, feedback);
           }
         } else {
           stats.failed++;
@@ -328,6 +412,14 @@ async function runTraining(iterations, delay) {
       ? Math.round((stats.successful / stats.totalGenerations) * 100)
       : 0,
     avgQuality: avgQuality.toFixed(2),
+    feedbackDistribution: stats.feedbackDistribution,
+    userBehavior: {
+      exports: stats.exports,
+      edits: stats.edits,
+      regenerations: stats.regenerations,
+      thumbsUp: stats.thumbsUp,
+      thumbsDown: stats.thumbsDown
+    },
     variantUsage: stats.variantUsage,
     errors: stats.errors.slice(-10) // Last 10 errors
   };
@@ -336,6 +428,8 @@ async function runTraining(iterations, delay) {
   console.log(`\n${statusMsg} [API] Training`);
   console.log(`   Success: ${stats.successful}/${stats.totalGenerations}`);
   console.log(`   Avg Quality: ${avgQuality.toFixed(2)}/5`);
+  console.log(`   Ratings: 5⭐=${stats.feedbackDistribution[5]} 4⭐=${stats.feedbackDistribution[4]} 3⭐=${stats.feedbackDistribution[3]} 2⭐=${stats.feedbackDistribution[2]} 1⭐=${stats.feedbackDistribution[1]}`);
+  console.log(`   Exports: ${stats.exports}, Edits: ${stats.edits}, 👍: ${stats.thumbsUp}, 👎: ${stats.thumbsDown}`);
 }
 
 export default router;
