@@ -268,21 +268,27 @@ export class VariantRegistry {
 
     const result = [];
 
-    // Champion weight allocation
+    // Champion weight allocation - use v.weight to distribute among multiple champions
     const championWeight = this._weights[VariantStatus.CHAMPION];
     if (champions.length > 0) {
-      const perChampion = championWeight / champions.length;
+      const totalChampionWeight = champions.reduce((sum, v) => sum + v.weight, 0);
       for (const v of champions) {
-        result.push({ variant: v, normalizedWeight: perChampion * v.weight });
+        const share = totalChampionWeight > 0
+          ? (v.weight / totalChampionWeight) * championWeight
+          : championWeight / champions.length;
+        result.push({ variant: v, normalizedWeight: share });
       }
     }
 
-    // Candidate weight allocation
+    // Candidate weight allocation - use v.weight to distribute among multiple candidates
     const candidateWeight = this._weights[VariantStatus.CANDIDATE];
     if (candidates.length > 0) {
-      const perCandidate = candidateWeight / candidates.length;
+      const totalCandidateWeight = candidates.reduce((sum, v) => sum + v.weight, 0);
       for (const v of candidates) {
-        result.push({ variant: v, normalizedWeight: perCandidate * v.weight });
+        const share = totalCandidateWeight > 0
+          ? (v.weight / totalCandidateWeight) * candidateWeight
+          : candidateWeight / candidates.length;
+        result.push({ variant: v, normalizedWeight: share });
       }
     }
 

@@ -8,6 +8,7 @@
 import crypto from 'crypto';
 import { createDefaultMetric, validateMetric } from './schema.js';
 import { createStorage } from './storage.js';
+import { getVariantRegistry } from '../variants/index.js';
 
 /**
  * Metrics Collector class
@@ -27,6 +28,7 @@ export class MetricsCollector {
 
     this._buffer = [];
     this._flushTimer = null;
+    this._flushing = false;
     this._startFlushTimer();
 
     // Statistics
@@ -98,13 +100,18 @@ export class MetricsCollector {
       this._stats.errors++;
     }
 
+    // Store variantId at top level for easier access
+    metric.variantId = metric.promptVersion.variantId;
+
     // Add to buffer
     this._buffer.push(metric);
     this._stats.totalRecorded++;
 
-    // Auto-flush if buffer is full
+    // Auto-flush if buffer is full (fire and forget with error handling)
     if (this._buffer.length >= this.batchSize) {
-      this._flush();
+      this._flush().catch(err => {
+        console.warn('[MetricsCollector] Background flush error:', err.message);
+      });
     }
 
     return metric.generationId;
@@ -118,21 +125,42 @@ export class MetricsCollector {
    * @returns {Promise<boolean>} Success
    */
   async updateFeedback(generationId, feedback) {
+    let variantId = null;
+
     // First check buffer
     const buffered = this._buffer.find(m => m.generationId === generationId);
     if (buffered) {
       buffered.feedback = { ...buffered.feedback, ...feedback };
       buffered.feedbackUpdatedAt = new Date();
       this._stats.totalFeedbackUpdates++;
-      return true;
+      variantId = buffered.variantId;
+    } else {
+      // Then check storage
+      const result = await this.storage.updateFeedback(generationId, feedback);
+      if (result) {
+        this._stats.totalFeedbackUpdates++;
+        // Get variant ID from storage if available
+        const metric = await this.storage.getById?.(generationId);
+        variantId = metric?.variantId;
+      } else {
+        return false;
+      }
     }
 
-    // Then check storage
-    const result = await this.storage.updateFeedback(generationId, feedback);
-    if (result) {
-      this._stats.totalFeedbackUpdates++;
+    // Also update variant performance with feedback rating
+    if (variantId && feedback.rating !== undefined) {
+      try {
+        const registry = getVariantRegistry();
+        registry.updatePerformance(variantId, {
+          feedback: feedback.rating
+        });
+      } catch (error) {
+        // Log but don't fail - variant performance is secondary
+        console.warn(`[MetricsCollector] Failed to update variant performance: ${error.message}`);
+      }
     }
-    return result;
+
+    return true;
   }
 
   /**
@@ -239,10 +267,7 @@ export class MetricsCollector {
    * Shutdown collector gracefully
    */
   async shutdown() {
-    if (this._flushTimer) {
-      clearInterval(this._flushTimer);
-      this._flushTimer = null;
-    }
+    this._stopFlushTimer();
 
     await this._flush();
 
@@ -262,7 +287,9 @@ export class MetricsCollector {
 
   async _flush() {
     if (this._buffer.length === 0) return;
+    if (this._flushing) return; // Prevent concurrent flushes
 
+    this._flushing = true;
     const toFlush = this._buffer.splice(0, this._buffer.length);
 
     try {
@@ -273,11 +300,27 @@ export class MetricsCollector {
       // Put items back in buffer
       this._buffer.unshift(...toFlush);
       this._stats.errors++;
+    } finally {
+      this._flushing = false;
     }
   }
 
   _startFlushTimer() {
-    this._flushTimer = setInterval(() => this._flush(), this.flushIntervalMs);
+    // Use recursive setTimeout to prevent concurrent flushes
+    const scheduleNext = () => {
+      this._flushTimer = setTimeout(async () => {
+        await this._flush();
+        scheduleNext();
+      }, this.flushIntervalMs);
+    };
+    scheduleNext();
+  }
+
+  _stopFlushTimer() {
+    if (this._flushTimer) {
+      clearTimeout(this._flushTimer);
+      this._flushTimer = null;
+    }
   }
 
   _aggregateMetrics(metrics) {

@@ -51,11 +51,11 @@ export function stopEvolution() {
 /**
  * Run a single optimization cycle manually
  *
- * @returns {Object} Cycle results
+ * @returns {Promise<Object>} Cycle results
  */
-export function runOptimizationCycle() {
+export async function runOptimizationCycle() {
   const scheduler = getEvolutionScheduler();
-  return scheduler.runOnce();
+  return await scheduler.runOnce();
 }
 
 /**
@@ -63,9 +63,9 @@ export function runOptimizationCycle() {
  *
  * @param {string} contentType - Content type
  * @param {Object} options - Generation options
- * @returns {Object} Generated variant
+ * @returns {Promise<Object>} Generated variant
  */
-export function generateVariant(contentType, options = {}) {
+export async function generateVariant(contentType, options = {}) {
   const registry = getVariantRegistry();
   const generator = getVariantGenerator();
 
@@ -76,7 +76,7 @@ export function generateVariant(contentType, options = {}) {
   }
 
   // Generate and register
-  return generator.generateAndRegister(champion.id, options);
+  return await generator.generateAndRegister(champion.id, options);
 }
 
 /**

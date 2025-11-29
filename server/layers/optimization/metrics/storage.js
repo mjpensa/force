@@ -147,6 +147,8 @@ export class FileStorage extends StorageBackend {
     this._cache = new InMemoryStorage();  // Memory cache for reads
     this._dirty = false;
     this._initialized = false;
+    this._flushing = false;
+    this._flushTimer = null;
   }
 
   async initialize() {
@@ -201,7 +203,9 @@ export class FileStorage extends StorageBackend {
 
   async flush() {
     if (!this._dirty) return;
+    if (this._flushing) return; // Prevent concurrent flushes
 
+    this._flushing = true;
     try {
       const stats = await this._cache.getStats();
 
@@ -225,6 +229,8 @@ export class FileStorage extends StorageBackend {
       console.log('[FileStorage] Flushed metrics to disk');
     } catch (error) {
       console.error('[FileStorage] Flush error:', error.message);
+    } finally {
+      this._flushing = false;
     }
   }
 
@@ -283,7 +289,14 @@ export class FileStorage extends StorageBackend {
   }
 
   _startAutoFlush() {
-    this._flushInterval = setInterval(() => this.flush(), this.flushIntervalMs);
+    // Use recursive setTimeout to prevent concurrent flushes
+    const scheduleNext = () => {
+      this._flushTimer = setTimeout(async () => {
+        await this.flush();
+        scheduleNext();
+      }, this.flushIntervalMs);
+    };
+    scheduleNext();
   }
 
   async _ensureInitialized() {
@@ -293,8 +306,9 @@ export class FileStorage extends StorageBackend {
   }
 
   async shutdown() {
-    if (this._flushInterval) {
-      clearInterval(this._flushInterval);
+    if (this._flushTimer) {
+      clearTimeout(this._flushTimer);
+      this._flushTimer = null;
     }
     await this.flush();
   }

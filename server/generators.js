@@ -62,23 +62,20 @@ import {
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
 
+// Master flag for PROMPT ML optimization system (enables all optimization features)
+const ENABLE_PROMPT_ML = process.env.ENABLE_OPTIMIZATION === 'true';
+
 // Feature flag for auto-optimization metrics collection
-const ENABLE_AUTO_OPTIMIZATION = process.env.ENABLE_AUTO_OPTIMIZATION === 'true';
+// Inherits from ENABLE_PROMPT_ML unless explicitly set
+const ENABLE_AUTO_OPTIMIZATION = process.env.ENABLE_AUTO_OPTIMIZATION === 'true' || ENABLE_PROMPT_ML;
 
-// Feature flag for variant selection (A/B testing) - DISABLED by default for consistency
-const ENABLE_VARIANT_SELECTION = process.env.ENABLE_VARIANT_SELECTION === 'true';
+// Feature flag for variant selection (A/B testing)
+// Inherits from ENABLE_PROMPT_ML unless explicitly set
+const ENABLE_VARIANT_SELECTION = process.env.ENABLE_VARIANT_SELECTION === 'true' || ENABLE_PROMPT_ML;
 
-// Initialize variants on module load if enabled
-if (ENABLE_VARIANT_SELECTION) {
-  try {
-    const result = initializeVariants();
-    if (result.initialized) {
-      console.log(`[Variants] Initialized ${result.registered} variants`);
-    }
-  } catch (error) {
-    console.warn('[Variants] Failed to initialize:', error.message);
-  }
-}
+// NOTE: Variant initialization is handled by server.js on startup
+// to ensure proper configuration (persistPath, autoPersist).
+// Do NOT initialize here to avoid race conditions with config.
 
 // Feature flag for context engineering layer - DISABLED by default for consistency
 const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING === 'true';

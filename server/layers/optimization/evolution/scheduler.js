@@ -12,7 +12,7 @@
 
 import { getVariantGenerator } from './generator.js';
 import { getVariantRegistry } from '../variants/index.js';
-import { getExperimentManager, ExperimentStatus } from '../experiments/index.js';
+import { getExperimentManager, ExperimentStatus, analyzeExperiment } from '../experiments/index.js';
 import { getMetricsCollector } from '../metrics/index.js';
 
 /**
@@ -67,6 +67,7 @@ export class EvolutionScheduler {
     this._lastGenerationByType = new Map();
     this._runHistory = [];
     this._maxHistorySize = 100;
+    this._cycleInProgress = false;
   }
 
   /**
@@ -79,16 +80,39 @@ export class EvolutionScheduler {
 
     this._state = SchedulerState.RUNNING;
 
-    // Run immediately
-    this._runCycle();
+    // Schedule next cycle using recursive setTimeout to prevent concurrent execution
+    const scheduleNext = () => {
+      if (this._state !== SchedulerState.RUNNING) {
+        return;
+      }
+      this._intervalHandle = setTimeout(async () => {
+        await this._runCycleGuarded();
+        scheduleNext();
+      }, this._config.intervalMs);
+    };
 
-    // Schedule periodic runs
-    this._intervalHandle = setInterval(
-      () => this._runCycle(),
-      this._config.intervalMs
-    );
+    // Run immediately, then schedule periodic runs
+    this._runCycleGuarded().then(() => scheduleNext());
 
     console.log('[EvolutionScheduler] Started with interval:', this._config.intervalMs);
+  }
+
+  /**
+   * Run cycle with concurrency guard
+   *
+   * @private
+   */
+  async _runCycleGuarded() {
+    if (this._cycleInProgress) {
+      console.log('[EvolutionScheduler] Cycle already in progress, skipping');
+      return null;
+    }
+    this._cycleInProgress = true;
+    try {
+      return await this._runCycle();
+    } finally {
+      this._cycleInProgress = false;
+    }
   }
 
   /**
@@ -96,7 +120,7 @@ export class EvolutionScheduler {
    */
   stop() {
     if (this._intervalHandle) {
-      clearInterval(this._intervalHandle);
+      clearTimeout(this._intervalHandle);
       this._intervalHandle = null;
     }
 
@@ -109,7 +133,7 @@ export class EvolutionScheduler {
    */
   pause() {
     if (this._intervalHandle) {
-      clearInterval(this._intervalHandle);
+      clearTimeout(this._intervalHandle);
       this._intervalHandle = null;
     }
 
@@ -131,10 +155,10 @@ export class EvolutionScheduler {
   /**
    * Run a single optimization cycle
    *
-   * @returns {Object} Cycle results
+   * @returns {Promise<Object>} Cycle results
    */
-  runOnce() {
-    return this._runCycle();
+  async runOnce() {
+    return await this._runCycle();
   }
 
   /**
@@ -142,7 +166,7 @@ export class EvolutionScheduler {
    *
    * @private
    */
-  _runCycle() {
+  async _runCycle() {
     const startTime = Date.now();
     const results = {
       timestamp: new Date(),
@@ -152,7 +176,7 @@ export class EvolutionScheduler {
 
     try {
       // 1. Check and conclude running experiments
-      const concluded = this._checkExperiments();
+      const concluded = await this._checkExperiments();
       if (concluded.length > 0) {
         results.actions.push({
           type: 'conclude_experiments',
@@ -177,7 +201,7 @@ export class EvolutionScheduler {
       }
 
       // 3. Generate new variants if needed
-      const generated = this._generateNewVariants();
+      const generated = await this._generateNewVariants();
       if (generated.length > 0) {
         results.actions.push({
           type: 'generate_variants',
@@ -214,15 +238,24 @@ export class EvolutionScheduler {
    *
    * @private
    */
-  _checkExperiments() {
+  async _checkExperiments() {
+    // Flush metrics to ensure analysis uses fresh data
+    try {
+      const collector = getMetricsCollector();
+      await collector.flush();
+    } catch (error) {
+      console.warn('[EvolutionScheduler] Failed to flush metrics:', error.message);
+    }
+
     const manager = getExperimentManager();
     const running = manager.getAll({ status: ExperimentStatus.RUNNING });
     const concluded = [];
 
     for (const exp of running) {
-      // Check if experiment should be concluded
-      const analysis = manager.get(exp.id)?.conclusion?.analysis;
+      // Analyze the running experiment directly (not from conclusion field)
+      const analysis = analyzeExperiment(exp);
 
+      // Conclude if statistically significant with sufficient samples
       if (analysis?.hasSufficientSamples && analysis?.isSignificant) {
         try {
           manager.conclude(exp.id, 'scheduler_significant');
@@ -339,7 +372,7 @@ export class EvolutionScheduler {
    *
    * @private
    */
-  _generateNewVariants() {
+  async _generateNewVariants() {
     const generator = getVariantGenerator();
     const registry = getVariantRegistry();
     const generated = [];
@@ -356,7 +389,7 @@ export class EvolutionScheduler {
       if (nonChampionCandidates.length === 0 && champion) {
         // Generate a new variant
         try {
-          const configs = generator.analyzeAndGenerate(contentType);
+          const configs = await generator.analyzeAndGenerate(contentType);
 
           for (const config of configs) {
             const variant = registry.register(config);

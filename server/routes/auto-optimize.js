@@ -138,7 +138,7 @@ router.get('/variants/:contentType', (req, res) => {
  * POST /api/auto-optimize/variants/generate
  * Generate a new variant
  */
-router.post('/variants/generate', (req, res) => {
+router.post('/variants/generate', async (req, res) => {
   try {
     const { contentType, strategy } = req.body;
 
@@ -149,7 +149,7 @@ router.post('/variants/generate', (req, res) => {
       });
     }
 
-    const variant = generateVariant(contentType, { strategy });
+    const variant = await generateVariant(contentType, { strategy });
     res.json({ success: true, data: variant });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -277,9 +277,9 @@ router.post('/evolution/stop', (req, res) => {
  * POST /api/auto-optimize/evolution/run
  * Run a single optimization cycle
  */
-router.post('/evolution/run', (req, res) => {
+router.post('/evolution/run', async (req, res) => {
   try {
-    const result = runOptimizationCycle();
+    const result = await runOptimizationCycle();
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
