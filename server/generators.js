@@ -122,6 +122,111 @@ const CONTENT_TYPE_TO_SIGNATURE = {
 };
 
 /**
+ * Detects interval type from timeColumns
+ * @param {string[]} timeColumns - Array of time column labels
+ * @returns {'years'|'quarters'|'months'|'weeks'|'unknown'}
+ */
+function detectIntervalType(timeColumns) {
+  if (!timeColumns || timeColumns.length === 0) return 'unknown';
+  const sample = timeColumns[0].trim();
+  // Case-insensitive matching with flexible separators
+  if (/^Q[1-4][\s\-\/]*\d{4}$/i.test(sample)) return 'quarters';
+  if (/^\d{4}$/.test(sample)) return 'years';
+  if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s\-\/]*\d{4}$/i.test(sample)) return 'months';
+  if (/^W\d+[\s\-\/]*\d{4}$/i.test(sample)) return 'weeks';
+  return 'unknown';
+}
+
+/**
+ * Extracts year range from timeColumns
+ * @param {string[]} timeColumns - Array of time column labels
+ * @returns {{startYear: number, endYear: number, yearSpan: number}}
+ */
+function extractYearRange(timeColumns) {
+  const years = timeColumns.map(col => {
+    const match = col.match(/\d{4}/);
+    return match ? parseInt(match[0], 10) : null;
+  }).filter(y => y !== null);
+
+  if (years.length === 0) return { startYear: 0, endYear: 0, yearSpan: 0 };
+
+  const startYear = Math.min(...years);
+  const endYear = Math.max(...years);
+  return { startYear, endYear, yearSpan: endYear - startYear + 1 };
+}
+
+/**
+ * Converts quarterly or monthly timeColumns to yearly when span > 3 years
+ * Also remaps all task bar columns to match new yearly intervals
+ * @param {object} ganttData - The gantt chart data object
+ * @returns {object} - Corrected gantt data
+ */
+function enforceYearlyIntervalsForLongRanges(ganttData) {
+  if (!ganttData || !ganttData.timeColumns) return ganttData;
+
+  const intervalType = detectIntervalType(ganttData.timeColumns);
+  const { startYear, endYear, yearSpan } = extractYearRange(ganttData.timeColumns);
+
+  // Only convert if span > 3 years (threshold for yearly intervals)
+  if (yearSpan <= 3) return ganttData;
+
+  // Already yearly intervals - no conversion needed
+  if (intervalType === 'years') return ganttData;
+
+  // Check if we have more columns than years (indicating non-yearly intervals)
+  const columnCount = ganttData.timeColumns.length;
+  if (columnCount <= yearSpan) return ganttData;
+
+  // Build mapping from old columns to new year columns
+  const columnToYearMap = {};
+  ganttData.timeColumns.forEach((col, index) => {
+    const match = col.match(/(\d{4})/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const newColIndex = year - startYear + 1; // 1-indexed
+      columnToYearMap[index + 1] = newColIndex;
+    }
+  });
+
+  // Generate new yearly timeColumns
+  const newTimeColumns = [];
+  for (let year = startYear; year <= endYear; year++) {
+    newTimeColumns.push(year.toString());
+  }
+
+  // Remap all task bar columns
+  const newData = ganttData.data.map(item => {
+    if (item.isSwimlane || !item.bar) return item;
+
+    const newItem = { ...item, bar: { ...item.bar } };
+
+    if (item.bar.startCol !== null && columnToYearMap[item.bar.startCol]) {
+      newItem.bar.startCol = columnToYearMap[item.bar.startCol];
+    }
+    if (item.bar.endCol !== null && columnToYearMap[item.bar.endCol]) {
+      newItem.bar.endCol = columnToYearMap[item.bar.endCol];
+    } else if (item.bar.endCol !== null && item.bar.startCol !== null) {
+      newItem.bar.endCol = newItem.bar.startCol + 1;
+    }
+
+    // Ensure minimum duration of 1 column
+    if (newItem.bar.startCol !== null && newItem.bar.endCol !== null) {
+      if (newItem.bar.endCol <= newItem.bar.startCol) {
+        newItem.bar.endCol = newItem.bar.startCol + 1;
+      }
+    }
+
+    return newItem;
+  });
+
+  return {
+    ...ganttData,
+    timeColumns: newTimeColumns,
+    data: newData
+  };
+}
+
+/**
  * Record generation metrics for auto-optimization
  *
  * Captures metrics about prompt performance for A/B testing
@@ -1107,6 +1212,8 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
         if (perfLogger) {
           perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
+        // Apply interval enforcement to cached data (in case old cache entries exist)
+        const correctedCached = enforceYearlyIntervalsForLongRanges(cached);
         // Record cache hit metrics
         const generationId = recordGenerationMetrics({
           contentType: 'Roadmap',
@@ -1116,7 +1223,7 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
           cacheHit: true,
           latencyMs: Date.now() - startTime
         });
-        return { success: true, data: cached, _cached: true, _generationId: generationId };
+        return { success: true, data: correctedCached, _cached: true, _generationId: generationId };
       }
     }
 
@@ -1155,9 +1262,13 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
       throw new Error('Roadmap generation completed but returned no data. The AI response may have been malformed.');
     }
 
-    // Store in cache
-    if (ENABLE_CACHE && validatedData) {
-      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
+    // Enforce yearly intervals for long time ranges (5+ years)
+    // This corrects AI-generated quarterly/monthly intervals to yearly when appropriate
+    const correctedData = enforceYearlyIntervalsForLongRanges(validatedData);
+
+    // Store in cache (use corrected data so cached results also have yearly intervals)
+    if (ENABLE_CACHE && correctedData) {
+      setCachedContent(contentType, combinedContent, userPrompt, correctedData);
     }
 
     const latencyMs = Date.now() - startTime;
@@ -1191,7 +1302,7 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
 
     return {
       success: true,
-      data: validatedData,
+      data: correctedData,
       _contextEngineering: contextResult.metadata,
       _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
       _validation: validationResult.validation,
