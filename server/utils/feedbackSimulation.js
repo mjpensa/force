@@ -133,6 +133,10 @@ const CONTENT_TYPE_MODIFIERS = {
  * Apply content-type-specific modifiers to behavioral signals.
  * This recalculates probabilities based on the content type.
  *
+ * Behavioral dependencies are modeled:
+ * - Export and Regenerate are mutually exclusive (can't export what you regenerated)
+ * - Edit can happen independently (user might edit before exporting or after failed regen)
+ *
  * @param {number} qualityScore - The quality score (1-5 scale)
  * @param {string} contentType - The type of content being generated
  * @returns {Object} Modified behavioral signals { wasExported, wasEdited, wasRegenerated }
@@ -158,10 +162,25 @@ function calculateBehavioralSignalsWithModifiers(qualityScore, contentType) {
   const editProb = Math.max(0, Math.min(1, baseEditProb * mods.editMultiplier));
   const regenProb = Math.max(0, Math.min(1, baseRegenProb * mods.regenMultiplier));
 
-  // Generate random outcomes
-  const wasExported = Math.random() < exportProb;
+  // Model behavioral dependencies:
+  // 1. First decide: does user regenerate? (mutually exclusive with export)
+  // 2. If not regenerating, does user export?
+  // 3. Edit can happen independently
+  let wasRegenerated = false;
+  let wasExported = false;
+
+  // Regenerate decision (low quality = more likely to regenerate)
+  if (Math.random() < regenProb) {
+    wasRegenerated = true;
+    // If regenerated, user didn't keep this version, so no export
+    wasExported = false;
+  } else {
+    // User kept this version, now decide on export
+    wasExported = Math.random() < exportProb;
+  }
+
+  // Edit can happen regardless (user might edit before export or after deciding not to regen)
   const wasEdited = Math.random() < editProb;
-  const wasRegenerated = Math.random() < regenProb;
 
   return { wasExported, wasEdited, wasRegenerated };
 }
@@ -243,9 +262,17 @@ function validatePhase1(samplesPerLevel = 1000) {
   }
 
   // Check success criteria
-  const allMeansClose = Object.values(results).every(r => r.meanDeviation < 0.3);
+  // Note: At boundaries (quality 1 and 5), clamping causes expected deviation
+  // Quality 1: values below 1 are clamped up, so mean is ~1.3
+  // Quality 5: values above 5 are clamped down, so mean is ~4.7
+  const allMeansClose = Object.entries(results).every(([q, r]) => {
+    const quality = parseInt(q);
+    // Allow more deviation at boundaries due to clamping effects
+    const threshold = (quality === 1 || quality === 5) ? 0.35 : 0.25;
+    return r.meanDeviation < threshold;
+  });
   const allStdDevsRealistic = Object.values(results).every(
-    r => r.stdDev >= 0.5 && r.stdDev <= 1.2
+    r => r.stdDev >= 0.4 && r.stdDev <= 1.2  // Slightly lower floor for boundaries
   );
 
   return {
@@ -261,20 +288,91 @@ function validatePhase1(samplesPerLevel = 1000) {
 }
 
 // =============================================================================
+// FRACTIONAL QUALITY SCORE VALIDATION
+// =============================================================================
+
+/**
+ * Validate that fractional quality scores work correctly.
+ * The training system can produce scores like 2.7 or 4.3, not just integers.
+ *
+ * @param {number} samplesPerLevel - Number of samples per quality level
+ * @returns {Object} Validation results for fractional scores
+ */
+function validateFractionalScores(samplesPerLevel = 500) {
+  // Test fractional quality levels
+  const fractionalLevels = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0];
+  const results = {};
+
+  for (const quality of fractionalLevels) {
+    const ratings = [];
+    let exports = 0, edits = 0, regens = 0;
+
+    for (let i = 0; i < samplesPerLevel; i++) {
+      const feedback = calculateCorrelatedFeedback(quality, 'Document');
+      ratings.push(feedback.rating);
+      if (feedback.wasExported) exports++;
+      if (feedback.wasEdited) edits++;
+      if (feedback.wasRegenerated) regens++;
+    }
+
+    const meanRating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    results[quality] = {
+      meanRating,
+      exportRate: exports / samplesPerLevel,
+      editRate: edits / samplesPerLevel,
+      regenRate: regens / samplesPerLevel
+    };
+  }
+
+  // Check that ratings increase monotonically with quality
+  const meanRatings = fractionalLevels.map(q => results[q].meanRating);
+  const isMonotonic = meanRatings.every((val, i) =>
+    i === 0 || val >= meanRatings[i - 1] - 0.15  // Allow small variance
+  );
+
+  // Check that export increases and regen decreases
+  const exportRates = fractionalLevels.map(q => results[q].exportRate);
+  const regenRates = fractionalLevels.map(q => results[q].regenRate);
+
+  const exportIncreases = exportRates[exportRates.length - 1] > exportRates[0];
+  const regenDecreases = regenRates[regenRates.length - 1] < regenRates[0];
+
+  // Check interpolation: 2.5 should be between 2.0 and 3.0
+  const interpolationCorrect =
+    results[2.5].meanRating >= results[2.0].meanRating - 0.2 &&
+    results[2.5].meanRating <= results[3.0].meanRating + 0.2;
+
+  return {
+    name: 'Fractional Quality Score Validation',
+    results,
+    passed: isMonotonic && exportIncreases && regenDecreases && interpolationCorrect,
+    checks: {
+      ratingsMonotonic: isMonotonic,
+      exportIncreases,
+      regenDecreases,
+      interpolationCorrect
+    }
+  };
+}
+
+// =============================================================================
 // PHASE 2 VALIDATION
 // =============================================================================
 
 /**
  * Validate that Phase 2 (behavioral signals) works correctly.
- * Verifies that behavioral probabilities correlate with quality.
+ * Tests both the base function and the production function with modifiers.
  *
  * @param {number} samplesPerLevel - Number of samples to generate per quality level
  * @returns {Object} Validation results with statistics
  */
 function validatePhase2(samplesPerLevel = 1000) {
-  const results = {};
+  const results = {
+    base: {},      // Tests calculateBehavioralSignals (base function)
+    withModifiers: {}  // Tests calculateBehavioralSignalsWithModifiers (production)
+  };
 
-  // Expected probabilities for reference
+  // Expected base probabilities for reference
   const expected = {
     1: { export: 0.05, edit: 0.70, regen: 0.60 },
     2: { export: 0.1625, edit: 0.55, regen: 0.4625 },
@@ -283,6 +381,7 @@ function validatePhase2(samplesPerLevel = 1000) {
     5: { export: 0.50, edit: 0.10, regen: 0.05 }
   };
 
+  // Test base function
   for (let quality = 1; quality <= 5; quality++) {
     let exports = 0, edits = 0, regens = 0;
 
@@ -293,7 +392,7 @@ function validatePhase2(samplesPerLevel = 1000) {
       if (signals.wasRegenerated) regens++;
     }
 
-    results[quality] = {
+    results.base[quality] = {
       sampleSize: samplesPerLevel,
       exportRate: exports / samplesPerLevel,
       editRate: edits / samplesPerLevel,
@@ -302,23 +401,70 @@ function validatePhase2(samplesPerLevel = 1000) {
     };
   }
 
-  // Check success criteria: rates should be monotonic
-  const exportRates = Object.values(results).map(r => r.exportRate);
-  const editRates = Object.values(results).map(r => r.editRate);
-  const regenRates = Object.values(results).map(r => r.regenRate);
+  // Test production function with modifiers (using Document as baseline)
+  for (let quality = 1; quality <= 5; quality++) {
+    let exports = 0, edits = 0, regens = 0;
+
+    for (let i = 0; i < samplesPerLevel; i++) {
+      const signals = calculateBehavioralSignalsWithModifiers(quality, 'Document');
+      if (signals.wasExported) exports++;
+      if (signals.wasEdited) edits++;
+      if (signals.wasRegenerated) regens++;
+    }
+
+    results.withModifiers[quality] = {
+      sampleSize: samplesPerLevel,
+      exportRate: exports / samplesPerLevel,
+      editRate: edits / samplesPerLevel,
+      regenRate: regens / samplesPerLevel
+    };
+  }
+
+  // Check success criteria for base function
+  const baseExportRates = Object.values(results.base).map(r => r.exportRate);
+  const baseEditRates = Object.values(results.base).map(r => r.editRate);
+  const baseRegenRates = Object.values(results.base).map(r => r.regenRate);
+
+  // Check success criteria for production function
+  const prodExportRates = Object.values(results.withModifiers).map(r => r.exportRate);
+  const prodEditRates = Object.values(results.withModifiers).map(r => r.editRate);
+  const prodRegenRates = Object.values(results.withModifiers).map(r => r.regenRate);
 
   const isIncreasing = (arr) => arr.every((val, i) => i === 0 || val >= arr[i - 1] - 0.05);
   const isDecreasing = (arr) => arr.every((val, i) => i === 0 || val <= arr[i - 1] + 0.05);
+
+  const baseChecks = {
+    exportIncreases: isIncreasing(baseExportRates),
+    editDecreases: isDecreasing(baseEditRates),
+    regenDecreases: isDecreasing(baseRegenRates)
+  };
+
+  const prodChecks = {
+    exportIncreases: isIncreasing(prodExportRates),
+    editDecreases: isDecreasing(prodEditRates),
+    regenDecreases: isDecreasing(prodRegenRates)
+  };
+
+  // Verify mutual exclusivity: when regenerated, should not have exported
+  let mutualExclusivityViolations = 0;
+  for (let i = 0; i < 1000; i++) {
+    const signals = calculateBehavioralSignalsWithModifiers(2, 'Document'); // Low quality = more regen
+    if (signals.wasRegenerated && signals.wasExported) {
+      mutualExclusivityViolations++;
+    }
+  }
 
   return {
     phase: 2,
     name: 'Behavioral Signal Correlation',
     results,
-    passed: isIncreasing(exportRates) && isDecreasing(editRates) && isDecreasing(regenRates),
+    passed: Object.values(baseChecks).every(v => v) &&
+            Object.values(prodChecks).every(v => v) &&
+            mutualExclusivityViolations === 0,
     checks: {
-      exportIncreases: isIncreasing(exportRates),
-      editDecreases: isDecreasing(editRates),
-      regenDecreases: isDecreasing(regenRates)
+      base: baseChecks,
+      withModifiers: prodChecks,
+      mutualExclusivityHolds: mutualExclusivityViolations === 0
     }
   };
 }
@@ -671,9 +817,34 @@ function validateFeedbackCorrelation(samplesPerLevel = 2000) {
     results.byContentType[contentType] = ctResults;
   }
 
-  // Calculate overall Pearson correlation
+  // Calculate overall Pearson correlation for ratings
   results.overall.pearsonCorrelation = pearsonCorrelation(allQualities, allRatings).toFixed(4);
   results.overall.totalSamples = allQualities.length;
+
+  // Calculate behavioral correlations (export/edit/regen vs quality)
+  // Collect behavioral data across all samples
+  const allExports = [];
+  const allEdits = [];
+  const allRegens = [];
+  const behaviorQualities = [];
+
+  for (const contentType of contentTypes) {
+    for (let quality = 1; quality <= 5; quality++) {
+      for (let i = 0; i < Math.min(samplesPerLevel, 200); i++) {  // Limit for performance
+        const feedback = calculateCorrelatedFeedback(quality, contentType);
+        behaviorQualities.push(quality);
+        allExports.push(feedback.wasExported ? 1 : 0);
+        allEdits.push(feedback.wasEdited ? 1 : 0);
+        allRegens.push(feedback.wasRegenerated ? 1 : 0);
+      }
+    }
+  }
+
+  results.overall.behavioralCorrelations = {
+    exportVsQuality: pearsonCorrelation(behaviorQualities, allExports).toFixed(4),
+    editVsQuality: pearsonCorrelation(behaviorQualities, allEdits).toFixed(4),
+    regenVsQuality: pearsonCorrelation(behaviorQualities, allRegens).toFixed(4)
+  };
 
   // Success criteria checks
   const correlationThreshold = 0.85;
@@ -682,7 +853,16 @@ function validateFeedbackCorrelation(samplesPerLevel = 2000) {
     ct => parseFloat(results.byContentType[ct].pearsonCorrelation) >= correlationThreshold
   );
 
-  results.passed = overallCorrelationPasses && allContentTypesPass;
+  // Behavioral correlations should show expected direction:
+  // - Export should positively correlate with quality (r > 0)
+  // - Edit should negatively correlate with quality (r < 0)
+  // - Regen should negatively correlate with quality (r < 0)
+  const behavioralCorrelationsCorrect =
+    parseFloat(results.overall.behavioralCorrelations.exportVsQuality) > 0 &&
+    parseFloat(results.overall.behavioralCorrelations.editVsQuality) < 0 &&
+    parseFloat(results.overall.behavioralCorrelations.regenVsQuality) < 0;
+
+  results.passed = overallCorrelationPasses && allContentTypesPass && behavioralCorrelationsCorrect;
   results.checks = {
     overallCorrelation: {
       value: results.overall.pearsonCorrelation,
@@ -693,7 +873,13 @@ function validateFeedbackCorrelation(samplesPerLevel = 2000) {
       contentType: ct,
       correlation: results.byContentType[ct].pearsonCorrelation,
       passed: parseFloat(results.byContentType[ct].pearsonCorrelation) >= correlationThreshold
-    }))
+    })),
+    behavioralCorrelations: {
+      export: results.overall.behavioralCorrelations.exportVsQuality,
+      edit: results.overall.behavioralCorrelations.editVsQuality,
+      regen: results.overall.behavioralCorrelations.regenVsQuality,
+      passed: behavioralCorrelationsCorrect
+    }
   };
 
   return results;
@@ -707,28 +893,36 @@ function validateFeedbackCorrelation(samplesPerLevel = 2000) {
 function runAllValidations() {
   const results = {
     timestamp: new Date().toISOString(),
-    phases: []
+    phases: [],
+    additionalValidations: []
   };
 
-  // Run each phase validation
-  results.phases.push(validatePhase1());
-  results.phases.push(validatePhase2());
-  results.phases.push(validatePhase3());
-  results.phases.push(validatePhase4());
-  results.phases.push(validatePhase5());
+  // Run each phase validation with sufficient sample sizes for reliable results
+  results.phases.push(validatePhase1(2000));  // More samples for stable mean/stddev
+  results.phases.push(validatePhase2(1500));  // More samples for behavioral patterns
+  results.phases.push(validatePhase3(1500));
+  results.phases.push(validatePhase4(1500));
+  results.phases.push(validatePhase5(500));
+
+  // Run additional validations
+  results.additionalValidations.push(validateFractionalScores());
 
   // Run comprehensive validation
   const comprehensive = validateFeedbackCorrelation(1000);
   results.comprehensiveValidation = {
     pearsonCorrelation: comprehensive.overall.pearsonCorrelation,
+    behavioralCorrelations: comprehensive.overall.behavioralCorrelations,
     passed: comprehensive.passed,
     checks: comprehensive.checks
   };
 
   // Overall pass/fail
   results.allPhasesPassed = results.phases.every(p => p.passed);
+  results.additionalValidationsPassed = results.additionalValidations.every(v => v.passed);
   results.comprehensivePassed = comprehensive.passed;
-  results.overallPassed = results.allPhasesPassed && results.comprehensivePassed;
+  results.overallPassed = results.allPhasesPassed &&
+                          results.additionalValidationsPassed &&
+                          results.comprehensivePassed;
 
   return results;
 }
@@ -738,19 +932,27 @@ function runAllValidations() {
 // =============================================================================
 
 export {
+  // Core functions
   gaussianRandom,
   calculateCorrelatedRating,
   calculateBehavioralSignals,
   calculateBehavioralSignalsWithModifiers,
   calculateThumbsFeedback,
   calculateCorrelatedFeedback,
+
+  // Constants
   CONTENT_TYPE_MODIFIERS,
+
+  // Utility functions
   pearsonCorrelation,
+
+  // Validation functions
   validatePhase1,
   validatePhase2,
   validatePhase3,
   validatePhase4,
   validatePhase5,
+  validateFractionalScores,
   validateFeedbackCorrelation,
   runAllValidations
 };
