@@ -35,5 +35,9 @@ data/*.db-journal
 *.sqlite
 *.sqlite3
 
+# PROMPT ML optimization data (persisted variants and metrics)
+data/variants.json
+data/metrics.json
+
 # Code analysis reports
 reports/

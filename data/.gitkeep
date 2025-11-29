@@ -1,0 +1,3 @@
+# This directory stores persistent data for the PROMPT ML optimization system
+# - variants.json: Prompt variant definitions and champion tracking
+# - metrics.json: Generation metrics for optimization analysis
