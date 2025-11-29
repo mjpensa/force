@@ -62,11 +62,16 @@ import {
 // Feature flag for caching - can be disabled for testing
 const ENABLE_CACHE = true;
 
-// Feature flag for auto-optimization metrics collection
-const ENABLE_AUTO_OPTIMIZATION = process.env.ENABLE_AUTO_OPTIMIZATION === 'true';
+// Master flag for PROMPT ML optimization system (enables all optimization features)
+const ENABLE_PROMPT_ML = process.env.ENABLE_OPTIMIZATION === 'true';
 
-// Feature flag for variant selection (A/B testing) - DISABLED by default for consistency
-const ENABLE_VARIANT_SELECTION = process.env.ENABLE_VARIANT_SELECTION === 'true';
+// Feature flag for auto-optimization metrics collection
+// Inherits from ENABLE_PROMPT_ML unless explicitly set
+const ENABLE_AUTO_OPTIMIZATION = process.env.ENABLE_AUTO_OPTIMIZATION === 'true' || ENABLE_PROMPT_ML;
+
+// Feature flag for variant selection (A/B testing)
+// Inherits from ENABLE_PROMPT_ML unless explicitly set
+const ENABLE_VARIANT_SELECTION = process.env.ENABLE_VARIANT_SELECTION === 'true' || ENABLE_PROMPT_ML;
 
 // Initialize variants on module load if enabled
 if (ENABLE_VARIANT_SELECTION) {

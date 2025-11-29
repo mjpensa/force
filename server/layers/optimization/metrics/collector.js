@@ -267,10 +267,7 @@ export class MetricsCollector {
    * Shutdown collector gracefully
    */
   async shutdown() {
-    if (this._flushTimer) {
-      clearInterval(this._flushTimer);
-      this._flushTimer = null;
-    }
+    this._stopFlushTimer();
 
     await this._flush();
 
