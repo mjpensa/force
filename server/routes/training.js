@@ -189,41 +189,137 @@ function calculateSlidesFeedback(result, validationResult) {
 
 /**
  * Calculate feedback for DOCUMENT content type
+ * Based on "Executive Summary Writing Style" requirements
  */
 function calculateDocumentFeedback(result, validationResult) {
   const data = result.data;
   const quality = validationResult?.quality;
   let score = 3;
 
-  // Structural quality
-  const hasTitle = data?.title && data.title.length > 5;
-  const hasSections = data?.sections?.length > 0;
-  const hasExecutiveSummary = data?.executiveSummary && data.executiveSummary.length > 50;
+  // Helper to count words in text
+  const wordCount = (text) => (text || '').split(/\s+/).filter(w => w.length > 0).length;
 
-  if (hasTitle) score += 0.3;
-  if (hasSections) score += 0.4;
-  if (hasExecutiveSummary) score += 0.3;
+  // Helper to check for citations [source] format
+  const hasCitations = (text) => /\[[^\]]+\]/.test(text || '');
 
-  // Content richness
+  // Helper to check for specific statistics/numbers
+  const hasSpecificNumbers = (text) => /\d+(\.\d+)?%|\$[\d,]+|\d{1,3}(,\d{3})+/.test(text || '');
+
+  // Helper to check for branded concepts (capitalized multi-word phrases)
+  const countBrandedConcepts = (text) => {
+    const matches = (text || '').match(/\b(The\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)*)\b/g) || [];
+    return new Set(matches).size;
+  };
+
+  // Get all text content
+  const allContent = [
+    data?.title || '',
+    data?.executiveSummary || '',
+    ...(data?.sections?.map(s => `${s.title || ''} ${s.content || ''}`) || [])
+  ].join(' ');
+
+  const totalWords = wordCount(allContent);
   const sectionCount = data?.sections?.length || 0;
-  const totalContentLength = data?.sections?.reduce((sum, s) => sum + (s.content?.length || 0), 0) || 0;
 
-  // Penalties for insufficient content
-  if (sectionCount < 3) score -= 1;           // Less than 3 sections = bad
-  if (totalContentLength < 500) score -= 0.5; // Less than 500 chars = bad
+  // === 1. SOURCE FIDELITY (Non-Negotiable) ===
+  // Check for inline citations [source]
+  const citationCount = (allContent.match(/\[[^\]]+\]/g) || []).length;
+  if (citationCount >= 5) score += 0.4;      // Many citations = good
+  else if (citationCount >= 2) score += 0.2;
+  else if (citationCount === 0) score -= 0.5; // No citations = bad
 
-  // Bonuses for rich content
-  if (sectionCount >= 5) score += 0.3;
-  if (sectionCount >= 7) score += 0.2;
-  if (totalContentLength >= 1500) score += 0.3;
-  if (totalContentLength >= 3000) score += 0.2;
+  // Check for specific statistics (precision over drama)
+  const hasStats = hasSpecificNumbers(allContent);
+  if (hasStats) score += 0.3;
 
-  // Validation quality
+  // === 2. ADAPTIVE LENGTH (based on research density) ===
+  // Rich: 1,600-2,000 words, Moderate: 1,200-1,600, Sparse: 800-1,200
+  if (totalWords >= 1200 && totalWords <= 2000) score += 0.4;  // Ideal range
+  else if (totalWords >= 800 && totalWords < 1200) score += 0.2; // Acceptable
+  else if (totalWords < 500) score -= 1;       // Too short = bad
+  else if (totalWords > 2500) score -= 0.3;    // Padding likely
+
+  // === 3. STRUCTURAL QUALITY ===
+  // Must have compelling title (not generic)
+  const hasTitle = data?.title && data.title.length > 10;
+  const hasSubtitle = data?.title && data.title.includes(':'); // "The [Concept]: [Subtitle]"
+  if (hasTitle) score += 0.2;
+  if (hasSubtitle) score += 0.2; // Branded title pattern
+
+  // Must have executive summary
+  const execSummaryWords = wordCount(data?.executiveSummary);
+  if (execSummaryWords >= 100) score += 0.3;
+  else if (execSummaryWords < 50) score -= 0.5;
+
+  // Section count (3-7 sections is good)
+  if (sectionCount >= 3 && sectionCount <= 7) score += 0.3;
+  else if (sectionCount < 3) score -= 0.5;  // Not enough structure
+  else if (sectionCount > 10) score -= 0.3; // Over-fragmented
+
+  // === 4. SECTION WEIGHTING (Flexible) ===
+  // Opening: 10-15%, Main: 50-60%, Implications: 20-25%, Conclusion: 5-10%
+  if (sectionCount >= 3) {
+    const sectionLengths = data?.sections?.map(s => wordCount(s.content)) || [];
+    const totalSectionWords = sectionLengths.reduce((a, b) => a + b, 0);
+
+    // Check if sections are well-balanced (not all same length)
+    const avgLen = totalSectionWords / sectionCount;
+    const variance = sectionLengths.reduce((sum, len) => sum + Math.abs(len - avgLen), 0) / sectionCount;
+    if (variance > avgLen * 0.3) score += 0.2; // Good variance = adaptive structure
+  }
+
+  // === 5. BRANDED CONCEPTS (3-5 memorable concepts) ===
+  const brandedConcepts = countBrandedConcepts(allContent);
+  if (brandedConcepts >= 3 && brandedConcepts <= 5) score += 0.4; // Ideal
+  else if (brandedConcepts >= 2) score += 0.2;
+  else if (brandedConcepts >= 6) score += 0.1; // Too many can feel manufactured
+
+  // === 6. LANGUAGE QUALITY ===
+  // Evidence-first sentences (starts with numbers/data)
+  const sentences = allContent.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const evidenceFirstSentences = sentences.filter(s => /^\s*\d/.test(s) || /^\s*\$/.test(s)).length;
+  const evidenceRatio = sentences.length > 0 ? evidenceFirstSentences / sentences.length : 0;
+  if (evidenceRatio >= 0.1) score += 0.2; // Good use of evidence-first
+
+  // Check for vague language (bad: "nearly half", "major players", "significant")
+  const vagueTerms = (allContent.match(/\b(nearly|almost|about|approximately|around|significant|major players|some|many|several)\b/gi) || []).length;
+  if (vagueTerms > 5) score -= 0.3; // Too much vague language
+  else if (vagueTerms === 0) score += 0.2; // Precise language
+
+  // Check for dramatic language without evidence (bad)
+  const dramaticTerms = (allContent.match(/\b(revolutionary|unprecedented|explosive|dramatic|groundbreaking)\b/gi) || []).length;
+  const evidenceTerms = (allContent.match(/\d+%|\$[\d,]+|billion|million/gi) || []).length;
+  if (dramaticTerms > evidenceTerms && dramaticTerms > 2) score -= 0.3; // Unearned drama
+
+  // === 7. FORMATTING QUALITY ===
+  // Check for Level 1/2 headings (branded titles, not "Part I")
+  const genericHeadings = (allContent.match(/\b(Part\s+[IVX]+|Section\s+\d|Chapter\s+\d)\b/gi) || []).length;
+  if (genericHeadings > 0) score -= 0.3; // Template-style headings
+
+  // Check for bold formatting of key terms
+  const hasBoldTerms = data?.sections?.some(s => /\*\*[^*]+\*\*/.test(s.content || ''));
+  if (hasBoldTerms) score += 0.1;
+
+  // === 8. ACTION/IMPLICATIONS TEST ===
+  // Should have actionable content (action verbs, imperatives)
+  const actionTerms = (allContent.match(/\b(must|should|need to|implement|adopt|invest|prioritize|recommend|consider)\b/gi) || []).length;
+  if (actionTerms >= 5) score += 0.3; // Good actionability
+  else if (actionTerms >= 2) score += 0.1;
+  else score -= 0.2; // No clear action
+
+  // === 9. NARRATIVE VARIETY (Fresh Test) ===
+  // Check for narrative signals (transformation, tension, urgency)
+  const narrativeSignals = (allContent.match(/\b(while|however|yet|but|despite|paradox|tension|transform|shift|before|after|deadline|window|tipping point)\b/gi) || []).length;
+  if (narrativeSignals >= 4) score += 0.3; // Good narrative complexity
+  else if (narrativeSignals >= 2) score += 0.1;
+
+  // === 10. VALIDATION QUALITY (from system) ===
   if (validationResult?.valid !== false) score += 0.5;
-  if (quality?.score > 0.6) score += 0.3;
-  if (quality?.score > 0.8) score += 0.4;
-  if (quality?.score > 0.9) score += 0.3;
+  if (quality?.score > 0.6) score += 0.2;
+  if (quality?.score > 0.8) score += 0.3;
+  if (quality?.score > 0.9) score += 0.2;
 
+  // Penalties for validation errors
   if (validationResult?.errors?.length > 0) score -= 0.5 * validationResult.errors.length;
 
   return score;
