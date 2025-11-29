@@ -63,10 +63,10 @@ import {
 const ENABLE_CACHE = true;
 
 // Feature flag for auto-optimization metrics collection
-const ENABLE_AUTO_OPTIMIZATION = process.env.ENABLE_AUTO_OPTIMIZATION !== 'false';
+const ENABLE_AUTO_OPTIMIZATION = process.env.ENABLE_AUTO_OPTIMIZATION === 'true';
 
-// Feature flag for variant selection (A/B testing)
-const ENABLE_VARIANT_SELECTION = process.env.ENABLE_VARIANT_SELECTION !== 'false';
+// Feature flag for variant selection (A/B testing) - DISABLED by default for consistency
+const ENABLE_VARIANT_SELECTION = process.env.ENABLE_VARIANT_SELECTION === 'true';
 
 // Initialize variants on module load if enabled
 if (ENABLE_VARIANT_SELECTION) {
@@ -80,26 +80,26 @@ if (ENABLE_VARIANT_SELECTION) {
   }
 }
 
-// Feature flag for context engineering layer
-const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING !== 'false';
+// Feature flag for context engineering layer - DISABLED by default for consistency
+const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING === 'true';
 
-// Feature flag for DSPy-style signatures
-const ENABLE_SIGNATURES = process.env.ENABLE_SIGNATURES !== 'false';
+// Feature flag for DSPy-style signatures - DISABLED by default for consistency
+const ENABLE_SIGNATURES = process.env.ENABLE_SIGNATURES === 'true';
 
-// Feature flag for output validation (PROMPT ML Layer 6)
-const ENABLE_OUTPUT_VALIDATION = process.env.ENABLE_OUTPUT_VALIDATION !== 'false';
+// Feature flag for output validation (PROMPT ML Layer 6) - DISABLED by default for consistency
+const ENABLE_OUTPUT_VALIDATION = process.env.ENABLE_OUTPUT_VALIDATION === 'true';
 
-// Feature flag for observability (PROMPT ML Layer 7)
-const ENABLE_OBSERVABILITY = process.env.ENABLE_OBSERVABILITY !== 'false';
+// Feature flag for observability (PROMPT ML Layer 7) - logging only, safe to enable
+const ENABLE_OBSERVABILITY = process.env.ENABLE_OBSERVABILITY === 'true';
 
-// Feature flag for evaluation (PROMPT ML Layer 8)
-const ENABLE_EVALUATION = process.env.ENABLE_EVALUATION !== 'false';
+// Feature flag for evaluation (PROMPT ML Layer 8) - DISABLED by default
+const ENABLE_EVALUATION = process.env.ENABLE_EVALUATION === 'true';
 
-// Feature flag for optimization (PROMPT ML Layer 9)
-const ENABLE_OPTIMIZATION = process.env.ENABLE_OPTIMIZATION !== 'false';
+// Feature flag for optimization (PROMPT ML Layer 9) - DISABLED by default
+const ENABLE_OPTIMIZATION = process.env.ENABLE_OPTIMIZATION === 'true';
 
-// Feature flag for monitoring (PROMPT ML Layer 10)
-const ENABLE_MONITORING = process.env.ENABLE_MONITORING !== 'false';
+// Feature flag for monitoring (PROMPT ML Layer 10) - DISABLED by default
+const ENABLE_MONITORING = process.env.ENABLE_MONITORING === 'true';
 
 /**
  * Map content types to StrategyType for context engineering
