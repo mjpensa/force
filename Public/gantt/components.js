@@ -13,18 +13,20 @@ export class GanttComponents {
 
   /**
    * Add the header SVG stripe
-   * Uses background-image with repeat-x to tile the pattern without distortion
+   * Uses img element that scales proportionally to fill width
    */
   addHeaderSVG(chartWrapper) {
     const headerSvgEl = document.createElement('div');
     headerSvgEl.className = 'gantt-header-svg';
-    headerSvgEl.style.height = '30px';
-    headerSvgEl.style.width = '100%';
-    headerSvgEl.style.backgroundImage = 'url("/horizontal-stripe.svg")';
-    headerSvgEl.style.backgroundRepeat = 'repeat-x';
-    headerSvgEl.style.backgroundSize = 'auto 30px';
-    headerSvgEl.style.backgroundPosition = 'left center';
 
+    const img = document.createElement('img');
+    img.src = '/horizontal-stripe.svg';
+    img.alt = '';
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    img.style.display = 'block';
+
+    headerSvgEl.appendChild(img);
     chartWrapper.appendChild(headerSvgEl);
   }
 
@@ -94,18 +96,20 @@ export class GanttComponents {
 
   /**
    * Add the footer SVG stripe
-   * Uses background-image with repeat-x to tile the pattern without distortion
+   * Uses img element that scales proportionally to fill width
    */
   addFooterSVG(chartWrapper) {
     const footerSvgEl = document.createElement('div');
     footerSvgEl.className = 'gantt-footer-svg';
-    footerSvgEl.style.height = '30px';
-    footerSvgEl.style.width = '100%';
-    footerSvgEl.style.backgroundImage = 'url("/horizontal-stripe.svg")';
-    footerSvgEl.style.backgroundRepeat = 'repeat-x';
-    footerSvgEl.style.backgroundSize = 'auto 30px';
-    footerSvgEl.style.backgroundPosition = 'left center';
 
+    const img = document.createElement('img');
+    img.src = '/horizontal-stripe.svg';
+    img.alt = '';
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    img.style.display = 'block';
+
+    footerSvgEl.appendChild(img);
     chartWrapper.appendChild(footerSvgEl);
   }
 
