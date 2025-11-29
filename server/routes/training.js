@@ -199,11 +199,6 @@ function calculateDocumentFeedback(result, validationResult) {
   // === HELPER FUNCTIONS ===
   const wordCount = (text) => (text || '').split(/\s+/).filter(w => w.length > 0).length;
 
-  const countBrandedConcepts = (text) => {
-    const matches = (text || '').match(/\b(The\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)*)\b/g) || [];
-    return new Set(matches).size;
-  };
-
   // Get all text content
   const allContent = [
     data?.title || '',
@@ -230,22 +225,16 @@ function calculateDocumentFeedback(result, validationResult) {
   if (specificStats >= 5) score += 0.4;
   else if (specificStats >= 2) score += 0.2;
 
-  // 1c. Specific company/project names (capitalized proper nouns, not generic)
-  const properNouns = (allContent.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(?:Inc|Corp|LLC|Ltd|Bank|Group|Partners))?\.?\b/g) || []);
-  const uniqueNames = new Set(properNouns.filter(n => n.length > 3 && !['The', 'This', 'That', 'What', 'When', 'While', 'However'].includes(n)));
-  if (uniqueNames.size >= 5) score += 0.3;
-  else if (uniqueNames.size >= 2) score += 0.1;
-
-  // 1d. Specific dates/deadlines mentioned
+  // 1c. Specific dates/deadlines mentioned
   const datePatterns = (allContent.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b|\b20\d{2}\b|\bQ[1-4]\s+20\d{2}\b|\b\d{1,2}\/\d{1,2}\/20\d{2}\b/gi) || []).length;
   if (datePatterns >= 3) score += 0.2;
   else if (datePatterns >= 1) score += 0.1;
 
-  // 1e. Conflicting research acknowledgment ("While [Source A]... [Source B]...")
+  // 1d. Conflicting research acknowledgment ("While [Source A]... [Source B]...")
   const conflictPatterns = (allContent.match(/\b(while\s+\[[^\]]+\]|however,?\s+\[[^\]]+\]|in contrast|on the other hand|conversely)/gi) || []).length;
   if (conflictPatterns >= 1) score += 0.2; // Shows nuanced analysis
 
-  // 1f. Projections/forecasts must cite source (forecast words near citations)
+  // 1e. Projections/forecasts must cite source (forecast words near citations)
   const forecastWithCitation = (allContent.match(/\b(project(s|ed|ion)?|forecast(s|ed)?|predict(s|ed|ion)?|expect(s|ed)?|anticipate[sd]?)\b[^.]{0,50}\[[^\]]+\]/gi) || []).length;
   const forecastsTotal = (allContent.match(/\b(project(s|ed|ion)?|forecast(s|ed)?|predict(s|ed|ion)?|expect(s|ed)?|anticipate[sd]?)\b/gi) || []).length;
   if (forecastsTotal > 0 && forecastWithCitation >= forecastsTotal * 0.5) score += 0.2; // Most forecasts cited
@@ -339,44 +328,36 @@ function calculateDocumentFeedback(result, validationResult) {
   }
 
   // ============================================================
-  // 6. BRANDED CONCEPTS (3-5 memorable, organic)
+  // 6. LANGUAGE QUALITY
   // ============================================================
 
-  const brandedConcepts = countBrandedConcepts(allContent);
-  if (brandedConcepts >= 3 && brandedConcepts <= 5) score += 0.4;
-  else if (brandedConcepts >= 2) score += 0.2;
-  else if (brandedConcepts >= 6) score += 0.1;
-
-  // ============================================================
-  // 7. LANGUAGE QUALITY
-  // ============================================================
-
-  // 7a. Evidence-first sentences
+  // 6a. Evidence-first sentences
   const evidenceFirstSentences = sentences.filter(s => /^\s*[\d$]/.test(s)).length;
   const evidenceRatio = sentences.length > 0 ? evidenceFirstSentences / sentences.length : 0;
   if (evidenceRatio >= 0.1) score += 0.2;
 
-  // 7b. Vague language penalty
-  const vagueTerms = (allContent.match(/\b(nearly|almost|about|approximately|around|significant|major players|some|many|several|various|numerous)\b/gi) || []).length;
+  // 6b. Vague language penalty (removed "significant" - valid statistical term)
+  const vagueTerms = (allContent.match(/\b(nearly|almost|about|approximately|around|some|many|several|various|numerous)\b/gi) || []).length;
   if (vagueTerms > 5) score -= 0.3;
   else if (vagueTerms === 0) score += 0.2;
 
-  // 7c. Unearned dramatic language
+  // 6c. Unearned dramatic language
   const dramaticTerms = (allContent.match(/\b(revolutionary|unprecedented|explosive|dramatic|groundbreaking|game-changing|paradigm shift)\b/gi) || []).length;
   const evidenceTerms = (allContent.match(/\d+%|\$[\d,]+|billion|million/gi) || []).length;
   if (dramaticTerms > evidenceTerms && dramaticTerms > 2) score -= 0.3;
 
-  // 7d. Confident uncertainty ("though [acknowledged gap]")
+  // 6d. Confident uncertainty ("though [acknowledged gap]")
   const confidentUncertainty = (allContent.match(/\b(though\s+(data|evidence|research)\s+(is\s+)?(limited|incomplete|unclear)|while\s+more\s+research|acknowledg(e|ing)\s+(the\s+)?limitation)/gi) || []).length;
   if (confidentUncertainty >= 1) score += 0.2;
 
   // ============================================================
-  // 8. METAPHOR DISCIPLINE (One system, used consistently)
+  // 7. METAPHOR DISCIPLINE (One system, used consistently)
   // ============================================================
 
   const metaphorSystems = {
-    infrastructure: (allContent.match(/\b(bridge|rail|highway|corridor|foundation|pathway|roadmap)\b/gi) || []).length,
-    military: (allContent.match(/\b(fortress|battle|campaign|front|strategy|deploy|offensive|defensive)\b/gi) || []).length,
+    // Note: "roadmap" removed as it's the content type name, not a metaphor
+    infrastructure: (allContent.match(/\b(bridge|rail|highway|corridor|foundation|pathway)\b/gi) || []).length,
+    military: (allContent.match(/\b(fortress|battle|campaign|front|deploy|offensive|defensive)\b/gi) || []).length,
     geological: (allContent.match(/\b(tectonic|fault\s+line|shift|erosion|seismic|landscape)\b/gi) || []).length,
     biological: (allContent.match(/\b(evolution|ecosystem|adaptation|organism|DNA|genetic)\b/gi) || []).length,
     nautical: (allContent.match(/\b(navigate|anchor|voyage|harbor|ship|sail|steer|helm)\b/gi) || []).length
@@ -387,29 +368,25 @@ function calculateDocumentFeedback(result, validationResult) {
   else if (systemsUsed > 2) score -= 0.2; // Mixing metaphors
 
   // ============================================================
-  // 9. FORMATTING QUALITY
+  // 8. FORMATTING QUALITY
   // ============================================================
 
-  // 9a. Branded headings (not "Part I", "Section 1")
+  // 8a. Branded headings (not "Part I", "Section 1")
   const genericHeadings = (allContent.match(/\b(Part\s+[IVX]+|Section\s+\d|Chapter\s+\d|Introduction|Conclusion|Summary)\b/gi) || []).length;
   if (genericHeadings > 2) score -= 0.3;
 
-  // 9b. Bold key terms
+  // 8b. Bold key terms (markdown formatting in content)
   const hasBoldTerms = data?.sections?.some(s => /\*\*[^*]+\*\*/.test(s.content || ''));
   if (hasBoldTerms) score += 0.1;
 
-  // 9c. Level 2 headings (subsections within sections)
-  const hasSubsections = data?.sections?.some(s => /^#{2,3}\s+|^\*\*[^*]+\*\*$/m.test(s.content || ''));
-  if (hasSubsections) score += 0.1;
-
-  // 9c. Primarily paragraphs, not excessive lists
+  // 8c. Primarily paragraphs, not excessive lists
   const listMarkers = (allContent.match(/^[\s]*[-•*]\s/gm) || []).length;
   const paragraphRatio = sentences.length > 0 ? listMarkers / sentences.length : 0;
   if (paragraphRatio > 0.3) score -= 0.2; // Too list-heavy
   else if (paragraphRatio < 0.1 && listMarkers > 0) score += 0.1; // Good balance
 
   // ============================================================
-  // 10. ACTION/IMPLICATIONS TEST
+  // 9. ACTION/IMPLICATIONS TEST
   // ============================================================
 
   const actionTerms = (allContent.match(/\b(must|should|need to|implement|adopt|invest|prioritize|recommend|consider|require|prepare|position)\b/gi) || []).length;
@@ -418,7 +395,7 @@ function calculateDocumentFeedback(result, validationResult) {
   else score -= 0.2;
 
   // ============================================================
-  // 11. NARRATIVE SIGNALS (Fresh Test)
+  // 10. NARRATIVE SIGNALS (Fresh Test)
   // ============================================================
 
   // Tension/Conflict
@@ -438,7 +415,7 @@ function calculateDocumentFeedback(result, validationResult) {
   else if (totalNarrativeSignals >= 2) score += 0.1;
 
   // ============================================================
-  // 12. VALIDATION QUALITY (from system)
+  // 11. VALIDATION QUALITY (from system)
   // ============================================================
 
   if (validationResult?.valid !== false) score += 0.5;
