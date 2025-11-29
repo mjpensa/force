@@ -1775,6 +1775,9 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
 // Export metrics for monitoring endpoints
 export { globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator };
 
+// Export interval enforcement for use in content retrieval
+export { enforceYearlyIntervalsForLongRanges };
+
 // Export variant management functions
 export {
   selectVariant,
