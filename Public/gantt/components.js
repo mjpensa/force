@@ -29,7 +29,7 @@ export class GanttComponents {
     img.style.height = '16px';
     img.style.width = '100%';
     img.style.display = 'block';
-    img.style.objectFit = 'cover';
+    img.style.objectFit = 'fill';
 
     headerSvgEl.appendChild(img);
     chartWrapper.appendChild(headerSvgEl);
@@ -117,7 +117,7 @@ export class GanttComponents {
     img.style.height = '16px';
     img.style.width = '100%';
     img.style.display = 'block';
-    img.style.objectFit = 'cover';
+    img.style.objectFit = 'fill';
 
     footerSvgEl.appendChild(img);
     chartWrapper.appendChild(footerSvgEl);
