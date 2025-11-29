@@ -33,13 +33,15 @@ DETERMINISTIC OUTPUT REQUIRED - same inputs must produce identical outputs.
 - 366-1095 days: Quarters ["Q1 2026", "Q2 2026"]
 - >1095 days: Years ["2020", "2021", "2022"]
 
-### 3. SWIMLANES
+### 3. SWIMLANES (MUST CREATE MULTIPLE)
+**CRITICAL: You MUST create MULTIPLE swimlanes. A chart with only 1 swimlane is INVALID.**
 Priority order:
-1. Named entities (companies, organizations)
-2. Departments: "IT/Technology", "Legal", "Business/Operations", "Finance", "Executive"
+1. Named entities (companies, organizations) - create SEPARATE swimlane for EACH entity
+2. Departments: "IT/Technology", "Legal", "Business/Operations", "Finance", "Executive" - use at least 2-3 categories
 
 Sorting: Broad/industry-wide swimlanes first, then specific ones alphabetically.
-Threshold: Include swimlanes with ≥3 tasks. Exclude both swimlane AND tasks if <3.
+Threshold: Swimlanes need ≥3 tasks. Redistribute orphan tasks to nearest swimlane.
+VALIDATION: Must have AT LEAST 2 swimlanes. Re-analyze if only 1.
 
 ### 4. DATA STRUCTURE
 - Swimlane row: {"title":"Name","isSwimlane":true,"entity":"Name"}

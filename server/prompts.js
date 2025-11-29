@@ -20,14 +20,17 @@ You MUST respond with *only* a valid JSON object matching the schema.
     c. Examples: 4 years = Years, 5 years = Years, 6 years = Years, 10 years = Years
     d. WRONG: Using "Quarters" for a 5-year range (20 quarters is too granular)
     e. RIGHT: Using "Years" for a 5-year range (5 columns: ["2026", "2027", "2028", "2029", "2030"])
-3.  **SWIMLANE IDENTIFICATION (DETERMINISTIC):** Identify swimlanes using this EXACT priority order:
-    a.  **Priority 1 - Named Entities:** Extract ALL explicitly named organizations, companies, or entities from the research (e.g., "JPMorgan Chase", "Acme Corp", "Federal Reserve"). Use these as swimlanes.
+3.  **SWIMLANE IDENTIFICATION (DETERMINISTIC - MUST CREATE MULTIPLE SWIMLANES):**
+    **CRITICAL: You MUST create MULTIPLE swimlanes. A chart with only 1 swimlane is INVALID.**
+    Identify swimlanes using this EXACT priority order:
+    a.  **Priority 1 - Named Entities:** Extract ALL explicitly named organizations, companies, or entities from the research (e.g., "JPMorgan Chase", "Acme Corp", "Federal Reserve"). Create a SEPARATE swimlane for EACH distinct entity. Do NOT merge different entities into one swimlane.
     b.  **Priority 2 - Departmental Categories:** If no named entities are found, OR if tasks clearly belong to internal departments, use EXACTLY these standard categories (only include categories that have tasks):
         * "IT/Technology" - for technical implementation, infrastructure, systems, development, testing
         * "Legal" - for contracts, legal reviews, governance, compliance, regulatory
         * "Business/Operations" - for business processes, training, rollout, customer-facing, sales, marketing
         * "Finance" - for budget, financial, cost, ROI, investment activities
         * "Executive" - for strategic decisions, board approvals, executive reviews
+        **You MUST use at least 2-3 of these categories.** Analyze each task and assign it to the MOST appropriate department. Do NOT put all tasks in a single department.
     c.  **Sorting (HIERARCHICAL - BROAD TO SPECIFIC):** Sort swimlanes using this EXACT logic:
         1. **First, identify BROAD swimlanes using IMPACT SCOPE, not keywords** - A swimlane is BROAD only if its events/tasks directly impact or constrain MOST or ALL other swimlanes in the chart. Ask: "Do events in this swimlane set rules, deadlines, or requirements that other swimlanes must respond to?"
            - **BROAD examples:** Regulatory bodies/infrastructure (sets compliance rules for all), industry standards organizations (defines specs others must follow), central banks (sets monetary policy affecting all), government mandates (legal requirements for all).
@@ -36,7 +39,8 @@ You MUST respond with *only* a valid JSON object matching the schema.
         2. **Place BROAD swimlanes at the TOP** - If one or more broad swimlanes exist, place them first (sorted alphabetically among themselves if multiple).
         3. **Then place SPECIFIC swimlanes below** - Sort remaining entity-specific, segment-specific, or department-specific swimlanes ALPHABETICALLY (A-Z).
         Example: If swimlanes are ["Cross-border Payments", "Regulatory Infrastructure", "Real-time Payments"], the order should be: "Regulatory Infrastructure" (broad - sets rules for all), then "Cross-border Payments", "Real-time Payments" (specific segments, alphabetical).
-    d.  **Minimum Task Threshold:** Only include swimlanes that have AT LEAST 3 TASKS. If a swimlane has fewer than 3 tasks, EXCLUDE both the swimlane AND its tasks from the final chart entirely. Do not redistribute these tasks to other swimlanes.
+    d.  **Minimum Task Threshold:** Only include swimlanes that have AT LEAST 3 TASKS. If a swimlane has fewer than 3 tasks, redistribute those tasks to the most appropriate remaining swimlane rather than excluding them entirely.
+    e.  **VALIDATION:** Before finalizing, verify you have AT LEAST 2 swimlanes. If you only have 1, re-analyze the research to find additional entity groupings or use departmental categories.
 4.  **CHART DATA STRUCTURE:**
     - Add an object for each swimlane: \`{ "title": "Swimlane Name", "isSwimlane": true, "entity": "Swimlane Name" }\`
     - Immediately after each swimlane, add all tasks belonging to it
