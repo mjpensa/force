@@ -131,10 +131,10 @@ export class EvolutionScheduler {
   /**
    * Run a single optimization cycle
    *
-   * @returns {Object} Cycle results
+   * @returns {Promise<Object>} Cycle results
    */
-  runOnce() {
-    return this._runCycle();
+  async runOnce() {
+    return await this._runCycle();
   }
 
   /**
@@ -142,7 +142,7 @@ export class EvolutionScheduler {
    *
    * @private
    */
-  _runCycle() {
+  async _runCycle() {
     const startTime = Date.now();
     const results = {
       timestamp: new Date(),
@@ -152,7 +152,7 @@ export class EvolutionScheduler {
 
     try {
       // 1. Check and conclude running experiments
-      const concluded = this._checkExperiments();
+      const concluded = await this._checkExperiments();
       if (concluded.length > 0) {
         results.actions.push({
           type: 'conclude_experiments',
@@ -177,7 +177,7 @@ export class EvolutionScheduler {
       }
 
       // 3. Generate new variants if needed
-      const generated = this._generateNewVariants();
+      const generated = await this._generateNewVariants();
       if (generated.length > 0) {
         results.actions.push({
           type: 'generate_variants',
@@ -214,7 +214,15 @@ export class EvolutionScheduler {
    *
    * @private
    */
-  _checkExperiments() {
+  async _checkExperiments() {
+    // Flush metrics to ensure analysis uses fresh data
+    try {
+      const collector = getMetricsCollector();
+      await collector.flush();
+    } catch (error) {
+      console.warn('[EvolutionScheduler] Failed to flush metrics:', error.message);
+    }
+
     const manager = getExperimentManager();
     const running = manager.getAll({ status: ExperimentStatus.RUNNING });
     const concluded = [];
@@ -339,7 +347,7 @@ export class EvolutionScheduler {
    *
    * @private
    */
-  _generateNewVariants() {
+  async _generateNewVariants() {
     const generator = getVariantGenerator();
     const registry = getVariantRegistry();
     const generated = [];
@@ -356,7 +364,7 @@ export class EvolutionScheduler {
       if (nonChampionCandidates.length === 0 && champion) {
         // Generate a new variant
         try {
-          const configs = generator.analyzeAndGenerate(contentType);
+          const configs = await generator.analyzeAndGenerate(contentType);
 
           for (const config of configs) {
             const variant = registry.register(config);

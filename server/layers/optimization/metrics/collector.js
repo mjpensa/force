@@ -8,6 +8,7 @@
 import crypto from 'crypto';
 import { createDefaultMetric, validateMetric } from './schema.js';
 import { createStorage } from './storage.js';
+import { getVariantRegistry } from '../variants/index.js';
 
 /**
  * Metrics Collector class
@@ -118,21 +119,42 @@ export class MetricsCollector {
    * @returns {Promise<boolean>} Success
    */
   async updateFeedback(generationId, feedback) {
+    let variantId = null;
+
     // First check buffer
     const buffered = this._buffer.find(m => m.generationId === generationId);
     if (buffered) {
       buffered.feedback = { ...buffered.feedback, ...feedback };
       buffered.feedbackUpdatedAt = new Date();
       this._stats.totalFeedbackUpdates++;
-      return true;
+      variantId = buffered.variantId;
+    } else {
+      // Then check storage
+      const result = await this.storage.updateFeedback(generationId, feedback);
+      if (result) {
+        this._stats.totalFeedbackUpdates++;
+        // Get variant ID from storage if available
+        const metric = await this.storage.getById?.(generationId);
+        variantId = metric?.variantId;
+      } else {
+        return false;
+      }
     }
 
-    // Then check storage
-    const result = await this.storage.updateFeedback(generationId, feedback);
-    if (result) {
-      this._stats.totalFeedbackUpdates++;
+    // Also update variant performance with feedback rating
+    if (variantId && feedback.rating !== undefined) {
+      try {
+        const registry = getVariantRegistry();
+        registry.recordPerformance(variantId, {
+          feedback: feedback.rating
+        });
+      } catch (error) {
+        // Log but don't fail - variant performance is secondary
+        console.warn(`[MetricsCollector] Failed to update variant performance: ${error.message}`);
+      }
     }
-    return result;
+
+    return true;
   }
 
   /**

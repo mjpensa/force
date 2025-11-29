@@ -223,9 +223,9 @@ export class VariantGenerator {
    *
    * @param {string} parentVariantId - Parent variant ID
    * @param {Object} options - Generation options
-   * @returns {Object} Generated variant config
+   * @returns {Promise<Object>} Generated variant config
    */
-  generateVariant(parentVariantId, options = {}) {
+  async generateVariant(parentVariantId, options = {}) {
     const registry = getVariantRegistry();
     const parent = registry.get(parentVariantId);
 
@@ -234,7 +234,7 @@ export class VariantGenerator {
     }
 
     // Determine mutation strategy
-    const strategy = options.strategy || this._selectStrategy(parent);
+    const strategy = options.strategy || await this._selectStrategy(parent);
 
     // Apply mutation
     const mutatedTemplate = applyMutation(parent.promptTemplate, strategy);
@@ -281,10 +281,10 @@ export class VariantGenerator {
    *
    * @param {string} parentVariantId - Parent variant ID
    * @param {Object} options - Generation options
-   * @returns {Object} Registered variant
+   * @returns {Promise<Object>} Registered variant
    */
-  generateAndRegister(parentVariantId, options = {}) {
-    const config = this.generateVariant(parentVariantId, options);
+  async generateAndRegister(parentVariantId, options = {}) {
+    const config = await this.generateVariant(parentVariantId, options);
     const registry = getVariantRegistry();
     return registry.register(config);
   }
@@ -293,9 +293,9 @@ export class VariantGenerator {
    * Analyze a content type and generate improvement candidates
    *
    * @param {string} contentType - Content type to analyze
-   * @returns {Array<Object>} Generated variant configs
+   * @returns {Promise<Array<Object>>} Generated variant configs
    */
-  analyzeAndGenerate(contentType) {
+  async analyzeAndGenerate(contentType) {
     const registry = getVariantRegistry();
     const champion = registry.getChampion(contentType);
 
@@ -304,7 +304,7 @@ export class VariantGenerator {
     }
 
     // Get performance metrics
-    const metrics = this._getPerformanceMetrics(champion.id);
+    const metrics = await this._getPerformanceMetrics(champion.id);
 
     if (metrics.impressions < this._minImpressionsForAnalysis) {
       return [];
@@ -334,7 +334,7 @@ export class VariantGenerator {
       );
 
       if (!existing) {
-        const config = this.generateVariant(champion.id, {
+        const config = await this.generateVariant(champion.id, {
           strategy: suggestion.strategy,
           reason: suggestion.reason
         });
@@ -350,18 +350,18 @@ export class VariantGenerator {
    *
    * @private
    */
-  _getPerformanceMetrics(variantId) {
+  async _getPerformanceMetrics(variantId) {
     try {
       const collector = getMetricsCollector();
-      const stats = collector.getVariantMetrics(variantId);
+      const stats = await collector.getVariantMetrics(variantId);
 
       return {
-        impressions: stats.count || 0,
-        avgLatencyMs: stats.avgLatency || 0,
-        avgQualityScore: stats.avgQuality || 0,
-        avgFeedback: stats.avgFeedback || 0,
-        errorRate: stats.count > 0
-          ? 1 - (stats.successCount || 0) / stats.count
+        impressions: stats?.count || 0,
+        avgLatencyMs: stats?.avgLatency || 0,
+        avgQualityScore: stats?.avgQuality || 0,
+        avgFeedback: stats?.avgFeedback || 0,
+        errorRate: stats?.count > 0
+          ? 1 - (stats?.successCount || 0) / stats.count
           : 0
       };
     } catch {
@@ -380,8 +380,8 @@ export class VariantGenerator {
    *
    * @private
    */
-  _selectStrategy(variant) {
-    const metrics = this._getPerformanceMetrics(variant.id);
+  async _selectStrategy(variant) {
+    const metrics = await this._getPerformanceMetrics(variant.id);
     const suggestions = suggestImprovements(metrics);
 
     if (suggestions.length > 0) {
