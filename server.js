@@ -51,6 +51,11 @@ import { initializeOptimizers, shutdownOptimizers } from './server/utils/advance
 // Import cache management
 import { clearAllCaches } from './server/cache/contentCache.js';
 
+// Import PROMPT ML optimization system
+import { initializeVariants, getVariantRegistry } from './server/layers/optimization/variants/index.js';
+import { startEvolution, stopEvolution } from './server/layers/optimization/evolution/index.js';
+import { getMetricsCollector } from './server/layers/optimization/metrics/index.js';
+
 // Import monitoring system
 import { initializeMonitoring, shutdownMonitoring } from './server/utils/monitoring.js';
 
@@ -207,6 +212,10 @@ process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server gracefully');
   shutdownMonitoring();
   shutdownOptimizers();
+  if (process.env.ENABLE_OPTIMIZATION === 'true') {
+    stopEvolution();
+    console.log('[PROMPT ML] Evolution scheduler stopped');
+  }
   process.exit(0);
 });
 
@@ -215,6 +224,10 @@ process.on('SIGINT', () => {
   console.log('\nSIGINT signal received: shutting down gracefully');
   shutdownMonitoring();
   shutdownOptimizers();
+  if (process.env.ENABLE_OPTIMIZATION === 'true') {
+    stopEvolution();
+    console.log('[PROMPT ML] Evolution scheduler stopped');
+  }
   process.exit(0);
 });
 
@@ -237,4 +250,48 @@ app.listen(port, () => {
 
   // Initialize monitoring system (metrics snapshots, alerting)
   initializeMonitoring();
+
+  // Initialize PROMPT ML optimization system if enabled
+  if (process.env.ENABLE_OPTIMIZATION === 'true') {
+    try {
+      // Initialize variant registry with persistence
+      const registry = getVariantRegistry({
+        autoPersist: true,
+        persistPath: join(__dirname, 'data', 'variants.json')
+      });
+
+      // Initialize default variants (champions for each content type)
+      const variantResult = initializeVariants({
+        registryConfig: { autoPersist: true }
+      });
+
+      if (variantResult.initialized) {
+        console.log(`[PROMPT ML] Initialized ${variantResult.registered} variants`);
+      } else {
+        console.log(`[PROMPT ML] Variants already initialized (${variantResult.stats.totalVariants} variants)`);
+      }
+
+      // Initialize metrics collector with file persistence
+      getMetricsCollector({
+        storageConfig: {
+          type: 'file',
+          path: join(__dirname, 'data', 'metrics.json')
+        }
+      });
+      console.log('[PROMPT ML] Metrics collector initialized with file storage');
+
+      // Start evolution scheduler for auto-improving prompts
+      const evolutionStats = startEvolution({
+        intervalMs: 60 * 60 * 1000,  // Run every hour
+        minImpressionsThreshold: 50,  // Need at least 50 impressions before evolving
+        autoStartExperiments: true
+      });
+      console.log(`[PROMPT ML] Evolution scheduler started (interval: 1 hour)`);
+
+    } catch (error) {
+      console.warn('[PROMPT ML] Failed to initialize optimization system:', error.message);
+    }
+  } else {
+    console.log('[PROMPT ML] Optimization disabled (set ENABLE_OPTIMIZATION=true to enable)');
+  }
 });
