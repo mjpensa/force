@@ -3,8 +3,9 @@ const SUPPORTED_FILE_MIMES = FILE_TYPES.MIMES;
 const SUPPORTED_FILE_EXTENSIONS = FILE_TYPES.EXTENSIONS;
 const SUPPORTED_FILES_STRING = SUPPORTED_FILE_EXTENSIONS.join(', ');
 
-// Feature flag for streaming - can be toggled for A/B testing or fallback
-const ENABLE_STREAMING = true;
+// Feature flag for streaming - disabled due to Railway proxy buffering issues
+// SSE streams are buffered by Railway's proxy, preventing real-time delivery
+const ENABLE_STREAMING = false;
 function displayError(message) {
     const errorMessage = document.getElementById('error-message');
     errorMessage.textContent = message;
