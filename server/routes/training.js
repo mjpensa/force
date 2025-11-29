@@ -189,23 +189,16 @@ function calculateSlidesFeedback(result, validationResult) {
 
 /**
  * Calculate feedback for DOCUMENT content type
- * Based on "Executive Summary Writing Style" requirements
+ * Based on "Executive Summary Writing Style" requirements - ALL dimensions
  */
 function calculateDocumentFeedback(result, validationResult) {
   const data = result.data;
   const quality = validationResult?.quality;
   let score = 3;
 
-  // Helper to count words in text
+  // === HELPER FUNCTIONS ===
   const wordCount = (text) => (text || '').split(/\s+/).filter(w => w.length > 0).length;
 
-  // Helper to check for citations [source] format
-  const hasCitations = (text) => /\[[^\]]+\]/.test(text || '');
-
-  // Helper to check for specific statistics/numbers
-  const hasSpecificNumbers = (text) => /\d+(\.\d+)?%|\$[\d,]+|\d{1,3}(,\d{3})+/.test(text || '');
-
-  // Helper to check for branded concepts (capitalized multi-word phrases)
   const countBrandedConcepts = (text) => {
     const matches = (text || '').match(/\b(The\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)*)\b/g) || [];
     return new Set(matches).size;
@@ -220,106 +213,226 @@ function calculateDocumentFeedback(result, validationResult) {
 
   const totalWords = wordCount(allContent);
   const sectionCount = data?.sections?.length || 0;
+  const sentences = allContent.split(/[.!?]+/).filter(s => s.trim().length > 0);
 
-  // === 1. SOURCE FIDELITY (Non-Negotiable) ===
-  // Check for inline citations [source]
+  // ============================================================
+  // 1. SOURCE FIDELITY (Non-Negotiable)
+  // ============================================================
+
+  // 1a. Inline citations [source] format
   const citationCount = (allContent.match(/\[[^\]]+\]/g) || []).length;
-  if (citationCount >= 5) score += 0.4;      // Many citations = good
+  if (citationCount >= 5) score += 0.4;
   else if (citationCount >= 2) score += 0.2;
-  else if (citationCount === 0) score -= 0.5; // No citations = bad
+  else if (citationCount === 0) score -= 0.5;
 
-  // Check for specific statistics (precision over drama)
-  const hasStats = hasSpecificNumbers(allContent);
-  if (hasStats) score += 0.3;
+  // 1b. Specific statistics (not rounded: "47%" not "nearly half")
+  const specificStats = (allContent.match(/\d+(\.\d+)?%|\$[\d,.]+\s*(billion|million|thousand)?|\d{1,3}(,\d{3})+/gi) || []).length;
+  if (specificStats >= 5) score += 0.4;
+  else if (specificStats >= 2) score += 0.2;
 
-  // === 2. ADAPTIVE LENGTH (based on research density) ===
-  // Rich: 1,600-2,000 words, Moderate: 1,200-1,600, Sparse: 800-1,200
-  if (totalWords >= 1200 && totalWords <= 2000) score += 0.4;  // Ideal range
-  else if (totalWords >= 800 && totalWords < 1200) score += 0.2; // Acceptable
-  else if (totalWords < 500) score -= 1;       // Too short = bad
-  else if (totalWords > 2500) score -= 0.3;    // Padding likely
+  // 1c. Specific company/project names (capitalized proper nouns, not generic)
+  const properNouns = (allContent.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(?:Inc|Corp|LLC|Ltd|Bank|Group|Partners))?\.?\b/g) || []);
+  const uniqueNames = new Set(properNouns.filter(n => n.length > 3 && !['The', 'This', 'That', 'What', 'When', 'While', 'However'].includes(n)));
+  if (uniqueNames.size >= 5) score += 0.3;
+  else if (uniqueNames.size >= 2) score += 0.1;
 
-  // === 3. STRUCTURAL QUALITY ===
-  // Must have compelling title (not generic)
+  // 1d. Specific dates/deadlines mentioned
+  const datePatterns = (allContent.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b|\b20\d{2}\b|\bQ[1-4]\s+20\d{2}\b|\b\d{1,2}\/\d{1,2}\/20\d{2}\b/gi) || []).length;
+  if (datePatterns >= 3) score += 0.2;
+  else if (datePatterns >= 1) score += 0.1;
+
+  // 1e. Conflicting research acknowledgment ("While [Source A]... [Source B]...")
+  const conflictPatterns = (allContent.match(/\b(while\s+\[[^\]]+\]|however,?\s+\[[^\]]+\]|in contrast|on the other hand|conversely)/gi) || []).length;
+  if (conflictPatterns >= 1) score += 0.2; // Shows nuanced analysis
+
+  // ============================================================
+  // 2. OPENING STRATEGIES (Choose ONE compelling approach)
+  // ============================================================
+
+  const firstParagraph = (data?.executiveSummary || sentences.slice(0, 3).join('. ')).toLowerCase();
+
+  // The Paradox: "yet", "but", capability vs reality gap
+  const hasParadoxOpening = /\byet\b|\bparadox|\bbut\s+\w+\s+\w+\s+not/.test(firstParagraph);
+
+  // The Moment: "In [month/year]", pivotal date
+  const hasMomentOpening = /\bin\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+20\d{2}\b|\bturning point\b|\bmilestone\b/i.test(firstParagraph);
+
+  // The Number: Opens with a shocking statistic
+  const hasNumberOpening = /^\s*[\$\d]/.test(firstParagraph) || /\d+(\.\d+)?%/.test(firstParagraph.slice(0, 100));
+
+  // The Question: Opens with a question
+  const hasQuestionOpening = /\?/.test(firstParagraph.slice(0, 200));
+
+  // The Stakes: "$X billion", "Y million people"
+  const hasStakesOpening = /\$[\d,.]+\s*(billion|million)|\d+\s*million\s*(people|users|customers)/i.test(firstParagraph);
+
+  const hasStrongOpening = hasParadoxOpening || hasMomentOpening || hasNumberOpening || hasQuestionOpening || hasStakesOpening;
+  if (hasStrongOpening) score += 0.3;
+
+  // ============================================================
+  // 3. CLOSING STRATEGIES
+  // ============================================================
+
+  const lastSection = data?.sections?.slice(-1)[0]?.content || '';
+  const lastParagraph = lastSection.slice(-500).toLowerCase();
+
+  // The Callback: References opening concept
+  const hasCallback = data?.title && lastParagraph.includes(data.title.toLowerCase().split(':')[0].slice(0, 20));
+
+  // The Prediction: Bold forecast
+  const hasPrediction = /\bwill\s+(become|transform|dominate|emerge|define)|\bby\s+20\d{2}/.test(lastParagraph);
+
+  // The Imperative: Direct call to action
+  const hasImperative = /\bmust\s+(act|move|decide|invest|prepare)|\bthe time\s+(is|has)\s+(now|come)|\bcannot\s+(wait|afford|ignore)/i.test(lastParagraph);
+
+  // The Choice: Binary decision
+  const hasChoice = /\beither\s+\w+\s+or\b|\bchoose\s+(between|to)|\bfork\s+in\s+the\s+road/i.test(lastParagraph);
+
+  const hasStrongClosing = hasCallback || hasPrediction || hasImperative || hasChoice;
+  if (hasStrongClosing) score += 0.2;
+
+  // ============================================================
+  // 4. ADAPTIVE LENGTH
+  // ============================================================
+
+  if (totalWords >= 1200 && totalWords <= 2000) score += 0.4;
+  else if (totalWords >= 800 && totalWords < 1200) score += 0.2;
+  else if (totalWords < 500) score -= 1.0;
+  else if (totalWords > 2500) score -= 0.3;
+
+  // ============================================================
+  // 5. STRUCTURAL QUALITY
+  // ============================================================
+
+  // 5a. Compelling title with branded subtitle
   const hasTitle = data?.title && data.title.length > 10;
-  const hasSubtitle = data?.title && data.title.includes(':'); // "The [Concept]: [Subtitle]"
+  const hasSubtitle = data?.title && data.title.includes(':');
   if (hasTitle) score += 0.2;
-  if (hasSubtitle) score += 0.2; // Branded title pattern
+  if (hasSubtitle) score += 0.2;
 
-  // Must have executive summary
+  // 5b. Executive summary quality
   const execSummaryWords = wordCount(data?.executiveSummary);
   if (execSummaryWords >= 100) score += 0.3;
   else if (execSummaryWords < 50) score -= 0.5;
 
-  // Section count (3-7 sections is good)
+  // 5c. Section count (3-7 is ideal)
   if (sectionCount >= 3 && sectionCount <= 7) score += 0.3;
-  else if (sectionCount < 3) score -= 0.5;  // Not enough structure
-  else if (sectionCount > 10) score -= 0.3; // Over-fragmented
+  else if (sectionCount < 3) score -= 0.5;
+  else if (sectionCount > 10) score -= 0.3;
 
-  // === 4. SECTION WEIGHTING (Flexible) ===
-  // Opening: 10-15%, Main: 50-60%, Implications: 20-25%, Conclusion: 5-10%
+  // 5d. Section weighting variance (adaptive, not template)
   if (sectionCount >= 3) {
     const sectionLengths = data?.sections?.map(s => wordCount(s.content)) || [];
     const totalSectionWords = sectionLengths.reduce((a, b) => a + b, 0);
-
-    // Check if sections are well-balanced (not all same length)
     const avgLen = totalSectionWords / sectionCount;
     const variance = sectionLengths.reduce((sum, len) => sum + Math.abs(len - avgLen), 0) / sectionCount;
-    if (variance > avgLen * 0.3) score += 0.2; // Good variance = adaptive structure
+    if (variance > avgLen * 0.3) score += 0.2;
   }
 
-  // === 5. BRANDED CONCEPTS (3-5 memorable concepts) ===
+  // ============================================================
+  // 6. BRANDED CONCEPTS (3-5 memorable, organic)
+  // ============================================================
+
   const brandedConcepts = countBrandedConcepts(allContent);
-  if (brandedConcepts >= 3 && brandedConcepts <= 5) score += 0.4; // Ideal
+  if (brandedConcepts >= 3 && brandedConcepts <= 5) score += 0.4;
   else if (brandedConcepts >= 2) score += 0.2;
-  else if (brandedConcepts >= 6) score += 0.1; // Too many can feel manufactured
+  else if (brandedConcepts >= 6) score += 0.1;
 
-  // === 6. LANGUAGE QUALITY ===
-  // Evidence-first sentences (starts with numbers/data)
-  const sentences = allContent.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  const evidenceFirstSentences = sentences.filter(s => /^\s*\d/.test(s) || /^\s*\$/.test(s)).length;
+  // ============================================================
+  // 7. LANGUAGE QUALITY
+  // ============================================================
+
+  // 7a. Evidence-first sentences
+  const evidenceFirstSentences = sentences.filter(s => /^\s*[\d$]/.test(s)).length;
   const evidenceRatio = sentences.length > 0 ? evidenceFirstSentences / sentences.length : 0;
-  if (evidenceRatio >= 0.1) score += 0.2; // Good use of evidence-first
+  if (evidenceRatio >= 0.1) score += 0.2;
 
-  // Check for vague language (bad: "nearly half", "major players", "significant")
-  const vagueTerms = (allContent.match(/\b(nearly|almost|about|approximately|around|significant|major players|some|many|several)\b/gi) || []).length;
-  if (vagueTerms > 5) score -= 0.3; // Too much vague language
-  else if (vagueTerms === 0) score += 0.2; // Precise language
+  // 7b. Vague language penalty
+  const vagueTerms = (allContent.match(/\b(nearly|almost|about|approximately|around|significant|major players|some|many|several|various|numerous)\b/gi) || []).length;
+  if (vagueTerms > 5) score -= 0.3;
+  else if (vagueTerms === 0) score += 0.2;
 
-  // Check for dramatic language without evidence (bad)
-  const dramaticTerms = (allContent.match(/\b(revolutionary|unprecedented|explosive|dramatic|groundbreaking)\b/gi) || []).length;
+  // 7c. Unearned dramatic language
+  const dramaticTerms = (allContent.match(/\b(revolutionary|unprecedented|explosive|dramatic|groundbreaking|game-changing|paradigm shift)\b/gi) || []).length;
   const evidenceTerms = (allContent.match(/\d+%|\$[\d,]+|billion|million/gi) || []).length;
-  if (dramaticTerms > evidenceTerms && dramaticTerms > 2) score -= 0.3; // Unearned drama
+  if (dramaticTerms > evidenceTerms && dramaticTerms > 2) score -= 0.3;
 
-  // === 7. FORMATTING QUALITY ===
-  // Check for Level 1/2 headings (branded titles, not "Part I")
-  const genericHeadings = (allContent.match(/\b(Part\s+[IVX]+|Section\s+\d|Chapter\s+\d)\b/gi) || []).length;
-  if (genericHeadings > 0) score -= 0.3; // Template-style headings
+  // 7d. Confident uncertainty ("though [acknowledged gap]")
+  const confidentUncertainty = (allContent.match(/\b(though\s+(data|evidence|research)\s+(is\s+)?(limited|incomplete|unclear)|while\s+more\s+research|acknowledg(e|ing)\s+(the\s+)?limitation)/gi) || []).length;
+  if (confidentUncertainty >= 1) score += 0.2;
 
-  // Check for bold formatting of key terms
+  // ============================================================
+  // 8. METAPHOR DISCIPLINE (One system, used consistently)
+  // ============================================================
+
+  const metaphorSystems = {
+    infrastructure: (allContent.match(/\b(bridge|rail|highway|corridor|foundation|pathway|roadmap)\b/gi) || []).length,
+    military: (allContent.match(/\b(fortress|battle|campaign|front|strategy|deploy|offensive|defensive)\b/gi) || []).length,
+    geological: (allContent.match(/\b(tectonic|fault\s+line|shift|erosion|seismic|landscape)\b/gi) || []).length,
+    biological: (allContent.match(/\b(evolution|ecosystem|adaptation|organism|DNA|genetic)\b/gi) || []).length,
+    nautical: (allContent.match(/\b(navigate|anchor|voyage|harbor|ship|sail|steer|helm)\b/gi) || []).length
+  };
+
+  const systemsUsed = Object.values(metaphorSystems).filter(count => count >= 2).length;
+  if (systemsUsed === 1) score += 0.2;  // Consistent single system
+  else if (systemsUsed > 2) score -= 0.2; // Mixing metaphors
+
+  // ============================================================
+  // 9. FORMATTING QUALITY
+  // ============================================================
+
+  // 9a. Branded headings (not "Part I", "Section 1")
+  const genericHeadings = (allContent.match(/\b(Part\s+[IVX]+|Section\s+\d|Chapter\s+\d|Introduction|Conclusion|Summary)\b/gi) || []).length;
+  if (genericHeadings > 2) score -= 0.3;
+
+  // 9b. Bold key terms
   const hasBoldTerms = data?.sections?.some(s => /\*\*[^*]+\*\*/.test(s.content || ''));
   if (hasBoldTerms) score += 0.1;
 
-  // === 8. ACTION/IMPLICATIONS TEST ===
-  // Should have actionable content (action verbs, imperatives)
-  const actionTerms = (allContent.match(/\b(must|should|need to|implement|adopt|invest|prioritize|recommend|consider)\b/gi) || []).length;
-  if (actionTerms >= 5) score += 0.3; // Good actionability
+  // 9c. Primarily paragraphs, not excessive lists
+  const listMarkers = (allContent.match(/^[\s]*[-•*]\s/gm) || []).length;
+  const paragraphRatio = sentences.length > 0 ? listMarkers / sentences.length : 0;
+  if (paragraphRatio > 0.3) score -= 0.2; // Too list-heavy
+  else if (paragraphRatio < 0.1 && listMarkers > 0) score += 0.1; // Good balance
+
+  // ============================================================
+  // 10. ACTION/IMPLICATIONS TEST
+  // ============================================================
+
+  const actionTerms = (allContent.match(/\b(must|should|need to|implement|adopt|invest|prioritize|recommend|consider|require|prepare|position)\b/gi) || []).length;
+  if (actionTerms >= 5) score += 0.3;
   else if (actionTerms >= 2) score += 0.1;
-  else score -= 0.2; // No clear action
+  else score -= 0.2;
 
-  // === 9. NARRATIVE VARIETY (Fresh Test) ===
-  // Check for narrative signals (transformation, tension, urgency)
-  const narrativeSignals = (allContent.match(/\b(while|however|yet|but|despite|paradox|tension|transform|shift|before|after|deadline|window|tipping point)\b/gi) || []).length;
-  if (narrativeSignals >= 4) score += 0.3; // Good narrative complexity
-  else if (narrativeSignals >= 2) score += 0.1;
+  // ============================================================
+  // 11. NARRATIVE SIGNALS (Fresh Test)
+  // ============================================================
 
-  // === 10. VALIDATION QUALITY (from system) ===
+  // Tension/Conflict
+  const tensionSignals = (allContent.match(/\b(tension|conflict|compete|versus|vs\.|battle|struggle|friction)\b/gi) || []).length;
+
+  // Transformation
+  const transformSignals = (allContent.match(/\b(transform|shift|evolve|before|after|old\s+way|new\s+way|transition|pivot)\b/gi) || []).length;
+
+  // Urgency
+  const urgencySignals = (allContent.match(/\b(deadline|window|tipping\s+point|critical|urgent|immediate|now\s+or\s+never|time-sensitive)\b/gi) || []).length;
+
+  // Hidden Story
+  const hiddenStorySignals = (allContent.match(/\b(beneath\s+the\s+surface|actually|in\s+reality|counterintuitively|surprising|unexpected|contrary\s+to)\b/gi) || []).length;
+
+  const totalNarrativeSignals = tensionSignals + transformSignals + urgencySignals + hiddenStorySignals;
+  if (totalNarrativeSignals >= 5) score += 0.3;
+  else if (totalNarrativeSignals >= 2) score += 0.1;
+
+  // ============================================================
+  // 12. VALIDATION QUALITY (from system)
+  // ============================================================
+
   if (validationResult?.valid !== false) score += 0.5;
   if (quality?.score > 0.6) score += 0.2;
   if (quality?.score > 0.8) score += 0.3;
   if (quality?.score > 0.9) score += 0.2;
 
-  // Penalties for validation errors
   if (validationResult?.errors?.length > 0) score -= 0.5 * validationResult.errors.length;
 
   return score;
