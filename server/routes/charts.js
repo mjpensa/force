@@ -129,6 +129,62 @@ function enforceYearlyIntervalsForLongRanges(ganttData) {
 }
 
 /**
+ * Ensures all task rows have valid bar objects with startCol, endCol, and color.
+ * Tasks missing bars or with invalid bar properties get default values.
+ * @param {object} ganttData - The gantt chart data object
+ * @returns {object} - Gantt data with all tasks having valid bars
+ */
+function ensureTaskBars(ganttData) {
+  const numCols = ganttData.timeColumns.length;
+  if (numCols === 0) return ganttData;
+
+  const defaultColors = ['priority-red', 'medium-red', 'mid-grey', 'light-grey', 'dark-blue', 'white'];
+  let colorIndex = 0;
+  let taskIndex = 0;
+
+  // Count non-swimlane tasks to distribute them if needed
+  const taskCount = ganttData.data.filter(item => !item.isSwimlane).length;
+
+  const newData = ganttData.data.map(item => {
+    // Skip swimlanes - they don't have bars
+    if (item.isSwimlane) return item;
+
+    taskIndex++;
+    const hasValidBar = item.bar &&
+      typeof item.bar.startCol === 'number' &&
+      typeof item.bar.endCol === 'number' &&
+      item.bar.startCol >= 1 &&
+      item.bar.endCol > item.bar.startCol;
+
+    if (hasValidBar) {
+      // Ensure color exists
+      if (!item.bar.color) {
+        return {
+          ...item,
+          bar: { ...item.bar, color: defaultColors[colorIndex++ % defaultColors.length] }
+        };
+      }
+      return item;
+    }
+
+    // Generate default bar - distribute tasks across available columns
+    const startCol = Math.max(1, Math.min(numCols, Math.ceil((taskIndex / taskCount) * numCols)));
+    const endCol = Math.min(numCols + 1, startCol + 1);
+    const color = item.bar?.color || defaultColors[colorIndex++ % defaultColors.length];
+
+    return {
+      ...item,
+      bar: { startCol, endCol, color }
+    };
+  });
+
+  return {
+    ...ganttData,
+    data: newData
+  };
+}
+
+/**
  * POST /generate-chart
  * Generates a chart synchronously and returns it directly
  */
@@ -234,7 +290,11 @@ ${researchText}`;
 
     // Enforce yearly intervals for time ranges > 3 years
     // This corrects AI mistakes where quarters are used for long time horizons
-    const correctedData = enforceYearlyIntervalsForLongRanges(ganttData);
+    const intervalCorrectedData = enforceYearlyIntervalsForLongRanges(ganttData);
+
+    // Ensure all task rows have valid bar objects
+    // This fixes AI omissions where tasks are generated without bar properties
+    const correctedData = ensureTaskBars(intervalCorrectedData);
 
     // Return chart data directly
     res.json({
