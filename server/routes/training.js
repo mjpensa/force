@@ -28,6 +28,7 @@ import { runPreflightChecks } from '../utils/preflightChecks.js';
 import { calculateCorrelatedFeedback } from '../utils/feedbackSimulation.js';
 import { PromptEvolutionEngine } from '../utils/promptEvolution.js';
 import { scoreContentQuality } from '../utils/contentQualityScoring.js';
+import { executeWithCache, getCacheStats } from '../utils/dspyExecutor.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -36,6 +37,14 @@ const PROJECT_ROOT = join(__dirname, '..', '..');
 
 // Content types to train
 const CONTENT_TYPES = ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'];
+
+// Map content types to DSPy signature types for caching
+const CONTENT_TYPE_TO_SIGNATURE = {
+  'Roadmap': 'roadmap',
+  'Slides': 'slides',
+  'Document': 'document',
+  'ResearchAnalysis': 'research-analysis'
+};
 
 // Training configuration with prompts for each content type
 const TRAINING_CONFIG = {
@@ -190,17 +199,50 @@ function processEvolutionCycle(engine, iteration, evolutionInterval = 50) {
 // =============================================================================
 
 /**
- * Wrap generator function with error categorization
+ * Wrap generator function with caching and error categorization
+ *
+ * Uses DSPy cache to avoid redundant LLM calls for identical inputs.
+ * Cache hits are logged and tracked in training statistics.
+ *
+ * @param {Function} generatorFn - The generator function to call
+ * @param {string} contentType - Content type (Roadmap, Slides, etc.)
+ * @param {string} prompt - User prompt
+ * @param {Array} research - Research files
+ * @param {number} retryAttempt - Current retry attempt
+ * @param {Object} options - Additional options (skipCache, forceRefresh)
+ * @returns {Promise<{result: Object|null, error: Object|null, cacheHit: boolean}>}
  */
-async function generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt = 0) {
+async function generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt = 0, options = {}) {
+  const { skipCache = false, forceRefresh = false } = options;
+  const signatureType = CONTENT_TYPE_TO_SIGNATURE[contentType] || contentType.toLowerCase();
+
   try {
-    const result = await generatorFn(prompt, research);
+    // Use cache wrapper for generation
+    const result = await executeWithCache(
+      signatureType,
+      {
+        prompt,
+        researchFiles: research
+      },
+      async () => {
+        // This is the actual LLM call - only executed on cache miss
+        return await generatorFn(prompt, research);
+      },
+      { skipCache, forceRefresh }
+    );
+
+    // Track if this was a cache hit
+    const cacheHit = result.__cacheHit || false;
+    if (cacheHit) {
+      console.log(`   📦 [Cache HIT] ${contentType} - saved API call`);
+    }
 
     // Check for empty/minimal content
     if (!result.success && !result.data) {
       return {
         result: null,
-        error: categorizeEmptyError(contentType, { hasSuccess: result.success })
+        error: categorizeEmptyError(contentType, { hasSuccess: result.success }),
+        cacheHit
       };
     }
 
@@ -209,11 +251,12 @@ async function generateWithErrorHandling(generatorFn, contentType, prompt, resea
     if (missingFields.length > 0) {
       return {
         result,
-        error: categorizeSchemaError(missingFields, result.data)
+        error: categorizeSchemaError(missingFields, result.data),
+        cacheHit
       };
     }
 
-    return { result, error: null };
+    return { result, error: null, cacheHit };
 
   } catch (error) {
     // Categorize the error
@@ -224,10 +267,10 @@ async function generateWithErrorHandling(generatorFn, contentType, prompt, resea
     if (retryDelay && retryAttempt < (categorizedError.retryStrategy?.maxRetries || 0)) {
       console.log(`   ⏳ Retry ${retryAttempt + 1} after ${retryDelay}ms (${categorizedError.code})`);
       await sleep(retryDelay);
-      return generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt + 1);
+      return generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt + 1, options);
     }
 
-    return { result: null, error: categorizedError };
+    return { result: null, error: categorizedError, cacheHit: false };
   }
 }
 
@@ -993,7 +1036,14 @@ async function runTraining(iterations, delay, contentTypes) {
     regenerations: 0,
     thumbsUp: 0,
     thumbsDown: 0,
-    byContentType: {}
+    byContentType: {},
+    // DSPy cache statistics
+    cache: {
+      hits: 0,
+      misses: 0,
+      hitRate: '0%',
+      estimatedSavings: 0
+    }
   };
 
   // Initialize per-type stats
@@ -1073,13 +1123,20 @@ async function runTraining(iterations, delay, contentTypes) {
         const generator = generators[contentType];
         const variantId = 'unknown'; // Will be updated from result
 
-        // Use error-wrapped generation
-        const { result, error: genError } = await generateWithErrorHandling(
+        // Use error-wrapped generation with caching
+        const { result, error: genError, cacheHit } = await generateWithErrorHandling(
           generator, contentType, prompt, sampleSet.files
         );
 
         stats.totalGenerations++;
         stats.byContentType[contentType].total++;
+
+        // Track cache statistics
+        if (cacheHit) {
+          stats.cache.hits++;
+        } else {
+          stats.cache.misses++;
+        }
 
         // Check for system bugs - halt immediately
         if (genError && isSystemBug(genError)) {
@@ -1236,6 +1293,14 @@ async function runTraining(iterations, delay, contentTypes) {
   // Get error statistics summary
   const errorSummary = errorStats.getSummary();
 
+  // Calculate cache statistics
+  const totalCacheOps = stats.cache.hits + stats.cache.misses;
+  const cacheHitRate = totalCacheOps > 0
+    ? ((stats.cache.hits / totalCacheOps) * 100).toFixed(1) + '%'
+    : '0%';
+  // Estimate $0.02 per LLM call saved
+  const estimatedSavings = (stats.cache.hits * 0.02).toFixed(2);
+
   trainingProgress.results = {
     totalGenerations: stats.totalGenerations,
     successful: stats.successful,
@@ -1255,7 +1320,14 @@ async function runTraining(iterations, delay, contentTypes) {
     byContentType: stats.byContentType,
     variantUsage: stats.variantUsage,
     errors: stats.errors.slice(-10),
-    // New: categorized error statistics
+    // DSPy cache statistics
+    cache: {
+      hits: stats.cache.hits,
+      misses: stats.cache.misses,
+      hitRate: cacheHitRate,
+      estimatedSavings: `$${estimatedSavings}`
+    },
+    // Categorized error statistics
     errorAnalysis: {
       byCategory: errorSummary.byCategory,
       byVariant: errorSummary.byVariant,
@@ -1281,6 +1353,12 @@ async function runTraining(iterations, delay, contentTypes) {
   // Print evolution summary
   const evolStats = evolutionEngine.getStats();
   console.log(`   Evolution: ${evolStats.totalEvolutions} evolutions, ${evolStats.successfulPromotions} promotions, ${evolStats.failedPromotions} rejections`);
+
+  // Print cache summary
+  console.log(`   Cache: ${stats.cache.hits} hits, ${stats.cache.misses} misses (${cacheHitRate} hit rate)`);
+  if (stats.cache.hits > 0) {
+    console.log(`   💰 Estimated Savings: $${estimatedSavings} (${stats.cache.hits} API calls avoided)`);
+  }
 
   // Print error summary
   console.log(errorStats.formatForConsole());
