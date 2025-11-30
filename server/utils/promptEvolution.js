@@ -2465,6 +2465,154 @@ export class PromptEvolutionEngine {
 
     return engine;
   }
+
+  // ===========================================================================
+  // DSPy Integration Methods (Gap 04)
+  // ===========================================================================
+
+  /**
+   * Run DSPy optimization for a content type
+   *
+   * Gap 04: Integrates with the Python DSPy service to use
+   * BootstrapFewShot or MIPRO optimization.
+   *
+   * @param {string} contentType - Content type to optimize
+   * @param {Array} trainingExamples - High-quality training examples
+   * @param {Object} options - Optimization options
+   * @returns {Promise<Object|null>} Optimization result or null if unavailable
+   */
+  async runDSPyOptimization(contentType, trainingExamples, options = {}) {
+    try {
+      // Dynamically import DSPy client to avoid circular dependencies
+      const { dspyService } = await import('../clients/dspy-service.js');
+
+      // Check DSPy service availability
+      const available = await dspyService.isAvailable();
+      if (!available) {
+        console.log(`[DSPy] Service not available, skipping optimization for ${contentType}`);
+        return null;
+      }
+
+      // Run optimization
+      const result = await dspyService.optimize(contentType, trainingExamples, {
+        optimizer: options.optimizer || 'bootstrap',
+        config: {
+          max_demos: options.maxDemos || 4,
+          num_candidates: options.numCandidates || 10
+        }
+      });
+
+      if (result.success) {
+        console.log(`[DSPy] Optimized ${contentType}:`);
+        console.log(`  - Few-shot examples: ${result.few_shot_examples?.length || 0}`);
+        if (result.optimized_instructions) {
+          console.log(`  - New instructions extracted`);
+        }
+
+        // Store optimized instructions as new candidate if available
+        if (result.optimized_instructions && this.promptVersions[contentType]) {
+          this.promptVersions[contentType].candidate = result.optimized_instructions;
+          this.promptVersions[contentType].isTestingCandidate = true;
+          this.promptVersions[contentType].candidateSource = 'dspy-optimization';
+          this.promptVersions[contentType].candidateStats = { count: 0, totalScore: 0, avgScore: 0 };
+
+          // Record DSPy evolution
+          this.evolutionStats.totalEvolutions++;
+        }
+
+        return result;
+      }
+
+      return null;
+
+    } catch (error) {
+      console.warn(`[DSPy] Optimization unavailable for ${contentType}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Enhanced evolve that tries DSPy first
+   *
+   * Gap 04: Attempts DSPy optimization when sufficient training examples
+   * are available, falling back to manual evolution otherwise.
+   *
+   * @param {string} contentType - Content type to evolve
+   * @param {Array} trainingExamples - Training examples (optional)
+   * @param {Object} options - Evolution options
+   * @returns {Promise<Object>} Evolution result
+   */
+  async evolvePromptEnhanced(contentType, trainingExamples = [], options = {}) {
+    // Try DSPy optimization if we have enough examples
+    const minExamplesForDSPy = options.minExamplesForDSPy || 5;
+
+    if (trainingExamples.length >= minExamplesForDSPy) {
+      try {
+        const dspyResult = await this.runDSPyOptimization(contentType, trainingExamples, options);
+        if (dspyResult?.success) {
+          return {
+            evolved: true,
+            method: 'dspy',
+            optimizer: dspyResult.optimizer_used,
+            fewShotCount: dspyResult.few_shot_examples?.length || 0,
+            result: dspyResult
+          };
+        }
+      } catch (error) {
+        console.warn(`[DSPy] Enhanced evolution failed, falling back: ${error.message}`);
+      }
+    }
+
+    // Fallback to manual evolution
+    const manualResult = this.evolvePrompt(contentType);
+    return {
+      ...manualResult,
+      method: 'manual'
+    };
+  }
+
+  /**
+   * Generate content using DSPy service
+   *
+   * Gap 04: Allows generation through DSPy when the service is available.
+   *
+   * @param {string} contentType - Content type
+   * @param {Object} inputs - Generation inputs
+   * @param {Object} options - Generation options
+   * @returns {Promise<Object|null>} Generated content or null
+   */
+  async generateWithDSPy(contentType, inputs, options = {}) {
+    try {
+      const { dspyService } = await import('../clients/dspy-service.js');
+
+      const available = await dspyService.isAvailable();
+      if (!available) {
+        return null;
+      }
+
+      const result = await dspyService.generate(contentType, inputs, {
+        useOptimized: options.useOptimized !== false
+      });
+
+      if (result.success) {
+        return {
+          success: true,
+          data: result.output,
+          metadata: {
+            ...result.metadata,
+            backend: 'dspy',
+            usedOptimized: result.used_optimized
+          }
+        };
+      }
+
+      return null;
+
+    } catch (error) {
+      console.warn(`[DSPy] Generation failed for ${contentType}: ${error.message}`);
+      return null;
+    }
+  }
 }
 
 // Singleton instance for easy import
