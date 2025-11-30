@@ -78,7 +78,7 @@ export class GanttComponents {
   }
 
   /**
-   * Add the logo to the title container
+   * Add the logo to the title container (right side)
    */
   addLogo(titleContainer, titleElement) {
     const logoImg = document.createElement('img');
@@ -89,8 +89,8 @@ export class GanttComponents {
     logoImg.style.width = 'auto';
     logoImg.style.flexShrink = '0';
 
-    if (titleContainer && titleElement) {
-      titleContainer.insertBefore(logoImg, titleElement);
+    if (titleContainer) {
+      titleContainer.appendChild(logoImg);
     }
   }
 
