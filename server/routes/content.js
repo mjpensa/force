@@ -723,7 +723,24 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       });
     }
 
-    const contentResult = session.content[contentKey];
+    let contentResult = session.content[contentKey];
+    
+    // Self-healing: If slides content is missing (from sessions created during feature removal),
+    // return the placeholder data immediately.
+    if (!contentResult && viewType === 'slides') {
+      contentResult = {
+        success: true,
+        data: {
+          title: "Placeholder",
+          slides: []
+        }
+      };
+      // Optionally update the session in storage to persist this fix
+      session.content.slides = contentResult;
+      // We don't await this to avoid blocking the response
+      sessionStorage.save(sessionId, session).catch(err => console.error('Failed to auto-heal session:', err));
+    }
+
     if (!contentResult) {
       return res.status(404).json({
         error: 'Content not found',
