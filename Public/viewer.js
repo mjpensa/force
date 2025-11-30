@@ -462,8 +462,8 @@ class ContentViewer {
     }, 100);
 
     try {
-      // Dynamic import
-      const module = await import(modulePath);
+      // Dynamic import with cache busting to ensure latest version
+      const module = await import(`${modulePath}?t=${Date.now()}`);
       const ViewClass = module[exportName];
 
       // Cache for future use

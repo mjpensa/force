@@ -22,14 +22,12 @@ export class SlidesView {
     slide.style.justifyContent = 'center';
     slide.style.alignItems = 'center';
     
-    // Enforce 16:9 aspect ratio
+    // Enforce 16:9 aspect ratio with robust sizing
     slide.style.aspectRatio = '16 / 9';
-    
-    // Responsive sizing: fit within viewport with padding
-    // Use min() to ensure it fits both width and height constraints
-    // 1. Max width is 90% of viewport width
-    // 2. Max height is 90% of viewport height (converted to width via aspect ratio)
-    slide.style.width = 'min(90vw, calc(80vh * 16 / 9))';
+    slide.style.width = '80vw'; 
+    slide.style.maxWidth = '1200px';
+    // Fallback for aspect-ratio support or calculation issues
+    slide.style.height = 'auto';
     
     const text = document.createElement('p');
     text.textContent = 'Slide templates coming soon...';
