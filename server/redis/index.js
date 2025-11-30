@@ -3,6 +3,7 @@
  *
  * Plan 08: Unified exports for Redis functionality
  * Plan 09: DSPy cache exports
+ * Plan 10: LangGraph Checkpointer exports
  *
  * Usage:
  *   import { getRedisClient, initializeRedis } from './redis/index.js';
@@ -16,6 +17,11 @@
  *   // DSPy caching (Plan 09)
  *   import { dspyCache } from './redis/index.js';
  *   const cached = await dspyCache.get('roadmap', inputs);
+ *
+ *   // LangGraph checkpointing (Plan 10)
+ *   import { checkpointer } from './redis/index.js';
+ *   await checkpointer.put(threadId, checkpoint);
+ *   const state = await checkpointer.get(threadId);
  */
 
 export {
@@ -35,6 +41,14 @@ export {
   SIGNATURE_TYPES,
   generateCacheKey
 } from './dspy-cache.js';
+
+// Plan 10: LangGraph Checkpointer exports
+export {
+  checkpointer,
+  RedisCheckpointer,
+  MemoryCheckpointStore,
+  CHECKPOINT_CONFIG
+} from './checkpointer.js';
 
 import { getRedisClient, isRedisHealthy, getRedisMetrics } from './client.js';
 import { CONFIG } from '../config.js';
