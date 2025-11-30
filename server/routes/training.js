@@ -28,14 +28,35 @@ import { runPreflightChecks } from '../utils/preflightChecks.js';
 import { calculateCorrelatedFeedback } from '../utils/feedbackSimulation.js';
 import { PromptEvolutionEngine } from '../utils/promptEvolution.js';
 import { scoreContentQuality } from '../utils/contentQualityScoring.js';
+import { executeWithCache, getCacheStats } from '../utils/dspyExecutor.js';
+import {
+  runTrainingGraph,
+  resumeTrainingGraph,
+  stopTrainingGraph,
+  getTrainingStatus as getGraphStatus,
+  streamTrainingGraph
+} from '../workflows/index.js';
+import { TrainingCheckpointManager } from '../utils/trainingCheckpointManager.js';
+import { createInitialCheckpoint, getCheckpointSummary } from '../utils/trainingCheckpoint.js';
 
 const router = express.Router();
+
+// Active checkpoint managers by session
+const checkpointManagers = new Map();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = join(__dirname, '..', '..');
 
 // Content types to train
 const CONTENT_TYPES = ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'];
+
+// Map content types to DSPy signature types for caching
+const CONTENT_TYPE_TO_SIGNATURE = {
+  'Roadmap': 'roadmap',
+  'Slides': 'slides',
+  'Document': 'document',
+  'ResearchAnalysis': 'research-analysis'
+};
 
 // Training configuration with prompts for each content type
 const TRAINING_CONFIG = {
@@ -190,17 +211,50 @@ function processEvolutionCycle(engine, iteration, evolutionInterval = 50) {
 // =============================================================================
 
 /**
- * Wrap generator function with error categorization
+ * Wrap generator function with caching and error categorization
+ *
+ * Uses DSPy cache to avoid redundant LLM calls for identical inputs.
+ * Cache hits are logged and tracked in training statistics.
+ *
+ * @param {Function} generatorFn - The generator function to call
+ * @param {string} contentType - Content type (Roadmap, Slides, etc.)
+ * @param {string} prompt - User prompt
+ * @param {Array} research - Research files
+ * @param {number} retryAttempt - Current retry attempt
+ * @param {Object} options - Additional options (skipCache, forceRefresh)
+ * @returns {Promise<{result: Object|null, error: Object|null, cacheHit: boolean}>}
  */
-async function generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt = 0) {
+async function generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt = 0, options = {}) {
+  const { skipCache = false, forceRefresh = false } = options;
+  const signatureType = CONTENT_TYPE_TO_SIGNATURE[contentType] || contentType.toLowerCase();
+
   try {
-    const result = await generatorFn(prompt, research);
+    // Use cache wrapper for generation
+    const result = await executeWithCache(
+      signatureType,
+      {
+        prompt,
+        researchFiles: research
+      },
+      async () => {
+        // This is the actual LLM call - only executed on cache miss
+        return await generatorFn(prompt, research);
+      },
+      { skipCache, forceRefresh }
+    );
+
+    // Track if this was a cache hit
+    const cacheHit = result.__cacheHit || false;
+    if (cacheHit) {
+      console.log(`   📦 [Cache HIT] ${contentType} - saved API call`);
+    }
 
     // Check for empty/minimal content
     if (!result.success && !result.data) {
       return {
         result: null,
-        error: categorizeEmptyError(contentType, { hasSuccess: result.success })
+        error: categorizeEmptyError(contentType, { hasSuccess: result.success }),
+        cacheHit
       };
     }
 
@@ -209,11 +263,12 @@ async function generateWithErrorHandling(generatorFn, contentType, prompt, resea
     if (missingFields.length > 0) {
       return {
         result,
-        error: categorizeSchemaError(missingFields, result.data)
+        error: categorizeSchemaError(missingFields, result.data),
+        cacheHit
       };
     }
 
-    return { result, error: null };
+    return { result, error: null, cacheHit };
 
   } catch (error) {
     // Categorize the error
@@ -224,10 +279,10 @@ async function generateWithErrorHandling(generatorFn, contentType, prompt, resea
     if (retryDelay && retryAttempt < (categorizedError.retryStrategy?.maxRetries || 0)) {
       console.log(`   ⏳ Retry ${retryAttempt + 1} after ${retryDelay}ms (${categorizedError.code})`);
       await sleep(retryDelay);
-      return generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt + 1);
+      return generateWithErrorHandling(generatorFn, contentType, prompt, research, retryAttempt + 1, options);
     }
 
-    return { result: null, error: categorizedError };
+    return { result: null, error: categorizedError, cacheHit: false };
   }
 }
 
@@ -882,6 +937,209 @@ router.get('/stop', (req, res) => {
   });
 });
 
+// =============================================================================
+// CHECKPOINT MANAGEMENT ENDPOINTS (Gap 03)
+// =============================================================================
+
+/**
+ * GET /api/train/resume/:sessionId
+ * Resume training from checkpoint
+ *
+ * Loads the last checkpoint for the session and continues training.
+ */
+router.get('/resume/:sessionId', async (req, res) => {
+  const secret = req.query.secret;
+  const expectedSecret = process.env.TRAIN_SECRET || 'train123';
+  const { sessionId } = req.params;
+
+  if (secret !== expectedSecret) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing secret.'
+    });
+  }
+
+  if (isTraining) {
+    return res.status(409).json({
+      error: 'Training in progress',
+      progress: trainingProgress
+    });
+  }
+
+  // Check if checkpoint exists
+  const manager = new TrainingCheckpointManager(sessionId);
+  const canResume = await manager.canResume();
+
+  if (!canResume) {
+    const exists = await manager.exists();
+    if (!exists) {
+      return res.status(404).json({
+        error: 'Session not found',
+        message: `No checkpoint found for session: ${sessionId}`
+      });
+    }
+    return res.status(400).json({
+      error: 'Cannot resume',
+      message: 'Session is already completed or failed'
+    });
+  }
+
+  const checkpoint = await manager.load();
+  if (!checkpoint) {
+    return res.status(404).json({
+      error: 'Checkpoint not found',
+      message: `Could not load checkpoint for session: ${sessionId}`
+    });
+  }
+
+  // Parse remaining config
+  const delay = checkpoint.config?.delay || 1000;
+  const contentTypes = checkpoint.config?.contentTypes || CONTENT_TYPES;
+
+  isTraining = true;
+  shouldStop = false;
+  trainingProgress = {
+    status: 'resuming',
+    sessionId,
+    resumingFrom: checkpoint.currentIteration,
+    iterations: checkpoint.totalIterations,
+    delay,
+    contentTypes,
+    startedAt: new Date().toISOString()
+  };
+
+  res.json({
+    message: 'Resuming training from checkpoint',
+    sessionId,
+    resumingFrom: checkpoint.currentIteration,
+    totalIterations: checkpoint.totalIterations,
+    progress: trainingProgress,
+    statusUrl: '/api/train/status'
+  });
+
+  // Resume training in background
+  runTrainingWithCheckpoints({
+    sessionId,
+    iterations: checkpoint.totalIterations,
+    delay,
+    contentTypes,
+    resume: true,
+    checkpointInterval: 10
+  }).catch(err => {
+    console.error('[Training] Resume error:', err);
+    trainingProgress.status = 'error';
+    trainingProgress.error = err.message;
+  }).finally(() => {
+    isTraining = false;
+  });
+});
+
+/**
+ * GET /api/train/checkpoints/:sessionId
+ * List checkpoint history for a session
+ */
+router.get('/checkpoints/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+  const limit = parseInt(req.query.limit) || 10;
+
+  try {
+    const manager = new TrainingCheckpointManager(sessionId);
+    const history = await manager.listHistory(limit);
+    const summary = await manager.getSummary();
+
+    res.json({
+      sessionId,
+      summary,
+      checkpoints: history
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to list checkpoints',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/train/checkpoints/:sessionId/:version
+ * Get specific checkpoint version
+ */
+router.get('/checkpoints/:sessionId/:version', async (req, res) => {
+  const { sessionId, version } = req.params;
+
+  try {
+    const manager = new TrainingCheckpointManager(sessionId);
+    const checkpoint = await manager.loadVersion(parseInt(version));
+
+    if (!checkpoint) {
+      return res.status(404).json({
+        error: 'Checkpoint not found',
+        message: `Version ${version} not found for session: ${sessionId}`
+      });
+    }
+
+    res.json({
+      sessionId,
+      version: parseInt(version),
+      summary: getCheckpointSummary(checkpoint),
+      checkpoint: {
+        currentIteration: checkpoint.currentIteration,
+        totalIterations: checkpoint.totalIterations,
+        status: checkpoint.status,
+        stats: checkpoint.stats,
+        config: checkpoint.config,
+        startedAt: checkpoint.startedAt,
+        lastCheckpointAt: checkpoint.lastCheckpointAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get checkpoint',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/train/checkpoints/:sessionId
+ * Delete all checkpoints for a session
+ */
+router.delete('/checkpoints/:sessionId', async (req, res) => {
+  const secret = req.query.secret || req.body?.secret;
+  const expectedSecret = process.env.TRAIN_SECRET || 'train123';
+  const { sessionId } = req.params;
+
+  if (secret !== expectedSecret) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing secret.'
+    });
+  }
+
+  // Don't allow deleting active session
+  if (isTraining && trainingProgress?.sessionId === sessionId) {
+    return res.status(409).json({
+      error: 'Cannot delete',
+      message: 'Cannot delete checkpoints for active training session'
+    });
+  }
+
+  try {
+    const manager = new TrainingCheckpointManager(sessionId);
+    await manager.clear();
+
+    res.json({
+      success: true,
+      message: `Checkpoints deleted for session: ${sessionId}`
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to delete checkpoints',
+      message: error.message
+    });
+  }
+});
+
 /**
  * GET /api/train
  * Start training (protected by secret)
@@ -993,7 +1251,14 @@ async function runTraining(iterations, delay, contentTypes) {
     regenerations: 0,
     thumbsUp: 0,
     thumbsDown: 0,
-    byContentType: {}
+    byContentType: {},
+    // DSPy cache statistics
+    cache: {
+      hits: 0,
+      misses: 0,
+      hitRate: '0%',
+      estimatedSavings: 0
+    }
   };
 
   // Initialize per-type stats
@@ -1073,13 +1338,20 @@ async function runTraining(iterations, delay, contentTypes) {
         const generator = generators[contentType];
         const variantId = 'unknown'; // Will be updated from result
 
-        // Use error-wrapped generation
-        const { result, error: genError } = await generateWithErrorHandling(
+        // Use error-wrapped generation with caching
+        const { result, error: genError, cacheHit } = await generateWithErrorHandling(
           generator, contentType, prompt, sampleSet.files
         );
 
         stats.totalGenerations++;
         stats.byContentType[contentType].total++;
+
+        // Track cache statistics
+        if (cacheHit) {
+          stats.cache.hits++;
+        } else {
+          stats.cache.misses++;
+        }
 
         // Check for system bugs - halt immediately
         if (genError && isSystemBug(genError)) {
@@ -1236,6 +1508,14 @@ async function runTraining(iterations, delay, contentTypes) {
   // Get error statistics summary
   const errorSummary = errorStats.getSummary();
 
+  // Calculate cache statistics
+  const totalCacheOps = stats.cache.hits + stats.cache.misses;
+  const cacheHitRate = totalCacheOps > 0
+    ? ((stats.cache.hits / totalCacheOps) * 100).toFixed(1) + '%'
+    : '0%';
+  // Estimate $0.02 per LLM call saved
+  const estimatedSavings = (stats.cache.hits * 0.02).toFixed(2);
+
   trainingProgress.results = {
     totalGenerations: stats.totalGenerations,
     successful: stats.successful,
@@ -1255,7 +1535,14 @@ async function runTraining(iterations, delay, contentTypes) {
     byContentType: stats.byContentType,
     variantUsage: stats.variantUsage,
     errors: stats.errors.slice(-10),
-    // New: categorized error statistics
+    // DSPy cache statistics
+    cache: {
+      hits: stats.cache.hits,
+      misses: stats.cache.misses,
+      hitRate: cacheHitRate,
+      estimatedSavings: `$${estimatedSavings}`
+    },
+    // Categorized error statistics
     errorAnalysis: {
       byCategory: errorSummary.byCategory,
       byVariant: errorSummary.byVariant,
@@ -1282,8 +1569,696 @@ async function runTraining(iterations, delay, contentTypes) {
   const evolStats = evolutionEngine.getStats();
   console.log(`   Evolution: ${evolStats.totalEvolutions} evolutions, ${evolStats.successfulPromotions} promotions, ${evolStats.failedPromotions} rejections`);
 
+  // Print cache summary
+  console.log(`   Cache: ${stats.cache.hits} hits, ${stats.cache.misses} misses (${cacheHitRate} hit rate)`);
+  if (stats.cache.hits > 0) {
+    console.log(`   💰 Estimated Savings: $${estimatedSavings} (${stats.cache.hits} API calls avoided)`);
+  }
+
   // Print error summary
   console.log(errorStats.formatForConsole());
+}
+
+// =============================================================================
+// CHECKPOINT-ENABLED TRAINING (Gap 03)
+// =============================================================================
+
+/**
+ * Run training with checkpoint support
+ *
+ * Gap 03: Enhanced training loop with periodic checkpointing for
+ * session resumption and crash recovery.
+ *
+ * @param {Object} config - Training configuration
+ * @param {string} config.sessionId - Unique session identifier
+ * @param {number} config.iterations - Total iterations
+ * @param {number} config.delay - Delay between iterations
+ * @param {Array} config.contentTypes - Content types to train
+ * @param {boolean} config.resume - Whether to resume from checkpoint
+ * @param {number} config.checkpointInterval - Iterations between checkpoints
+ */
+async function runTrainingWithCheckpoints(config) {
+  const {
+    sessionId,
+    iterations = 10,
+    delay = 1000,
+    contentTypes = CONTENT_TYPES,
+    resume = false,
+    checkpointInterval = 10
+  } = config;
+
+  console.log(`\n🚀 [API] Training with Checkpoints - Session: ${sessionId}`);
+  console.log(`   Mode: ${resume ? 'RESUME' : 'NEW'}`);
+  console.log(`   Iterations: ${iterations}, Delay: ${delay}ms`);
+  console.log(`   Content Types: ${contentTypes.join(', ')}`);
+  console.log(`   Checkpoint Interval: ${checkpointInterval}`);
+
+  process.env.ENABLE_OPTIMIZATION = 'true';
+
+  // Initialize checkpoint manager
+  const checkpointManager = new TrainingCheckpointManager(sessionId, { checkpointInterval });
+  checkpointManagers.set(sessionId, checkpointManager);
+
+  // Dynamic imports for generators
+  const {
+    generateRoadmap,
+    generateSlides,
+    generateDocument,
+    generateResearchAnalysis
+  } = await import('../generators.js');
+  const { getMetricsCollector } = await import('../layers/optimization/metrics/index.js');
+  const { getVariantRegistry } = await import('../layers/optimization/variants/index.js');
+
+  const generators = {
+    Roadmap: generateRoadmap,
+    Slides: generateSlides,
+    Document: generateDocument,
+    ResearchAnalysis: generateResearchAnalysis
+  };
+
+  const collector = getMetricsCollector();
+  const registry = getVariantRegistry();
+
+  // Load sample sets
+  const sampleSets = [];
+  for (const setConfig of TRAINING_CONFIG.sampleSets) {
+    const files = await loadResearchFiles(setConfig.path);
+    if (files.length > 0) {
+      sampleSets.push({ ...setConfig, files });
+      console.log(`   ✓ ${setConfig.name}: ${files.length} files`);
+    }
+  }
+
+  if (sampleSets.length === 0) {
+    trainingProgress.status = 'error';
+    trainingProgress.error = 'No sample sets found';
+    throw new Error('No sample sets with files found');
+  }
+
+  // Initialize or restore state
+  let state;
+  let evolutionEngine;
+
+  if (resume) {
+    // Load from checkpoint
+    state = await checkpointManager.load();
+    if (!state) {
+      throw new Error(`No checkpoint found for session: ${sessionId}`);
+    }
+
+    // Restore evolution engine
+    if (state.evolutionState) {
+      evolutionEngine = PromptEvolutionEngine.deserialize(state.evolutionState);
+      console.log('   ✓ Evolution engine restored from checkpoint');
+    } else {
+      evolutionEngine = initializeEvolution();
+    }
+  } else {
+    // Create fresh state
+    state = createInitialCheckpoint(sessionId, {
+      iterations,
+      sampleSets,
+      contentTypes,
+      delay,
+      options: {}
+    });
+    evolutionEngine = initializeEvolution();
+  }
+
+  // Error statistics collector
+  const errorStats = new ErrorStatsCollector();
+
+  // Calculate iterations
+  const totalIterations = iterations * sampleSets.length * contentTypes.length;
+  state.totalIterations = totalIterations;
+
+  trainingProgress.status = 'running';
+  trainingProgress.sessionId = sessionId;
+  trainingProgress.total = totalIterations;
+  trainingProgress.current = state.currentIteration;
+
+  // Determine starting position
+  const startIteration = state.currentIteration;
+  const cycleSize = contentTypes.length * sampleSets.length;
+
+  console.log(`   Starting from iteration ${startIteration}/${totalIterations}`);
+
+  try {
+    // Main training loop
+    for (let i = startIteration; i < totalIterations; i++) {
+      if (shouldStop) {
+        console.log('\n⛔ [API] Training stopped by user');
+        state.status = 'stopped';
+        state.stoppedAt = Date.now();
+        await checkpointManager.saveStopped(state);
+        trainingProgress.status = 'stopped';
+        trainingProgress.stoppedAt = new Date().toISOString();
+        break;
+      }
+
+      // Calculate which sample set and content type to use
+      const cyclePosition = i % cycleSize;
+      const sampleSetIndex = Math.floor(cyclePosition / contentTypes.length);
+      const contentTypeIndex = cyclePosition % contentTypes.length;
+
+      const sampleSet = sampleSets[sampleSetIndex];
+      const contentType = contentTypes[contentTypeIndex];
+
+      // Update progress
+      state.currentIteration = i;
+      trainingProgress.current = i;
+      trainingProgress.percent = Math.round((i / totalIterations) * 100);
+      trainingProgress.currentSet = sampleSet.name;
+      trainingProgress.currentType = contentType;
+
+      const prompt = sampleSet.prompts[contentType];
+      const generator = generators[contentType];
+
+      // Generate with error handling and caching
+      const { result, error: genError, cacheHit } = await generateWithErrorHandling(
+        generator, contentType, prompt, sampleSet.files
+      );
+
+      // Update stats
+      state.stats.totalGenerations++;
+      if (cacheHit) {
+        state.stats.cacheHits++;
+      } else {
+        state.stats.cacheMisses++;
+      }
+
+      // Check for system bugs
+      if (genError && isSystemBug(genError)) {
+        console.error(`\n❌ SYSTEM BUG DETECTED: ${genError.toString()}`);
+        errorStats.recordError(genError, 'unknown', contentType);
+        state.status = 'failed';
+        state.failedAt = Date.now();
+        state.failureReason = genError.message;
+        await checkpointManager.saveError(state, genError);
+        trainingProgress.status = 'error';
+        trainingProgress.error = `System bug: ${genError.message}`;
+        shouldStop = true;
+        break;
+      }
+
+      if (result?.success) {
+        const currentVariant = result._variant?.id || 'champion';
+
+        // Score the result
+        const { feedback, error: scoreError } = scoreWithErrorHandling(
+          result, result._validation, contentType, calculateRealisticFeedback
+        );
+
+        if (feedback) {
+          state.stats.successful++;
+          errorStats.recordSuccess(currentVariant, contentType);
+
+          state.stats.qualityScores.push(feedback.rating);
+          state.stats.feedbackDistribution[feedback.rating] =
+            (state.stats.feedbackDistribution[feedback.rating] || 0) + 1;
+
+          // Record for evolution
+          try {
+            const output = JSON.stringify(result.data || {});
+            evolutionEngine.recordGeneration(contentType, prompt, output, feedback.rating);
+          } catch (evolveErr) {
+            console.warn(`   ⚠️ Evolution recording error: ${evolveErr.message}`);
+          }
+
+          // Record result
+          state.results.push({
+            iteration: i,
+            contentType,
+            sampleSet: sampleSet.name,
+            rating: feedback.rating,
+            qualityScore: feedback.qualityScore,
+            cacheHit,
+            timestamp: Date.now()
+          });
+
+          if (scoreError) {
+            errorStats.recordError(scoreError, currentVariant, contentType);
+          }
+        } else {
+          state.stats.failed++;
+          if (scoreError) {
+            errorStats.recordError(scoreError, currentVariant, contentType);
+            state.errors.push({
+              iteration: i,
+              contentType,
+              error: scoreError.message,
+              timestamp: Date.now()
+            });
+          }
+        }
+      } else {
+        state.stats.failed++;
+        if (genError) {
+          errorStats.recordError(genError, 'unknown', contentType);
+          state.errors.push({
+            iteration: i,
+            contentType,
+            error: genError.message,
+            category: genError.category,
+            timestamp: Date.now()
+          });
+        }
+      }
+
+      // Update evolution state for checkpoint
+      state.evolutionState = evolutionEngine.serialize();
+
+      // Periodic checkpoint save
+      await checkpointManager.save(state);
+
+      // Periodic evolution cycle
+      if ((i + 1) % 50 === 0) {
+        try {
+          const evolutionResults = processEvolutionCycle(evolutionEngine, i + 1);
+          if (evolutionResults) {
+            trainingProgress.lastEvolution = {
+              iteration: i + 1,
+              promotions: evolutionResults.promotions.length,
+              evolutions: evolutionResults.evolutions.length
+            };
+          }
+        } catch (evolveErr) {
+          console.warn(`   ⚠️ Evolution cycle error: ${evolveErr.message}`);
+        }
+      }
+
+      // Check for anomalies
+      if ((i + 1) % 10 === 0) {
+        const { anomalies } = errorStats.detectAnomalies();
+        if (anomalies.some(a => a.action === 'HALT_TRAINING')) {
+          console.error('\n❌ ANOMALY DETECTED - HALTING TRAINING');
+          state.status = 'failed';
+          state.failedAt = Date.now();
+          state.failureReason = 'System anomaly detected';
+          await checkpointManager.saveError(state, new Error('Anomaly detected'));
+          trainingProgress.status = 'error';
+          trainingProgress.error = 'System anomaly detected';
+          trainingProgress.anomalies = anomalies;
+          shouldStop = true;
+          break;
+        }
+      }
+
+      await sleep(delay);
+    }
+
+    // Finalize
+    await collector.flush();
+
+    if (state.status !== 'stopped' && state.status !== 'failed') {
+      state.status = 'completed';
+      state.completedAt = Date.now();
+      state.currentIteration = totalIterations;
+      await checkpointManager.saveFinal(state);
+    }
+
+    // Calculate final statistics
+    const avgQuality = state.stats.qualityScores.length > 0
+      ? state.stats.qualityScores.reduce((a, b) => a + b, 0) / state.stats.qualityScores.length
+      : 0;
+
+    const successRate = state.stats.totalGenerations > 0
+      ? Math.round((state.stats.successful / state.stats.totalGenerations) * 100)
+      : 0;
+
+    const totalCacheOps = state.stats.cacheHits + state.stats.cacheMisses;
+    const cacheHitRate = totalCacheOps > 0
+      ? ((state.stats.cacheHits / totalCacheOps) * 100).toFixed(1)
+      : '0';
+
+    trainingProgress.results = {
+      sessionId,
+      totalGenerations: state.stats.totalGenerations,
+      successful: state.stats.successful,
+      failed: state.stats.failed,
+      successRate: `${successRate}%`,
+      avgQuality: avgQuality.toFixed(2),
+      feedbackDistribution: state.stats.feedbackDistribution,
+      cache: {
+        hits: state.stats.cacheHits,
+        misses: state.stats.cacheMisses,
+        hitRate: `${cacheHitRate}%`
+      },
+      evolution: evolutionEngine.getStats()
+    };
+
+    if (state.status !== 'stopped') {
+      trainingProgress.status = 'completed';
+      trainingProgress.completedAt = new Date().toISOString();
+    }
+
+    const statusMsg = state.status === 'stopped' ? '⛔ Stopped' : '✅ Complete';
+    console.log(`\n${statusMsg} [API] Training with Checkpoints - Session: ${sessionId}`);
+    console.log(`   Success: ${state.stats.successful}/${state.stats.totalGenerations} (${successRate}%)`);
+    console.log(`   Avg Quality: ${avgQuality.toFixed(2)}/5`);
+    console.log(`   Cache: ${state.stats.cacheHits} hits, ${state.stats.cacheMisses} misses (${cacheHitRate}% hit rate)`);
+
+    // Print error summary
+    console.log(errorStats.formatForConsole());
+
+    return state;
+
+  } catch (error) {
+    state.status = 'failed';
+    state.failedAt = Date.now();
+    state.failureReason = error.message;
+    await checkpointManager.saveError(state, error);
+    trainingProgress.status = 'error';
+    trainingProgress.error = error.message;
+    throw error;
+
+  } finally {
+    checkpointManagers.delete(sessionId);
+  }
+}
+
+// =============================================================================
+// LANGGRAPH-BASED TRAINING ENDPOINTS (Gap 02)
+// =============================================================================
+
+/**
+ * POST /api/train/graph
+ * Start graph-based training with LangGraph orchestration
+ *
+ * Body params:
+ *   - secret: Required auth token
+ *   - iterations: Number of iterations (default: 10)
+ *   - delay: Delay between generations in ms (default: 1000)
+ *   - contentTypes: Array of content types to train (default: all)
+ *   - sessionId: Optional session ID for resumption
+ */
+router.post('/graph', async (req, res) => {
+  const secret = req.body.secret || req.query.secret;
+  const expectedSecret = process.env.TRAIN_SECRET || 'train123';
+
+  if (secret !== expectedSecret) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing secret.'
+    });
+  }
+
+  if (isTraining) {
+    return res.status(409).json({
+      error: 'Training in progress',
+      progress: trainingProgress
+    });
+  }
+
+  const iterations = parseInt(req.body.iterations) || 10;
+  const delay = parseInt(req.body.delay) || 1000;
+  const sessionId = req.body.sessionId || `training_${Date.now()}`;
+
+  // Parse content types to train
+  let typesToTrain = req.body.contentTypes || CONTENT_TYPES;
+  if (typeof typesToTrain === 'string') {
+    typesToTrain = typesToTrain.split(',').filter(t => CONTENT_TYPES.includes(t));
+  }
+  if (typesToTrain.length === 0) typesToTrain = CONTENT_TYPES;
+
+  isTraining = true;
+  shouldStop = false;
+  trainingProgress = {
+    status: 'starting',
+    mode: 'graph',
+    sessionId,
+    iterations,
+    delay,
+    contentTypes: typesToTrain,
+    startedAt: new Date().toISOString()
+  };
+
+  res.json({
+    message: 'Graph-based training started',
+    sessionId,
+    progress: trainingProgress,
+    statusUrl: `/api/train/graph/status/${sessionId}`
+  });
+
+  // Run graph-based training in background
+  runGraphTraining(sessionId, iterations, delay, typesToTrain).catch(err => {
+    console.error('[GraphTraining] Error:', err);
+    trainingProgress.status = 'error';
+    trainingProgress.error = err.message;
+  }).finally(() => {
+    isTraining = false;
+  });
+});
+
+/**
+ * POST /api/train/graph/resume/:sessionId
+ * Resume a stopped or interrupted graph-based training session
+ */
+router.post('/graph/resume/:sessionId', async (req, res) => {
+  const secret = req.body.secret || req.query.secret;
+  const expectedSecret = process.env.TRAIN_SECRET || 'train123';
+
+  if (secret !== expectedSecret) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing secret.'
+    });
+  }
+
+  if (isTraining) {
+    return res.status(409).json({
+      error: 'Training in progress',
+      progress: trainingProgress
+    });
+  }
+
+  const { sessionId } = req.params;
+
+  // Check if session exists
+  const existingStatus = await getGraphStatus(sessionId);
+  if (!existingStatus) {
+    return res.status(404).json({
+      error: 'Session not found',
+      message: `No checkpoint found for session: ${sessionId}`
+    });
+  }
+
+  isTraining = true;
+  shouldStop = false;
+  trainingProgress = {
+    status: 'resuming',
+    mode: 'graph',
+    sessionId,
+    resumingFrom: existingStatus.currentIteration,
+    startedAt: new Date().toISOString()
+  };
+
+  res.json({
+    message: 'Resuming graph-based training',
+    sessionId,
+    resumingFrom: existingStatus.currentIteration,
+    progress: trainingProgress
+  });
+
+  // Resume training in background
+  resumeGraphTraining(sessionId).catch(err => {
+    console.error('[GraphTraining] Resume error:', err);
+    trainingProgress.status = 'error';
+    trainingProgress.error = err.message;
+  }).finally(() => {
+    isTraining = false;
+  });
+});
+
+/**
+ * GET /api/train/graph/status/:sessionId
+ * Get status of a graph-based training session
+ */
+router.get('/graph/status/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+
+  try {
+    const status = await getGraphStatus(sessionId);
+
+    if (!status) {
+      return res.status(404).json({
+        error: 'Session not found',
+        message: `No checkpoint found for session: ${sessionId}`
+      });
+    }
+
+    res.json({
+      sessionId,
+      ...status,
+      isActive: isTraining && trainingProgress?.sessionId === sessionId
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Status error',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/train/graph/stop/:sessionId
+ * Stop a running graph-based training session
+ */
+router.post('/graph/stop/:sessionId', async (req, res) => {
+  const secret = req.body.secret || req.query.secret;
+  const expectedSecret = process.env.TRAIN_SECRET || 'train123';
+
+  if (secret !== expectedSecret) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing secret.'
+    });
+  }
+
+  const { sessionId } = req.params;
+
+  // Set global stop flag for current session
+  if (trainingProgress?.sessionId === sessionId) {
+    shouldStop = true;
+  }
+
+  // Also set stop flag in checkpoint
+  const stopped = await stopTrainingGraph(sessionId);
+
+  res.json({
+    message: stopped ? 'Stop signal sent' : 'Session not found or already stopped',
+    sessionId,
+    stopped
+  });
+});
+
+/**
+ * Run graph-based training
+ *
+ * Uses LangGraph StateGraph for workflow orchestration with
+ * checkpointing enabled for session resumption.
+ */
+async function runGraphTraining(sessionId, iterations, delay, contentTypes) {
+  console.log('\n🎯 [GraphTraining] Starting graph-based training');
+  console.log(`   Session: ${sessionId}`);
+  console.log(`   Iterations: ${iterations}, Delay: ${delay}ms`);
+  console.log(`   Content Types: ${contentTypes.join(', ')}`);
+
+  process.env.ENABLE_OPTIMIZATION = 'true';
+
+  // Dynamic imports for generators
+  const {
+    generateRoadmap,
+    generateSlides,
+    generateDocument,
+    generateResearchAnalysis
+  } = await import('../generators.js');
+
+  const generators = {
+    Roadmap: generateRoadmap,
+    Slides: generateSlides,
+    Document: generateDocument,
+    ResearchAnalysis: generateResearchAnalysis
+  };
+
+  // Load sample sets
+  const sampleSets = [];
+  for (const setConfig of TRAINING_CONFIG.sampleSets) {
+    const files = await loadResearchFiles(setConfig.path);
+    if (files.length > 0) {
+      sampleSets.push({ ...setConfig, files });
+      console.log(`   ✓ ${setConfig.name}: ${files.length} files`);
+    }
+  }
+
+  if (sampleSets.length === 0) {
+    trainingProgress.status = 'error';
+    trainingProgress.error = 'No sample sets found';
+    throw new Error('No sample sets with files found');
+  }
+
+  // Calculate total iterations
+  const totalIterations = iterations * sampleSets.length * contentTypes.length;
+
+  trainingProgress.status = 'running';
+  trainingProgress.total = totalIterations;
+  trainingProgress.current = 0;
+
+  try {
+    // Run graph-based training
+    const result = await runTrainingGraph({
+      sessionId,
+      sampleSets,
+      contentTypes,
+      iterations: totalIterations,
+      delay,
+      generators
+    });
+
+    trainingProgress.status = result.status || 'completed';
+    trainingProgress.completedAt = new Date().toISOString();
+    trainingProgress.results = result.summary;
+
+    console.log('\n✅ [GraphTraining] Complete');
+    if (result.summary) {
+      console.log(`   Iterations: ${result.summary.iterations}`);
+      console.log(`   Success Rate: ${result.summary.successRate}`);
+      console.log(`   Avg Quality: ${result.summary.avgQuality}/5`);
+      if (result.summary.cache) {
+        console.log(`   Cache Hit Rate: ${result.summary.cache.hitRate}`);
+      }
+    }
+
+    return result;
+
+  } catch (error) {
+    trainingProgress.status = 'error';
+    trainingProgress.error = error.message;
+    throw error;
+  }
+}
+
+/**
+ * Resume graph-based training from checkpoint
+ */
+async function resumeGraphTraining(sessionId) {
+  console.log('\n🔄 [GraphTraining] Resuming training');
+  console.log(`   Session: ${sessionId}`);
+
+  process.env.ENABLE_OPTIMIZATION = 'true';
+
+  // Dynamic imports for generators
+  const {
+    generateRoadmap,
+    generateSlides,
+    generateDocument,
+    generateResearchAnalysis
+  } = await import('../generators.js');
+
+  const generators = {
+    Roadmap: generateRoadmap,
+    Slides: generateSlides,
+    Document: generateDocument,
+    ResearchAnalysis: generateResearchAnalysis
+  };
+
+  trainingProgress.status = 'running';
+
+  try {
+    const result = await resumeTrainingGraph(sessionId, { generators });
+
+    trainingProgress.status = result.status || 'completed';
+    trainingProgress.completedAt = new Date().toISOString();
+    trainingProgress.results = result.summary;
+
+    console.log('\n✅ [GraphTraining] Resume complete');
+    return result;
+
+  } catch (error) {
+    trainingProgress.status = 'error';
+    trainingProgress.error = error.message;
+    throw error;
+  }
 }
 
 export default router;

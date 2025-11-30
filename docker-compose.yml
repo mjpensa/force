@@ -1,0 +1,84 @@
+# Docker Compose configuration for Force with DSPy service
+#
+# Gap 04: Adds DSPy optimization service for training system integration.
+#
+# Usage:
+#   docker-compose up -d              # Start all services
+#   docker-compose logs -f dspy       # View DSPy service logs
+#   docker-compose restart dspy       # Restart DSPy service
+#
+# Services:
+#   - force-server: Main Node.js application
+#   - dspy-service: Python DSPy optimization service
+#   - redis: Redis cache for checkpoints and DSPy optimizations
+
+version: '3.8'
+
+services:
+  # Main Node.js application
+  force-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - DSPY_SERVICE_URL=http://dspy-service:8001
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - redis
+      - dspy-service
+    volumes:
+      - ./research:/app/research:ro
+      - ./output:/app/output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Python DSPy optimization service
+  dspy-service:
+    build:
+      context: ./dspy-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for caching and checkpoints
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  default:
+    name: force-network

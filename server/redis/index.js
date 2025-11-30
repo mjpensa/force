@@ -4,6 +4,7 @@
  * Plan 08: Unified exports for Redis functionality
  * Plan 09: DSPy cache exports
  * Plan 10: LangGraph Checkpointer exports
+ * Gap 05: Redis Advanced Features (Sorted Sets, Pub/Sub, Streams, Hashes, Lua)
  *
  * Usage:
  *   import { getRedisClient, initializeRedis } from './redis/index.js';
@@ -22,6 +23,26 @@
  *   import { checkpointer } from './redis/index.js';
  *   await checkpointer.put(threadId, checkpoint);
  *   const state = await checkpointer.get(threadId);
+ *
+ *   // Variant metrics (Gap 05)
+ *   import { variantMetrics } from './redis/index.js';
+ *   await variantMetrics.recordScore('variant-1', 4.5);
+ *
+ *   // Pub/Sub (Gap 05)
+ *   import { pubsub, publishCacheInvalidation } from './redis/index.js';
+ *   await publishCacheInvalidation('roadmap');
+ *
+ *   // Event streams (Gap 05)
+ *   import { eventStream, logTrainingEvent } from './redis/index.js';
+ *   await logTrainingEvent({ event: 'started', sessionId: '123' });
+ *
+ *   // Metadata store (Gap 05)
+ *   import { variantMeta, sessionMeta } from './redis/index.js';
+ *   await variantMeta.setFields('id', { name: 'Test' });
+ *
+ *   // Lua scripts (Gap 05)
+ *   import { luaScripts } from './redis/index.js';
+ *   await luaScripts.checkRateLimit('user-123', 60, 100);
  */
 
 export {
@@ -49,6 +70,52 @@ export {
   MemoryCheckpointStore,
   CHECKPOINT_CONFIG
 } from './checkpointer.js';
+
+// Gap 05: Variant Metrics (Sorted Sets)
+export {
+  variantMetrics,
+  VariantMetricsTracker
+} from './variant-metrics.js';
+
+// Gap 05: Pub/Sub for cache invalidation
+export {
+  pubsub,
+  PubSubManager,
+  publishCacheInvalidation,
+  subscribeToCacheInvalidation,
+  publishTrainingEvent,
+  subscribeToTrainingEvents,
+  publishSystemNotification,
+  subscribeToSystemNotifications,
+  CHANNELS
+} from './pubsub.js';
+
+// Gap 05: Event Streams for audit logging
+export {
+  eventStream,
+  EventStreamManager,
+  logTrainingEvent,
+  logGenerationEvent,
+  logEvolutionEvent,
+  logErrorEvent,
+  STREAM_KEYS
+} from './event-stream.js';
+
+// Gap 05: Hash-based Metadata Store
+export {
+  MetadataStore,
+  variantMeta,
+  sessionMeta,
+  cacheMeta,
+  requestMeta
+} from './metadata-store.js';
+
+// Gap 05: Lua Script Manager
+export {
+  luaScripts,
+  LuaScriptManager,
+  SCRIPT_NAMES
+} from './lua-scripts.js';
 
 import { getRedisClient, isRedisHealthy, getRedisMetrics } from './client.js';
 import { CONFIG } from '../config.js';
