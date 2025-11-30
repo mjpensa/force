@@ -38,13 +38,13 @@ export const slidesSchema = {
   required: ["title", "slides"]
 };
 
-export const generateSlidesPrompt = (userPrompt, researchContent) => \
+export const generateSlidesPrompt = (userPrompt, researchContent) => `
 You are an expert presentation designer. Create a professional presentation based on the user's request and the provided research content.
 
-USER REQUEST: "\"
+USER REQUEST: "${userPrompt}"
 
 RESEARCH CONTENT:
-\
+${researchContent}
 
 INSTRUCTIONS:
 1. Create a structured presentation that covers the key points from the research.
@@ -52,4 +52,4 @@ INSTRUCTIONS:
 3. Ensure the presentation flows logically.
 
 Output must be valid JSON matching the schema.
-\;
+`;
