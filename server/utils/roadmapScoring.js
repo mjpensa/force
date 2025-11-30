@@ -12,10 +12,13 @@
  * - legend[] for color meanings
  * - researchAnalysis for research quality metrics
  *
- * Implementation of Plan 04: Scoring Depth Parity - Phase 2 (Updated)
+ * Implementation of Plan 04: Scoring Depth Parity - Phase 2 (Optimized)
  */
 
 import { ROADMAP_DIMENSIONS, calculateWeightedScore } from './qualityDimensions.js';
+
+// Valid color palette from prompt
+const VALID_COLORS = ['priority-red', 'medium-red', 'mid-grey', 'light-grey', 'white', 'dark-blue'];
 
 // ============================================================================
 // Phase 2: Roadmap Quality Scoring Implementation (Schema-Aligned)
@@ -60,38 +63,37 @@ export function scoreRoadmapQuality(data) {
 
   const scores = {};
 
-  // 1. Swimlane Completeness - how well swimlanes cover the timeline
+  // 1. Swimlane Completeness - timeline coverage per swimlane
   scores.swimlaneCompleteness = scoreSwimlaneCompleteness(data, swimlanes, tasks);
 
-  // 2. Task Title Quality (replaces taskDescriptionQuality - no description field)
-  scores.taskTitleQuality = scoreTaskTitles(tasks);
+  // 2. Title Quality (consolidated: title + outcome + naming consistency)
+  scores.titleQuality = scoreTitleQuality(tasks);
 
-  // 3. Temporal Distribution - how well tasks are spread across columns
+  // 3. Temporal Distribution - tasks spread across columns
   scores.temporalDistribution = scoreTemporalDistribution(data, tasks);
 
-  // 4. Milestone Clarity - are milestones properly marked?
+  // 4. Interval Appropriateness - timeColumns format matches duration (NEW)
+  scores.intervalAppropriateness = scoreIntervalAppropriateness(data);
+
+  // 5. Milestone Clarity - milestones properly marked with taskType
   scores.milestoneClarity = scoreMilestoneClarity(tasks);
 
-  // 5. Task Type Distribution - variety of task/milestone/decision
-  scores.taskTypeDistribution = scoreTaskTypeDistribution(tasks);
+  // 6. Task Type Variety - presence of decisions (reduced scope)
+  scores.taskTypeVariety = scoreTaskTypeVariety(tasks);
 
-  // 6. Scope Alignment - are swimlanes distinct?
-  scores.scopeAlignment = scoreScopeAlignment(swimlanes);
+  // 7. Scope Alignment - swimlanes distinct + minimum count (merged)
+  scores.scopeAlignment = scoreScopeAlignment(swimlanes, tasks);
 
-  // 7. Outcome Orientation - do task titles describe outcomes?
-  scores.outcomeOrientation = scoreOutcomeOrientation(tasks);
+  // 8. Bar Validity - startCol/endCol/color validation (NEW)
+  scores.barValidity = scoreBarValidity(data, tasks);
 
-  // 8. Legend Coherence - do legend colors match used colors?
+  // 9. Legend Coherence - legend matches used colors
   scores.legendCoherence = scoreLegendCoherence(data, tasks);
-
-  // 9. Naming Consistency - consistent naming across tasks
-  scores.namingConsistency = scoreNamingConsistency(tasks);
 
   // 10. Granularity Balance - balanced task durations
   scores.granularityBalance = scoreGranularityBalance(tasks);
 
-  // Bonus dimensions (not weighted but tracked)
-  scores.swimlaneMinimum = scoreSwimlaneMinimum(swimlanes);
+  // 11. Research Fitness - uses researchAnalysis.overallScore
   scores.researchFitness = scoreResearchFitness(data);
 
   return calculateWeightedScore(scores, ROADMAP_DIMENSIONS);
@@ -103,25 +105,16 @@ export function scoreRoadmapQuality(data) {
 
 /**
  * Parse Gantt chart data into swimlanes and tasks
- *
- * @param {Object} data - Gantt chart data
- * @returns {Object} { swimlanes, tasks }
  */
 function parseGanttData(data) {
   const items = data.data || [];
-
   const swimlanes = items.filter(item => item.isSwimlane === true);
   const tasks = items.filter(item => item.isSwimlane === false);
-
   return { swimlanes, tasks };
 }
 
 /**
  * Get tasks belonging to a specific swimlane (by entity match)
- *
- * @param {Array} tasks - All tasks
- * @param {Object} swimlane - Swimlane object
- * @returns {Array} Tasks belonging to this swimlane
  */
 function getTasksForSwimlane(tasks, swimlane) {
   const swimlaneName = swimlane.entity || swimlane.title;
@@ -130,9 +123,6 @@ function getTasksForSwimlane(tasks, swimlane) {
 
 /**
  * Get the number of time columns
- *
- * @param {Object} data - Gantt chart data
- * @returns {number} Number of time columns
  */
 function getColumnCount(data) {
   return data.timeColumns?.length || 0;
@@ -144,18 +134,12 @@ function getColumnCount(data) {
 
 /**
  * Score swimlane completeness - how well swimlanes cover the timeline
- *
- * @param {Object} data - Gantt chart data
- * @param {Array} swimlanes - Parsed swimlanes
- * @param {Array} tasks - Parsed tasks
- * @returns {number} Score 0-1
  */
 export function scoreSwimlaneCompleteness(data, swimlanes, tasks) {
   if (!swimlanes?.length) return 0;
 
   const columnCount = getColumnCount(data);
   if (columnCount === 0) {
-    // No timeColumns - check if swimlanes have tasks
     const hasTasks = tasks.length > 0;
     return hasTasks ? 0.3 : 0;
   }
@@ -170,9 +154,7 @@ export function scoreSwimlaneCompleteness(data, swimlanes, tasks) {
       continue;
     }
 
-    // Calculate covered columns for this swimlane
     const coveredColumns = new Set();
-
     for (const task of swimlaneTasks) {
       const bar = task.bar;
       if (bar && bar.startCol != null && bar.endCol != null) {
@@ -182,7 +164,6 @@ export function scoreSwimlaneCompleteness(data, swimlanes, tasks) {
       }
     }
 
-    // Score based on coverage (60% coverage = full score)
     const targetCoverage = Math.max(1, columnCount * 0.6);
     coverageScores.push(Math.min(1, coveredColumns.size / targetCoverage));
   }
@@ -193,51 +174,80 @@ export function scoreSwimlaneCompleteness(data, swimlanes, tasks) {
 }
 
 /**
- * Score task title quality (schema has no description field)
+ * Score title quality (CONSOLIDATED: taskTitleQuality + outcomeOrientation + namingConsistency)
  *
- * @param {Array} tasks - Parsed tasks
- * @returns {number} Score 0-1
+ * Components:
+ * - Meaningfulness (25%): title length and specificity
+ * - Outcome orientation (25%): outcomes vs activities
+ * - Action words (25%): verbs and deliverables
+ * - Consistency (25%): casing and patterns
  */
-export function scoreTaskTitles(tasks) {
+export function scoreTitleQuality(tasks) {
   if (tasks.length === 0) return 0;
 
-  let totalScore = 0;
+  const titles = tasks.map(t => t.title || '').filter(t => t.length > 0);
+  if (titles.length === 0) return 0;
 
-  for (const task of tasks) {
-    const title = task.title || '';
+  let meaningfulnessScore = 0;
+  let outcomeScore = 0;
+  let actionScore = 0;
 
-    let taskScore = 0;
+  const outcomePatterns = [
+    /achieve/i, /deliver/i, /complete/i, /launch/i, /enable/i,
+    /reduce/i, /increase/i, /improve/i, /go.?live/i, /production/i,
+    /release/i, /deploy/i, /rollout/i, /cutover/i, /\d+%/
+  ];
 
-    // Has title at all
-    if (title.length > 0) taskScore += 0.25;
+  const activityPatterns = [
+    /work on/i, /continue/i, /ongoing/i, /research/i,
+    /explore/i, /investigate/i, /meeting/i, /discuss/i, /analyze/i
+  ];
 
-    // Title is meaningful (> 10 chars)
-    if (title.length > 10) taskScore += 0.25;
+  const actionWords = /\b(implement|develop|create|build|design|deploy|migrate|integrate|optimize|launch|deliver|establish|complete|enable|improve|release|rollout)\b/i;
+  const specificPatterns = /\d+|v\d|phase|stage|api|system|platform|service|module|feature/i;
 
-    // Title contains action/outcome words
-    const actionWords = /\b(implement|develop|create|build|design|deploy|migrate|integrate|optimize|launch|deliver|establish|complete|enable|improve|release|rollout)\b/i;
-    if (actionWords.test(title)) {
-      taskScore += 0.25;
-    }
+  for (const title of titles) {
+    // Meaningfulness
+    if (title.length > 10) meaningfulnessScore += 0.5;
+    if (specificPatterns.test(title)) meaningfulnessScore += 0.5;
 
-    // Title is specific (contains numbers, versions, or proper nouns)
-    const specificPatterns = /\d+|v\d|phase|stage|api|system|platform|service|module|feature/i;
-    if (specificPatterns.test(title)) {
-      taskScore += 0.25;
-    }
+    // Outcome orientation
+    const hasOutcome = outcomePatterns.some(p => p.test(title));
+    const hasActivity = activityPatterns.some(p => p.test(title));
+    if (hasOutcome && !hasActivity) outcomeScore += 1;
+    else if (hasOutcome && hasActivity) outcomeScore += 0.5;
+    else if (!hasOutcome && !hasActivity) outcomeScore += 0.3;
 
-    totalScore += taskScore;
+    // Action words
+    if (actionWords.test(title)) actionScore += 1;
   }
 
-  return totalScore / tasks.length;
+  meaningfulnessScore = meaningfulnessScore / titles.length;
+  outcomeScore = outcomeScore / titles.length;
+  actionScore = actionScore / titles.length;
+
+  // Consistency scoring
+  let consistencyScore = 0.5;
+  if (titles.length >= 3) {
+    // Check casing consistency
+    const cases = titles.map(n => {
+      if (n === n.toUpperCase()) return 'upper';
+      if (n === n.toLowerCase()) return 'lower';
+      if (n[0] === n[0].toUpperCase()) return 'title';
+      return 'mixed';
+    });
+    const dominantCase = getMostFrequent(cases);
+    const caseConsistency = cases.filter(c => c === dominantCase).length / cases.length;
+    consistencyScore = caseConsistency;
+  }
+
+  // Weighted combination
+  return (meaningfulnessScore * 0.25) + (outcomeScore * 0.25) +
+         (actionScore * 0.25) + (consistencyScore * 0.25);
 }
 
 /**
  * Score temporal distribution - how well tasks are spread across timeline
- *
- * @param {Object} data - Gantt chart data
- * @param {Array} tasks - Parsed tasks
- * @returns {number} Score 0-1
  */
 export function scoreTemporalDistribution(data, tasks) {
   if (tasks.length < 2) return 0.5;
@@ -245,64 +255,123 @@ export function scoreTemporalDistribution(data, tasks) {
   const columnCount = getColumnCount(data);
   if (columnCount === 0) return 0.5;
 
-  // Get normalized start positions (0-1 scale)
   const positions = tasks
     .map(t => {
       if (!t.bar || t.bar.startCol == null) return null;
-      return (t.bar.startCol - 1) / columnCount; // Normalize to 0-1
+      return (t.bar.startCol - 1) / columnCount;
     })
     .filter(p => p !== null)
     .sort((a, b) => a - b);
 
   if (positions.length < 2) return 0.5;
 
-  // Calculate distribution score (penalize clustering)
   const expectedGap = 1 / (positions.length + 1);
   let gapVariance = 0;
 
-  // Check gaps between consecutive tasks
   for (let i = 0; i < positions.length - 1; i++) {
     const gap = positions[i + 1] - positions[i];
     gapVariance += Math.pow(gap - expectedGap, 2);
   }
 
-  // Also check first and last gaps
   gapVariance += Math.pow(positions[0] - 0, 2);
   gapVariance += Math.pow(1 - positions[positions.length - 1], 2);
 
   const normalizedVariance = Math.sqrt(gapVariance / (positions.length + 1));
-
-  // Convert variance to score (lower variance = higher score)
   return Math.max(0, Math.min(1, 1 - normalizedVariance * 2));
 }
 
 /**
- * Score milestone clarity - are milestones properly identified?
+ * Score interval appropriateness - validate timeColumns format matches duration
  *
- * @param {Array} tasks - Parsed tasks
- * @returns {number} Score 0-1
+ * Prompt requirements:
+ * - ≤90 days: Weeks ["W1 2026", "W2 2026"]
+ * - 91-365 days: Months ["Jan 2026", "Feb 2026"]
+ * - 366-1095 days: Quarters ["Q1 2026", "Q2 2026"]
+ * - >1095 days: Years ["2020", "2021", "2022"]
+ */
+export function scoreIntervalAppropriateness(data) {
+  const timeColumns = data.timeColumns || [];
+  if (timeColumns.length < 2) return 0.5;
+
+  // Detect interval type from first column
+  const sample = timeColumns[0];
+  let detectedType = 'unknown';
+
+  if (/^W\d+\s*\d{4}$/i.test(sample)) {
+    detectedType = 'weeks';
+  } else if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i.test(sample)) {
+    detectedType = 'months';
+  } else if (/^Q[1-4]\s*\d{4}$/i.test(sample)) {
+    detectedType = 'quarters';
+  } else if (/^\d{4}$/.test(sample)) {
+    detectedType = 'years';
+  }
+
+  if (detectedType === 'unknown') return 0.5;
+
+  // Calculate implied duration based on column count and type
+  const columnCount = timeColumns.length;
+  let impliedDays;
+
+  switch (detectedType) {
+    case 'weeks':
+      impliedDays = columnCount * 7;
+      break;
+    case 'months':
+      impliedDays = columnCount * 30;
+      break;
+    case 'quarters':
+      impliedDays = columnCount * 91;
+      break;
+    case 'years':
+      impliedDays = columnCount * 365;
+      break;
+    default:
+      impliedDays = 0;
+  }
+
+  // Check if interval type is appropriate for duration
+  let score = 0;
+
+  if (detectedType === 'weeks' && impliedDays <= 90) {
+    score = 1.0;
+  } else if (detectedType === 'months' && impliedDays > 60 && impliedDays <= 365) {
+    score = 1.0;
+  } else if (detectedType === 'quarters' && impliedDays > 270 && impliedDays <= 1095) {
+    score = 1.0;
+  } else if (detectedType === 'years' && impliedDays > 730) {
+    score = 1.0;
+  } else {
+    // Partial credit for close matches
+    score = 0.5;
+  }
+
+  // Bonus for consistent format across all columns
+  const allMatch = timeColumns.every(col => {
+    if (detectedType === 'weeks') return /^W\d+\s*\d{4}$/i.test(col);
+    if (detectedType === 'months') return /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i.test(col);
+    if (detectedType === 'quarters') return /^Q[1-4]\s*\d{4}$/i.test(col);
+    if (detectedType === 'years') return /^\d{4}$/.test(col);
+    return false;
+  });
+
+  if (allMatch) score = Math.min(1, score + 0.1);
+
+  return score;
+}
+
+/**
+ * Score milestone clarity - are milestones properly identified?
  */
 export function scoreMilestoneClarity(tasks) {
   if (tasks.length === 0) return 0;
 
-  // Count tasks explicitly marked as milestones
   const milestoneCount = tasks.filter(t => t.taskType === 'milestone').length;
 
-  // Check for milestone-like keywords in titles
   const milestonePatterns = [
-    /milestone/i,
-    /launch/i,
-    /release/i,
-    /go.?live/i,
-    /complete/i,
-    /deliver/i,
-    /deploy/i,
-    /rollout/i,
-    /cutover/i,
-    /phase\s*\d/i,
-    /v\d+\.\d+/i,
-    /beta|alpha|ga\b/i,
-    /mvp/i
+    /milestone/i, /launch/i, /release/i, /go.?live/i, /complete/i,
+    /deliver/i, /deploy/i, /rollout/i, /cutover/i, /phase\s*\d/i,
+    /v\d+\.\d+/i, /beta|alpha|ga\b/i, /mvp/i
   ];
 
   let keywordMilestones = 0;
@@ -312,27 +381,25 @@ export function scoreMilestoneClarity(tasks) {
     }
   }
 
-  // Best case: explicit taskType matches keywords
   const alignedMilestones = tasks.filter(t =>
     t.taskType === 'milestone' &&
     milestonePatterns.some(p => p.test(t.title || ''))
   ).length;
 
-  // Score:
-  // - Having milestones at all (0.4)
-  // - Reasonable count (0.3)
-  // - Alignment between taskType and keywords (0.3)
   let score = 0;
 
-  if (milestoneCount > 0) {
-    score += 0.4;
+  // Having milestones
+  if (milestoneCount > 0) score += 0.4;
+
+  // Reasonable count (5-25% of tasks)
+  const milestoneRatio = milestoneCount / tasks.length;
+  if (milestoneRatio >= 0.05 && milestoneRatio <= 0.25) {
+    score += 0.3;
+  } else if (milestoneRatio > 0 && milestoneRatio < 0.4) {
+    score += 0.15;
   }
 
-  // Expect at least 1-2 milestones per 10 tasks
-  const expectedMilestones = Math.max(2, Math.ceil(tasks.length / 5));
-  score += Math.min(0.3, (milestoneCount / expectedMilestones) * 0.3);
-
-  // Alignment bonus
+  // Alignment between taskType and keywords
   if (milestoneCount > 0 && keywordMilestones > 0) {
     const alignmentRatio = alignedMilestones / Math.max(milestoneCount, keywordMilestones);
     score += alignmentRatio * 0.3;
@@ -342,20 +409,12 @@ export function scoreMilestoneClarity(tasks) {
 }
 
 /**
- * Score task type distribution - variety of task/milestone/decision
- *
- * @param {Array} tasks - Parsed tasks
- * @returns {number} Score 0-1
+ * Score task type variety - presence of decisions (focused scope)
  */
-export function scoreTaskTypeDistribution(tasks) {
+export function scoreTaskTypeVariety(tasks) {
   if (tasks.length === 0) return 0;
 
-  const typeCounts = {
-    task: 0,
-    milestone: 0,
-    decision: 0
-  };
-
+  const typeCounts = { task: 0, milestone: 0, decision: 0 };
   for (const task of tasks) {
     const type = task.taskType || 'task';
     if (typeCounts.hasOwnProperty(type)) {
@@ -363,162 +422,187 @@ export function scoreTaskTypeDistribution(tasks) {
     }
   }
 
-  // Score based on variety and reasonable proportions
-  let score = 0;
+  let score = 0.5; // Base score
 
   // Having at least 2 different types
   const typesUsed = Object.values(typeCounts).filter(c => c > 0).length;
-  score += (typesUsed / 3) * 0.4;
+  if (typesUsed >= 2) score += 0.2;
+  if (typesUsed >= 3) score += 0.2;
 
-  // Majority should be "task" (60-90%)
-  const taskRatio = typeCounts.task / tasks.length;
-  if (taskRatio >= 0.5 && taskRatio <= 0.9) {
-    score += 0.3;
-  } else if (taskRatio > 0.3 && taskRatio < 0.5) {
-    score += 0.2;
-  }
-
-  // Should have some milestones (5-25%)
-  const milestoneRatio = typeCounts.milestone / tasks.length;
-  if (milestoneRatio >= 0.05 && milestoneRatio <= 0.25) {
-    score += 0.2;
-  } else if (milestoneRatio > 0) {
-    score += 0.1;
-  }
-
-  // Decisions are optional but nice to have
+  // Decisions present (the unique value of this dimension now)
   if (typeCounts.decision > 0) {
     score += 0.1;
+    // Reasonable decision ratio (2-15%)
+    const decisionRatio = typeCounts.decision / tasks.length;
+    if (decisionRatio >= 0.02 && decisionRatio <= 0.15) {
+      score += 0.1;
+    }
   }
 
   return Math.min(1, score);
 }
 
 /**
- * Score scope alignment - are swimlanes distinct and non-overlapping?
- *
- * @param {Array} swimlanes - Parsed swimlanes
- * @returns {number} Score 0-1
+ * Score scope alignment - swimlanes distinct + minimum count (MERGED)
  */
-export function scoreScopeAlignment(swimlanes) {
+export function scoreScopeAlignment(swimlanes, tasks) {
   if (!swimlanes?.length) return 0;
-  if (swimlanes.length === 1) return 0.5; // Single swimlane is not ideal
 
+  let score = 0;
+
+  // Minimum count check (was swimlaneMinimum)
+  if (swimlanes.length === 1) {
+    score = 0.3; // Below minimum - major penalty
+  } else if (swimlanes.length === 2) {
+    score = 0.6; // Meets minimum
+  } else {
+    score = 0.7; // Exceeds minimum
+  }
+
+  // Each swimlane should have ≥3 tasks
+  let swimlanesWithEnoughTasks = 0;
+  for (const swimlane of swimlanes) {
+    const swimlaneTasks = getTasksForSwimlane(tasks, swimlane);
+    if (swimlaneTasks.length >= 3) {
+      swimlanesWithEnoughTasks++;
+    }
+  }
+  const taskMinRatio = swimlanesWithEnoughTasks / swimlanes.length;
+  score += taskMinRatio * 0.15;
+
+  // Check for distinct names (original scopeAlignment logic)
   const swimlaneNames = swimlanes
     .map(s => (s.title || s.entity || '').toLowerCase())
     .filter(n => n.length > 0);
 
-  if (swimlaneNames.length < 2) return 0.5;
-
-  let score = 0.7; // Base score for having multiple swimlanes
-
-  // Penalize overlapping names
-  for (let i = 0; i < swimlaneNames.length; i++) {
-    const words1 = new Set(swimlaneNames[i].split(/\s+/).filter(w => w.length > 3));
-
-    for (let j = i + 1; j < swimlaneNames.length; j++) {
-      const words2 = new Set(swimlaneNames[j].split(/\s+/).filter(w => w.length > 3));
-      const intersection = [...words1].filter(w => words2.has(w));
-
-      if (intersection.length > 0) {
-        score -= 0.1 * intersection.length;
+  if (swimlaneNames.length >= 2) {
+    // Penalize overlapping names
+    for (let i = 0; i < swimlaneNames.length; i++) {
+      const words1 = new Set(swimlaneNames[i].split(/\s+/).filter(w => w.length > 3));
+      for (let j = i + 1; j < swimlaneNames.length; j++) {
+        const words2 = new Set(swimlaneNames[j].split(/\s+/).filter(w => w.length > 3));
+        const intersection = [...words1].filter(w => words2.has(w));
+        if (intersection.length > 0) {
+          score -= 0.05 * intersection.length;
+        }
       }
     }
-  }
 
-  // Bonus for clear domain separation
-  const domainPatterns = [
-    /frontend|backend|infra|devops|data|security|product|design|marketing|sales|legal|finance|hr|operations/i,
-    /q[1-4]|phase|stream|workstream|track/i,
-    /it|technology|engineering|development/i
-  ];
+    // Bonus for clear domain separation
+    const domainPatterns = [
+      /frontend|backend|infra|devops|data|security|product|design|marketing|sales|legal|finance|hr|operations/i,
+      /q[1-4]|phase|stream|workstream|track/i,
+      /it|technology|engineering|development/i
+    ];
 
-  const matchCount = swimlaneNames.filter(n =>
-    domainPatterns.some(p => p.test(n))
-  ).length;
+    const matchCount = swimlaneNames.filter(n =>
+      domainPatterns.some(p => p.test(n))
+    ).length;
 
-  if (matchCount >= swimlaneNames.length * 0.5) {
-    score += 0.2;
+    if (matchCount >= swimlaneNames.length * 0.5) {
+      score += 0.15;
+    }
   }
 
   return Math.max(0, Math.min(1, score));
 }
 
 /**
- * Score outcome orientation - do tasks describe outcomes vs activities?
+ * Score bar validity - validate bar structure and values (NEW)
  *
- * @param {Array} tasks - Parsed tasks
- * @returns {number} Score 0-1
+ * Checks:
+ * - startCol ≤ endCol
+ * - Columns within timeColumns range
+ * - Proper null handling for unknown dates
+ * - Colors from valid palette
  */
-export function scoreOutcomeOrientation(tasks) {
-  if (tasks.length === 0) return 0;
+export function scoreBarValidity(data, tasks) {
+  if (tasks.length === 0) return 0.5;
 
-  const outcomePatterns = [
-    /achieve/i, /deliver/i, /complete/i, /launch/i,
-    /enable/i, /reduce/i, /increase/i, /improve/i,
-    /\d+%/, /roi|revenue|cost|efficiency|kpi/i,
-    /go.?live/i, /production/i, /release/i, /deploy/i,
-    /rollout/i, /cutover/i
-  ];
-
-  const activityPatterns = [
-    /work on/i, /continue/i, /ongoing/i,
-    /research/i, /explore/i, /investigate/i,
-    /meeting|discuss|review(?!.*board)/i, /analyze/i
-  ];
-
-  let totalScore = 0;
+  const columnCount = getColumnCount(data);
+  let validBars = 0;
+  let invalidBars = 0;
+  let nullBars = 0;
+  let validColors = 0;
 
   for (const task of tasks) {
-    const text = task.title || '';
+    const bar = task.bar;
 
-    const hasOutcome = outcomePatterns.some(p => p.test(text));
-    const hasActivity = activityPatterns.some(p => p.test(text));
-
-    if (hasOutcome && !hasActivity) {
-      totalScore += 1;
-    } else if (hasOutcome && hasActivity) {
-      totalScore += 0.6;
-    } else if (!hasOutcome && !hasActivity) {
-      totalScore += 0.4; // Neutral
+    if (!bar) {
+      invalidBars++;
+      continue;
     }
-    // Pure activity = 0
+
+    // Check for properly handled null bars (unknown dates)
+    if (bar.startCol === null && bar.endCol === null) {
+      nullBars++;
+      // Null bars are acceptable if color is still valid
+      if (bar.color && VALID_COLORS.includes(bar.color)) {
+        validColors++;
+      }
+      continue;
+    }
+
+    // Validate startCol ≤ endCol
+    if (bar.startCol != null && bar.endCol != null) {
+      if (bar.startCol <= bar.endCol) {
+        validBars++;
+      } else {
+        invalidBars++;
+        continue;
+      }
+
+      // Validate within range
+      if (columnCount > 0) {
+        if (bar.startCol >= 1 && bar.endCol <= columnCount) {
+          // Still valid
+        } else {
+          validBars--; // Reduce score slightly
+          invalidBars += 0.5;
+        }
+      }
+    } else {
+      invalidBars++;
+      continue;
+    }
+
+    // Check color validity
+    if (bar.color && VALID_COLORS.includes(bar.color)) {
+      validColors++;
+    }
   }
 
-  return totalScore / tasks.length;
+  const totalBars = tasks.length;
+  const validRatio = (validBars + nullBars) / Math.max(1, totalBars);
+  const colorRatio = validColors / Math.max(1, totalBars);
+
+  // Weighted score: bar structure (60%) + color validity (40%)
+  return (validRatio * 0.6) + (colorRatio * 0.4);
 }
 
 /**
  * Score legend coherence - do legend colors match used colors?
- *
- * @param {Object} data - Gantt chart data
- * @param {Array} tasks - Parsed tasks
- * @returns {number} Score 0-1
  */
 export function scoreLegendCoherence(data, tasks) {
   const legend = data.legend || [];
   const usedColors = new Set();
 
-  // Collect all colors used in tasks
   for (const task of tasks) {
     if (task.bar?.color) {
       usedColors.add(task.bar.color);
     }
   }
 
-  if (usedColors.size === 0) return 0.5; // No colors used
+  if (usedColors.size === 0) return 0.5;
 
-  // If legend is empty but colors are used consistently
   if (legend.length === 0) {
-    // Empty legend is acceptable if using position-based coloring
+    // Empty legend is acceptable for position-based coloring
     return 0.6;
   }
 
-  // Check if legend colors match used colors
   const legendColors = new Set(legend.map(l => l.color));
   const matchedColors = [...usedColors].filter(c => legendColors.has(c));
 
-  // Score based on coverage
   let score = 0;
 
   // Legend covers used colors
@@ -529,7 +613,7 @@ export function scoreLegendCoherence(data, tasks) {
   const hasLabels = legend.filter(l => l.label && l.label.length > 2).length;
   score += Math.min(0.3, (hasLabels / legend.length) * 0.3);
 
-  // No extra unused legend entries (slight penalty)
+  // No extra unused legend entries
   const unusedLegend = legend.filter(l => !usedColors.has(l.color)).length;
   if (unusedLegend > 0) {
     score -= 0.1 * Math.min(unusedLegend, 2);
@@ -541,85 +625,29 @@ export function scoreLegendCoherence(data, tasks) {
 }
 
 /**
- * Score naming consistency across tasks
- *
- * @param {Array} tasks - Parsed tasks
- * @returns {number} Score 0-1
- */
-export function scoreNamingConsistency(tasks) {
-  if (tasks.length < 3) return 0.5;
-
-  const titles = tasks
-    .map(t => t.title || '')
-    .filter(n => n.length > 0);
-
-  if (titles.length < 3) return 0.5;
-
-  let score = 0.5;
-
-  // Check for consistent casing
-  const cases = titles.map(n => {
-    if (n === n.toUpperCase()) return 'upper';
-    if (n === n.toLowerCase()) return 'lower';
-    if (n[0] === n[0].toUpperCase()) return 'title';
-    return 'mixed';
-  });
-
-  const dominantCase = getMostFrequent(cases);
-  const caseConsistency = cases.filter(c => c === dominantCase).length / cases.length;
-  score += caseConsistency * 0.25;
-
-  // Check for consistent prefixes/patterns
-  const startsWithVerb = titles.filter(n =>
-    /^(implement|develop|create|build|design|deploy|launch|enable|establish|complete|deliver)/i.test(n)
-  ).length;
-
-  if (startsWithVerb >= titles.length * 0.5) {
-    score += 0.25; // Consistent verb-first naming
-  }
-
-  // Penalize very inconsistent lengths
-  const lengths = titles.map(n => n.length);
-  const avgLength = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-  const lengthVariance = lengths.reduce((sum, l) => sum + Math.pow(l - avgLength, 2), 0) / lengths.length;
-  const lengthCV = avgLength > 0 ? Math.sqrt(lengthVariance) / avgLength : 1;
-
-  if (lengthCV < 0.5) score += 0.2;
-
-  return Math.min(1, score);
-}
-
-/**
  * Score task granularity balance
- *
- * @param {Array} tasks - Parsed tasks
- * @returns {number} Score 0-1
  */
 export function scoreGranularityBalance(tasks) {
   if (tasks.length < 2) return 0.5;
 
-  // Calculate task durations in columns
   const durations = tasks
     .map(t => {
       if (!t.bar || t.bar.startCol == null || t.bar.endCol == null) return null;
-      return t.bar.endCol - t.bar.startCol + 1; // Duration in columns
+      return t.bar.endCol - t.bar.startCol + 1;
     })
     .filter(d => d !== null && d > 0);
 
   if (durations.length < 2) return 0.5;
 
-  const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
   const minDuration = Math.min(...durations);
   const maxDuration = Math.max(...durations);
 
   let score = 0.5;
 
-  // Penalize extreme variance (10x difference is concerning)
   const ratio = maxDuration / Math.max(minDuration, 1);
   if (ratio < 5) score += 0.3;
   else if (ratio < 10) score += 0.15;
 
-  // Check that most tasks are in reasonable range (1-4 columns typical)
   const reasonableTasks = durations.filter(d => d >= 1 && d <= 5).length;
   const reasonableRatio = reasonableTasks / durations.length;
   score += reasonableRatio * 0.2;
@@ -628,38 +656,17 @@ export function scoreGranularityBalance(tasks) {
 }
 
 /**
- * Score swimlane minimum - validates ≥2 swimlanes per prompt requirement
- *
- * @param {Array} swimlanes - Parsed swimlanes
- * @returns {number} Score 0-1
- */
-export function scoreSwimlaneMinimum(swimlanes) {
-  const count = swimlanes?.length || 0;
-
-  if (count === 0) return 0;
-  if (count === 1) return 0.3; // Below minimum
-  if (count === 2) return 0.8; // Meets minimum
-  if (count >= 3) return 1.0; // Exceeds minimum
-
-  return 0;
-}
-
-/**
- * Score research fitness - uses researchAnalysis.overallScore if available
- *
- * @param {Object} data - Gantt chart data
- * @returns {number} Score 0-1
+ * Score research fitness - uses researchAnalysis.overallScore
  */
 export function scoreResearchFitness(data) {
   const analysis = data.researchAnalysis;
 
   if (!analysis || typeof analysis.overallScore !== 'number') {
-    return 0.5; // No research analysis - neutral
+    return 0.5;
   }
 
   // Convert 1-10 scale to 0-1
   const normalizedScore = (analysis.overallScore - 1) / 9;
-
   return Math.max(0, Math.min(1, normalizedScore));
 }
 
@@ -667,12 +674,6 @@ export function scoreResearchFitness(data) {
 // Helper Functions
 // ============================================================================
 
-/**
- * Get most frequent item in array
- *
- * @param {Array} arr - Array of items
- * @returns {*} Most frequent item
- */
 function getMostFrequent(arr) {
   const counts = {};
   let maxCount = 0;
@@ -694,9 +695,7 @@ function getMostFrequent(arr) {
 // ============================================================================
 
 /**
- * Validate Phase 2 implementation (updated for new schema)
- *
- * @returns {Object} Validation results
+ * Validate Phase 2 implementation (optimized dimensions)
  */
 export function validatePhase2() {
   const results = {
@@ -704,7 +703,7 @@ export function validatePhase2() {
     tests: []
   };
 
-  // Test 1: scoreRoadmapQuality returns valid structure for empty
+  // Test 1: scoreRoadmapQuality handles empty data
   const emptyResult = scoreRoadmapQuality({});
   results.tests.push({
     name: 'scoreRoadmapQuality handles empty data',
@@ -712,13 +711,13 @@ export function validatePhase2() {
     details: `overall=${emptyResult.overall}`
   });
 
-  // Test 2: All core dimensions are scored
+  // Test 2: All dimensions are scored
   const mockData = createMockGanttChart();
   const result = scoreRoadmapQuality(mockData);
   const dimensionCount = Object.keys(result.dimensions).length;
   results.tests.push({
-    name: 'Core dimensions scored (10+)',
-    passed: dimensionCount >= 10,
+    name: 'All 11 dimensions scored',
+    passed: dimensionCount === 11,
     details: `dimensions=${dimensionCount}`
   });
 
@@ -746,30 +745,67 @@ export function validatePhase2() {
     details: `good=${result.overall.toFixed(3)}, bad=${badResult.overall.toFixed(3)}`
   });
 
-  // Test 6: Parse Gantt data correctly
-  const { swimlanes, tasks } = parseGanttData(mockData);
+  // Test 6: scoreTitleQuality works (consolidated dimension)
+  const { tasks } = parseGanttData(mockData);
+  const titleScore = scoreTitleQuality(tasks);
   results.tests.push({
-    name: 'parseGanttData finds swimlanes',
-    passed: swimlanes.length >= 2,
-    details: `swimlanes=${swimlanes.length}`
+    name: 'scoreTitleQuality works (consolidated)',
+    passed: titleScore > 0 && titleScore <= 1,
+    details: `score=${titleScore.toFixed(3)}`
   });
 
-  // Test 7: Parse Gantt data finds tasks
+  // Test 7: scoreIntervalAppropriateness works (NEW)
+  const intervalScore = scoreIntervalAppropriateness(mockData);
   results.tests.push({
-    name: 'parseGanttData finds tasks',
-    passed: tasks.length >= 3,
-    details: `tasks=${tasks.length}`
+    name: 'scoreIntervalAppropriateness works',
+    passed: intervalScore >= 0 && intervalScore <= 1,
+    details: `score=${intervalScore.toFixed(3)}`
   });
 
-  // Test 8: scoreMilestoneClarity uses taskType
-  const milestoneScore = scoreMilestoneClarity(tasks);
+  // Test 8: scoreBarValidity works (NEW)
+  const barScore = scoreBarValidity(mockData, tasks);
   results.tests.push({
-    name: 'scoreMilestoneClarity works with taskType',
-    passed: typeof milestoneScore === 'number' && milestoneScore >= 0,
-    details: `score=${milestoneScore.toFixed(3)}`
+    name: 'scoreBarValidity works',
+    passed: barScore > 0.5, // Good mock should have valid bars
+    details: `score=${barScore.toFixed(3)}`
   });
 
-  // Test 9: Handles null/undefined gracefully
+  // Test 9: scoreScopeAlignment includes minimum check (MERGED)
+  const { swimlanes } = parseGanttData(mockData);
+  const scopeScore = scoreScopeAlignment(swimlanes, tasks);
+  results.tests.push({
+    name: 'scoreScopeAlignment includes minimum check',
+    passed: scopeScore >= 0.6, // 3 swimlanes should score well
+    details: `score=${scopeScore.toFixed(3)}`
+  });
+
+  // Test 10: Single swimlane scores low on scopeAlignment
+  const singleSwimlaneMock = { data: [{ title: 'Only', isSwimlane: true, entity: 'Only' }] };
+  const { swimlanes: singleSwimlanes, tasks: noTasks } = parseGanttData(singleSwimlaneMock);
+  const singleScore = scoreScopeAlignment(singleSwimlanes, noTasks);
+  results.tests.push({
+    name: 'Single swimlane scores low',
+    passed: singleScore <= 0.4,
+    details: `score=${singleScore.toFixed(3)}`
+  });
+
+  // Test 11: Invalid bar (startCol > endCol) is detected
+  const badBarMock = {
+    timeColumns: ['Q1', 'Q2', 'Q3', 'Q4'],
+    data: [
+      { title: 'Test', isSwimlane: true, entity: 'Test' },
+      { title: 'Bad Task', isSwimlane: false, entity: 'Test', bar: { startCol: 3, endCol: 1, color: 'dark-blue' } }
+    ]
+  };
+  const { tasks: badTasks } = parseGanttData(badBarMock);
+  const badBarScore = scoreBarValidity(badBarMock, badTasks);
+  results.tests.push({
+    name: 'Invalid bar detected',
+    passed: badBarScore < 0.7,
+    details: `score=${badBarScore.toFixed(3)}`
+  });
+
+  // Test 12: Handles null gracefully
   const nullResult = scoreRoadmapQuality(null);
   results.tests.push({
     name: 'Handles null gracefully',
@@ -777,113 +813,32 @@ export function validatePhase2() {
     details: `overall=${nullResult.overall}`
   });
 
-  // Test 10: scoreResearchFitness works
-  const researchScore = scoreResearchFitness(mockData);
-  results.tests.push({
-    name: 'scoreResearchFitness works',
-    passed: researchScore >= 0 && researchScore <= 1,
-    details: `score=${researchScore.toFixed(3)}`
-  });
-
-  // Test 11: scoreSwimlaneMinimum validates count
-  results.tests.push({
-    name: 'scoreSwimlaneMinimum validates count',
-    passed: scoreSwimlaneMinimum([]) === 0 && scoreSwimlaneMinimum([{}, {}]) >= 0.8,
-    details: `0=${scoreSwimlaneMinimum([])}, 2=${scoreSwimlaneMinimum([{}, {}])}`
-  });
-
-  // Test 12: Feedback generated for low scores
-  const lowScoreMock = { data: [{ title: 'Test', isSwimlane: true, entity: 'Test' }] };
-  const lowResult = scoreRoadmapQuality(lowScoreMock);
-  results.tests.push({
-    name: 'Feedback generated for low scores',
-    passed: Array.isArray(lowResult.feedback),
-    details: `feedbackCount=${lowResult.feedback?.length}`
-  });
-
-  // Calculate overall pass
   results.passed = results.tests.every(t => t.passed);
-
   return results;
 }
 
 /**
- * Create a mock Gantt chart for testing (actual schema format)
+ * Create a mock Gantt chart for testing
  */
 function createMockGanttChart() {
   return {
     title: 'Q1-Q4 2025 Roadmap',
     timeColumns: ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025'],
     data: [
-      // Swimlane 1
       { title: 'Backend Development', isSwimlane: true, entity: 'Backend Development', taskType: 'task' },
-      {
-        title: 'Implement API Gateway',
-        isSwimlane: false,
-        entity: 'Backend Development',
-        bar: { startCol: 1, endCol: 2, color: 'dark-blue' },
-        taskType: 'task'
-      },
-      {
-        title: 'Database Migration Complete',
-        isSwimlane: false,
-        entity: 'Backend Development',
-        bar: { startCol: 2, endCol: 3, color: 'priority-red' },
-        taskType: 'milestone'
-      },
-      {
-        title: 'Launch MVP Release',
-        isSwimlane: false,
-        entity: 'Backend Development',
-        bar: { startCol: 3, endCol: 4, color: 'priority-red' },
-        taskType: 'milestone'
-      },
-      // Swimlane 2
+      { title: 'Implement API Gateway', isSwimlane: false, entity: 'Backend Development', bar: { startCol: 1, endCol: 2, color: 'dark-blue' }, taskType: 'task' },
+      { title: 'Database Migration Complete', isSwimlane: false, entity: 'Backend Development', bar: { startCol: 2, endCol: 3, color: 'priority-red' }, taskType: 'milestone' },
+      { title: 'Launch MVP Release', isSwimlane: false, entity: 'Backend Development', bar: { startCol: 3, endCol: 4, color: 'priority-red' }, taskType: 'milestone' },
+
       { title: 'Frontend Development', isSwimlane: true, entity: 'Frontend Development', taskType: 'task' },
-      {
-        title: 'Design System Implementation',
-        isSwimlane: false,
-        entity: 'Frontend Development',
-        bar: { startCol: 1, endCol: 2, color: 'dark-blue' },
-        taskType: 'task'
-      },
-      {
-        title: 'User Dashboard Development',
-        isSwimlane: false,
-        entity: 'Frontend Development',
-        bar: { startCol: 2, endCol: 3, color: 'dark-blue' },
-        taskType: 'task'
-      },
-      {
-        title: 'Go-Live Decision',
-        isSwimlane: false,
-        entity: 'Frontend Development',
-        bar: { startCol: 3, endCol: 4, color: 'medium-red' },
-        taskType: 'decision'
-      },
-      // Swimlane 3
+      { title: 'Design System Implementation', isSwimlane: false, entity: 'Frontend Development', bar: { startCol: 1, endCol: 2, color: 'dark-blue' }, taskType: 'task' },
+      { title: 'User Dashboard Development', isSwimlane: false, entity: 'Frontend Development', bar: { startCol: 2, endCol: 3, color: 'dark-blue' }, taskType: 'task' },
+      { title: 'Go-Live Decision', isSwimlane: false, entity: 'Frontend Development', bar: { startCol: 3, endCol: 4, color: 'medium-red' }, taskType: 'decision' },
+
       { title: 'DevOps & Infrastructure', isSwimlane: true, entity: 'DevOps & Infrastructure', taskType: 'task' },
-      {
-        title: 'CI/CD Pipeline Setup',
-        isSwimlane: false,
-        entity: 'DevOps & Infrastructure',
-        bar: { startCol: 1, endCol: 1, color: 'mid-grey' },
-        taskType: 'task'
-      },
-      {
-        title: 'Kubernetes Migration',
-        isSwimlane: false,
-        entity: 'DevOps & Infrastructure',
-        bar: { startCol: 2, endCol: 3, color: 'mid-grey' },
-        taskType: 'task'
-      },
-      {
-        title: 'Production Readiness Complete',
-        isSwimlane: false,
-        entity: 'DevOps & Infrastructure',
-        bar: { startCol: 4, endCol: 4, color: 'priority-red' },
-        taskType: 'milestone'
-      }
+      { title: 'CI/CD Pipeline Setup', isSwimlane: false, entity: 'DevOps & Infrastructure', bar: { startCol: 1, endCol: 1, color: 'mid-grey' }, taskType: 'task' },
+      { title: 'Kubernetes Migration', isSwimlane: false, entity: 'DevOps & Infrastructure', bar: { startCol: 2, endCol: 3, color: 'mid-grey' }, taskType: 'task' },
+      { title: 'Production Readiness Complete', isSwimlane: false, entity: 'DevOps & Infrastructure', bar: { startCol: 4, endCol: 4, color: 'priority-red' }, taskType: 'milestone' }
     ],
     legend: [
       { color: 'priority-red', label: 'Milestones' },
@@ -893,25 +848,11 @@ function createMockGanttChart() {
     ],
     researchAnalysis: {
       topics: [
-        {
-          name: 'Backend Development',
-          fitnessScore: 8,
-          taskCount: 3,
-          includedinChart: true,
-          issues: [],
-          recommendation: 'Good coverage of backend tasks'
-        },
-        {
-          name: 'Frontend Development',
-          fitnessScore: 7,
-          taskCount: 3,
-          includedinChart: true,
-          issues: ['Some dates were vague'],
-          recommendation: 'Add more specific timelines'
-        }
+        { name: 'Backend Development', fitnessScore: 8, taskCount: 3, includedinChart: true, issues: [], recommendation: 'Good coverage' },
+        { name: 'Frontend Development', fitnessScore: 7, taskCount: 3, includedinChart: true, issues: ['Some dates vague'], recommendation: 'Add timelines' }
       ],
       overallScore: 7.5,
-      summary: 'Good research coverage with clear timelines for most initiatives'
+      summary: 'Good research coverage with clear timelines'
     }
   };
 }
