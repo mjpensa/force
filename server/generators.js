@@ -1401,7 +1401,13 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
     success: true,
     data: {
       title: "Placeholder",
-      slides: []
+      slides: [
+        {
+          title: "Coming Soon",
+          content: "Slide templates are currently being updated.",
+          notes: "This is a placeholder slide."
+        }
+      ]
     }
   };
 }

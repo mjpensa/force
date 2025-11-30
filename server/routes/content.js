@@ -732,7 +732,13 @@ router.get('/:sessionId/:viewType', async (req, res) => {
         success: true,
         data: {
           title: "Placeholder",
-          slides: []
+          slides: [
+            {
+              title: "Coming Soon",
+              content: "Slide templates are currently being updated.",
+              notes: "This is a placeholder slide."
+            }
+          ]
         }
       };
       // Optionally update the session in storage to persist this fix
