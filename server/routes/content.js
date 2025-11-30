@@ -758,7 +758,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
         // Update the session in storage to persist this fix
         session.content.slides = contentResult;
         // We don't await this to avoid blocking the response
-        sessionStorage.save(sessionId, session).catch(err => console.error('Failed to auto-heal session:', err));
+        sessionStorage.set(sessionId, session).catch(err => console.error('Failed to auto-heal session:', err));
       }
     } catch (healError) {
       console.error("Error during session auto-healing:", healError);
