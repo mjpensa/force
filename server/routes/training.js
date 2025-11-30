@@ -25,6 +25,9 @@ import {
   getRetryDelay
 } from '../utils/trainingErrors.js';
 import { runPreflightChecks } from '../utils/preflightChecks.js';
+import { calculateCorrelatedFeedback } from '../utils/feedbackSimulation.js';
+import { PromptEvolutionEngine } from '../utils/promptEvolution.js';
+import { scoreContentQuality } from '../utils/contentQualityScoring.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -75,6 +78,112 @@ const SUPPORTED_EXTENSIONS = ['.md', '.txt', '.docx'];
 
 // Quality score threshold for LLM_QUALITY_ERROR
 const QUALITY_THRESHOLD = 2.0;
+
+// =============================================================================
+// PROMPT EVOLUTION ENGINE
+// =============================================================================
+
+// Singleton evolution engine instance
+let evolutionEngine = null;
+
+/**
+ * Get or create the prompt evolution engine instance
+ * @returns {PromptEvolutionEngine}
+ */
+function getEvolutionEngine() {
+  if (!evolutionEngine) {
+    evolutionEngine = new PromptEvolutionEngine({
+      promotionThreshold: 0.05,     // 5% improvement required
+      minCandidateSamples: 10,      // Minimum candidate tests
+      minChampionSamples: 35,       // Minimum champion tests
+      abTestRatio: 0.2              // 20% traffic to candidate
+    });
+  }
+  return evolutionEngine;
+}
+
+/**
+ * Get system prompts from training config for evolution engine initialization
+ * Uses the first sample set's prompts as the base prompts
+ * @returns {Object} Map of contentType to prompt string
+ */
+function getSystemPrompts() {
+  const prompts = {};
+  const firstSet = TRAINING_CONFIG.sampleSets[0];
+
+  if (firstSet && firstSet.prompts) {
+    for (const contentType of CONTENT_TYPES) {
+      prompts[contentType] = firstSet.prompts[contentType] || `Generate ${contentType} content`;
+    }
+  }
+
+  return prompts;
+}
+
+/**
+ * Initialize evolution engine with current prompts
+ */
+function initializeEvolution() {
+  const engine = getEvolutionEngine();
+  const prompts = getSystemPrompts();
+  engine.initialize(prompts);
+  console.log('   ✓ Prompt evolution engine initialized');
+  return engine;
+}
+
+/**
+ * Process evolution cycle - check promotions and evolve
+ * Called periodically during training
+ *
+ * @param {PromptEvolutionEngine} engine - Evolution engine instance
+ * @param {number} iteration - Current iteration number
+ * @param {number} evolutionInterval - Iterations between evolution checks
+ */
+function processEvolutionCycle(engine, iteration, evolutionInterval = 50) {
+  if (iteration % evolutionInterval !== 0) {
+    return null;
+  }
+
+  const results = {
+    promotions: [],
+    evolutions: [],
+    errors: []
+  };
+
+  for (const contentType of CONTENT_TYPES) {
+    try {
+      // Check if current candidate should be promoted
+      const promoteResult = engine.checkAndPromote(contentType);
+      if (promoteResult.promoted) {
+        results.promotions.push({
+          contentType,
+          improvement: promoteResult.improvement,
+          candidateScore: promoteResult.candidateScore,
+          championScore: promoteResult.championScore
+        });
+        console.log(`   🎉 [Evolution] ${contentType} candidate promoted (${promoteResult.improvement?.toFixed(1)}% improvement)`);
+      }
+
+      // Try to evolve a new candidate
+      const evolveResult = engine.evolvePrompt(contentType);
+      if (evolveResult.evolved) {
+        results.evolutions.push({
+          contentType,
+          mutations: evolveResult.appliedMutations?.map(m => m.type) || []
+        });
+        console.log(`   🧬 [Evolution] ${contentType} evolved with: ${evolveResult.appliedMutations?.map(m => m.type).join(', ')}`);
+      }
+    } catch (error) {
+      results.errors.push({
+        contentType,
+        error: error.message
+      });
+      console.error(`   ⚠️ [Evolution] Error for ${contentType}: ${error.message}`);
+    }
+  }
+
+  return results;
+}
 
 // =============================================================================
 // ERROR-WRAPPED FUNCTIONS
@@ -620,67 +729,106 @@ function calculateResearchAnalysisFeedback(result, validationResult) {
 }
 
 /**
- * Calculate realistic feedback based on output quality and content type
+ * Calculate quality score using Plan 04 unified scoring system.
+ *
+ * Converts the 0-1 normalized score from contentQualityScoring to a 1-5 scale
+ * for compatibility with the feedback simulation system.
+ *
+ * @param {Object} result - Generation result
+ * @param {Object} validationResult - Validation result
+ * @param {string} contentType - Content type
+ * @returns {number} Quality score (1-5 scale)
+ */
+function calculateUnifiedScore(result, validationResult, contentType) {
+  // Get the data from the result
+  const data = result?.data;
+
+  if (!data) {
+    return 1;  // No data = minimum score
+  }
+
+  try {
+    // Use Plan 04's unified scoring
+    const scoreResult = scoreContentQuality(data, contentType);
+
+    // Convert 0-1 score to 1-5 scale
+    // overall is 0-1, we want 1-5
+    const baseScore = 1 + scoreResult.overall * 4;
+
+    // Apply validation bonuses/penalties
+    let score = baseScore;
+
+    if (validationResult?.valid !== false) {
+      score += 0.3;
+    }
+
+    if (validationResult?.errors?.length > 0) {
+      score -= 0.2 * Math.min(validationResult.errors.length, 3);
+    }
+
+    // Clamp to 1-5 range
+    return Math.max(1, Math.min(5, score));
+  } catch (error) {
+    console.warn(`Unified scoring failed for ${contentType}, using fallback:`, error.message);
+    return null;  // Signal to use fallback
+  }
+}
+
+/**
+ * Calculate realistic feedback based on output quality and content type.
+ *
+ * This function calculates a quality score using content-type-specific metrics,
+ * then uses the correlated feedback simulation to generate realistic user feedback
+ * that correlates with the quality score (Pearson r > 0.85).
  */
 function calculateRealisticFeedback(result, validationResult, contentType) {
-  const feedback = {
-    rating: 3,
-    qualityScore: 3,  // Raw score before rounding (for quality error detection)
-    wasExported: false,
-    wasEdited: false,
-    wasRegenerated: false,
-    thumbsUp: null
-  };
-
-  // No result = bad
+  // No result = bad feedback
   if (!result || !result.success) {
-    feedback.rating = 1;
-    feedback.qualityScore = 0;
-    feedback.wasRegenerated = true;
-    feedback.thumbsUp = false;
-    return feedback;
+    return {
+      rating: 1,
+      qualityScore: 0,
+      wasExported: false,
+      wasEdited: false,
+      wasRegenerated: true,
+      thumbsUp: false
+    };
   }
 
-  // Calculate content-type-specific score
-  let score;
-  switch (contentType) {
-    case 'Roadmap':
-      score = calculateRoadmapFeedback(result, validationResult);
-      break;
-    case 'Slides':
-      score = calculateSlidesFeedback(result, validationResult);
-      break;
-    case 'Document':
-      score = calculateDocumentFeedback(result, validationResult);
-      break;
-    case 'ResearchAnalysis':
-      score = calculateResearchAnalysisFeedback(result, validationResult);
-      break;
-    default:
-      score = 3;
+  // Calculate content-type-specific quality score using Plan 04 unified scoring
+  // Falls back to legacy inline scoring if unified scoring fails
+  let score = calculateUnifiedScore(result, validationResult, contentType);
+
+  // Fallback to legacy scoring if unified scoring returned null
+  if (score === null) {
+    switch (contentType) {
+      case 'Roadmap':
+        score = calculateRoadmapFeedback(result, validationResult);
+        break;
+      case 'Slides':
+        score = calculateSlidesFeedback(result, validationResult);
+        break;
+      case 'Document':
+        score = calculateDocumentFeedback(result, validationResult);
+        break;
+      case 'ResearchAnalysis':
+        score = calculateResearchAnalysisFeedback(result, validationResult);
+        break;
+      default:
+        score = 3;
+    }
   }
 
-  // Latency factor (applies to all types)
+  // Apply latency penalty (high latency degrades user experience)
   const latency = result._latencyMs || 0;
   if (latency > 30000) score -= 0.5;
   if (latency > 60000) score -= 0.5;
 
-  // Store raw score and clamp rating to 1-5
-  feedback.qualityScore = score;
-  feedback.rating = Math.max(1, Math.min(5, Math.round(score)));
+  // Use correlated feedback simulation to generate realistic user feedback
+  // The feedback will correlate with the quality score (higher quality = better feedback)
+  const feedback = calculateCorrelatedFeedback(score, contentType);
 
-  // Simulate user behavior
-  if (feedback.rating >= 4) {
-    feedback.wasExported = Math.random() > 0.2;
-    feedback.thumbsUp = Math.random() > 0.3;
-  } else if (feedback.rating === 3) {
-    feedback.wasExported = Math.random() > 0.6;
-    feedback.wasEdited = Math.random() > 0.5;
-    feedback.thumbsUp = Math.random() > 0.5 ? true : (Math.random() > 0.5 ? false : null);
-  } else {
-    feedback.wasRegenerated = Math.random() > 0.4;
-    feedback.thumbsUp = false;
-  }
+  // Override the qualityScore with our calculated score (for error detection)
+  feedback.qualityScore = score;
 
   return feedback;
 }
@@ -875,6 +1023,9 @@ async function runTraining(iterations, delay, contentTypes) {
     throw new Error('No sample sets with files found');
   }
 
+  // Initialize prompt evolution engine
+  const evolutionEngine = initializeEvolution();
+
   // Run pre-flight checks to catch code bugs early
   trainingProgress.status = 'preflight';
   const preflightResults = await runPreflightChecks({
@@ -984,6 +1135,15 @@ async function runTraining(iterations, delay, contentTypes) {
               errorStats.recordError(scoreError, currentVariant, contentType);
               stats.categorizedErrors.push(scoreError.toJSON());
             }
+
+            // Record generation for prompt evolution
+            try {
+              const output = JSON.stringify(result.data || {});
+              evolutionEngine.recordGeneration(contentType, prompt, output, feedback.rating);
+            } catch (evolveErr) {
+              // Don't fail training on evolution recording errors
+              console.warn(`   ⚠️ Evolution recording error: ${evolveErr.message}`);
+            }
           } else {
             // Scoring failed completely
             stats.failed++;
@@ -1035,6 +1195,20 @@ async function runTraining(iterations, delay, contentTypes) {
 
         await sleep(delay);
       }
+    }
+
+    // Process evolution cycle at the end of each outer iteration
+    try {
+      const evolutionResults = processEvolutionCycle(evolutionEngine, i + 1);
+      if (evolutionResults) {
+        trainingProgress.lastEvolution = {
+          iteration: i + 1,
+          promotions: evolutionResults.promotions.length,
+          evolutions: evolutionResults.evolutions.length
+        };
+      }
+    } catch (evolveErr) {
+      console.warn(`   ⚠️ Evolution cycle error: ${evolveErr.message}`);
     }
   }
 
@@ -1088,7 +1262,9 @@ async function runTraining(iterations, delay, contentTypes) {
       systemBugsDetected: errorSummary.systemBugsDetected,
       anomalies: errorSummary.anomalies,
       warnings: errorSummary.warnings
-    }
+    },
+    // Prompt evolution statistics
+    promptEvolution: evolutionEngine.getStats()
   };
 
   const statusMsg = shouldStop ? '⛔ Stopped' : '✅ Complete';
@@ -1101,6 +1277,10 @@ async function runTraining(iterations, delay, contentTypes) {
     console.log(`     ${type}: ${ts.successful}/${ts.total} (avg: ${ts.avgQuality})`);
   }
   console.log(`   Ratings: 5⭐=${stats.feedbackDistribution[5]} 4⭐=${stats.feedbackDistribution[4]} 3⭐=${stats.feedbackDistribution[3]} 2⭐=${stats.feedbackDistribution[2]} 1⭐=${stats.feedbackDistribution[1]}`);
+
+  // Print evolution summary
+  const evolStats = evolutionEngine.getStats();
+  console.log(`   Evolution: ${evolStats.totalEvolutions} evolutions, ${evolStats.successfulPromotions} promotions, ${evolStats.failedPromotions} rejections`);
 
   // Print error summary
   console.log(errorStats.formatForConsole());
