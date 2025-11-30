@@ -80,15 +80,14 @@ select:focus-visible {
   max-width: calc(100vw - 32px);
   border: 2px solid var(--color-navy-brand, #002040);
   border-radius: 8px;
-  background-color: transparent; 
+  background-color: transparent;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  overflow-x: auto; 
-  overflow-y: auto; 
-  max-height: 80vh; 
-  margin-top: 0; 
-  font-family: 'Work Sans', sans-serif; 
-  position: relative; 
-  box-sizing: border-box; 
+  overflow-x: auto;
+  overflow-y: visible;
+  margin-top: 0;
+  font-family: 'Work Sans', sans-serif;
+  position: relative;
+  box-sizing: border-box;
 }
 #gantt-chart-container::-webkit-scrollbar {
   width: 6px;
