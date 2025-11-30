@@ -734,9 +734,16 @@ router.get('/:sessionId/:viewType', async (req, res) => {
           title: "Placeholder",
           slides: [
             {
-              title: "Coming Soon",
-              content: "Slide templates are currently being updated.",
-              notes: "This is a placeholder slide."
+              layout: "title",
+              title: "AI Roadmap Generator",
+              tagline: "TEMPLATE INTEGRATION SUCCESSFUL",
+              body: "The new template system is active. Please generate new content to see the full results."
+            },
+            {
+              layout: "content",
+              title: "How to Generate",
+              tagline: "INSTRUCTIONS",
+              body: "1. Go to the Roadmap view.\n2. Enter a prompt.\n3. Click Generate.\n\nThe AI will now use the new 16:9 templates with pixel-perfect positioning."
             }
           ]
         }
