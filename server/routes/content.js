@@ -672,18 +672,7 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
   }
 });
 
-/**
- * GET /api/content/:sessionId/:viewType
- * Retrieves specific content type from a session
- *
- * URL params:
- * - sessionId: string - Session ID
- * - viewType: string - Content type (roadmap, slides, document, research-analysis)
- *
- * Response: Content data object
- */
-  }
-});
+
 
 
 /**
