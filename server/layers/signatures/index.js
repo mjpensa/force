@@ -26,12 +26,6 @@ export {
   getRoadmapOutputSchema
 } from './roadmap.js';
 
-export {
-  SlidesSignature,
-  generateSlidesSignaturePrompt,
-  validateSlidesInputs,
-  getSlidesOutputSchema
-} from './slides.js';
 
 export {
   DocumentSignature,
@@ -60,7 +54,6 @@ import { ResearchAnalysisSignature } from './research-analysis.js';
  */
 export const SignatureType = {
   ROADMAP: 'roadmap',
-  SLIDES: 'slides',
   DOCUMENT: 'document',
   RESEARCH_ANALYSIS: 'research-analysis'
 };
@@ -70,7 +63,6 @@ export const SignatureType = {
  */
 const SIGNATURE_REGISTRY = {
   [SignatureType.ROADMAP]: null,
-  [SignatureType.SLIDES]: null,
   [SignatureType.DOCUMENT]: null,
   [SignatureType.RESEARCH_ANALYSIS]: null
 };
@@ -83,9 +75,6 @@ function getSignatureFromRegistry(type) {
     switch (type) {
       case SignatureType.ROADMAP:
         SIGNATURE_REGISTRY[type] = RoadmapSignature;
-        break;
-      case SignatureType.SLIDES:
-        SIGNATURE_REGISTRY[type] = SlidesSignature;
         break;
       case SignatureType.DOCUMENT:
         SIGNATURE_REGISTRY[type] = DocumentSignature;
@@ -235,8 +224,6 @@ export function generateSignaturePrompt(type, userPrompt, researchFiles, options
   switch (type) {
     case SignatureType.ROADMAP:
       return generateRoadmapSignaturePrompt(userPrompt, researchFiles, options);
-    case SignatureType.SLIDES:
-      return generateSlidesSignaturePrompt(userPrompt, researchFiles, options);
     case SignatureType.DOCUMENT:
       return generateDocumentSignaturePrompt(userPrompt, researchFiles, options);
     case SignatureType.RESEARCH_ANALYSIS:

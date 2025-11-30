@@ -96,7 +96,7 @@ export const TrainingStateAnnotation = Annotation.Root({
    */
   contentTypes: Annotation({
     reducer: (_, update) => update,
-    default: () => ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis']
+    default: () => ['Roadmap', 'Document', 'ResearchAnalysis']
   }),
 
   /**
@@ -289,7 +289,7 @@ export function createInitialState(config) {
     currentSampleSet: null,
     currentContentType: null,
     sampleSets: config.sampleSets || [],
-    contentTypes: config.contentTypes || ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
+    contentTypes: config.contentTypes || ['Roadmap', 'Document', 'ResearchAnalysis'],
     delay: config.delay || 1000,
     results: [],
     errors: [],

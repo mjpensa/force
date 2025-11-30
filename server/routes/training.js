@@ -1216,7 +1216,6 @@ async function runTraining(iterations, delay, contentTypes) {
   // Dynamic imports for all generators
   const {
     generateRoadmap,
-    generateSlides,
     generateDocument,
     generateResearchAnalysis
   } = await import('../generators.js');
@@ -1225,7 +1224,6 @@ async function runTraining(iterations, delay, contentTypes) {
 
   const generators = {
     Roadmap: generateRoadmap,
-    Slides: generateSlides,
     Document: generateDocument,
     ResearchAnalysis: generateResearchAnalysis
   };
@@ -1622,7 +1620,6 @@ async function runTrainingWithCheckpoints(config) {
   // Dynamic imports for generators
   const {
     generateRoadmap,
-    generateSlides,
     generateDocument,
     generateResearchAnalysis
   } = await import('../generators.js');
@@ -1631,7 +1628,6 @@ async function runTrainingWithCheckpoints(config) {
 
   const generators = {
     Roadmap: generateRoadmap,
-    Slides: generateSlides,
     Document: generateDocument,
     ResearchAnalysis: generateResearchAnalysis
   };
@@ -2149,14 +2145,12 @@ async function runGraphTraining(sessionId, iterations, delay, contentTypes) {
   // Dynamic imports for generators
   const {
     generateRoadmap,
-    generateSlides,
     generateDocument,
     generateResearchAnalysis
   } = await import('../generators.js');
 
   const generators = {
     Roadmap: generateRoadmap,
-    Slides: generateSlides,
     Document: generateDocument,
     ResearchAnalysis: generateResearchAnalysis
   };
@@ -2230,14 +2224,12 @@ async function resumeGraphTraining(sessionId) {
   // Dynamic imports for generators
   const {
     generateRoadmap,
-    generateSlides,
     generateDocument,
     generateResearchAnalysis
   } = await import('../generators.js');
 
   const generators = {
     Roadmap: generateRoadmap,
-    Slides: generateSlides,
     Document: generateDocument,
     ResearchAnalysis: generateResearchAnalysis
   };

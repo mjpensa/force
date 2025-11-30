@@ -25,7 +25,6 @@ import { dspyIntegration } from '../utils/dspyIntegration.js';
 // Content type to signature mapping
 const CONTENT_TYPE_TO_SIGNATURE = {
   'Roadmap': 'roadmap',
-  'Slides': 'slides',
   'Document': 'document',
   'ResearchAnalysis': 'research-analysis'
 };

@@ -257,7 +257,6 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
       researchContent: researchFiles.map(f => f.content).join('\n\n---\n\n').substring(0, 500000),
       content: {
         roadmap: results.roadmap,
-        slides: results.slides,
         document: results.document,
         researchAnalysis: results.researchAnalysis
       },
@@ -278,7 +277,6 @@ router.post('/generate', uploadMiddleware.array('researchFiles'), async (req, re
       researchFiles: researchFiles.map(f => f.filename),
       content: {
         roadmap: results.roadmap,
-        slides: results.slides,
         document: results.document,
         researchAnalysis: results.researchAnalysis
       },
@@ -489,7 +487,6 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
       researchContent: researchFiles.map(f => f.content).join('\n\n---\n\n').substring(0, 500000),
       content: {
         roadmap: null,
-        slides: null,
         document: null,
         researchAnalysis: null
       },
@@ -503,7 +500,6 @@ router.post('/generate/stream', uploadMiddleware.array('researchFiles'), async (
     // Content type mapping for consistent naming
     const contentKeyMap = {
       'roadmap': 'roadmap',
-      'slides': 'slides',
       'document': 'document',
       'research-analysis': 'researchAnalysis'
     };
@@ -631,7 +627,7 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
     const files = req.files;
 
     // Validate view type
-    const validViewTypes = ['roadmap', 'slides', 'document', 'research-analysis'];
+    const validViewTypes = ['roadmap', 'document', 'research-analysis'];
     if (!validViewTypes.includes(viewType)) {
       return res.status(400).json({
         error: `Invalid view type. Must be one of: ${validViewTypes.join(', ')}`
@@ -684,51 +680,7 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
  *
  * Response: PowerPoint file (.pptx) download
  */
-router.get('/:sessionId/slides/export', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
 
-    // Check if session exists
-    const session = await sessionStorage.get(sessionId);
-    if (!session) {
-      return res.status(404).json({
-        error: 'Session not found',
-        message: 'Session may have expired. Please generate new content.'
-      });
-    }
-
-    const slidesResult = session.content.slides;
-    if (!slidesResult || !slidesResult.success || !slidesResult.data) {
-      return res.status(404).json({
-        error: 'Slides not available',
-        message: slidesResult?.error || 'Slides generation failed or not yet complete'
-      });
-    }
-
-    const slides = slidesResult.data;
-
-    // Generate the PowerPoint file
-    const pptxBuffer = await generatePptx(slides, {
-      author: 'BIP',
-      company: 'BIP'
-    });
-
-    // Create filename from presentation title
-    const title = slides.title || 'Presentation';
-    const safeTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
-    const filename = `${safeTitle}.pptx`;
-
-    // Set headers for file download
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pptxBuffer.length);
-
-    res.send(pptxBuffer);
-
-  } catch (error) {
-    res.status(500).json(createErrorResponse('Failed to generate PowerPoint file', error, 'pptx-export'));
-  }
-});
 
 /**
  * GET /api/content/:sessionId/:viewType
@@ -736,7 +688,7 @@ router.get('/:sessionId/slides/export', async (req, res) => {
  *
  * URL params:
  * - sessionId: string - Session ID from /generate response
- * - viewType: 'roadmap' | 'slides' | 'document' | 'research-analysis'
+ * - viewType: 'roadmap' | 'document' | 'research-analysis'
  *
  * Response:
  * - For roadmap: Returns the gantt data directly

@@ -18,7 +18,7 @@ import { dspyCache } from '../redis/dspy-cache.js';
 /**
  * Execute content generation with caching
  *
- * @param {string} signatureType - Signature type (roadmap, slides, document, research-analysis)
+ * @param {string} signatureType - Signature type (roadmap, document, research-analysis)
  * @param {Object} inputs - Generation inputs
  * @param {Function} executor - Async function that performs the actual generation
  * @param {Object} options - Execution options

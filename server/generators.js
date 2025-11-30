@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { jsonrepair } from 'jsonrepair';
 import { generateRoadmapPrompt, roadmapSchema } from './prompts/roadmap.js';
-import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
 import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
 import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompts/research-analysis.js';
 import { PerformanceLogger, createTimer, globalMetrics } from './utils/performanceLogger.js';
@@ -1410,113 +1409,7 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
   }
 }
 
-async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
-  const contentType = 'slides';
-  const combinedContent = combineResearchContent(researchFiles);
-  const startTime = Date.now();
 
-  try {
-    // Check cache first
-    if (ENABLE_CACHE) {
-      const cached = getCachedContent(contentType, combinedContent, userPrompt);
-      if (cached) {
-        if (perfLogger) {
-          perfLogger.setMetadata(`cache-hit-${contentType}`, true);
-        }
-        // Record cache hit metrics
-        const generationId = recordGenerationMetrics({
-          contentType: 'Slides',
-          variantId: 'default',
-          userPrompt,
-          fileCount: researchFiles.length,
-          cacheHit: true,
-          latencyMs: Date.now() - startTime
-        });
-        return { success: true, data: cached, _cached: true, _generationId: generationId };
-      }
-    }
-
-    // Apply context engineering for optimized prompt assembly
-    const contextResult = processContextEngineering(researchFiles, userPrompt, 'Slides', perfLogger);
-    const processedFiles = contextResult.files;
-
-    // Select variant and generate prompt (A/B testing)
-    const variantResult = selectAndApplyVariant('Slides', userPrompt, processedFiles, generateSlidesPrompt);
-
-    // Log variant selection
-    if (perfLogger && variantResult.usedVariant) {
-      perfLogger.setMetadata('variant-slides', {
-        id: variantResult.variantId,
-        name: variantResult.variantName
-      });
-    }
-
-    // Build routing options for model selection
-    const routingOptions = {
-      content: combinedContent,
-      fileCount: researchFiles.length
-    };
-
-    const data = await generateWithGemini(variantResult.prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
-
-    // Validate generated output (PROMPT ML Layer 6)
-    const validationResult = validateGeneratedOutput(data, 'Slides', slidesSchema, {
-      userPrompt,
-      researchFiles: processedFiles
-    }, perfLogger);
-    const validatedData = validationResult.data;
-
-    // Fix: Ensure we have valid data before returning success
-    if (validatedData === null || validatedData === undefined) {
-      throw new Error('Slides generation completed but returned no data. The AI response may have been malformed.');
-    }
-
-    // Store in cache
-    if (ENABLE_CACHE && validatedData) {
-      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
-    }
-
-    const latencyMs = Date.now() - startTime;
-
-    // Record variant performance for A/B testing
-    if (variantResult.usedVariant) {
-      const perfMetrics = {
-        latencyMs,
-        qualityScore: validationResult.validation?.quality?.score || 0,
-        success: validationResult.validation?.valid !== false
-      };
-      recordVariantPerformance(variantResult.variantId, perfMetrics);
-
-      // Also record to active experiment if one exists
-      recordExperimentMetric(variantResult.variantId, perfMetrics);
-    }
-
-    // Record generation metrics for auto-optimization
-    const generationId = recordGenerationMetrics({
-      contentType: 'Slides',
-      variantId: variantResult.variantId,
-      prompt: variantResult.prompt,
-      userPrompt,
-      fileCount: researchFiles.length,
-      complexity: contextResult.metadata?.complexity || 0,
-      latencyMs,
-      inputTokens: contextResult.metadata?.tokensUsed || 0,
-      cacheHit: false,
-      validation: validationResult.validation
-    });
-
-    return {
-      success: true,
-      data: validatedData,
-      _contextEngineering: contextResult.metadata,
-      _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
-      _validation: validationResult.validation,
-      _generationId: generationId
-    };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
 
 async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'document';
@@ -1768,20 +1661,16 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
     // Use apiQueue.runAll to control concurrency and prevent rate limiting
     const tasks = [
       { task: () => generateRoadmap(userPrompt, researchFiles, perfLogger), name: 'Roadmap' },
-      { task: () => generateSlides(userPrompt, researchFiles, perfLogger), name: 'Slides' },
       { task: () => generateDocument(userPrompt, researchFiles, perfLogger), name: 'Document' },
       { task: () => generateResearchAnalysis(userPrompt, researchFiles, perfLogger), name: 'ResearchAnalysis' }
     ];
 
-    const [roadmap, slides, document, researchAnalysis] = await apiQueue.runAll(tasks);
+    const [roadmap, document, researchAnalysis] = await apiQueue.runAll(tasks);
 
     // Record validation metrics for each content type
     if (obsContext) {
       if (roadmap._validation) {
         recordValidationMetrics({ ...obsContext, contentType: 'Roadmap' }, roadmap._validation);
-      }
-      if (slides._validation) {
-        recordValidationMetrics({ ...obsContext, contentType: 'Slides' }, slides._validation);
       }
       if (document._validation) {
         recordValidationMetrics({ ...obsContext, contentType: 'Document' }, document._validation);
@@ -1804,14 +1693,13 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
     if (observability && obsContext) {
       await observability.endRequest(obsContext, {
         success: true,
-        contentTypes: ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
-        cached: roadmap._cached || slides._cached || document._cached || researchAnalysis._cached
+        contentTypes: ['Roadmap', 'Document', 'ResearchAnalysis'],
+        cached: roadmap._cached || document._cached || researchAnalysis._cached
       });
     }
 
     return {
       roadmap,
-      slides,
       document,
       researchAnalysis,
       _performanceMetrics: perfReport,
@@ -1843,8 +1731,6 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
       switch (viewType) {
         case 'roadmap':
           return generateRoadmap(prompt, researchFiles, perfLogger);
-        case 'slides':
-          return generateSlides(prompt, researchFiles, perfLogger);
         case 'document':
           return generateDocument(prompt, researchFiles, perfLogger);
         case 'research-analysis':
@@ -1876,7 +1762,7 @@ export { globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator };
 export { enforceYearlyIntervalsForLongRanges };
 
 // Export generation functions for training script
-export { generateRoadmap, generateSlides, generateDocument, generateResearchAnalysis };
+export { generateRoadmap, generateDocument, generateResearchAnalysis };
 
 // Export variant management functions
 export {
@@ -2259,14 +2145,12 @@ export async function generateAllContentStreaming(userPrompt, researchFiles, opt
 
   const results = {
     roadmap: null,
-    slides: null,
     document: null,
     researchAnalysis: null
   };
 
   // Content type mapping for consistent naming
   const typeMapping = {
-    'Slides': 'slides',
     'Document': 'document',
     'Roadmap': 'roadmap',
     'ResearchAnalysis': 'research-analysis'
@@ -2294,7 +2178,6 @@ export async function generateAllContentStreaming(userPrompt, researchFiles, opt
     // Define tasks with priority (Document and Slides are fastest, emit first)
     const tasks = [
       { task: createStreamingTask(generateDocument, 'Document', 'document'), name: 'Document' },
-      { task: createStreamingTask(generateSlides, 'Slides', 'slides'), name: 'Slides' },
       { task: createStreamingTask(generateRoadmap, 'Roadmap', 'roadmap'), name: 'Roadmap' },
       { task: createStreamingTask(generateResearchAnalysis, 'ResearchAnalysis', 'researchAnalysis'), name: 'ResearchAnalysis' }
     ];

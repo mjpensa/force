@@ -25,7 +25,6 @@
 // Signature type mapping from Node.js content types to DSPy signature types
 const SIGNATURE_TYPE_MAP = {
   'Roadmap': 'roadmap',
-  'Slides': 'slides',
   'Document': 'document',
   'ResearchAnalysis': 'research-analysis'
 };

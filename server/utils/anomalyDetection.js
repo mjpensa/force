@@ -532,7 +532,7 @@ export function validatePhase3() {
   // Add enough baseline data first (need at least 10 for baseline)
   for (let i = 0; i < 15; i++) {
     store.record({
-      contentType: 'Slides',
+      contentType: 'Document',
       variant: 'champion',
       qualityScore: 3.5 + (Math.random() - 0.5) * 0.2,
       timestamp: new Date(baseTime.getTime() - (20 - i) * 3600000).toISOString()
@@ -541,14 +541,14 @@ export function validatePhase3() {
   // Now add consecutive low scores (need at least consecutiveLow=3)
   for (let i = 0; i < 4; i++) {
     store.record({
-      contentType: 'Slides',
+      contentType: 'Document',
       variant: 'champion',
       qualityScore: 2.0,  // Very low score - well below baseline - stdDev
       timestamp: new Date(baseTime.getTime() - (4 - i) * 3600000).toISOString()
     });
   }
   const consecutiveCheck = detector.checkConsecutiveLow({
-    contentType: 'Slides',
+    contentType: 'Document',
     variant: 'champion',
     qualityScore: 2.0
   });

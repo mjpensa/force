@@ -8,7 +8,6 @@
  */
 
 import { scoreRoadmapQuality } from './roadmapScoring.js';
-import { scoreSlidesQuality } from './slidesScoring.js';
 import { scoreResearchAnalysisQuality } from './researchAnalysisScoring.js';
 import {
   ALL_DIMENSIONS,
@@ -26,14 +25,13 @@ import {
 /**
  * Supported content types
  */
-export const CONTENT_TYPES = ['Document', 'Roadmap', 'Slides', 'ResearchAnalysis'];
+export const CONTENT_TYPES = ['Document', 'Roadmap', 'ResearchAnalysis'];
 
 /**
  * Scoring functions by content type
  */
 const SCORING_FUNCTIONS = {
   Roadmap: scoreRoadmapQuality,
-  Slides: scoreSlidesQuality,
   ResearchAnalysis: scoreResearchAnalysisQuality,
   // Document scoring exists elsewhere - placeholder for integration
   Document: scoreDocumentQuality
