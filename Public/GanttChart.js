@@ -69,8 +69,14 @@ export class GanttChart {
     this._cleanupBeforeRender();
 
     this.container.innerHTML = '';
+    
+    // Create wrapper with explicit styling to prevent overflow
     this.chartWrapper = document.createElement('div');
     this.chartWrapper.id = 'gantt-chart-container';
+    // Ensure the wrapper fits content but doesn't force expanding empty space
+    this.chartWrapper.style.height = 'auto'; 
+    this.chartWrapper.style.maxHeight = 'none';
+    this.chartWrapper.style.overflow = 'visible';
 
     renderTimer.mark('Container setup complete');
 
@@ -100,7 +106,13 @@ export class GanttChart {
     this.container.appendChild(this.chartWrapper);
 
     // Add research analysis
-    this.analysis.addResearchAnalysis(this.container, this.ganttData);
+    // Ensure analysis container clears floats or flows properly after chart
+    const analysisContainer = document.createElement('div');
+    analysisContainer.style.marginTop = '24px';
+    analysisContainer.style.clear = 'both';
+    this.container.appendChild(analysisContainer);
+    
+    this.analysis.addResearchAnalysis(analysisContainer, this.ganttData);
 
     // Initialize handlers
     this._initializeExporter();
