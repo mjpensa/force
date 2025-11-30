@@ -44,7 +44,6 @@ export {
 
 // Import for internal use
 import { RoadmapSignature } from './roadmap.js';
-import { SlidesSignature } from './slides.js';
 import { DocumentSignature } from './document.js';
 import { ResearchAnalysisSignature } from './research-analysis.js';
 
@@ -56,8 +55,7 @@ import { ResearchAnalysisSignature } from './research-analysis.js';
 export const SignatureType = {
   ROADMAP: 'roadmap',
   DOCUMENT: 'document',
-  RESEARCH_ANALYSIS: 'research-analysis',
-  SLIDES: 'slides'
+  RESEARCH_ANALYSIS: 'research-analysis'
 };
 
 /**
@@ -66,8 +64,7 @@ export const SignatureType = {
 const SIGNATURE_REGISTRY = {
   [SignatureType.ROADMAP]: null,
   [SignatureType.DOCUMENT]: null,
-  [SignatureType.RESEARCH_ANALYSIS]: null,
-  [SignatureType.SLIDES]: null
+  [SignatureType.RESEARCH_ANALYSIS]: null
 };
 
 /**
@@ -84,9 +81,6 @@ function getSignatureFromRegistry(type) {
         break;
       case SignatureType.RESEARCH_ANALYSIS:
         SIGNATURE_REGISTRY[type] = ResearchAnalysisSignature;
-        break;
-      case SignatureType.SLIDES:
-        SIGNATURE_REGISTRY[type] = SlidesSignature;
         break;
     }
   }
