@@ -3,10 +3,14 @@
  *
  * API endpoints for collecting user feedback on generated content.
  * Feedback is used for A/B testing and automatic prompt optimization.
+ *
+ * Enhanced with Plan 05: Production Feedback Integration - Phase 4
  */
 
 import { Router } from 'express';
 import { getMetricsCollector, FeedbackType } from '../layers/optimization/metrics/index.js';
+import { feedbackStore } from '../utils/feedbackStorage.js';
+import { FeedbackEventValidation, FEEDBACK_CONTENT_TYPES } from '../utils/feedbackSchema.js';
 
 const router = Router();
 
@@ -264,6 +268,212 @@ router.get('/variants/:contentType', async (req, res) => {
   } catch (error) {
     console.error('[Feedback] Variants error:', error.message);
     res.status(500).json({ error: 'Failed to get variant metrics' });
+  }
+});
+
+// ============================================================================
+// Plan 05: Production Feedback Integration - Phase 4 Endpoints
+// ============================================================================
+
+/**
+ * Receive unified feedback events from client-side tracking
+ *
+ * POST /api/feedback/event
+ * Body: FeedbackEvent schema
+ */
+router.post('/event', async (req, res) => {
+  try {
+    const event = req.body;
+
+    // Add request metadata
+    event.clientIp = req.ip;
+    event.userAgent = req.headers['user-agent'];
+
+    // Store in production feedback store
+    const stored = await feedbackStore.store(event);
+
+    // Also update metrics collector if generation exists
+    if (event.generationId) {
+      try {
+        const collector = getMetricsCollector();
+        await collector.updateFeedback(event.generationId, {
+          rating: event.rating,
+          thumbsUp: event.thumbsUp,
+          wasEdited: event.edited,
+          wasExported: event.exported,
+          wasRegenerated: event.regenerated
+        });
+      } catch {
+        // Silently ignore if generation not in metrics collector
+      }
+    }
+
+    res.json({
+      success: true,
+      eventId: stored.eventId
+    });
+  } catch (error) {
+    console.error('[Feedback] Event storage error:', error.message);
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Get aggregated feedback metrics for a content type
+ *
+ * GET /api/feedback/aggregates/:contentType
+ * Query: { variant? }
+ */
+router.get('/aggregates/:contentType', (req, res) => {
+  try {
+    const { contentType } = req.params;
+    const { variant } = req.query;
+
+    if (!FEEDBACK_CONTENT_TYPES.includes(contentType)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid contentType. Must be one of: ${FEEDBACK_CONTENT_TYPES.join(', ')}`
+      });
+    }
+
+    const aggregates = feedbackStore.getAggregates(contentType, variant || 'default');
+
+    if (!aggregates) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No feedback data yet for this content type'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: aggregates
+    });
+  } catch (error) {
+    console.error('[Feedback] Aggregates error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get aggregates'
+    });
+  }
+});
+
+/**
+ * Get all events for a specific generation
+ *
+ * GET /api/feedback/generation/:generationId/events
+ */
+router.get('/generation/:generationId/events', (req, res) => {
+  try {
+    const { generationId } = req.params;
+    const events = feedbackStore.getEventsForGeneration(generationId);
+
+    res.json({
+      success: true,
+      generationId,
+      eventCount: events.length,
+      events
+    });
+  } catch (error) {
+    console.error('[Feedback] Generation events error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get generation events'
+    });
+  }
+});
+
+/**
+ * Export feedback events for training
+ *
+ * GET /api/feedback/export
+ * Query: { minRating?, contentType?, since?, hasExplicitFeedback?, limit? }
+ */
+router.get('/export', (req, res) => {
+  try {
+    const options = {
+      minRating: req.query.minRating ? parseInt(req.query.minRating, 10) : undefined,
+      contentType: req.query.contentType,
+      sinceDate: req.query.since,
+      hasExplicitFeedback: req.query.hasExplicitFeedback === 'true',
+      limit: req.query.limit ? parseInt(req.query.limit, 10) : undefined
+    };
+
+    const events = feedbackStore.exportForTraining(options);
+
+    res.json({
+      success: true,
+      count: events.length,
+      filters: options,
+      events
+    });
+  } catch (error) {
+    console.error('[Feedback] Export error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to export feedback'
+    });
+  }
+});
+
+/**
+ * Get production feedback statistics dashboard
+ *
+ * GET /api/feedback/dashboard
+ */
+router.get('/dashboard', (req, res) => {
+  try {
+    const stats = feedbackStore.getStats();
+    const recentEvents = feedbackStore.getRecentEvents(10);
+
+    // Get aggregates for all content types
+    const contentTypeAggregates = {};
+    for (const contentType of FEEDBACK_CONTENT_TYPES) {
+      contentTypeAggregates[contentType] = feedbackStore.getAggregates(contentType, 'default');
+    }
+
+    res.json({
+      success: true,
+      stats,
+      contentTypeAggregates,
+      recentEvents
+    });
+  } catch (error) {
+    console.error('[Feedback] Dashboard error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get dashboard data'
+    });
+  }
+});
+
+/**
+ * Validate feedback event without storing
+ *
+ * POST /api/feedback/validate
+ * Body: FeedbackEvent
+ */
+router.post('/validate', (req, res) => {
+  try {
+    const event = req.body;
+    const validation = FeedbackEventValidation.validate(event);
+
+    res.json({
+      success: true,
+      valid: validation.valid,
+      errors: validation.errors,
+      warnings: validation.warnings
+    });
+  } catch (error) {
+    console.error('[Feedback] Validation error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Validation failed'
+    });
   }
 });
 
