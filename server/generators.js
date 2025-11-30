@@ -7,7 +7,7 @@ import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompt
 import { PerformanceLogger, createTimer, globalMetrics } from './utils/performanceLogger.js';
 import { getCachedContent, setCachedContent, getCacheMetrics } from './cache/contentCache.js';
 import { connectionPrewarmer, speculativeGenerator } from './utils/advancedOptimizer.js';
-import { CONFIG, isRoutingEnabled, SLIDES_CONFIG, DOCUMENT_CONFIG, ROADMAP_CONFIG, RESEARCH_ANALYSIS_CONFIG } from './config.js';
+import { CONFIG, isRoutingEnabled } from './config.js';
 import {
   getRouter,
   getFallbackManager,
