@@ -68,20 +68,21 @@
       "contentType": "Slides",
       "status": "champion",
       "weight": 1,
-      "promptTemplate": "Create 6 slides as JSON.\n\nSlide types:\n- textTwoColumn: {type,title,section,paragraphs:[\"p1\",\"p2\"]}\n- textThreeColumn: {type,title,section,columns:[\"c1\",\"c2\",\"c3\"]}\n- textWithCards: {type,title,section,content,cards:[{title,content},...]}\n\nReturn: {\"title\":\"...\",\"slides\":[...]}",
+      "promptTemplate": "You are an expert presentation designer. Create a 6-slide presentation JSON deck based on the provided source material.\n\nCRITICAL DESIGN RULES:\n1. **MINIMAL TEXT**: Slides must be readable in 5 seconds. NO WALLS OF TEXT.\n2. **BULLET POINTS**: Use short, punchy bullet points. Max 10-15 words per bullet.\n3. **SUMMARIZE**: Do not copy-paste. Synthesize the content into key takeaways.\n4. **VARIETY**: Use a mix of slide types.\n\nSlide Types & Constraints:\n\n1. **textTwoColumn**:\n   - Usage: Main concepts with bullet points.\n   - \"paragraphs\": Must contain 3-5 short bullet points. NEVER a single long paragraph.\n\n2. **textThreeColumn**:\n   - Usage: Comparing 3 items or showing 3 steps.\n   - \"columns\": Exactly 3 text blocks. Each block max 20 words.\n\n3. **textWithCards**:\n   - Usage: Featuring 4 distinct items/metrics/pillars.\n   - \"content\": A single short sentence (max 15 words).\n   - \"cards\": Exactly 4 cards. Each \"content\" max 10 words.\n\nReturn strictly valid JSON matching the schema.",
       "metadata": {
         "description": "Production slides prompt - minimal and fast",
         "author": "system",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "tags": [
           "production",
           "minimal",
-          "fast"
+          "fast",
+          "improved"
         ],
         "parentVariantId": null
       },
       "createdAt": "2025-11-28T13:16:58.339Z",
-      "updatedAt": "2025-11-28T13:16:58.339Z",
+      "updatedAt": "2025-11-28T13:30:00.000Z",
       "performance": {
         "impressions": 0,
         "conversions": 0,
@@ -98,20 +99,21 @@
       "contentType": "Slides",
       "status": "candidate",
       "weight": 0.8,
-      "promptTemplate": "Create a 6-slide executive presentation as JSON.\n\nSLIDE STRUCTURE:\n1. Title slide (textTwoColumn): Overview and key message\n2. Problem/Context (textWithCards): 3 cards summarizing the situation\n3. Key Findings (textThreeColumn): 3 main insights\n4. Analysis (textTwoColumn): Detailed examination\n5. Recommendations (textWithCards): 3-4 action items\n6. Next Steps (textTwoColumn): Timeline and responsibilities\n\nTYPES:\n- textTwoColumn: {type, title, section, paragraphs:[\"left paragraph\", \"right paragraph\"]}\n- textThreeColumn: {type, title, section, columns:[\"col1\", \"col2\", \"col3\"]}\n- textWithCards: {type, title, section, content, cards:[{title, content},...]}\n\nOUTPUT: {\"title\":\"Presentation Title\",\"slides\":[...]}",
+      "promptTemplate": "Create a 6-slide executive presentation as JSON.\n\nCRITICAL: Keep all text EXTREMELY CONCISE. Use bullet points.\n\nSLIDE STRUCTURE:\n1. Title slide (textTwoColumn): Overview and key message\n2. Problem/Context (textWithCards): 3 cards summarizing the situation\n3. Key Findings (textThreeColumn): 3 main insights\n4. Analysis (textTwoColumn): Detailed examination (bullet points only)\n5. Recommendations (textWithCards): 3-4 action items\n6. Next Steps (textTwoColumn): Timeline and responsibilities (bullet points)\n\nTYPES:\n- textTwoColumn: {type, title, section, paragraphs:[\"short bullet 1\", \"short bullet 2\"]}\n- textThreeColumn: {type, title, section, columns:[\"short col 1\", \"short col 2\", \"short col 3\"]}\n- textWithCards: {type, title, section, content, cards:[{title, content},...]}\n\nOUTPUT: {\"title\":\"Presentation Title\",\"slides\":[...]}",
       "metadata": {
         "description": "More structured slides prompt with content guidance",
         "author": "system",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "tags": [
           "experimental",
           "structured",
-          "guided"
+          "guided",
+          "improved"
         ],
         "parentVariantId": null
       },
       "createdAt": "2025-11-28T13:16:58.339Z",
-      "updatedAt": "2025-11-28T13:16:58.339Z",
+      "updatedAt": "2025-11-28T13:30:00.000Z",
       "performance": {
         "impressions": 0,
         "conversions": 0,
