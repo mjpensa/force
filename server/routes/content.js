@@ -723,36 +723,46 @@ router.get('/:sessionId/:viewType', async (req, res) => {
       });
     }
 
+    // Ensure session.content exists to prevent crashes
+    if (!session.content) {
+      session.content = {};
+    }
+
     let contentResult = session.content[contentKey];
     
     // Self-healing: If slides content is missing OR if it's the old "Coming Soon" placeholder
-    const isOldPlaceholder = contentResult?.data?.slides?.[0]?.title === "Coming Soon";
-    
-    if ((!contentResult || isOldPlaceholder) && viewType === 'slides') {
-      contentResult = {
-        success: true,
-        data: {
-          title: "Placeholder",
-          slides: [
-            {
-              layout: "title",
-              title: "AI Roadmap Generator",
-              tagline: "TEMPLATE INTEGRATION SUCCESSFUL",
-              body: "The new template system is active. Please generate new content to see the full results."
-            },
-            {
-              layout: "content",
-              title: "How to Generate",
-              tagline: "INSTRUCTIONS",
-              body: "1. Go to the Roadmap view.\n2. Enter a prompt.\n3. Click Generate.\n\nThe AI will now use the new 16:9 templates with pixel-perfect positioning."
-            }
-          ]
-        }
-      };
-      // Update the session in storage to persist this fix
-      session.content.slides = contentResult;
-      // We don't await this to avoid blocking the response
-      sessionStorage.save(sessionId, session).catch(err => console.error('Failed to auto-heal session:', err));
+    try {
+      const isOldPlaceholder = contentResult?.data?.slides?.[0]?.title === "Coming Soon";
+      
+      if ((!contentResult || isOldPlaceholder) && viewType === 'slides') {
+        contentResult = {
+          success: true,
+          data: {
+            title: "Placeholder",
+            slides: [
+              {
+                layout: "title",
+                title: "AI Roadmap Generator",
+                tagline: "TEMPLATE INTEGRATION SUCCESSFUL",
+                body: "The new template system is active. Please generate new content to see the full results."
+              },
+              {
+                layout: "content",
+                title: "How to Generate",
+                tagline: "INSTRUCTIONS",
+                body: "1. Go to the Roadmap view.\n2. Enter a prompt.\n3. Click Generate.\n\nThe AI will now use the new 16:9 templates with pixel-perfect positioning."
+              }
+            ]
+          }
+        };
+        // Update the session in storage to persist this fix
+        session.content.slides = contentResult;
+        // We don't await this to avoid blocking the response
+        sessionStorage.save(sessionId, session).catch(err => console.error('Failed to auto-heal session:', err));
+      }
+    } catch (healError) {
+      console.error("Error during session auto-healing:", healError);
+      // Continue without healing if it fails, to avoid 500
     }
 
     if (!contentResult) {
