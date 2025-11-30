@@ -139,43 +139,10 @@ export const SLIDES_VARIANTS = [
     contentType: ContentType.SLIDES,
     status: VariantStatus.CHAMPION,
     weight: 1.0,
-    description: 'Production slides prompt - minimal and fast',
+    description: 'Production slides prompt - placeholder',
     version: '1.0.0',
-    tags: ['production', 'minimal', 'fast'],
-    promptTemplate: `Create 6 slides as JSON.
-
-Slide types:
-- textTwoColumn: {type,title,section,paragraphs:["p1","p2"]}
-- textThreeColumn: {type,title,section,columns:["c1","c2","c3"]}
-- textWithCards: {type,title,section,content,cards:[{title,content},...]}
-
-Return: {"title":"...","slides":[...]}`
-  },
-  {
-    id: 'slides-structured-v1',
-    name: 'Slides Structured V1',
-    contentType: ContentType.SLIDES,
-    status: VariantStatus.CANDIDATE,
-    weight: 0.8,
-    description: 'More structured slides prompt with content guidance',
-    version: '1.0.0',
-    tags: ['experimental', 'structured', 'guided'],
-    promptTemplate: `Create a 6-slide executive presentation as JSON.
-
-SLIDE STRUCTURE:
-1. Title slide (textTwoColumn): Overview and key message
-2. Problem/Context (textWithCards): 3 cards summarizing the situation
-3. Key Findings (textThreeColumn): 3 main insights
-4. Analysis (textTwoColumn): Detailed examination
-5. Recommendations (textWithCards): 3-4 action items
-6. Next Steps (textTwoColumn): Timeline and responsibilities
-
-TYPES:
-- textTwoColumn: {type, title, section, paragraphs:["left paragraph", "right paragraph"]}
-- textThreeColumn: {type, title, section, columns:["col1", "col2", "col3"]}
-- textWithCards: {type, title, section, content, cards:[{title, content},...]}
-
-OUTPUT: {"title":"Presentation Title","slides":[...]}`
+    tags: ['production', 'placeholder'],
+    promptTemplate: `Generate a placeholder slide deck.`
   }
 ];
 
