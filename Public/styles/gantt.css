@@ -769,3 +769,16 @@
     border: 2px solid white;
   }
 }
+
+/* Header/Footer SVG Styling */
+.gantt-header-svg,
+.gantt-footer-svg {
+  width: 100%;
+  height: 12px; /* Set desired height */
+  background-image: url('/horizontal-stripe.svg');
+  background-repeat: repeat-x;
+  background-size: auto 100%; /* Auto width, 100% height to maintain aspect ratio and repeat horizontally */
+  background-color: transparent;
+  margin: 0;
+  padding: 0;
+}

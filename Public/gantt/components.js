@@ -13,20 +13,11 @@ export class GanttComponents {
 
   /**
    * Add the header SVG stripe
-   * Uses img element that scales proportionally to fill width
+   * Uses background image that repeats to fill width
    */
   addHeaderSVG(chartWrapper) {
     const headerSvgEl = document.createElement('div');
     headerSvgEl.className = 'gantt-header-svg';
-
-    const img = document.createElement('img');
-    img.src = '/horizontal-stripe.svg';
-    img.alt = '';
-    img.style.width = '100%';
-    img.style.height = 'auto';
-    img.style.display = 'block';
-
-    headerSvgEl.appendChild(img);
     chartWrapper.appendChild(headerSvgEl);
   }
 
@@ -96,20 +87,11 @@ export class GanttComponents {
 
   /**
    * Add the footer SVG stripe
-   * Uses img element that scales proportionally to fill width
+   * Uses background image that repeats to fill width
    */
   addFooterSVG(chartWrapper) {
     const footerSvgEl = document.createElement('div');
     footerSvgEl.className = 'gantt-footer-svg';
-
-    const img = document.createElement('img');
-    img.src = '/horizontal-stripe.svg';
-    img.alt = '';
-    img.style.width = '100%';
-    img.style.height = 'auto';
-    img.style.display = 'block';
-
-    footerSvgEl.appendChild(img);
     chartWrapper.appendChild(footerSvgEl);
   }
 
