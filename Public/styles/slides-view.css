@@ -127,7 +127,7 @@
 .slide-large-title {
   font-size: clamp(28px, 4vw, 48px);
   font-weight: 200;
-  font-style: italic;
+  font-style: normal;
   font-family: 'Work Sans', Arial, sans-serif;
   line-height: 1.1;
   color: var(--color-navy-deep);

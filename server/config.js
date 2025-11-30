@@ -269,6 +269,34 @@ export function isRoutingEnabled() {
   return CONFIG.API.ROUTING.enabled;
 }
 
+export const SLIDES_CONFIG = {
+  temperature: 0.2,
+  topP: 0.8,
+  topK: 40,
+  maxOutputTokens: 8192,
+};
+
+export const DOCUMENT_CONFIG = {
+  temperature: 0.3,
+  topP: 0.8,
+  topK: 40,
+  maxOutputTokens: 8192,
+};
+
+export const ROADMAP_CONFIG = {
+  temperature: 0.1,
+  topP: 0.8,
+  topK: 40,
+  maxOutputTokens: 8192,
+};
+
+export const RESEARCH_ANALYSIS_CONFIG = {
+  temperature: 0.2,
+  topP: 0.8,
+  topK: 40,
+  maxOutputTokens: 8192,
+};
+
 // Re-export shared config for convenience
 export {
   INJECTION_PATTERNS,

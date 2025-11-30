@@ -38,9 +38,9 @@ export class SlidesView {
     slideEl.className = 'slide';
     slideEl.setAttribute('data-slide-type', slide.type);
     slideEl.setAttribute('data-slide-index', index);
-    const pattern = document.createElement('div');
-    pattern.className = 'slide-pattern';
-    slideEl.appendChild(pattern);
+    // const pattern = document.createElement('div');
+    // pattern.className = 'slide-pattern';
+    // slideEl.appendChild(pattern);
     const content = document.createElement('div');
     content.className = 'slide-content';
     switch (slide.type) {

@@ -40,7 +40,7 @@ export const LAYOUTS = {
       title: {
         x: 0.33, y: 0.5, w: 4.5, h: 2.5,
         fontSize: 48, fontFace: FONTS.thin, color: COLORS.navy,
-        align: 'left', italic: true, lineSpacing: 85
+        align: 'left', italic: false, lineSpacing: 85
       },
       paragraphs: {
         x: 5.5, y: 0.8, w: 7.5, h: 5.5,
@@ -65,7 +65,7 @@ export const LAYOUTS = {
       title: {
         x: 0.33, y: 0.5, w: 4.0, h: 2.5,
         fontSize: 42, fontFace: FONTS.thin, color: COLORS.navy,
-        align: 'left', italic: true, lineSpacing: 85
+        align: 'left', italic: false, lineSpacing: 85
       },
       columns: {
         startX: 4.8, y: 0.8, columnWidth: 2.7, columnGap: 0.2, h: 5.5,
@@ -89,7 +89,7 @@ export const LAYOUTS = {
       title: {
         x: 0.33, y: 0.5, w: 4.0, h: 1.5,
         fontSize: 36, fontFace: FONTS.thin, color: COLORS.navy,
-        align: 'left', italic: true, lineSpacing: 85
+        align: 'left', italic: false, lineSpacing: 85
       },
       content: {
         x: 0.33, y: 2.2, w: 4.0, h: 4.0,
@@ -97,11 +97,11 @@ export const LAYOUTS = {
       },
       cards: {
         startX: 5.0, startY: 0.8,
-        cardWidth: 2.6, cardHeight: 2.0,
+        cardWidth: 3.8, cardHeight: 1.9,
         gapX: 0.2, gapY: 0.2,
-        columns: 3, rows: 2,
+        columns: 2, rows: 3,
         cardBackground: COLORS.lightGray,
-        numberCircleSize: 0.35, numberCircleColor: COLORS.red,
+        numberBoxSize: 0.35, numberBoxColor: COLORS.red,
         numberFontSize: 12, numberFontFace: FONTS.bold, numberColor: COLORS.white,
         titleFontSize: 11, titleFontFace: FONTS.semibold, titleColor: COLORS.navy,
         contentFontSize: 9, contentFontFace: FONTS.regular, contentColor: COLORS.darkGray,

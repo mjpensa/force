@@ -41,6 +41,13 @@ export {
   getResearchAnalysisOutputSchema
 } from './research-analysis.js';
 
+export {
+  SlidesSignature,
+  generateSlidesSignaturePrompt,
+  validateSlidesInputs,
+  getSlidesOutputSchema
+} from './slides.js';
+
 // Import for internal use
 import { RoadmapSignature } from './roadmap.js';
 import { SlidesSignature } from './slides.js';
@@ -55,7 +62,8 @@ import { ResearchAnalysisSignature } from './research-analysis.js';
 export const SignatureType = {
   ROADMAP: 'roadmap',
   DOCUMENT: 'document',
-  RESEARCH_ANALYSIS: 'research-analysis'
+  RESEARCH_ANALYSIS: 'research-analysis',
+  SLIDES: 'slides'
 };
 
 /**
@@ -64,7 +72,8 @@ export const SignatureType = {
 const SIGNATURE_REGISTRY = {
   [SignatureType.ROADMAP]: null,
   [SignatureType.DOCUMENT]: null,
-  [SignatureType.RESEARCH_ANALYSIS]: null
+  [SignatureType.RESEARCH_ANALYSIS]: null,
+  [SignatureType.SLIDES]: null
 };
 
 /**
@@ -81,6 +90,9 @@ function getSignatureFromRegistry(type) {
         break;
       case SignatureType.RESEARCH_ANALYSIS:
         SIGNATURE_REGISTRY[type] = ResearchAnalysisSignature;
+        break;
+      case SignatureType.SLIDES:
+        SIGNATURE_REGISTRY[type] = SlidesSignature;
         break;
     }
   }

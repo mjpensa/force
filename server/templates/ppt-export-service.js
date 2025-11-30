@@ -265,19 +265,20 @@ function addTextWithCardsSlide(pptx, slideData, slideNumber) {
       fill: { color: cardsConfig.cardBackground }
     });
 
-    // Number circle
-    const circleX = x + cardsConfig.padding;
-    const circleY = y + cardsConfig.padding;
-    slide.addShape('ellipse', {
-      x: circleX, y: circleY,
-      w: cardsConfig.numberCircleSize, h: cardsConfig.numberCircleSize,
-      fill: { color: cardsConfig.numberCircleColor }
+    // Number box (square with rounded corners)
+    const boxX = x + cardsConfig.padding;
+    const boxY = y + cardsConfig.padding;
+    slide.addShape('roundRect', {
+      x: boxX, y: boxY,
+      w: cardsConfig.numberBoxSize, h: cardsConfig.numberBoxSize,
+      r: 0.05, // Small radius for rounded corners
+      fill: { color: cardsConfig.numberBoxColor }
     });
 
     // Number text
     slide.addText(String(i + 1), {
-      x: circleX, y: circleY,
-      w: cardsConfig.numberCircleSize, h: cardsConfig.numberCircleSize,
+      x: boxX, y: boxY,
+      w: cardsConfig.numberBoxSize, h: cardsConfig.numberBoxSize,
       fontSize: cardsConfig.numberFontSize,
       fontFace: cardsConfig.numberFontFace,
       color: cardsConfig.numberColor,
@@ -287,7 +288,7 @@ function addTextWithCardsSlide(pptx, slideData, slideNumber) {
     });
 
     // Card title
-    const titleY = y + cardsConfig.padding + cardsConfig.numberCircleSize + 0.1;
+    const titleY = y + cardsConfig.padding + cardsConfig.numberBoxSize + 0.1;
     slide.addText(card.title || '', {
       x: x + cardsConfig.padding,
       y: titleY,
