@@ -62,6 +62,9 @@ import { getExperimentManager } from './server/layers/optimization/experiments/i
 // Import monitoring system
 import { initializeMonitoring, shutdownMonitoring } from './server/utils/monitoring.js';
 
+// Import Redis infrastructure (Plan 08)
+import { initializeRedis, getRedisStatus, disconnectRedis } from './server/redis/index.js';
+
 // --- Server Setup ---
 const app = express();
 const port = CONFIG.SERVER.PORT;
@@ -175,13 +178,50 @@ app.use(cors({
 // Request timeout
 app.use(configureTimeout);
 
-// --- Health Check Endpoint ---
+// --- Health Check Endpoints ---
 let serverStartTime = null;
+
+// Basic health check
 app.get('/api/health', (req, res) => {
+  const redisStatus = getRedisStatus();
+  const uptimeSeconds = serverStartTime ? Math.floor((Date.now() - new Date(serverStartTime).getTime()) / 1000) : 0;
+
+  // Overall status is healthy if server is running
+  // Degraded if Redis is configured but unavailable
+  let status = 'healthy';
+  if (redisStatus.enabled && redisStatus.status === 'degraded') {
+    status = 'degraded';
+  }
+
   res.json({
-    status: 'healthy',
+    status,
     startedAt: serverStartTime,
-    uptime: serverStartTime ? Math.floor((Date.now() - new Date(serverStartTime).getTime()) / 1000) : 0
+    uptime: uptimeSeconds,
+    services: {
+      server: 'healthy',
+      redis: redisStatus.status
+    }
+  });
+});
+
+// Detailed Redis health check (Plan 08)
+app.get('/api/health/redis', (req, res) => {
+  const status = getRedisStatus();
+
+  const httpStatus = status.status === 'healthy' ? 200 :
+                     status.status === 'degraded' ? 503 : 200;
+
+  res.status(httpStatus).json({
+    status: status.status,
+    timestamp: new Date().toISOString(),
+    redis: {
+      enabled: status.enabled,
+      connected: status.connected,
+      uptimeSeconds: Math.floor(status.uptimeMs / 1000),
+      lastHealthCheck: status.lastHealthCheck,
+      reconnections: status.reconnections,
+      errorCount: status.errorCount
+    }
   });
 });
 
@@ -213,10 +253,11 @@ process.on('uncaughtException', (error) => {
 });
 
 // Handle SIGTERM gracefully (for deployment platforms like Railway)
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM signal received: closing HTTP server gracefully');
   shutdownMonitoring();
   shutdownOptimizers();
+  await disconnectRedis();  // Plan 08: Graceful Redis disconnect
   if (process.env.ENABLE_OPTIMIZATION === 'true') {
     stopEvolution();
     console.log('[PROMPT ML] Evolution scheduler stopped');
@@ -225,10 +266,11 @@ process.on('SIGTERM', () => {
 });
 
 // Handle SIGINT gracefully (Ctrl+C)
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('\nSIGINT signal received: shutting down gracefully');
   shutdownMonitoring();
   shutdownOptimizers();
+  await disconnectRedis();  // Plan 08: Graceful Redis disconnect
   if (process.env.ENABLE_OPTIMIZATION === 'true') {
     stopEvolution();
     console.log('[PROMPT ML] Evolution scheduler stopped');
@@ -238,13 +280,23 @@ process.on('SIGINT', () => {
 
 // --- Start Server ---
 serverStartTime = new Date().toISOString();
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log('AI Roadmap Generator Server');
   console.log(`Server running at http://localhost:${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Server started at: ${serverStartTime}`);
   console.log('All modules loaded successfully');
   console.log('No persistence - content generated on demand');
+
+  // Initialize Redis connection (Plan 08)
+  const redisConnected = await initializeRedis();
+  if (redisConnected) {
+    console.log('✓ Redis connected');
+  } else if (process.env.REDIS_URL) {
+    console.warn('⚠ Redis configured but unavailable - using fallback mode');
+  } else {
+    console.log('ℹ Redis not configured - using in-memory storage');
+  }
 
   // Clear stale cache data on startup to ensure fresh generation with latest fixes
   clearAllCaches();
