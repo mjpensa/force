@@ -41,12 +41,6 @@ export {
   getResearchAnalysisOutputSchema
 } from './research-analysis.js';
 
-export {
-  SlidesSignature,
-  generateSlidesSignaturePrompt,
-  validateSlidesInputs,
-  getSlidesOutputSchema
-} from './slides.js';
 
 // Import for internal use
 import { RoadmapSignature } from './roadmap.js';

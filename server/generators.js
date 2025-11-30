@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { jsonrepair } from 'jsonrepair';
 import { generateRoadmapPrompt, roadmapSchema } from './prompts/roadmap.js';
-import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
 import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
 import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompts/research-analysis.js';
 import { PerformanceLogger, createTimer, globalMetrics } from './utils/performanceLogger.js';
@@ -103,7 +102,6 @@ const ENABLE_MONITORING = process.env.ENABLE_MONITORING === 'true';
  */
 const CONTENT_TYPE_TO_STRATEGY = {
   'Roadmap': StrategyType.ROADMAP,
-  'Slides': StrategyType.SLIDES,
   'Document': StrategyType.DOCUMENT,
   'ResearchAnalysis': StrategyType.RESEARCH_ANALYSIS
 };
@@ -113,7 +111,6 @@ const CONTENT_TYPE_TO_STRATEGY = {
  */
 const CONTENT_TYPE_TO_SIGNATURE = {
   'Roadmap': SignatureType.ROADMAP,
-  'Slides': SignatureType.SLIDES,
   'Document': SignatureType.DOCUMENT,
   'ResearchAnalysis': SignatureType.RESEARCH_ANALYSIS
 };
@@ -528,7 +525,6 @@ function processContextEngineering(researchFiles, userPrompt, contentType, perfL
 function getTokenBudgetForType(contentType) {
   const budgets = {
     'Roadmap': 12000,      // Complex timeline extraction
-    'Slides': 6000,        // Concise executive content
     'Document': 10000,     // Comprehensive sections
     'ResearchAnalysis': 8000  // Quality assessment
   };
@@ -603,7 +599,6 @@ function generatePromptWithSignature(contentType, userPrompt, researchFiles, tra
  */
 const CONTENT_TYPE_TO_OUTPUT_TYPE = {
   'Roadmap': 'roadmap',
-  'Slides': 'slides',
   'Document': 'document',
   'ResearchAnalysis': 'research-analysis'
 };
@@ -1108,15 +1103,6 @@ const DOCUMENT_CONFIG = {
   maxOutputTokens: 4096  // Executive summaries are concise
 };
 
-// Slides: Simple 6-slide structure
-const SLIDES_CONFIG = {
-  temperature: 0.1,
-  topP: 0.3,
-  topK: 5,
-  thinkingBudget: 0,
-  maxOutputTokens: 4096  // 6 slides with limited content
-};
-
 // Roadmap: Complex Gantt chart with many tasks
 const ROADMAP_CONFIG = {
   temperature: 0.1,      // Maximum determinism for rule-based output
@@ -1150,7 +1136,6 @@ function withTimeout(promise, timeoutMs, operationName) {
  */
 const CONTENT_TYPE_TO_TASK = {
   'Roadmap': TaskType.ROADMAP,
-  'Slides': TaskType.SLIDES,
   'Document': TaskType.DOCUMENT,
   'ResearchAnalysis': TaskType.RESEARCH_ANALYSIS
 };
@@ -1410,53 +1395,6 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
   }
 }
 
-async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
-  const contentType = 'slides';
-  const combinedContent = combineResearchContent(researchFiles);
-  const startTime = Date.now();
-
-  try {
-    // Check cache first
-    if (ENABLE_CACHE) {
-      const cached = getCachedContent(contentType, combinedContent, userPrompt);
-      if (cached) {
-        if (perfLogger) {
-          perfLogger.setMetadata(`cache-hit-${contentType}`, true);
-        }
-        return { success: true, data: cached, _cached: true };
-      }
-    }
-
-    // Apply context engineering
-    const contextResult = processContextEngineering(researchFiles, userPrompt, 'Slides', perfLogger);
-    const processedFiles = contextResult.files;
-
-    // Generate prompt
-    const prompt = generateSlidesPrompt(userPrompt, combinedContent);
-
-    // Build routing options
-    const routingOptions = {
-      content: combinedContent,
-      fileCount: researchFiles.length
-    };
-
-    const data = await generateWithGemini(prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
-
-    // Store in cache
-    if (ENABLE_CACHE && data) {
-      setCachedContent(contentType, combinedContent, userPrompt, data);
-    }
-
-    return {
-      success: true,
-      data: data,
-      _contextEngineering: contextResult.metadata
-    };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
-
 async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'document';
   const combinedContent = combineResearchContent(researchFiles);
@@ -1698,7 +1636,7 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
   const observability = getObservability();
   const obsContext = observability?.startRequest({
     sessionId: options.sessionId,
-    contentTypes: ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
+    contentTypes: ['Roadmap', 'Document', 'ResearchAnalysis'],
     userPrompt,
     fileCount: researchFiles.length
   });
@@ -1707,12 +1645,11 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
     // Use apiQueue.runAll to control concurrency and prevent rate limiting
     const tasks = [
       { task: () => generateRoadmap(userPrompt, researchFiles, perfLogger), name: 'Roadmap' },
-      { task: () => generateSlides(userPrompt, researchFiles, perfLogger), name: 'Slides' },
       { task: () => generateDocument(userPrompt, researchFiles, perfLogger), name: 'Document' },
       { task: () => generateResearchAnalysis(userPrompt, researchFiles, perfLogger), name: 'ResearchAnalysis' }
     ];
 
-    const [roadmap, slides, document, researchAnalysis] = await apiQueue.runAll(tasks);
+    const [roadmap, document, researchAnalysis] = await apiQueue.runAll(tasks);
 
     // Record validation metrics for each content type
     if (obsContext) {
@@ -1740,14 +1677,13 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
     if (observability && obsContext) {
       await observability.endRequest(obsContext, {
         success: true,
-        contentTypes: ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
-        cached: roadmap._cached || slides._cached || document._cached || researchAnalysis._cached
+        contentTypes: ['Roadmap', 'Document', 'ResearchAnalysis'],
+        cached: roadmap._cached || document._cached || researchAnalysis._cached
       });
     }
 
     return {
       roadmap,
-      slides,
       document,
       researchAnalysis,
       _performanceMetrics: perfReport,
@@ -1779,8 +1715,6 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
       switch (viewType) {
         case 'roadmap':
           return generateRoadmap(prompt, researchFiles, perfLogger);
-        case 'slides':
-          return generateSlides(prompt, researchFiles, perfLogger);
         case 'document':
           return generateDocument(prompt, researchFiles, perfLogger);
         case 'research-analysis':
@@ -1812,7 +1746,7 @@ export { globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator };
 export { enforceYearlyIntervalsForLongRanges };
 
 // Export generation functions for training script
-export { generateRoadmap, generateSlides, generateDocument, generateResearchAnalysis };
+export { generateRoadmap, generateDocument, generateResearchAnalysis };
 
 // Export variant management functions
 export {
@@ -2230,7 +2164,6 @@ export async function generateAllContentStreaming(userPrompt, researchFiles, opt
     // Define tasks with priority (Document and Slides are fastest, emit first)
     const tasks = [
       { task: createStreamingTask(generateDocument, 'Document', 'document'), name: 'Document' },
-      { task: createStreamingTask(generateSlides, 'Slides', 'slides'), name: 'Slides' },
       { task: createStreamingTask(generateRoadmap, 'Roadmap', 'roadmap'), name: 'Roadmap' },
       { task: createStreamingTask(generateResearchAnalysis, 'ResearchAnalysis', 'researchAnalysis'), name: 'ResearchAnalysis' }
     ];

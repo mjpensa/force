@@ -17,7 +17,6 @@ import mammoth from 'mammoth';
 import crypto from 'crypto';
 import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator, enforceYearlyIntervalsForLongRanges } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
-import { generatePptx } from '../templates/ppt-export-service.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
 import { generateETag, clearAllCaches, clearExpiredEntries } from '../cache/contentCache.js';
 import { processFiles } from '../utils/fileProcessor.js';
@@ -674,59 +673,15 @@ router.post('/regenerate/:viewType', uploadMiddleware.array('researchFiles'), as
 });
 
 /**
- * GET /api/content/:sessionId/slides/export
- * Exports slides from a session as a branded PowerPoint file
- *
- * NOTE: This route MUST be defined before /:sessionId/:viewType to avoid being shadowed
+ * GET /api/content/:sessionId/:viewType
+ * Retrieves specific content type from a session
  *
  * URL params:
  * - sessionId: string - Session ID
+ * - viewType: string - Content type (roadmap, slides, document, research-analysis)
  *
- * Response: PowerPoint file (.pptx) download
+ * Response: Content data object
  */
-router.get('/:sessionId/slides/export', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-
-    // Check if session exists
-    const session = await sessionStorage.get(sessionId);
-    if (!session) {
-      return res.status(404).json({
-        error: 'Session not found',
-        message: 'Session may have expired. Please generate new content.'
-      });
-    }
-
-    const slidesResult = session.content.slides;
-    if (!slidesResult || !slidesResult.success || !slidesResult.data) {
-      return res.status(404).json({
-        error: 'Slides not available',
-        message: slidesResult?.error || 'Slides generation failed or not yet complete'
-      });
-    }
-
-    const slides = slidesResult.data;
-
-    // Generate the PowerPoint file
-    const pptxBuffer = await generatePptx(slides, {
-      author: 'BIP',
-      company: 'BIP'
-    });
-
-    // Create filename from presentation title
-    const title = slides.title || 'Presentation';
-    const safeTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
-    const filename = `${safeTitle}.pptx`;
-
-    // Set headers for file download
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pptxBuffer.length);
-
-    res.send(pptxBuffer);
-
-  } catch (error) {
-    res.status(500).json(createErrorResponse('Failed to generate PowerPoint file', error, 'pptx-export'));
   }
 });
 
@@ -863,51 +818,6 @@ router.get('/:sessionId/:viewType', async (req, res) => {
 
   } catch (error) {
     res.status(500).json(createErrorResponse('Failed to retrieve content', error, 'content-retrieve'));
-  }
-});
-
-/**
- * POST /api/content/slides/export
- * Exports slides as a branded PowerPoint file (direct POST, no session)
- *
- * Request body:
- * - slides: object (slides data to export)
- *
- * Response: PowerPoint file (.pptx) download
- */
-router.post('/slides/export', express.json({ limit: '50mb' }), async (req, res) => {
-  try {
-    const { slides } = req.body;
-
-    if (!slides || !slides.slides || !Array.isArray(slides.slides)) {
-      return res.status(400).json({
-        error: 'Invalid slides data',
-        message: 'Request must include slides object with slides array'
-      });
-    }
-
-
-    // Generate the PowerPoint file
-    const pptxBuffer = await generatePptx(slides, {
-      author: 'BIP',
-      company: 'BIP'
-    });
-
-    // Create filename from presentation title
-    const title = slides.title || 'Presentation';
-    const safeTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').substring(0, 50);
-    const filename = `${safeTitle}.pptx`;
-
-    // Set headers for file download
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pptxBuffer.length);
-
-
-    res.send(pptxBuffer);
-
-  } catch (error) {
-    res.status(500).json(createErrorResponse('Failed to generate PowerPoint file', error, 'pptx-export-direct'));
   }
 });
 
