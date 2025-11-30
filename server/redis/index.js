@@ -2,6 +2,7 @@
  * Redis Infrastructure Layer
  *
  * Plan 08: Unified exports for Redis functionality
+ * Plan 09: DSPy cache exports
  *
  * Usage:
  *   import { getRedisClient, initializeRedis } from './redis/index.js';
@@ -11,6 +12,10 @@
  *
  *   // In application code
  *   const client = await getRedisClient();
+ *
+ *   // DSPy caching (Plan 09)
+ *   import { dspyCache } from './redis/index.js';
+ *   const cached = await dspyCache.get('roadmap', inputs);
  */
 
 export {
@@ -22,6 +27,14 @@ export {
   resetRedisMetrics,
   redisFactory
 } from './client.js';
+
+// Plan 09: DSPy Cache exports
+export {
+  dspyCache,
+  DSPyCache,
+  SIGNATURE_TYPES,
+  generateCacheKey
+} from './dspy-cache.js';
 
 import { getRedisClient, isRedisHealthy, getRedisMetrics } from './client.js';
 import { CONFIG } from '../config.js';

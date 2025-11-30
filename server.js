@@ -46,6 +46,7 @@ import feedbackRoutes from './server/routes/feedback.js';
 import autoOptimizeRoutes from './server/routes/auto-optimize.js';
 import trainingRoutes from './server/routes/training.js';
 import temporalRoutes from './server/routes/temporal.js';
+import dspyCacheRoutes from './server/routes/dspy-cache.js';
 
 // Import advanced optimizers
 import { initializeOptimizers, shutdownOptimizers } from './server/utils/advancedOptimizer.js';
@@ -233,6 +234,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/auto-optimize', autoOptimizeRoutes);
 app.use('/api/train', trainingRoutes);
 app.use('/api/temporal', temporalRoutes);
+app.use('/api/cache/dspy', dspyCacheRoutes);
 
 // --- Error Handling ---
 app.use(handleUploadErrors);
