@@ -725,9 +725,10 @@ router.get('/:sessionId/:viewType', async (req, res) => {
 
     let contentResult = session.content[contentKey];
     
-    // Self-healing: If slides content is missing (from sessions created during feature removal),
-    // return the placeholder data immediately.
-    if (!contentResult && viewType === 'slides') {
+    // Self-healing: If slides content is missing OR if it's the old "Coming Soon" placeholder
+    const isOldPlaceholder = contentResult?.data?.slides?.[0]?.title === "Coming Soon";
+    
+    if ((!contentResult || isOldPlaceholder) && viewType === 'slides') {
       contentResult = {
         success: true,
         data: {
@@ -748,7 +749,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
           ]
         }
       };
-      // Optionally update the session in storage to persist this fix
+      // Update the session in storage to persist this fix
       session.content.slides = contentResult;
       // We don't await this to avoid blocking the response
       sessionStorage.save(sessionId, session).catch(err => console.error('Failed to auto-heal session:', err));
