@@ -245,8 +245,6 @@ export function validateSignatureInputs(type, userPrompt, researchFiles) {
   switch (type) {
     case SignatureType.ROADMAP:
       return validateRoadmapInputs(userPrompt, researchFiles);
-    case SignatureType.SLIDES:
-      return validateSlidesInputs(userPrompt, researchFiles);
     case SignatureType.DOCUMENT:
       return validateDocumentInputs(userPrompt, researchFiles);
     case SignatureType.RESEARCH_ANALYSIS:
@@ -266,8 +264,6 @@ export function getSignatureOutputSchema(type) {
   switch (type) {
     case SignatureType.ROADMAP:
       return getRoadmapOutputSchema();
-    case SignatureType.SLIDES:
-      return getSlidesOutputSchema();
     case SignatureType.DOCUMENT:
       return getDocumentOutputSchema();
     case SignatureType.RESEARCH_ANALYSIS:
