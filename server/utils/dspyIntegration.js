@@ -23,7 +23,6 @@
  *   await dspyIntegration.optimizeSignature('roadmap');
  */
 
-import { CONFIG } from '../config.js';
 import { getRedisClient } from '../redis/client.js';
 import { dspyCache } from '../redis/dspy-cache.js';
 import { logGenerationEvent, logEvolutionEvent } from '../redis/event-stream.js';
@@ -517,33 +516,40 @@ async function processForTraining(contentType, inputs, result, feedback) {
     return false;
   }
 
-  // Record as training example
-  const recorded = await recordTrainingExample(
-    signatureType,
-    {
-      prompt: inputs.prompt,
-      researchFiles: inputs.researchFiles || inputs.research_files,
-      contentType
-    },
-    result.data,
-    feedback.rating || feedback.qualityScore || 3,
-    {
-      variant: result._variant?.id,
-      generationId: result._generationId,
-      source: result.__source
-    }
-  );
-
-  // Record to variant metrics
-  if (result._variant?.id) {
-    await variantMetrics.recordScore(
-      result._variant.id,
+  try {
+    // Record as training example
+    const recorded = await recordTrainingExample(
+      signatureType,
+      {
+        prompt: inputs.prompt,
+        researchFiles: inputs.researchFiles || inputs.research_files,
+        contentType
+      },
+      result.data,
       feedback.rating || feedback.qualityScore || 3,
-      contentType
+      {
+        variant: result._variant?.id,
+        generationId: result._generationId,
+        source: result.__source
+      }
     );
-  }
 
-  return recorded;
+    // Record to variant metrics (non-blocking, catch errors silently)
+    if (result._variant?.id) {
+      variantMetrics.recordScore(
+        result._variant.id,
+        feedback.rating || feedback.qualityScore || 3,
+        contentType
+      ).catch(err => {
+        console.warn(`[DSPyIntegration] Variant metrics error: ${err.message}`);
+      });
+    }
+
+    return recorded;
+  } catch (error) {
+    console.error(`[DSPyIntegration] Error processing for training: ${error.message}`);
+    return false;
+  }
 }
 
 // ============================================================================
