@@ -12,8 +12,7 @@
   background-color: transparent;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   overflow-x: auto;
-  overflow-y: auto;
-  max-height: 80vh;
+  overflow-y: visible;
   margin-top: 0;
   font-family: 'Work Sans', sans-serif;
   position: relative;

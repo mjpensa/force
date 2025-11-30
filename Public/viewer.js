@@ -481,7 +481,7 @@ class ContentViewer {
     this.contentContainer.innerHTML = '';
     const chartContainer = document.createElement('div');
     chartContainer.id = 'chart-root';
-    chartContainer.style.cssText = 'width: 100%; height: 100%; overflow: auto;';
+    chartContainer.style.cssText = 'width: 100%; padding: 16px;';
     this.contentContainer.appendChild(chartContainer);
     try {
       const { GanttChart } = await import('./GanttChart.js');
