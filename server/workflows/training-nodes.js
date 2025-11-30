@@ -2,6 +2,8 @@
  * Training Graph Nodes
  *
  * Gap 02: Node functions for the LangGraph training workflow.
+ * Gap 06/07: DSPy service integration with optimization feedback loop.
+ * Gap 10/11/12: Redis event integration for audit trail and metrics.
  *
  * Each node is a pure function that takes state and returns state updates.
  * Nodes handle specific phases of the training process:
@@ -17,6 +19,8 @@ import { PromptEvolutionEngine } from '../utils/promptEvolution.js';
 import { executeWithCache } from '../utils/dspyExecutor.js';
 import { scoreContentQuality } from '../utils/contentQualityScoring.js';
 import { calculateCorrelatedFeedback } from '../utils/feedbackSimulation.js';
+import { trainingEvents } from '../utils/trainingEvents.js';
+import { dspyIntegration } from '../utils/dspyIntegration.js';
 
 // Content type to signature mapping
 const CONTENT_TYPE_TO_SIGNATURE = {
@@ -43,6 +47,22 @@ export async function initializeNode(state) {
   console.log(`   Sample sets: ${state.sampleSets.length}`);
   console.log(`   Content types: ${state.contentTypes.join(', ')}`);
 
+  // Log session start event (Gap 10/11)
+  await trainingEvents.onSessionStart(state.sessionId, {
+    mode: 'graph',
+    iterations: state.totalIterations,
+    contentTypes: state.contentTypes,
+    sampleSets: state.sampleSets
+  });
+
+  // Check DSPy service status (Gap 06)
+  const dspyStatus = await dspyIntegration.getStatus();
+  if (dspyStatus.serviceAvailable) {
+    console.log('   ✓ DSPy service available');
+  } else {
+    console.log('   ⚠️ DSPy service not available (using fallback generators)');
+  }
+
   // Create and initialize evolution engine
   const engine = new PromptEvolutionEngine({
     promotionThreshold: 0.05,
@@ -64,7 +84,8 @@ export async function initializeNode(state) {
   return {
     evolutionState: engine.serialize(),
     phase: 'select_sample',
-    status: 'running'
+    status: 'running',
+    dspyServiceAvailable: dspyStatus.serviceAvailable
   };
 }
 
@@ -204,6 +225,13 @@ export async function evaluateNode(state) {
   if (currentError || !currentResult?.success) {
     console.log(`   ✗ Generation failed`);
 
+    // Log generation error event (Gap 10/11)
+    await trainingEvents.onGenerationError(state.sessionId, currentError, {
+      iteration: currentIteration,
+      contentType: currentContentType,
+      sampleSet: currentSampleSet?.name
+    });
+
     return {
       stats: {
         totalGenerations: 1,
@@ -236,6 +264,30 @@ export async function evaluateNode(state) {
   const rating = feedback.rating;
 
   console.log(`   ✓ Quality: ${qualityScore.toFixed(2)}/5, Rating: ${rating}⭐`);
+
+  // Log generation event (Gap 10/11)
+  await trainingEvents.onGeneration(state.sessionId, currentResult, {
+    iteration: currentIteration,
+    contentType: currentContentType,
+    sampleSet: currentSampleSet?.name,
+    cacheHit: currentCacheHit,
+    latencyMs: currentResult?._latencyMs,
+    feedback
+  });
+
+  // Record for DSPy training (Gap 07 - Optimization Feedback Loop)
+  if (rating >= 3.5) {
+    await dspyIntegration.processForTraining(
+      currentContentType,
+      {
+        prompt: currentSampleSet.prompts[currentContentType],
+        researchFiles: currentSampleSet.files,
+        contentType: currentContentType
+      },
+      currentResult,
+      feedback
+    );
+  }
 
   // Record for evolution engine
   let updatedEvolutionState = evolutionState;
@@ -344,6 +396,23 @@ export async function checkEvolutionNode(state) {
     }
   }
 
+  // Log evolution cycle event (Gap 10/11)
+  await trainingEvents.onEvolutionCycle(state.sessionId, currentIteration, evolutionResults);
+
+  // Check if we should trigger DSPy optimization (Gap 07)
+  if (evolutionResults.promotions.length > 0) {
+    // A variant was promoted - trigger DSPy optimization for that signature type
+    for (const promotion of evolutionResults.promotions) {
+      const signatureType = CONTENT_TYPE_TO_SIGNATURE[promotion.contentType];
+      if (signatureType) {
+        // Don't await - run optimization asynchronously
+        dspyIntegration.optimize(signatureType).catch(err => {
+          console.warn(`   ⚠️ DSPy optimization failed for ${signatureType}: ${err.message}`);
+        });
+      }
+    }
+  }
+
   return {
     evolutionState: engine.serialize(),
     lastEvolutionResult: evolutionResults,
@@ -432,6 +501,36 @@ export async function finalizeNode(state) {
     duration: `${durationMins} minutes`,
     completedAt: new Date().toISOString()
   };
+
+  // Log session completion event (Gap 10/11)
+  if (shouldStop) {
+    await trainingEvents.onSessionStop(state.sessionId, 'user_stop', {
+      iteration: currentIteration
+    });
+  } else {
+    await trainingEvents.onSessionComplete(state.sessionId, summary);
+  }
+
+  // Log cache stats (Gap 10/11)
+  await trainingEvents.onCacheStats(state.sessionId, {
+    hits: cacheStats.hits,
+    misses: cacheStats.misses,
+    hitRate: `${cacheHitRate}%`,
+    estimatedSavings: `$${estimatedSavings}`
+  });
+
+  // Get DSPy integration status for summary
+  const dspyStatus = await dspyIntegration.getStatus();
+  summary.dspyIntegration = {
+    serviceAvailable: dspyStatus.serviceAvailable,
+    signatures: dspyStatus.signatures
+  };
+
+  // Get variant metrics summary (Gap 12)
+  const topVariants = await trainingEvents.getTopVariants(5);
+  if (topVariants.length > 0) {
+    summary.topVariants = topVariants;
+  }
 
   return {
     status: shouldStop ? 'stopped' : 'completed',
