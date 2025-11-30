@@ -2369,6 +2369,102 @@ export class PromptEvolutionEngine {
     version.candidateStats = { totalScore: 0, count: 0, avgScore: 0 };
     version.active = version.champion;
   }
+
+  /**
+   * Serialize engine state for checkpoint persistence
+   *
+   * Gap 03: Enables training session resumption by serializing
+   * all mutable state to a JSON-compatible object.
+   *
+   * @returns {Object} Serializable state
+   */
+  serialize() {
+    return {
+      // Configuration
+      config: {
+        promotionThreshold: this.promotionThreshold,
+        minCandidateSamples: this.minCandidateSamples,
+        minChampionSamples: this.minChampionSamples,
+        abTestRatio: this.abTestRatio
+      },
+
+      // Prompt versions (deep copy to avoid reference issues)
+      promptVersions: JSON.parse(JSON.stringify(this.promptVersions)),
+
+      // Evolution statistics
+      evolutionStats: { ...this.evolutionStats },
+
+      // Pattern extractor state
+      patternExtractorState: {
+        successPatterns: this.patternExtractor.successPatterns?.slice(-100) || [],
+        failurePatterns: this.patternExtractor.failurePatterns?.slice(-100) || [],
+        middlePatterns: this.patternExtractor.middlePatterns?.slice(-100) || []
+      },
+
+      // Strategy selector state
+      strategySelectorState: {
+        mutationHistory: this.strategySelector.mutationHistory?.slice(-50) || [],
+        currentIteration: this.strategySelector.currentIteration || 0
+      },
+
+      // Serialization metadata
+      serializedAt: Date.now(),
+      version: 1
+    };
+  }
+
+  /**
+   * Deserialize engine from checkpoint
+   *
+   * Gap 03: Restores engine state from a serialized checkpoint,
+   * enabling training resumption.
+   *
+   * @param {Object} state - Serialized state from serialize()
+   * @returns {PromptEvolutionEngine} Restored engine instance
+   */
+  static deserialize(state) {
+    if (!state) {
+      return null;
+    }
+
+    // Create engine with saved config
+    const engine = new PromptEvolutionEngine(state.config || {});
+
+    // Restore prompt versions
+    if (state.promptVersions) {
+      engine.promptVersions = JSON.parse(JSON.stringify(state.promptVersions));
+    }
+
+    // Restore evolution stats
+    if (state.evolutionStats) {
+      engine.evolutionStats = { ...state.evolutionStats };
+    }
+
+    // Restore pattern extractor state
+    if (state.patternExtractorState) {
+      if (state.patternExtractorState.successPatterns) {
+        engine.patternExtractor.successPatterns = [...state.patternExtractorState.successPatterns];
+      }
+      if (state.patternExtractorState.failurePatterns) {
+        engine.patternExtractor.failurePatterns = [...state.patternExtractorState.failurePatterns];
+      }
+      if (state.patternExtractorState.middlePatterns) {
+        engine.patternExtractor.middlePatterns = [...state.patternExtractorState.middlePatterns];
+      }
+    }
+
+    // Restore strategy selector state
+    if (state.strategySelectorState) {
+      if (state.strategySelectorState.mutationHistory) {
+        engine.strategySelector.mutationHistory = [...state.strategySelectorState.mutationHistory];
+      }
+      if (state.strategySelectorState.currentIteration !== undefined) {
+        engine.strategySelector.currentIteration = state.strategySelectorState.currentIteration;
+      }
+    }
+
+    return engine;
+  }
 }
 
 // Singleton instance for easy import
