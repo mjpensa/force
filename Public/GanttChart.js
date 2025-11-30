@@ -77,10 +77,10 @@ export class GanttChart {
     // Render UI components
     this.components.addHeaderSVG(this.chartWrapper);
 
-    // Create the header menu (glassmorphic three-dot menu)
-    const headerMenu = this.components.createHeaderMenu(this.isEditMode);
+    // Create the footer menu (glassmorphic three-dot menu) - will be placed at bottom
+    const footerMenu = this.components.createHeaderMenu(this.isEditMode);
 
-    const { titleContainer, titleElement } = this.components.addTitle(this.chartWrapper, this.ganttData, headerMenu);
+    const { titleContainer, titleElement } = this.components.addTitle(this.chartWrapper, this.ganttData);
     this.titleContainer = titleContainer;
     this.titleElement = titleElement;
 
@@ -93,8 +93,8 @@ export class GanttChart {
 
     renderTimer.mark('Grid created');
 
-    // Render legend and footer
-    this.legendElement = this.components.addLegend(this.chartWrapper, this.ganttData);
+    // Render legend with footer menu and footer stripe
+    this.legendElement = this.components.addLegend(this.chartWrapper, this.ganttData, footerMenu);
     this.components.addFooterSVG(this.chartWrapper);
 
     this.container.appendChild(this.chartWrapper);

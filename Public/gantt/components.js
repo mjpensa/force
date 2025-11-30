@@ -78,7 +78,7 @@ export class GanttComponents {
   }
 
   /**
-   * Add the logo to the title container
+   * Add the logo to the title container (right side)
    */
   addLogo(titleContainer, titleElement) {
     const logoImg = document.createElement('img');
@@ -89,8 +89,8 @@ export class GanttComponents {
     logoImg.style.width = 'auto';
     logoImg.style.flexShrink = '0';
 
-    if (titleContainer && titleElement) {
-      titleContainer.insertBefore(logoImg, titleElement);
+    if (titleContainer) {
+      titleContainer.appendChild(logoImg);
     }
   }
 
@@ -114,57 +114,73 @@ export class GanttComponents {
   }
 
   /**
-   * Add the legend
+   * Add the legend and optional footer menu
+   * @param {HTMLElement} chartWrapper - The chart wrapper element
+   * @param {Object} ganttData - The gantt data
+   * @param {HTMLElement} [footerMenu] - Optional menu element for the footer
    * @returns {HTMLElement|null} The legend element
    */
-  addLegend(chartWrapper, ganttData) {
+  addLegend(chartWrapper, ganttData, footerMenu = null) {
     if (!ganttData.legend) {
       ganttData.legend = [];
     }
 
     this._updateLegendWithUsedColors(ganttData);
 
-    if (ganttData.legend.length === 0) return null;
+    // Create footer bar container that holds legend and menu
+    const footerBar = document.createElement('div');
+    footerBar.className = 'gantt-footer-bar';
 
     const legendElement = document.createElement('div');
     legendElement.className = 'gantt-legend';
 
-    const legendLine = document.createElement('div');
-    legendLine.className = 'legend-line';
+    if (ganttData.legend.length > 0) {
+      const legendLine = document.createElement('div');
+      legendLine.className = 'legend-line';
 
-    const title = document.createElement('span');
-    title.className = 'legend-title';
-    title.textContent = 'Legend:';
-    legendLine.appendChild(title);
+      const title = document.createElement('span');
+      title.className = 'legend-title';
+      title.textContent = 'Legend:';
+      legendLine.appendChild(title);
 
-    const list = document.createElement('div');
-    list.className = 'legend-list';
+      const list = document.createElement('div');
+      list.className = 'legend-list';
 
-    ganttData.legend.forEach((item, index) => {
-      const itemEl = document.createElement('div');
-      itemEl.className = 'legend-item';
-      itemEl.setAttribute('data-legend-index', index);
+      ganttData.legend.forEach((item, index) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'legend-item';
+        itemEl.setAttribute('data-legend-index', index);
 
-      const colorBox = document.createElement('div');
-      colorBox.className = 'legend-color-box';
-      colorBox.setAttribute('data-color', item.color);
+        const colorBox = document.createElement('div');
+        colorBox.className = 'legend-color-box';
+        colorBox.setAttribute('data-color', item.color);
 
-      const labelWrapper = document.createElement('span');
-      labelWrapper.className = 'legend-label-wrapper';
+        const labelWrapper = document.createElement('span');
+        labelWrapper.className = 'legend-label-wrapper';
 
-      const label = document.createElement('span');
-      label.className = 'legend-label';
-      label.textContent = item.label;
-      labelWrapper.appendChild(label);
+        const label = document.createElement('span');
+        label.className = 'legend-label';
+        label.textContent = item.label;
+        labelWrapper.appendChild(label);
 
-      itemEl.appendChild(colorBox);
-      itemEl.appendChild(labelWrapper);
-      list.appendChild(itemEl);
-    });
+        itemEl.appendChild(colorBox);
+        itemEl.appendChild(labelWrapper);
+        list.appendChild(itemEl);
+      });
 
-    legendLine.appendChild(list);
-    legendElement.appendChild(legendLine);
-    chartWrapper.appendChild(legendElement);
+      legendLine.appendChild(list);
+      legendElement.appendChild(legendLine);
+    }
+
+    footerBar.appendChild(legendElement);
+
+    // Add footer menu to the right side if provided
+    if (footerMenu) {
+      footerMenu.classList.add('gantt-footer-menu');
+      footerBar.appendChild(footerMenu);
+    }
+
+    chartWrapper.appendChild(footerBar);
 
     this._setupLegendDelegation(legendElement);
 

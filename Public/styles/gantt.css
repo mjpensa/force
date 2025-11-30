@@ -585,12 +585,39 @@
   );
 }
 
+/* Footer Menu - Positioned at bottom of chart */
+.gantt-footer-menu {
+  position: relative;
+  z-index: 25;
+  flex-shrink: 0;
+}
+
+/* Footer menu dropdown opens upward */
+.gantt-footer-menu .gantt-menu-dropdown {
+  top: auto;
+  bottom: calc(100% + 8px);
+  transform: translateY(10px) scale(0.95);
+}
+
+.gantt-footer-menu .gantt-menu-dropdown.open {
+  transform: translateY(0) scale(1);
+}
+
+/* Footer Bar - Contains Legend and Menu */
+.gantt-footer-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--color-navy-brand, #002040);
+  border-radius: 0 0 6px 6px;
+  gap: 16px;
+}
+
 /* Legend */
 .gantt-legend {
-  padding: 8px 12px;
+  flex: 1;
   margin: 0;
-  border-radius: 0 0 6px 6px;
-  background-color: var(--color-navy-brand, #002040);
   color: var(--glass-text-primary);
 }
 
@@ -650,7 +677,7 @@
 
 /* Responsive Gantt */
 @media (max-width: 1024px) {
-  .gantt-legend {
+  .gantt-footer-bar {
     padding: 6px 10px;
   }
 
@@ -673,7 +700,7 @@
     margin: 2px 1px;
   }
 
-  .gantt-legend {
+  .gantt-footer-bar {
     padding: 6px 8px;
   }
 
@@ -698,6 +725,11 @@
     padding: 4px;
   }
 
+  .gantt-footer-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .legend-list {
     flex-direction: column;
     gap: 4px;
@@ -710,6 +742,10 @@
   .gantt-menu-dropdown {
     min-width: 160px;
     right: -8px;
+  }
+
+  .gantt-footer-menu .gantt-menu-dropdown {
+    right: 0;
   }
 
   .menu-item {
