@@ -27,6 +27,7 @@ import {
 import { runPreflightChecks } from '../utils/preflightChecks.js';
 import { calculateCorrelatedFeedback } from '../utils/feedbackSimulation.js';
 import { PromptEvolutionEngine } from '../utils/promptEvolution.js';
+import { scoreContentQuality } from '../utils/contentQualityScoring.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -728,6 +729,52 @@ function calculateResearchAnalysisFeedback(result, validationResult) {
 }
 
 /**
+ * Calculate quality score using Plan 04 unified scoring system.
+ *
+ * Converts the 0-1 normalized score from contentQualityScoring to a 1-5 scale
+ * for compatibility with the feedback simulation system.
+ *
+ * @param {Object} result - Generation result
+ * @param {Object} validationResult - Validation result
+ * @param {string} contentType - Content type
+ * @returns {number} Quality score (1-5 scale)
+ */
+function calculateUnifiedScore(result, validationResult, contentType) {
+  // Get the data from the result
+  const data = result?.data;
+
+  if (!data) {
+    return 1;  // No data = minimum score
+  }
+
+  try {
+    // Use Plan 04's unified scoring
+    const scoreResult = scoreContentQuality(data, contentType);
+
+    // Convert 0-1 score to 1-5 scale
+    // overall is 0-1, we want 1-5
+    const baseScore = 1 + scoreResult.overall * 4;
+
+    // Apply validation bonuses/penalties
+    let score = baseScore;
+
+    if (validationResult?.valid !== false) {
+      score += 0.3;
+    }
+
+    if (validationResult?.errors?.length > 0) {
+      score -= 0.2 * Math.min(validationResult.errors.length, 3);
+    }
+
+    // Clamp to 1-5 range
+    return Math.max(1, Math.min(5, score));
+  } catch (error) {
+    console.warn(`Unified scoring failed for ${contentType}, using fallback:`, error.message);
+    return null;  // Signal to use fallback
+  }
+}
+
+/**
  * Calculate realistic feedback based on output quality and content type.
  *
  * This function calculates a quality score using content-type-specific metrics,
@@ -747,23 +794,28 @@ function calculateRealisticFeedback(result, validationResult, contentType) {
     };
   }
 
-  // Calculate content-type-specific quality score
-  let score;
-  switch (contentType) {
-    case 'Roadmap':
-      score = calculateRoadmapFeedback(result, validationResult);
-      break;
-    case 'Slides':
-      score = calculateSlidesFeedback(result, validationResult);
-      break;
-    case 'Document':
-      score = calculateDocumentFeedback(result, validationResult);
-      break;
-    case 'ResearchAnalysis':
-      score = calculateResearchAnalysisFeedback(result, validationResult);
-      break;
-    default:
-      score = 3;
+  // Calculate content-type-specific quality score using Plan 04 unified scoring
+  // Falls back to legacy inline scoring if unified scoring fails
+  let score = calculateUnifiedScore(result, validationResult, contentType);
+
+  // Fallback to legacy scoring if unified scoring returned null
+  if (score === null) {
+    switch (contentType) {
+      case 'Roadmap':
+        score = calculateRoadmapFeedback(result, validationResult);
+        break;
+      case 'Slides':
+        score = calculateSlidesFeedback(result, validationResult);
+        break;
+      case 'Document':
+        score = calculateDocumentFeedback(result, validationResult);
+        break;
+      case 'ResearchAnalysis':
+        score = calculateResearchAnalysisFeedback(result, validationResult);
+        break;
+      default:
+        score = 3;
+    }
   }
 
   // Apply latency penalty (high latency degrades user experience)
