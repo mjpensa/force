@@ -2,6 +2,7 @@ import { PPT_TEMPLATES } from '../../config/templates.js';
 
 export class SlidesView {
   constructor(data) {
+    console.log('SlidesViewV2 initialized with data:', data);
     this.data = data;
     this.currentSlideIndex = 0;
   }

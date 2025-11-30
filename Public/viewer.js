@@ -406,6 +406,7 @@ class ContentViewer {
     }
   }
   async _renderSlidesView(data) {
+    console.log('Loading SlidesViewV2...');
     // Lazy load SlidesView module
     const SlidesView = await this._loadViewModule('slides', './components/views/SlidesViewV2.js', 'SlidesView');
     const slidesView = new SlidesView(data);
