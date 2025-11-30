@@ -355,6 +355,9 @@ class ContentViewer {
       }
       markPerformance(`render-${viewName}-start`);
       switch (viewName) {
+        case 'slides':
+          await this._renderSlidesView(viewData);
+          break;
         case 'document':
           await this._renderDocumentView(viewData);
           break;
@@ -402,6 +405,18 @@ class ContentViewer {
       }
     }
   }
+  async _renderSlidesView(data) {
+    // Lazy load SlidesView module
+    const SlidesView = await this._loadViewModule('slides', './components/views/SlidesView.js', 'SlidesView');
+    const slidesView = new SlidesView(data);
+
+    // Profile render time
+    const container = profileRender('SlidesView', () => slidesView.render());
+    this.contentContainer.innerHTML = '';
+    this.contentContainer.appendChild(container);
+    this.currentViewComponent = slidesView;
+  }
+
   async _renderDocumentView(data) {
     // Lazy load DocumentView module
     const DocumentView = await this._loadViewModule('document', './components/views/DocumentView.js', 'DocumentView');

@@ -1395,6 +1395,17 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
   }
 }
 
+async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
+  // Placeholder for slide generation
+  return {
+    success: true,
+    data: {
+      title: "Placeholder",
+      slides: []
+    }
+  };
+}
+
 async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
   const contentType = 'document';
   const combinedContent = combineResearchContent(researchFiles);
@@ -1636,7 +1647,7 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
   const observability = getObservability();
   const obsContext = observability?.startRequest({
     sessionId: options.sessionId,
-    contentTypes: ['Roadmap', 'Document', 'ResearchAnalysis'],
+    contentTypes: ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
     userPrompt,
     fileCount: researchFiles.length
   });
@@ -1645,11 +1656,12 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
     // Use apiQueue.runAll to control concurrency and prevent rate limiting
     const tasks = [
       { task: () => generateRoadmap(userPrompt, researchFiles, perfLogger), name: 'Roadmap' },
+      { task: () => generateSlides(userPrompt, researchFiles, perfLogger), name: 'Slides' },
       { task: () => generateDocument(userPrompt, researchFiles, perfLogger), name: 'Document' },
       { task: () => generateResearchAnalysis(userPrompt, researchFiles, perfLogger), name: 'ResearchAnalysis' }
     ];
 
-    const [roadmap, document, researchAnalysis] = await apiQueue.runAll(tasks);
+    const [roadmap, slides, document, researchAnalysis] = await apiQueue.runAll(tasks);
 
     // Record validation metrics for each content type
     if (obsContext) {
@@ -1677,13 +1689,14 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
     if (observability && obsContext) {
       await observability.endRequest(obsContext, {
         success: true,
-        contentTypes: ['Roadmap', 'Document', 'ResearchAnalysis'],
-        cached: roadmap._cached || document._cached || researchAnalysis._cached
+        contentTypes: ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
+        cached: roadmap._cached || slides._cached || document._cached || researchAnalysis._cached
       });
     }
 
     return {
       roadmap,
+      slides,
       document,
       researchAnalysis,
       _performanceMetrics: perfReport,
@@ -1715,6 +1728,8 @@ export async function regenerateContent(viewType, prompt, researchFiles, options
       switch (viewType) {
         case 'roadmap':
           return generateRoadmap(prompt, researchFiles, perfLogger);
+        case 'slides':
+          return generateSlides(prompt, researchFiles, perfLogger);
         case 'document':
           return generateDocument(prompt, researchFiles, perfLogger);
         case 'research-analysis':
@@ -1746,7 +1761,7 @@ export { globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator };
 export { enforceYearlyIntervalsForLongRanges };
 
 // Export generation functions for training script
-export { generateRoadmap, generateDocument, generateResearchAnalysis };
+export { generateRoadmap, generateSlides, generateDocument, generateResearchAnalysis };
 
 // Export variant management functions
 export {
@@ -2164,6 +2179,7 @@ export async function generateAllContentStreaming(userPrompt, researchFiles, opt
     // Define tasks with priority (Document and Slides are fastest, emit first)
     const tasks = [
       { task: createStreamingTask(generateDocument, 'Document', 'document'), name: 'Document' },
+      { task: createStreamingTask(generateSlides, 'Slides', 'slides'), name: 'Slides' },
       { task: createStreamingTask(generateRoadmap, 'Roadmap', 'roadmap'), name: 'Roadmap' },
       { task: createStreamingTask(generateResearchAnalysis, 'ResearchAnalysis', 'researchAnalysis'), name: 'ResearchAnalysis' }
     ];
