@@ -29,6 +29,13 @@ import { calculateCorrelatedFeedback } from '../utils/feedbackSimulation.js';
 import { PromptEvolutionEngine } from '../utils/promptEvolution.js';
 import { scoreContentQuality } from '../utils/contentQualityScoring.js';
 import { executeWithCache, getCacheStats } from '../utils/dspyExecutor.js';
+import {
+  runTrainingGraph,
+  resumeTrainingGraph,
+  stopTrainingGraph,
+  getTrainingStatus as getGraphStatus,
+  streamTrainingGraph
+} from '../workflows/index.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -1362,6 +1369,330 @@ async function runTraining(iterations, delay, contentTypes) {
 
   // Print error summary
   console.log(errorStats.formatForConsole());
+}
+
+// =============================================================================
+// LANGGRAPH-BASED TRAINING ENDPOINTS (Gap 02)
+// =============================================================================
+
+/**
+ * POST /api/train/graph
+ * Start graph-based training with LangGraph orchestration
+ *
+ * Body params:
+ *   - secret: Required auth token
+ *   - iterations: Number of iterations (default: 10)
+ *   - delay: Delay between generations in ms (default: 1000)
+ *   - contentTypes: Array of content types to train (default: all)
+ *   - sessionId: Optional session ID for resumption
+ */
+router.post('/graph', async (req, res) => {
+  const secret = req.body.secret || req.query.secret;
+  const expectedSecret = process.env.TRAIN_SECRET || 'train123';
+
+  if (secret !== expectedSecret) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing secret.'
+    });
+  }
+
+  if (isTraining) {
+    return res.status(409).json({
+      error: 'Training in progress',
+      progress: trainingProgress
+    });
+  }
+
+  const iterations = parseInt(req.body.iterations) || 10;
+  const delay = parseInt(req.body.delay) || 1000;
+  const sessionId = req.body.sessionId || `training_${Date.now()}`;
+
+  // Parse content types to train
+  let typesToTrain = req.body.contentTypes || CONTENT_TYPES;
+  if (typeof typesToTrain === 'string') {
+    typesToTrain = typesToTrain.split(',').filter(t => CONTENT_TYPES.includes(t));
+  }
+  if (typesToTrain.length === 0) typesToTrain = CONTENT_TYPES;
+
+  isTraining = true;
+  shouldStop = false;
+  trainingProgress = {
+    status: 'starting',
+    mode: 'graph',
+    sessionId,
+    iterations,
+    delay,
+    contentTypes: typesToTrain,
+    startedAt: new Date().toISOString()
+  };
+
+  res.json({
+    message: 'Graph-based training started',
+    sessionId,
+    progress: trainingProgress,
+    statusUrl: `/api/train/graph/status/${sessionId}`
+  });
+
+  // Run graph-based training in background
+  runGraphTraining(sessionId, iterations, delay, typesToTrain).catch(err => {
+    console.error('[GraphTraining] Error:', err);
+    trainingProgress.status = 'error';
+    trainingProgress.error = err.message;
+  }).finally(() => {
+    isTraining = false;
+  });
+});
+
+/**
+ * POST /api/train/graph/resume/:sessionId
+ * Resume a stopped or interrupted graph-based training session
+ */
+router.post('/graph/resume/:sessionId', async (req, res) => {
+  const secret = req.body.secret || req.query.secret;
+  const expectedSecret = process.env.TRAIN_SECRET || 'train123';
+
+  if (secret !== expectedSecret) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing secret.'
+    });
+  }
+
+  if (isTraining) {
+    return res.status(409).json({
+      error: 'Training in progress',
+      progress: trainingProgress
+    });
+  }
+
+  const { sessionId } = req.params;
+
+  // Check if session exists
+  const existingStatus = await getGraphStatus(sessionId);
+  if (!existingStatus) {
+    return res.status(404).json({
+      error: 'Session not found',
+      message: `No checkpoint found for session: ${sessionId}`
+    });
+  }
+
+  isTraining = true;
+  shouldStop = false;
+  trainingProgress = {
+    status: 'resuming',
+    mode: 'graph',
+    sessionId,
+    resumingFrom: existingStatus.currentIteration,
+    startedAt: new Date().toISOString()
+  };
+
+  res.json({
+    message: 'Resuming graph-based training',
+    sessionId,
+    resumingFrom: existingStatus.currentIteration,
+    progress: trainingProgress
+  });
+
+  // Resume training in background
+  resumeGraphTraining(sessionId).catch(err => {
+    console.error('[GraphTraining] Resume error:', err);
+    trainingProgress.status = 'error';
+    trainingProgress.error = err.message;
+  }).finally(() => {
+    isTraining = false;
+  });
+});
+
+/**
+ * GET /api/train/graph/status/:sessionId
+ * Get status of a graph-based training session
+ */
+router.get('/graph/status/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+
+  try {
+    const status = await getGraphStatus(sessionId);
+
+    if (!status) {
+      return res.status(404).json({
+        error: 'Session not found',
+        message: `No checkpoint found for session: ${sessionId}`
+      });
+    }
+
+    res.json({
+      sessionId,
+      ...status,
+      isActive: isTraining && trainingProgress?.sessionId === sessionId
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Status error',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/train/graph/stop/:sessionId
+ * Stop a running graph-based training session
+ */
+router.post('/graph/stop/:sessionId', async (req, res) => {
+  const secret = req.body.secret || req.query.secret;
+  const expectedSecret = process.env.TRAIN_SECRET || 'train123';
+
+  if (secret !== expectedSecret) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing secret.'
+    });
+  }
+
+  const { sessionId } = req.params;
+
+  // Set global stop flag for current session
+  if (trainingProgress?.sessionId === sessionId) {
+    shouldStop = true;
+  }
+
+  // Also set stop flag in checkpoint
+  const stopped = await stopTrainingGraph(sessionId);
+
+  res.json({
+    message: stopped ? 'Stop signal sent' : 'Session not found or already stopped',
+    sessionId,
+    stopped
+  });
+});
+
+/**
+ * Run graph-based training
+ *
+ * Uses LangGraph StateGraph for workflow orchestration with
+ * checkpointing enabled for session resumption.
+ */
+async function runGraphTraining(sessionId, iterations, delay, contentTypes) {
+  console.log('\n🎯 [GraphTraining] Starting graph-based training');
+  console.log(`   Session: ${sessionId}`);
+  console.log(`   Iterations: ${iterations}, Delay: ${delay}ms`);
+  console.log(`   Content Types: ${contentTypes.join(', ')}`);
+
+  process.env.ENABLE_OPTIMIZATION = 'true';
+
+  // Dynamic imports for generators
+  const {
+    generateRoadmap,
+    generateSlides,
+    generateDocument,
+    generateResearchAnalysis
+  } = await import('../generators.js');
+
+  const generators = {
+    Roadmap: generateRoadmap,
+    Slides: generateSlides,
+    Document: generateDocument,
+    ResearchAnalysis: generateResearchAnalysis
+  };
+
+  // Load sample sets
+  const sampleSets = [];
+  for (const setConfig of TRAINING_CONFIG.sampleSets) {
+    const files = await loadResearchFiles(setConfig.path);
+    if (files.length > 0) {
+      sampleSets.push({ ...setConfig, files });
+      console.log(`   ✓ ${setConfig.name}: ${files.length} files`);
+    }
+  }
+
+  if (sampleSets.length === 0) {
+    trainingProgress.status = 'error';
+    trainingProgress.error = 'No sample sets found';
+    throw new Error('No sample sets with files found');
+  }
+
+  // Calculate total iterations
+  const totalIterations = iterations * sampleSets.length * contentTypes.length;
+
+  trainingProgress.status = 'running';
+  trainingProgress.total = totalIterations;
+  trainingProgress.current = 0;
+
+  try {
+    // Run graph-based training
+    const result = await runTrainingGraph({
+      sessionId,
+      sampleSets,
+      contentTypes,
+      iterations: totalIterations,
+      delay,
+      generators
+    });
+
+    trainingProgress.status = result.status || 'completed';
+    trainingProgress.completedAt = new Date().toISOString();
+    trainingProgress.results = result.summary;
+
+    console.log('\n✅ [GraphTraining] Complete');
+    if (result.summary) {
+      console.log(`   Iterations: ${result.summary.iterations}`);
+      console.log(`   Success Rate: ${result.summary.successRate}`);
+      console.log(`   Avg Quality: ${result.summary.avgQuality}/5`);
+      if (result.summary.cache) {
+        console.log(`   Cache Hit Rate: ${result.summary.cache.hitRate}`);
+      }
+    }
+
+    return result;
+
+  } catch (error) {
+    trainingProgress.status = 'error';
+    trainingProgress.error = error.message;
+    throw error;
+  }
+}
+
+/**
+ * Resume graph-based training from checkpoint
+ */
+async function resumeGraphTraining(sessionId) {
+  console.log('\n🔄 [GraphTraining] Resuming training');
+  console.log(`   Session: ${sessionId}`);
+
+  process.env.ENABLE_OPTIMIZATION = 'true';
+
+  // Dynamic imports for generators
+  const {
+    generateRoadmap,
+    generateSlides,
+    generateDocument,
+    generateResearchAnalysis
+  } = await import('../generators.js');
+
+  const generators = {
+    Roadmap: generateRoadmap,
+    Slides: generateSlides,
+    Document: generateDocument,
+    ResearchAnalysis: generateResearchAnalysis
+  };
+
+  trainingProgress.status = 'running';
+
+  try {
+    const result = await resumeTrainingGraph(sessionId, { generators });
+
+    trainingProgress.status = result.status || 'completed';
+    trainingProgress.completedAt = new Date().toISOString();
+    trainingProgress.results = result.summary;
+
+    console.log('\n✅ [GraphTraining] Resume complete');
+    return result;
+
+  } catch (error) {
+    trainingProgress.status = 'error';
+    trainingProgress.error = error.message;
+    throw error;
+  }
 }
 
 export default router;
