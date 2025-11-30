@@ -118,8 +118,8 @@ export const slidesSchema = {
 };
 
 export const SlidesSignature = createSignature('SlidesSignature')
-  .description('Generates structured presentation slides from research content')
-  .instructions(SLIDES_INSTRUCTIONS)
+  .describe('Generates structured presentation slides from research content')
+  .instruct(SLIDES_INSTRUCTIONS)
   .input('userPrompt', FieldType.STRING, {
     description: 'User request for the presentation',
     required: true
