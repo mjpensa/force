@@ -8,6 +8,8 @@
  * - Automatic TTL management
  * - Connection health monitoring
  *
+ * Updated for Plan 08: Now uses shared Redis client from redis/client.js
+ *
  * Usage:
  *   import { sessionStorage } from './storage/sessionStorage.js';
  *   await sessionStorage.set('sessionId', { data: ... });
@@ -17,34 +19,31 @@
 import { createHash } from 'crypto';
 import zlib from 'zlib';
 import { promisify } from 'util';
+import { getRedisClient, isRedisHealthy } from '../redis/client.js';
+import { CONFIG as APP_CONFIG } from '../config.js';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
 
 // ============================================================================
-// CONFIGURATION
+// CONFIGURATION (now references centralized config)
 // ============================================================================
 
 const CONFIG = {
-  // Redis connection settings
+  // Redis settings now come from centralized config
   redis: {
-    url: process.env.REDIS_URL || null,
-    keyPrefix: 'force:session:',
-    connectTimeout: 5000,
-    commandTimeout: 2000,
-    retryAttempts: 3,
-    retryDelay: 1000
+    keyPrefix: APP_CONFIG.REDIS.keyPrefixes.session
   },
   // Session settings
   session: {
-    ttlMs: parseInt(process.env.SESSION_TTL_MS, 10) || 60 * 60 * 1000,  // Default 1 hour
-    maxSessions: parseInt(process.env.MAX_SESSIONS, 10) || 100,  // Max sessions for in-memory storage
-    compressionThreshold: 10000  // Compress content > 10KB
+    ttlMs: APP_CONFIG.REDIS.ttl.session * 1000,  // Convert seconds to ms
+    maxSessions: parseInt(process.env.MAX_SESSIONS, 10) || 100,
+    compressionThreshold: APP_CONFIG.REDIS.features.compressionThreshold
   },
   // Feature flags
   features: {
-    compression: true,
-    redisEnabled: process.env.REDIS_URL ? true : false
+    compression: APP_CONFIG.REDIS.features.compression,
+    redisEnabled: APP_CONFIG.REDIS.enabled
   }
 };
 
@@ -260,63 +259,35 @@ class MemoryStorage {
 
 /**
  * Redis storage implementation
- * Requires ioredis package when enabled
+ * Updated for Plan 08: Uses shared Redis client from redis/client.js
  */
 class RedisStorage {
   constructor() {
     this.client = null;
     this.type = 'redis';
     this._connected = false;
-    this._connectPromise = null;  // Mutex for connection
   }
 
+  /**
+   * Connect using the shared Redis client factory
+   */
   async connect() {
-    // Return existing connection
-    if (this._connected) return true;
+    if (this._connected && this.client) return true;
 
-    // Return in-flight connection promise (prevents race condition)
-    if (this._connectPromise) return this._connectPromise;
-
-    // Create new connection attempt
-    this._connectPromise = this._doConnect();
     try {
-      return await this._connectPromise;
-    } finally {
-      this._connectPromise = null;
-    }
-  }
+      // Get shared client from factory (Plan 08)
+      this.client = await getRedisClient();
+      this._connected = this.client !== null;
 
-  async _doConnect() {
-    try {
-      // Dynamic import of ioredis (optional dependency)
-      const { default: Redis } = await import('ioredis');
-
-      this.client = new Redis(CONFIG.redis.url, {
-        connectTimeout: CONFIG.redis.connectTimeout,
-        commandTimeout: CONFIG.redis.commandTimeout,
-        maxRetriesPerRequest: CONFIG.redis.retryAttempts,
-        retryStrategy: (times) => {
-          if (times > CONFIG.redis.retryAttempts) return null;
-          return Math.min(times * CONFIG.redis.retryDelay, 5000);
-        },
-        lazyConnect: true
-      });
-
-      // Connect and verify
-      await this.client.connect();
-      await this.client.ping();
-
-      this._connected = true;
-      console.log('[Storage] Redis connected successfully');
-      return true;
-
-    } catch (error) {
-      console.warn(`[Storage] Redis connection failed: ${error.message}`);
-      this._connected = false;
-      if (this.client) {
-        try { await this.client.quit(); } catch {}
-        this.client = null;
+      if (this._connected) {
+        console.log('[Storage] Using shared Redis client');
       }
+
+      return this._connected;
+    } catch (error) {
+      console.warn(`[Storage] Failed to get Redis client: ${error.message}`);
+      this._connected = false;
+      this.client = null;
       return false;
     }
   }
@@ -465,17 +436,15 @@ class RedisStorage {
   }
 
   isHealthy() {
-    return this._connected;
+    // Check both local state and shared client health
+    return this._connected && isRedisHealthy();
   }
 
   async destroy() {
-    if (this.client) {
-      try {
-        await this.client.quit();
-      } catch {}
-      this.client = null;
-      this._connected = false;
-    }
+    // Don't disconnect the shared client - just clear local reference
+    // The shared client lifecycle is managed by redis/client.js
+    this.client = null;
+    this._connected = false;
   }
 }
 

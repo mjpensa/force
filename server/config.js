@@ -149,6 +149,52 @@ export const CONFIG = {
     STRICT_RATE_LIMIT_EXCEEDED: ERROR_MESSAGES.STRICT_RATE_LIMIT_EXCEEDED,
     INVALID_FILE_EXTENSION: (ext) => `Invalid file extension: .${ext}. Only .md, .txt, and .docx files are allowed.`,
     INVALID_FILE_TYPE: (type) => `Invalid file type: ${type}. Only .md, .txt, and .docx files are allowed.`
+  },
+
+  // Redis configuration (Plan 08: Redis Client Factory)
+  REDIS: {
+    // Connection URL (null = disabled, uses in-memory fallback)
+    url: process.env.REDIS_URL || null,
+    enabled: !!process.env.REDIS_URL,
+
+    // TLS support for production Redis
+    tls: process.env.REDIS_TLS === 'true',
+
+    // Key namespace prefixes (isolation between features)
+    keyPrefixes: {
+      session: 'force:session:',
+      cache: 'force:cache:',
+      checkpoint: 'force:checkpoint:',
+      dspy: 'force:dspy:',
+      metrics: 'force:metrics:'
+    },
+
+    // TTL defaults (seconds)
+    ttl: {
+      session: 60 * 60,              // 1 hour
+      cache: 12 * 60 * 60,           // 12 hours
+      checkpoint: 24 * 60 * 60,      // 24 hours
+      dspy: 7 * 24 * 60 * 60,        // 7 days
+      metrics: 60 * 60               // 1 hour
+    },
+
+    // Connection settings
+    connection: {
+      connectTimeout: parseInt(process.env.REDIS_CONNECT_TIMEOUT, 10) || 5000,
+      commandTimeout: parseInt(process.env.REDIS_COMMAND_TIMEOUT, 10) || 2000,
+      retryAttempts: parseInt(process.env.REDIS_MAX_RETRIES, 10) || 3,
+      retryBaseDelay: 1000,          // Initial retry delay (ms)
+      retryMaxDelay: 5000,           // Maximum retry delay (ms)
+      lazyConnect: true              // Don't connect until first command
+    },
+
+    // Feature flags
+    features: {
+      compression: true,             // Compress large values
+      compressionThreshold: 10240,   // 10KB threshold
+      metricsEnabled: true,          // Track connection metrics
+      healthCheckInterval: 30000     // Health check every 30s
+    }
   }
 };
 
@@ -169,6 +215,11 @@ Object.freeze(CONFIG.SECURITY);
 Object.freeze(CONFIG.SECURITY.PATTERNS);
 Object.freeze(CONFIG.VALIDATION);
 Object.freeze(CONFIG.ERRORS);
+Object.freeze(CONFIG.REDIS);
+Object.freeze(CONFIG.REDIS.keyPrefixes);
+Object.freeze(CONFIG.REDIS.ttl);
+Object.freeze(CONFIG.REDIS.connection);
+Object.freeze(CONFIG.REDIS.features);
 
 /**
  * Get Gemini API URL for default model (legacy)

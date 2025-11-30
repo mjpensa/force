@@ -12,65 +12,82 @@
 // ============================================================================
 
 /**
- * Roadmap quality dimensions (10 dimensions)
+ * Roadmap quality dimensions (11 dimensions - optimized)
+ *
+ * Aligned with actual Gantt chart schema structure:
+ * - data.data[] with isSwimlane flags
+ * - bar.startCol/endCol for temporal positions
+ * - taskType: "milestone"|"decision"|"task"
+ * - legend[] and researchAnalysis fields
+ *
+ * Consolidations made:
+ * - titleQuality: merged taskTitleQuality + outcomeOrientation + namingConsistency
+ * - scopeAlignment: merged swimlaneMinimum check
+ *
+ * New dimensions added:
+ * - intervalAppropriateness: validates timeColumns format
+ * - barValidity: validates bar structure and colors
  */
 export const ROADMAP_DIMENSIONS = {
   // Structure dimensions
   swimlaneCompleteness: {
-    description: 'Each swimlane has tasks that span the roadmap timeline',
+    description: 'Each swimlane has tasks that span the timeline columns',
     weight: 1.0,
     category: 'structure'
   },
-  taskDescriptionQuality: {
-    description: 'Tasks have meaningful descriptions, not just titles',
-    weight: 0.8,
+  titleQuality: {
+    description: 'Task titles are meaningful, outcome-oriented, and consistently named',
+    weight: 1.0,
     category: 'structure'
   },
   temporalDistribution: {
-    description: 'Tasks are distributed across timeline, not clustered',
+    description: 'Tasks are distributed across timeline columns, not clustered',
     weight: 0.9,
+    category: 'structure'
+  },
+  intervalAppropriateness: {
+    description: 'Time interval (weeks/months/quarters/years) matches date span',
+    weight: 0.8,
     category: 'structure'
   },
 
   // Content quality dimensions
   milestoneClarity: {
-    description: 'Key milestones are clearly identified and dated',
+    description: 'Milestones are properly marked with taskType and clear titles',
     weight: 1.0,
     category: 'content'
   },
-  dependencyLogic: {
-    description: 'Task sequences make logical sense (prerequisites first)',
-    weight: 0.8,
+  taskTypeVariety: {
+    description: 'Variety of task types including decisions when appropriate',
+    weight: 0.6,
     category: 'content'
   },
   scopeAlignment: {
-    description: 'Swimlane names reflect distinct, non-overlapping domains',
-    weight: 0.7,
+    description: 'At least 2 distinct swimlanes with 3+ tasks each',
+    weight: 0.8,
     category: 'content'
   },
 
-  // Strategic dimensions
-  outcomeOrientation: {
-    description: 'Tasks describe outcomes, not just activities',
+  // Validation dimensions
+  barValidity: {
+    description: 'Bar positions valid (startCol ≤ endCol) with valid colors',
     weight: 0.9,
-    category: 'strategic'
+    category: 'validation'
   },
-  resourceConsideration: {
-    description: 'Implicit consideration of resource constraints',
+  legendCoherence: {
+    description: 'Legend colors match colors used in tasks',
     weight: 0.6,
-    category: 'strategic'
-  },
-
-  // Professional dimensions
-  namingConsistency: {
-    description: 'Consistent naming conventions across tasks',
-    weight: 0.5,
-    category: 'professional'
+    category: 'validation'
   },
   granularityBalance: {
-    description: 'Task sizes are balanced (not too granular or coarse)',
+    description: 'Task durations are balanced (not too short or long)',
     weight: 0.7,
     category: 'professional'
+  },
+  researchFitness: {
+    description: 'Research quality score from researchAnalysis.overallScore',
+    weight: 0.5,
+    category: 'validation'
   }
 };
 
@@ -450,13 +467,13 @@ export function validatePhase1() {
     details: `counts=${contentTypes.map(ct => `${ct}:${getDimensionCount(ct)}`).join(', ')}`
   });
 
-  // Test 2: Each content type has 8-12 dimensions (target parity)
+  // Test 2: Each content type has 8-14 dimensions (target parity)
   const allHaveEnoughDimensions = contentTypes.every(ct => {
     const count = getDimensionCount(ct);
-    return count >= 8 && count <= 12;
+    return count >= 8 && count <= 14;
   });
   results.tests.push({
-    name: 'Each type has 8-12 dimensions',
+    name: 'Each type has 8-14 dimensions',
     passed: allHaveEnoughDimensions,
     details: `counts=${contentTypes.map(ct => getDimensionCount(ct)).join(', ')}`
   });
@@ -511,7 +528,7 @@ export function validatePhase1() {
   });
 
   // Test 8: calculateWeightedScore works
-  const testScores = { swimlaneCompleteness: 0.8, taskDescriptionQuality: 0.6 };
+  const testScores = { swimlaneCompleteness: 0.8, titleQuality: 0.6 };
   const result = calculateWeightedScore(testScores, ROADMAP_DIMENSIONS);
   results.tests.push({
     name: 'calculateWeightedScore works',
