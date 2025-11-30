@@ -3118,6 +3118,7 @@ body.dragging {
 .icon-rail-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   height: var(--icon-rail-item-height);
   padding: 0 14px;
   border-radius: 14px;
@@ -3129,6 +3130,10 @@ body.dragging {
   text-align: left;
   width: 100%;
   transition: all var(--icon-rail-transition-fast);
+}
+.icon-rail:hover .icon-rail-item,
+.icon-rail.expanded .icon-rail-item {
+  justify-content: flex-start;
 }
 .icon-rail-item:hover {
   background: var(--glass-white-8);
@@ -3273,7 +3278,7 @@ body.dragging {
   color: #ef4444;
 }
 .icon-rail-item-label {
-  margin-left: 14px;
+  margin-left: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -3286,6 +3291,7 @@ body.dragging {
 }
 .icon-rail:hover .icon-rail-item-label,
 .icon-rail.expanded .icon-rail-item-label {
+  margin-left: 14px;
   opacity: 1;
   transform: translateX(0);
 }
