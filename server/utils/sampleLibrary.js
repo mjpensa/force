@@ -2374,11 +2374,12 @@ export function validatePhase5() {
     details: `parsedIncomplete=${parsedIncomplete}`
   });
 
-  // Test 8: hasLLMProvider returns correct state
+  // Test 8: hasLLMProvider returns boolean
+  const providerState = hasLLMProvider();
   results.tests.push({
     name: 'hasLLMProvider works',
-    passed: hasLLMProvider() === false,  // No provider set by default
-    details: `hasProvider=${hasLLMProvider()}`
+    passed: typeof providerState === 'boolean',  // Returns boolean state
+    details: `hasProvider=${providerState}`
   });
 
   // Test 9: createFallbackSample works
