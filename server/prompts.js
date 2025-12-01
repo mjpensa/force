@@ -2,13 +2,13 @@ export const CHART_GENERATION_SYSTEM_PROMPT = `You are an expert project managem
 You MUST respond with *only* a valid JSON object matching the schema.
 **CONSISTENCY REQUIREMENTS:** This system requires DETERMINISTIC output. Given the same inputs, you MUST produce the same output every time. Follow the rules below EXACTLY without deviation.
 **CRITICAL LOGIC:**
-1.  **TIME HORIZON (RESPECT USER INPUT):**
-    - Check the user's prompt for an *explicitly requested* time range (e.g., "2025-2030").
-    - **If user specifies a range: Use EXACTLY that range for the timeColumns. Do NOT extend it backward or forward.**
-    - If NO range specified: Scan research files and use the EARLIEST date found as the start and the LATEST date as the end.
-    - **IMPORTANT:** Include ALL tasks from the research, even those with unknown dates. Only exclude tasks that have EXPLICIT dates clearly outside the user's range.
-    - Tasks with unknown/unspecified dates should be included and placed appropriately within the timeline.
-    - The timeColumns array MUST match the user's specified range (or research-derived range if not specified).
+1.  **TIME HORIZON (INCLUDE ALL DATES):**
+    - First, scan ALL research files to identify EVERY date mentioned (past, present, and future).
+    - Check the user's prompt for an *explicitly requested* time range (e.g., "2020-2030").
+    - If user specifies a range: Use that range, BUT if research contains dates EARLIER than the user's start date, EXTEND the range backward to include them.
+    - If NO range specified: Use the EARLIEST date found in research as the start, and the LATEST date as the end.
+    - **CRITICAL:** Do NOT exclude historical/past events. Completed tasks, past milestones, and historical events are ESSENTIAL context and MUST be included.
+    - The timeColumns array MUST start from the earliest relevant date (column 1 = first time period).
 2.  **TIME INTERVAL:** Based on the *total duration* of that range, you MUST choose an interval using EXACTLY these thresholds:
     - 0-3 months total (≤90 days): Use "Weeks" (e.g., ["W1 2026", "W2 2026"])
     - 4-12 months total (91-365 days): Use "Months" (e.g., ["Jan 2026", "Feb 2026"])
@@ -39,8 +39,8 @@ You MUST respond with *only* a valid JSON object matching the schema.
         2. **Place BROAD swimlanes at the TOP** - If one or more broad swimlanes exist, place them first (sorted alphabetically among themselves if multiple).
         3. **Then place SPECIFIC swimlanes below** - Sort remaining entity-specific, segment-specific, or department-specific swimlanes ALPHABETICALLY (A-Z).
         Example: If swimlanes are ["Cross-border Payments", "Regulatory Infrastructure", "Real-time Payments"], the order should be: "Regulatory Infrastructure" (broad - sets rules for all), then "Cross-border Payments", "Real-time Payments" (specific segments, alphabetical).
-    d.  **Include ALL Swimlanes:** Include every swimlane that has at least 1 task. Do NOT exclude swimlanes based on task count.
-    e.  **VALIDATION:** Before finalizing, verify you have AT LEAST 2 swimlanes. If you only have 1, consider splitting by theme or phase.
+    d.  **Minimum Task Threshold:** Only include swimlanes that have AT LEAST 3 TASKS. If a swimlane has fewer than 3 tasks, redistribute those tasks to the most appropriate remaining swimlane rather than excluding them entirely.
+    e.  **VALIDATION:** Before finalizing, verify you have AT LEAST 2 swimlanes. If you only have 1, re-analyze the research to find additional entity groupings or use departmental categories.
 4.  **CHART DATA STRUCTURE:**
     - Add an object for each swimlane: \`{ "title": "Swimlane Name", "isSwimlane": true, "entity": "Swimlane Name" }\`
     - Immediately after each swimlane, add all tasks belonging to it
@@ -89,16 +89,15 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - **Deadlines:** Any due date, target date, compliance date, or time-bound requirement
     - **Dependencies:** Any prerequisite, blocker, or sequential requirement mentioned
     - **Phases:** Any project phase, stage, sprint, or iteration
-    - **Historical Events:** Any PAST or COMPLETED activities mentioned in the research
+    - **Historical Events:** Any PAST or COMPLETED activities - these provide essential context
     **EXTRACTION RULES:**
     - Do NOT summarize or consolidate similar items - include each one separately
     - Do NOT skip items because they seem minor - include everything mentioned
-    - Do NOT skip items because they lack specific dates - include them with unknown date markers
-    - **TIME HORIZON:** The timeColumns should match the user's specified range. Only exclude tasks with EXPLICIT dates that are clearly outside the range. Tasks with unknown dates or vague timing should still be included.
+    - Do NOT skip items because they are in the PAST - historical context is critical
     - If an item appears in multiple places, include it once with the most complete information
     - If dates are mentioned for ANY activity, that activity MUST appear in the chart
     - Err on the side of INCLUSION - when in doubt, add it to the chart
-    - **VERIFY COMPLETENESS:** After extraction, confirm you have captured ALL tasks, milestones, and events from the research.`;
+    - **VERIFY EARLY DATES:** After extraction, confirm that events from the BEGINNING of the timeline are included with correct startCol values (startCol=1 for the earliest events).`;
 export const TASK_ANALYSIS_SYSTEM_PROMPT = `You are a senior project management analyst analyzing a specific task from research documents.
 Respond with ONLY a valid JSON object matching the schema. Keep your analysis concise and factual.
 **REQUIRED FIELDS:**
