@@ -11,21 +11,16 @@ function renderSlide(slide, index) {
     position: relative;
     font-family: 'Segoe UI', Arial, sans-serif;
     box-sizing: border-box;
-    padding: 40px 50px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto 1fr auto;
-    gap: 0;
+    padding: 40px 60px 30px 60px;
   `;
 
-  // LEFT COLUMN: Tagline + Title
+  // LEFT COLUMN: Tagline + Title (positioned absolutely for precise control)
   const leftCol = document.createElement('div');
   leftCol.style.cssText = `
-    grid-column: 1;
-    grid-row: 1 / 3;
-    display: flex;
-    flex-direction: column;
-    padding-right: 40px;
+    position: absolute;
+    top: 40px;
+    left: 60px;
+    width: 42%;
   `;
 
   // Tagline (red, uppercase, small)
@@ -36,46 +31,46 @@ function renderSlide(slide, index) {
     color: #DA291C;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   `;
   tagline.textContent = slide.tagline || '';
   leftCol.appendChild(tagline);
 
-  // Title (large, thin weight, navy)
+  // Title (large, extra-light weight, navy)
   const title = document.createElement('div');
   title.style.cssText = `
-    font-family: 'Segoe UI Light', 'Helvetica Neue', Arial, sans-serif;
-    font-size: clamp(32px, 4.5vw, 52px);
-    font-weight: 200;
-    line-height: 1.15;
+    font-family: 'Segoe UI Light', 'Helvetica Neue Light', Arial, sans-serif;
+    font-size: clamp(36px, 5vw, 54px);
+    font-weight: 100;
+    line-height: 1.1;
     color: #0C2340;
+    letter-spacing: -0.5px;
   `;
   title.textContent = slide.title || '';
   leftCol.appendChild(title);
 
   el.appendChild(leftCol);
 
-  // RIGHT COLUMN: Body content
+  // RIGHT COLUMN: Body content (positioned to align with middle of slide)
   const rightCol = document.createElement('div');
   rightCol.style.cssText = `
-    grid-column: 2;
-    grid-row: 1 / 3;
+    position: absolute;
+    top: 50%;
+    right: 60px;
+    width: 45%;
+    transform: translateY(-30%);
     font-size: 14px;
-    line-height: 1.75;
+    line-height: 1.7;
     color: #0C2340;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding-top: 15%;
   `;
 
-  // Body text only - no fallbacks, no alternatives
+  // Body text only
   const bodyText = slide.body || '';
 
   // Render as paragraphs
   const paragraphs = bodyText.split(/\n\n|\n/).filter(p => p.trim());
   rightCol.innerHTML = paragraphs.map(p => 
-    `<p style="margin: 0 0 18px 0;">${p.trim()}</p>`
+    `<p style="margin: 0 0 20px 0;">${p.trim()}</p>`
   ).join('');
 
   el.appendChild(rightCol);
@@ -83,12 +78,9 @@ function renderSlide(slide, index) {
   // FOOTER: Slide number only (bottom left)
   const footer = document.createElement('div');
   footer.style.cssText = `
-    grid-column: 1 / 3;
-    grid-row: 3;
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-end;
-    padding-top: 20px;
+    position: absolute;
+    bottom: 25px;
+    left: 60px;
   `;
   footer.innerHTML = `<span style="font-size: 11px; color: #0C2340;">${index + 1}</span>`;
   el.appendChild(footer);
