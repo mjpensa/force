@@ -49,7 +49,7 @@ You are creating presentation slides. Every slide MUST use this EXACT layout:
 - RIGHT SIDE: Body text paragraphs
 
 Each slide object must have exactly three fields:
-- tagline: Short uppercase label (e.g., "EXECUTIVE SUMMARY", "KEY FINDINGS", "NEXT STEPS")
+- tagline: Short uppercase label - MUST be EXACTLY 2 words with a MAXIMUM of 21 characters total (including the space). Example: "EXECUTIVE SUMMARY" (17 chars) ✓, "KEY FINDINGS" (12 chars) ✓, "STRATEGIC TRANSFORMATION" (24 chars) ✗
 - title: Multi-line title text that can wrap (this is the main headline)
 - body: EXACTLY 2 paragraphs of body text. Separate paragraphs with a blank line (\n\n).
 
