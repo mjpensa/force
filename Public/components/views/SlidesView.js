@@ -54,13 +54,14 @@ function renderSlide(slide, index) {
   const rightCol = document.createElement('div');
   rightCol.style.cssText = `
     position: absolute;
-    top: 33%;
+    top: 50%;
+    transform: translateY(-50%);
     right: 5%;
-    width: 43%;
+    width: 42%;
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
     font-weight: 400;
-    line-height: 1.55;
+    line-height: 1.5;
     color: #0C2340;
   `;
 
@@ -70,7 +71,7 @@ function renderSlide(slide, index) {
   // Render as paragraphs
   const paragraphs = bodyText.split(/\n\n|\n/).filter(p => p.trim());
   rightCol.innerHTML = paragraphs.map(p => 
-    `<p style="margin: 0 0 14px 0;">${p.trim()}</p>`
+    `<p style="margin: 0 0 18px 0;">${p.trim()}</p>`
   ).join('');
 
   el.appendChild(rightCol);
