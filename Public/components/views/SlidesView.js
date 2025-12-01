@@ -20,7 +20,7 @@ function renderSlide(slide, index) {
     position: absolute;
     top: 30px;
     left: 50px;
-    width: 45%;
+    width: 38%;
   `;
 
   // Eyebrow (red, uppercase, Work Sans SemiBold 12pt)
