@@ -4,15 +4,24 @@
  * Extracts structured insights from research chunks
  * using targeted LLM prompts. Processes chunks in parallel
  * with rate limiting.
+ * 
+ * Phase 4 Enhancement: Integrated caching to avoid redundant LLM calls.
  */
 
 import { SchemaType } from '@google/generative-ai';
 import { callGeminiForJson } from '../gemini.js';
+import { generateContentHash, getCachedInsights, cacheInsights, getInsightCacheMetrics } from '../cache/insightCache.js';
 
 // Rate limiting configuration
 const RATE_LIMIT = {
   maxConcurrent: 3,           // Max parallel extraction calls
   delayBetweenCalls: 100      // ms delay between starting calls
+};
+
+// Caching configuration
+const CACHE_CONFIG = {
+  enabled: true,              // Enable/disable insight caching
+  logCacheOps: true           // Log cache hits/misses
 };
 
 /**
@@ -183,9 +192,40 @@ Be comprehensive. Extract as much structured data as possible.`;
  * Extract insights from a single chunk
  * @param {object} chunk - Chunk object with content and metadata
  * @param {number} totalChunks - Total number of chunks being processed
+ * @param {object} options - Extraction options
+ * @param {boolean} options.useCache - Whether to use caching (default: true)
  * @returns {Promise<object>} Extracted insights
  */
-export async function extractInsights(chunk, totalChunks) {
+export async function extractInsights(chunk, totalChunks, options = {}) {
+  const { useCache = CACHE_CONFIG.enabled } = options;
+  const startTime = Date.now();
+  
+  // Generate content hash for caching
+  const contentHash = useCache ? generateContentHash(chunk.content) : null;
+  
+  // Check cache first
+  if (useCache && contentHash) {
+    const cached = await getCachedInsights(contentHash);
+    if (cached) {
+      const duration = Date.now() - startTime;
+      if (CACHE_CONFIG.logCacheOps) {
+        console.log(`[InsightExtractor] Chunk ${chunk.chunkId}/${totalChunks} CACHE HIT (${duration}ms)`);
+      }
+      
+      return {
+        chunkId: chunk.chunkId,
+        sourceFiles: chunk.sourceFiles,
+        insights: cached,
+        metadata: {
+          extractionTime: duration,
+          charCount: chunk.content.length,
+          cacheHit: true
+        }
+      };
+    }
+  }
+  
+  // Cache miss - call LLM
   const prompt = generateExtractionPrompt(
     chunk.content,
     chunk.chunkId,
@@ -194,23 +234,30 @@ export async function extractInsights(chunk, totalChunks) {
   );
   
   try {
-    const startTime = Date.now();
+    const llmStartTime = Date.now();
     
     const result = await callGeminiForJson(prompt, insightExtractionSchema, {
       temperature: 0.1,  // Low temperature for factual extraction
       maxRetries: 2
     });
     
-    const duration = Date.now() - startTime;
-    console.log(`[InsightExtractor] Chunk ${chunk.chunkId}/${totalChunks} extracted in ${duration}ms`);
+    const llmDuration = Date.now() - llmStartTime;
+    const totalDuration = Date.now() - startTime;
+    console.log(`[InsightExtractor] Chunk ${chunk.chunkId}/${totalChunks} extracted in ${llmDuration}ms (total: ${totalDuration}ms)`);
+    
+    // Cache the result
+    if (useCache && contentHash) {
+      await cacheInsights(contentHash, result);
+    }
     
     return {
       chunkId: chunk.chunkId,
       sourceFiles: chunk.sourceFiles,
       insights: result,
       metadata: {
-        extractionTime: duration,
-        charCount: chunk.content.length
+        extractionTime: llmDuration,
+        charCount: chunk.content.length,
+        cacheHit: false
       }
     };
     
@@ -337,6 +384,8 @@ export function getExtractionStats(results) {
     totalChunks: results.length,
     successfulExtractions: 0,
     failedExtractions: 0,
+    cacheHits: 0,
+    cacheMisses: 0,
     totalKeyFacts: 0,
     totalDates: 0,
     totalEntities: 0,
@@ -354,6 +403,13 @@ export function getExtractionStats(results) {
       stats.successfulExtractions++;
     }
     
+    // Track cache performance
+    if (result.metadata?.cacheHit) {
+      stats.cacheHits++;
+    } else if (result.metadata?.cacheHit === false) {
+      stats.cacheMisses++;
+    }
+    
     if (result.insights) {
       stats.totalKeyFacts += result.insights.keyFacts?.length || 0;
       stats.totalDates += result.insights.dates?.length || 0;
@@ -369,5 +425,16 @@ export function getExtractionStats(results) {
     }
   }
   
+  // Add cache metrics summary
+  stats.cacheHitRate = stats.totalChunks > 0 
+    ? Math.round((stats.cacheHits / stats.totalChunks) * 100) + '%'
+    : '0%';
+  
   return stats;
 }
+
+/**
+ * Get global insight cache metrics
+ * @returns {object} Cache statistics
+ */
+export { getInsightCacheMetrics };
