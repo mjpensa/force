@@ -131,20 +131,9 @@ RULES:
 
 /**
  * Slides Variant Templates
+ * Using base prompt from prompts/slides.js - no variant overrides
  */
-export const SLIDES_VARIANTS = [
-  {
-    id: 'slides-champion-v1',
-    name: 'Slides Champion V1',
-    contentType: ContentType.SLIDES,
-    status: VariantStatus.CHAMPION,
-    weight: 1.0,
-    description: 'Production slides prompt - placeholder',
-    version: '1.0.0',
-    tags: ['production', 'placeholder'],
-    promptTemplate: `Generate a placeholder slide deck.`
-  }
-];
+export const SLIDES_VARIANTS = [];
 
 /**
  * Document Variant Templates
