@@ -52,6 +52,16 @@ router.post('/get-task-analysis', apiLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Either sessionId or researchText is required for analysis' });
   }
 
+  // CRITICAL: Validate research content has sufficient text
+  // We must NEVER generate analysis without meaningful research content
+  if (researchText.length < 100) {
+    return res.status(400).json({
+      error: 'RESEARCH CONTENT EMPTY: The provided research content is too short ' +
+             `(${researchText.length} characters). Please ensure your research contains ` +
+             'sufficient text content for meaningful analysis.'
+    });
+  }
+
   // Sanitize user inputs to prevent prompt injection
   const sanitizedEntity = sanitizePrompt(entity);
   const sanitizedTaskName = sanitizePrompt(taskName);
@@ -121,6 +131,15 @@ router.post('/ask-question', apiLimiter, async (req, res) => {
 
   if (!researchText) {
     return res.status(400).json({ error: 'Research text is required for Q&A' });
+  }
+
+  // CRITICAL: Validate research content has sufficient text
+  if (researchText.length < 100) {
+    return res.status(400).json({
+      error: 'RESEARCH CONTENT EMPTY: The provided research content is too short ' +
+             `(${researchText.length} characters). Please ensure your research contains ` +
+             'sufficient text content for meaningful Q&A.'
+    });
   }
 
   // Limit question length to prevent abuse

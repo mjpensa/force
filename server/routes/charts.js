@@ -227,6 +227,14 @@ router.post('/generate-chart', uploadMiddleware.array('researchFiles'), strictLi
   const requestId = crypto.randomBytes(8).toString('hex');
 
   try {
+    // CRITICAL: Validate research files are present
+    // We must NEVER generate content without the user's research documents
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        error: 'RESEARCH CONTENT MISSING: At least one research file is required. ' +
+               'Please upload your research documents and try again.'
+      });
+    }
 
     const userPrompt = req.body.prompt;
 
@@ -237,36 +245,43 @@ router.post('/generate-chart', uploadMiddleware.array('researchFiles'), strictLi
     let researchText = "";
     let researchFiles = [];
 
-    if (req.files && req.files.length > 0) {
-      const sortedFiles = req.files.sort((a, b) => a.originalname.localeCompare(b.originalname));
+    const sortedFiles = req.files.sort((a, b) => a.originalname.localeCompare(b.originalname));
 
-      // Process files in parallel
-      const fileProcessingPromises = sortedFiles.map(async (file) => {
-        let content = '';
+    // Process files in parallel
+    const fileProcessingPromises = sortedFiles.map(async (file) => {
+      let content = '';
 
-        if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-          const result = await mammoth.convertToHtml({ buffer: file.buffer });
-          content = result.value;
-        } else {
-          content = file.buffer.toString('utf8');
-        }
+      if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        const result = await mammoth.convertToHtml({ buffer: file.buffer });
+        content = result.value;
+      } else {
+        content = file.buffer.toString('utf8');
+      }
 
-        return {
-          name: file.originalname,
-          content: content
-        };
+      return {
+        name: file.originalname,
+        content: content
+      };
+    });
+
+    const processedFiles = await Promise.all(fileProcessingPromises);
+
+    // Validate that files have actual content
+    const totalContentLength = processedFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0);
+    if (totalContentLength < 100) {
+      return res.status(400).json({
+        error: 'RESEARCH CONTENT EMPTY: The uploaded files contain insufficient text content ' +
+               `(${totalContentLength} characters). Please ensure your documents contain readable text ` +
+               'and are not corrupted, password-protected, or image-only PDFs.'
       });
-
-      const processedFiles = await Promise.all(fileProcessingPromises);
-
-      // Build research text using array join (more efficient than string concatenation in loops)
-      researchFiles = processedFiles.map(f => f.name);
-      const researchParts = processedFiles.map(processedFile =>
-        `\n\n--- Start of file: ${processedFile.name} ---\n${processedFile.content}\n--- End of file: ${processedFile.name} ---\n`
-      );
-      researchText = researchParts.join('');
-
     }
+
+    // Build research text using array join (more efficient than string concatenation in loops)
+    researchFiles = processedFiles.map(f => f.name);
+    const researchParts = processedFiles.map(processedFile =>
+      `\n\n--- Start of file: ${processedFile.name} ---\n${processedFile.content}\n--- End of file: ${processedFile.name} ---\n`
+    );
+    researchText = researchParts.join('');
 
     // Build user query
     const geminiUserQuery = `${sanitizedPrompt}

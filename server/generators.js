@@ -1930,6 +1930,11 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
   }
 }
 export async function regenerateContent(viewType, prompt, researchFiles, options = {}) {
+  // CRITICAL: Validate research files - defense in depth
+  // Even though individual generators validate, we validate here too
+  // to catch issues early and provide clear error messages
+  validateResearchFiles(researchFiles);
+
   const perfLogger = new PerformanceLogger(`regenerate-${viewType}`, {
     sessionId: options.sessionId,
     enabled: true
