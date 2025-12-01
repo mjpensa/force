@@ -57,7 +57,7 @@ function renderSlide(slide, index) {
     top: 50%;
     transform: translateY(-50%);
     right: 4%;
-    width: 42%;
+    width: 38%;
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
     font-weight: 400;
