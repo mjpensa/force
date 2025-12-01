@@ -85,8 +85,8 @@ function renderSlide(slide, index) {
     position: absolute;
     left: 50.59%;
     width: 44.30%;
-    top: 46%;
-    bottom: 8%;
+    top: 47%;
+    bottom: 6%;
     font-family: 'Work Sans', sans-serif;
     font-size: clamp(7px, 1.15cqw, 14px);
     font-weight: 400;
@@ -95,16 +95,13 @@ function renderSlide(slide, index) {
     word-spacing: -0.02em;
     color: #0C2340;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
   `;
 
   // Body text with proper paragraph spacing - limit to 2 paragraphs
   const bodyText = slide.body || '';
   const paragraphs = bodyText.split(/\n\n+/).filter(p => p.trim()).slice(0, 2);
   body.innerHTML = paragraphs.map(p => 
-    `<p style="margin: 0 0 0.8em 0; flex-shrink: 0;">${p.trim().replace(/\n/g, ' ')}</p>`
+    `<p style="margin: 0 0 0.8em 0;">${p.trim().replace(/\n/g, ' ')}</p>`
   ).join('');
 
   el.appendChild(body);
