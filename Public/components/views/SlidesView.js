@@ -51,13 +51,12 @@ function renderSlide(slide, index) {
     top: 8.95%;
     left: 1.87%;
     width: 44.59%;
-    height: 31.36%;
+    height: 40%;
     font-family: 'Work Sans', sans-serif;
     font-size: clamp(18px, 8cqw, 96px);
     font-weight: 100;
     line-height: 0.85;
     color: #0C2340;
-    overflow: hidden;
   `;
   title.textContent = slide.title || '';
   el.appendChild(title);
