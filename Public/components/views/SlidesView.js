@@ -17,7 +17,7 @@ function renderSlide(slide, index) {
   const leftCol = document.createElement('div');
   leftCol.style.cssText = `
     position: absolute;
-    top: 5%;
+    top: 4%;
     left: 5%;
     width: 38%;
   `;
@@ -31,7 +31,7 @@ function renderSlide(slide, index) {
     color: #DA291C;
     letter-spacing: 1px;
     text-transform: uppercase;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
   `;
   tagline.textContent = slide.tagline || '';
   leftCol.appendChild(tagline);
@@ -42,7 +42,7 @@ function renderSlide(slide, index) {
     font-family: 'Work Sans', sans-serif;
     font-size: 72pt;
     font-weight: 100;
-    line-height: 1.0;
+    line-height: 0.98;
     color: #0C2340;
   `;
   title.textContent = slide.title || '';
@@ -54,13 +54,13 @@ function renderSlide(slide, index) {
   const rightCol = document.createElement('div');
   rightCol.style.cssText = `
     position: absolute;
-    top: 35%;
+    top: 33%;
     right: 5%;
     width: 43%;
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
     font-weight: 400;
-    line-height: 1.5;
+    line-height: 1.55;
     color: #0C2340;
   `;
 
@@ -70,7 +70,7 @@ function renderSlide(slide, index) {
   // Render as paragraphs
   const paragraphs = bodyText.split(/\n\n|\n/).filter(p => p.trim());
   rightCol.innerHTML = paragraphs.map(p => 
-    `<p style="margin: 0 0 16px 0;">${p.trim()}</p>`
+    `<p style="margin: 0 0 14px 0;">${p.trim()}</p>`
   ).join('');
 
   el.appendChild(rightCol);
@@ -79,10 +79,10 @@ function renderSlide(slide, index) {
   const footer = document.createElement('div');
   footer.style.cssText = `
     position: absolute;
-    bottom: 4%;
+    bottom: 3%;
     left: 5%;
     font-family: 'Work Sans', sans-serif;
-    font-size: 10pt;
+    font-size: 9pt;
     font-weight: 400;
     color: #0C2340;
   `;
