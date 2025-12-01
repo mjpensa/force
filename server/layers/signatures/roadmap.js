@@ -40,8 +40,8 @@ Priority order:
 2. Departments: "IT/Technology", "Legal", "Business/Operations", "Finance", "Executive" - use at least 2-3 categories
 
 Sorting: Broad/industry-wide swimlanes first, then specific ones alphabetically.
-Threshold: Swimlanes need ≥3 tasks. Redistribute orphan tasks to nearest swimlane.
-VALIDATION: Must have AT LEAST 2 swimlanes. Re-analyze if only 1.
+Include ALL swimlanes that have tasks, even if only 1-2 tasks.
+VALIDATION: Must have AT LEAST 2 swimlanes. If only 1 exists, consider splitting by theme or phase.
 
 ### 4. DATA STRUCTURE
 - Swimlane row: {"title":"Name","isSwimlane":true,"entity":"Name"}
@@ -69,11 +69,12 @@ ELSE (fallback):
 - "task": default
 - Priority: decision > milestone if both match
 
-### 8. EXTRACTION (CRITICAL)
-Extract ALL: tasks, milestones, decisions, events, deadlines, phases, historical events.
+### 8. EXTRACTION (CRITICAL - INCLUDE EVERYTHING)
+Extract ALL items from research: tasks, milestones, decisions, events, deadlines, phases.
 - Do NOT consolidate similar items
-- Do NOT skip minor or past items
-- Include everything with dates
+- Do NOT skip items - include ALL of them
+- Include items WITH dates AND items WITHOUT dates
+- Items without dates should use {"startCol":null,"endCol":null}
 - When in doubt, include it
 
 ### 9. RESEARCH ANALYSIS (REQUIRED)

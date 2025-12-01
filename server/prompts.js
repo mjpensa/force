@@ -39,8 +39,8 @@ You MUST respond with *only* a valid JSON object matching the schema.
         2. **Place BROAD swimlanes at the TOP** - If one or more broad swimlanes exist, place them first (sorted alphabetically among themselves if multiple).
         3. **Then place SPECIFIC swimlanes below** - Sort remaining entity-specific, segment-specific, or department-specific swimlanes ALPHABETICALLY (A-Z).
         Example: If swimlanes are ["Cross-border Payments", "Regulatory Infrastructure", "Real-time Payments"], the order should be: "Regulatory Infrastructure" (broad - sets rules for all), then "Cross-border Payments", "Real-time Payments" (specific segments, alphabetical).
-    d.  **Minimum Task Threshold:** Only include swimlanes that have AT LEAST 3 TASKS. If a swimlane has fewer than 3 tasks, redistribute those tasks to the most appropriate remaining swimlane rather than excluding them entirely.
-    e.  **VALIDATION:** Before finalizing, verify you have AT LEAST 2 swimlanes. If you only have 1, re-analyze the research to find additional entity groupings or use departmental categories.
+    d.  **Include ALL Swimlanes:** Include every swimlane that has at least 1 task. Do NOT exclude swimlanes based on task count.
+    e.  **VALIDATION:** Before finalizing, verify you have AT LEAST 2 swimlanes. If you only have 1, consider splitting by theme or phase.
 4.  **CHART DATA STRUCTURE:**
     - Add an object for each swimlane: \`{ "title": "Swimlane Name", "isSwimlane": true, "entity": "Swimlane Name" }\`
     - Immediately after each swimlane, add all tasks belonging to it
