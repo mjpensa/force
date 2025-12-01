@@ -452,6 +452,61 @@ Respond with ONLY the JSON object.`;
 }
 
 /**
+ * Validate research files are present and contain actual content
+ * CRITICAL: This function ensures we NEVER generate content without user's research.
+ * Generating without research would produce misleading generic content.
+ * 
+ * @param {Array} researchFiles - Array of { filename, content } objects
+ * @throws {Error} If research files are missing, invalid, or empty
+ */
+function validateResearchFiles(researchFiles) {
+  // Check array exists and has items
+  if (!researchFiles || !Array.isArray(researchFiles) || researchFiles.length === 0) {
+    throw new Error(
+      `RESEARCH CONTENT MISSING: Cannot generate content without research files. ` +
+      `No documents were provided or processed successfully. ` +
+      `Please upload your research documents and try again.`
+    );
+  }
+
+  // Validate each file has required structure
+  for (let i = 0; i < researchFiles.length; i++) {
+    const file = researchFiles[i];
+    if (!file || typeof file !== 'object') {
+      throw new Error(
+        `INVALID RESEARCH FILE: File at position ${i + 1} is not a valid file object. ` +
+        `Please re-upload your documents.`
+      );
+    }
+    if (!file.filename || typeof file.filename !== 'string') {
+      throw new Error(
+        `INVALID RESEARCH FILE: File at position ${i + 1} is missing a filename. ` +
+        `The file may have been corrupted during upload. Please re-upload your documents.`
+      );
+    }
+    if (!file.content || typeof file.content !== 'string') {
+      throw new Error(
+        `INVALID RESEARCH FILE: "${file.filename}" has no readable content. ` +
+        `The file may be corrupted, password-protected, or in an unsupported format. ` +
+        `Please ensure your document contains extractable text.`
+      );
+    }
+  }
+
+  // Validate total content length
+  const totalContentLength = researchFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0);
+  if (totalContentLength < 100) {
+    const fileList = researchFiles.map(f => `"${f.filename}" (${f.content?.length || 0} chars)`).join(', ');
+    throw new Error(
+      `RESEARCH CONTENT EMPTY: Your uploaded files contain insufficient text content ` +
+      `(${totalContentLength} total characters). Files: ${fileList}. ` +
+      `Please ensure your documents contain readable text and are not ` +
+      `image-only PDFs, scanned documents without OCR, or password-protected files.`
+    );
+  }
+}
+
+/**
  * Combine research files into a single content string for cache key
  * @param {Array} researchFiles - Array of { filename, content } objects
  * @returns {string} Combined content
@@ -1428,6 +1483,10 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
       _generationId: generationId
     };
   } catch (error) {
+    // Re-throw research validation errors - these MUST bubble up to the user
+    if (error.message.includes('RESEARCH CONTENT') || error.message.includes('INVALID RESEARCH')) {
+      throw error;
+    }
     return { success: false, error: error.message };
   }
 }
@@ -1536,6 +1595,10 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
       _generationId: generationId
     };
   } catch (error) {
+    // Re-throw research validation errors - these MUST bubble up to the user
+    if (error.message.includes('RESEARCH CONTENT') || error.message.includes('INVALID RESEARCH')) {
+      throw error;
+    }
     return { success: false, error: error.message };
   }
 }
@@ -1644,6 +1707,10 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
       _generationId: generationId
     };
   } catch (error) {
+    // Re-throw research validation errors - these MUST bubble up to the user
+    if (error.message.includes('RESEARCH CONTENT') || error.message.includes('INVALID RESEARCH')) {
+      throw error;
+    }
     return { success: false, error: error.message };
   }
 }
@@ -1752,6 +1819,10 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       _generationId: generationId
     };
   } catch (error) {
+    // Re-throw research validation errors - these MUST bubble up to the user
+    if (error.message.includes('RESEARCH CONTENT') || error.message.includes('INVALID RESEARCH')) {
+      throw error;
+    }
     return { success: false, error: error.message };
   }
 }
@@ -1766,6 +1837,10 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
  * @returns {object} Results with performance metrics
  */
 export async function generateAllContent(userPrompt, researchFiles, options = {}) {
+  // CRITICAL: Validate research files FIRST - fail fast with clear error
+  // We must NEVER generate content without user's research documents
+  validateResearchFiles(researchFiles);
+
   // Initialize performance logger
   const perfLogger = new PerformanceLogger('generate-all-content', {
     sessionId: options.sessionId,
@@ -2264,6 +2339,10 @@ export async function generateAllContentStreaming(userPrompt, researchFiles, opt
     onComplete = () => {},
     onError = () => {}
   } = options;
+
+  // CRITICAL: Validate research files FIRST - fail fast with clear error
+  // We must NEVER generate content without user's research documents
+  validateResearchFiles(researchFiles);
 
   // Initialize performance logger
   const perfLogger = new PerformanceLogger('generate-all-content-streaming', {
