@@ -66,18 +66,19 @@ function renderSlide(slide, index) {
   // x=6167437/12192000 = 50.59%, y=3159889/6858000 = 46.08%
   // width=5400675/12192000 = 44.30%, height=3221861/6858000 = 46.98%
   // Font: 12pt Work Sans, #0C2340, line-height 120%, anchor=bottom (12pt ≈ 1% of 1200px)
-  // Width adjusted to 38% for correct line breaks (6 lines per paragraph, "exercitation." alone on line 6)
   const body = document.createElement('div');
   body.style.cssText = `
     position: absolute;
     left: 50.59%;
-    width: 38%;
+    width: 44.30%;
     bottom: 6.94%;
     max-height: 46.98%;
     font-family: 'Work Sans', sans-serif;
     font-size: clamp(8px, 1.3cqw, 16px);
     font-weight: 400;
     line-height: 1.20;
+    letter-spacing: -0.01em;
+    word-spacing: -0.05em;
     color: #0C2340;
     display: flex;
     flex-direction: column;
