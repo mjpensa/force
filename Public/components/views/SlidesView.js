@@ -91,8 +91,8 @@ function renderSlide(slide, index) {
     font-size: clamp(7px, 1.15cqw, 14px);
     font-weight: 400;
     line-height: 1.35;
-    letter-spacing: -0.01em;
-    word-spacing: -0.02em;
+    letter-spacing: 0.01em;
+    word-spacing: 0.05em;
     color: #0C2340;
     overflow: hidden;
   `;
