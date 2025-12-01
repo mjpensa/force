@@ -106,14 +106,14 @@ function renderSlide(slide, index) {
 
   el.appendChild(body);
 
-  // CORNER GRAPHIC - top right
+  // CORNER GRAPHIC - top right (1.45" x 1.45" on 13.33" x 7.5" slide)
   const cornerGraphic = document.createElement('img');
   cornerGraphic.src = 'bip corner graphic.svg';
   cornerGraphic.style.cssText = `
     position: absolute;
     top: 0;
     right: 0;
-    width: 18%;
+    width: 10.9%;
     height: auto;
   `;
   el.appendChild(cornerGraphic);
