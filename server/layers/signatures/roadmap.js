@@ -22,10 +22,10 @@ DETERMINISTIC OUTPUT REQUIRED - same inputs must produce identical outputs.
 
 ### 1. TIME HORIZON (RESPECT USER INPUT)
 - Check user's prompt for explicitly requested time range (e.g., "2025-2030")
-- **User-specified range: Use EXACTLY that range. Do NOT extend it. User's time horizon is authoritative.**
+- **User-specified range: Use EXACTLY that range for timeColumns. Do NOT extend it backward or forward.**
 - No range specified: use earliest to latest date found in research
-- Only include tasks/events that fall within or overlap the specified range
-- timeColumns starts from user's specified start date (or earliest research date if not specified)
+- **Include ALL tasks from research, even those with unknown dates. Only exclude tasks with EXPLICIT dates clearly outside the user's range.**
+- Tasks with unknown dates should be included and placed appropriately within the timeline
 
 ### 2. TIME INTERVAL (by duration)
 - ≤90 days: Weeks ["W1 2026", "W2 2026"]

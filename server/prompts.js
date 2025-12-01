@@ -4,10 +4,11 @@ You MUST respond with *only* a valid JSON object matching the schema.
 **CRITICAL LOGIC:**
 1.  **TIME HORIZON (RESPECT USER INPUT):**
     - Check the user's prompt for an *explicitly requested* time range (e.g., "2025-2030").
-    - **If user specifies a range: Use EXACTLY that range. Do NOT extend it. The user's specified time horizon is authoritative.**
+    - **If user specifies a range: Use EXACTLY that range for the timeColumns. Do NOT extend it backward or forward.**
     - If NO range specified: Scan research files and use the EARLIEST date found as the start and the LATEST date as the end.
-    - When a user-specified range is used, only include tasks/events that fall within or overlap that range. Tasks entirely outside the range should be excluded.
-    - The timeColumns array MUST start from the user's specified start date (or earliest research date if not specified).
+    - **IMPORTANT:** Include ALL tasks from the research, even those with unknown dates. Only exclude tasks that have EXPLICIT dates clearly outside the user's range.
+    - Tasks with unknown/unspecified dates should be included and placed appropriately within the timeline.
+    - The timeColumns array MUST match the user's specified range (or research-derived range if not specified).
 2.  **TIME INTERVAL:** Based on the *total duration* of that range, you MUST choose an interval using EXACTLY these thresholds:
     - 0-3 months total (≤90 days): Use "Weeks" (e.g., ["W1 2026", "W2 2026"])
     - 4-12 months total (91-365 days): Use "Months" (e.g., ["Jan 2026", "Feb 2026"])
@@ -88,15 +89,16 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - **Deadlines:** Any due date, target date, compliance date, or time-bound requirement
     - **Dependencies:** Any prerequisite, blocker, or sequential requirement mentioned
     - **Phases:** Any project phase, stage, sprint, or iteration
-    - **Historical Events:** PAST or COMPLETED activities (only if they fall within the time horizon)
+    - **Historical Events:** Any PAST or COMPLETED activities mentioned in the research
     **EXTRACTION RULES:**
     - Do NOT summarize or consolidate similar items - include each one separately
     - Do NOT skip items because they seem minor - include everything mentioned
-    - **RESPECT TIME HORIZON:** If the user specified a time range, ONLY include items that fall within or overlap that range. Items entirely outside the user's specified range should be excluded.
+    - Do NOT skip items because they lack specific dates - include them with unknown date markers
+    - **TIME HORIZON:** The timeColumns should match the user's specified range. Only exclude tasks with EXPLICIT dates that are clearly outside the range. Tasks with unknown dates or vague timing should still be included.
     - If an item appears in multiple places, include it once with the most complete information
-    - If dates are mentioned for an activity AND the activity falls within the time horizon, it MUST appear in the chart
-    - Err on the side of INCLUSION for items within the time horizon
-    - **VERIFY DATE RANGE:** After extraction, confirm that all included events fall within the user-specified time range (or the research-derived range if no user range was specified).`;
+    - If dates are mentioned for ANY activity, that activity MUST appear in the chart
+    - Err on the side of INCLUSION - when in doubt, add it to the chart
+    - **VERIFY COMPLETENESS:** After extraction, confirm you have captured ALL tasks, milestones, and events from the research.`;
 export const TASK_ANALYSIS_SYSTEM_PROMPT = `You are a senior project management analyst analyzing a specific task from research documents.
 Respond with ONLY a valid JSON object matching the schema. Keep your analysis concise and factual.
 **REQUIRED FIELDS:**
