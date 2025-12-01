@@ -12,7 +12,8 @@
       "Bash(npm test:*)",
       "Bash(set \"NODE_OPTIONS=--experimental-vm-modules\")",
       "Bash(set \"NODE_ENV=test\")",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
