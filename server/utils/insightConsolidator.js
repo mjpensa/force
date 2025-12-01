@@ -232,14 +232,40 @@ function consolidateRecommendations(allInsights) {
  */
 function consolidateQuotes(allInsights) {
   const allQuotes = [];
-  
+
   for (const result of allInsights) {
     if (result.insights?.quotes) {
       allQuotes.push(...result.insights.quotes);
     }
   }
-  
+
   return deduplicateByText(allQuotes, 'quote', 0.8);
+}
+
+/**
+ * Merge and deduplicate tasks from all chunks
+ * @param {Array<object>} allInsights
+ * @returns {Array} Consolidated tasks
+ */
+function consolidateTasks(allInsights) {
+  const allTasks = [];
+
+  for (const result of allInsights) {
+    if (result.insights?.tasks) {
+      allTasks.push(...result.insights.tasks);
+    }
+  }
+
+  // Deduplicate by task name - use HIGH threshold (0.9) to preserve distinct tasks
+  const unique = deduplicateByText(allTasks, 'task', 0.9);
+
+  // Sort by type priority (milestones first, then decisions, then others)
+  const typeOrder = { milestone: 0, decision: 1, phase: 2, project: 3, initiative: 4, activity: 5, task: 6 };
+  unique.sort((a, b) =>
+    (typeOrder[a.type] || 6) - (typeOrder[b.type] || 6)
+  );
+
+  return unique;
 }
 
 /**
@@ -257,13 +283,14 @@ export function consolidateInsights(allInsights) {
       metrics: [],
       recommendations: [],
       quotes: [],
+      tasks: [],
       metadata: { chunksProcessed: 0, sourceFiles: [] }
     };
   }
-  
+
   console.log(`[Consolidator] Consolidating insights from ${allInsights.length} chunks`);
   const startTime = Date.now();
-  
+
   // Collect all source files
   const sourceFiles = new Set();
   for (const result of allInsights) {
@@ -271,7 +298,7 @@ export function consolidateInsights(allInsights) {
       result.sourceFiles.forEach(f => sourceFiles.add(f));
     }
   }
-  
+
   const consolidated = {
     keyFacts: consolidateKeyFacts(allInsights),
     dates: consolidateDates(allInsights),
@@ -280,15 +307,16 @@ export function consolidateInsights(allInsights) {
     metrics: consolidateMetrics(allInsights),
     recommendations: consolidateRecommendations(allInsights),
     quotes: consolidateQuotes(allInsights),
+    tasks: consolidateTasks(allInsights),
     metadata: {
       chunksProcessed: allInsights.length,
       sourceFiles: [...sourceFiles],
       consolidationTime: Date.now() - startTime
     }
   };
-  
-  console.log(`[Consolidator] Consolidated: ${consolidated.keyFacts.length} facts, ${consolidated.dates.length} dates, ${consolidated.entities.length} entities, ${consolidated.themes.length} themes`);
-  
+
+  console.log(`[Consolidator] Consolidated: ${consolidated.keyFacts.length} facts, ${consolidated.dates.length} dates, ${consolidated.entities.length} entities, ${consolidated.themes.length} themes, ${consolidated.tasks.length} tasks`);
+
   return consolidated;
 }
 
@@ -300,9 +328,21 @@ export function consolidateInsights(allInsights) {
  */
 export function formatForRoadmap(insights) {
   const sections = [];
-  
+
   sections.push('=== EXTRACTED RESEARCH INSIGHTS ===\n');
-  
+
+  // Tasks are CRITICAL for roadmaps - include ALL tasks first
+  if (insights.tasks?.length > 0) {
+    sections.push('## TASKS & ACTIVITIES (for Gantt chart rows)');
+    for (const t of insights.tasks) {
+      const timing = t.timing ? ` | Timing: ${t.timing}` : '';
+      const entity = t.entity ? ` | Entity: ${t.entity}` : '';
+      const desc = t.description ? ` - ${t.description}` : '';
+      sections.push(`- [${t.type?.toUpperCase() || 'TASK'}] ${t.task}${desc}${entity}${timing}`);
+    }
+    sections.push('');
+  }
+
   // Dates are critical for roadmaps
   if (insights.dates?.length > 0) {
     sections.push('## TIMELINE & MILESTONES');
@@ -311,16 +351,16 @@ export function formatForRoadmap(insights) {
     }
     sections.push('');
   }
-  
-  // Key facts provide context
+
+  // Key facts provide context - include ALL facts to preserve task details
   if (insights.keyFacts?.length > 0) {
     sections.push('## KEY FACTS & FINDINGS');
-    for (const f of insights.keyFacts.slice(0, 20)) { // Top 20
+    for (const f of insights.keyFacts) {
       sections.push(`- [${f.importance?.toUpperCase() || 'INFO'}] ${f.fact}`);
     }
     sections.push('');
   }
-  
+
   // Themes inform phases
   if (insights.themes?.length > 0) {
     sections.push('## MAJOR THEMES');
@@ -329,7 +369,7 @@ export function formatForRoadmap(insights) {
     }
     sections.push('');
   }
-  
+
   // Recommendations inform actions
   if (insights.recommendations?.length > 0) {
     sections.push('## RECOMMENDATIONS');
@@ -340,15 +380,15 @@ export function formatForRoadmap(insights) {
     sections.push('');
   }
   
-  // Entities provide context
+  // Entities provide context - include ALL entities for complete swimlane data
   if (insights.entities?.length > 0) {
     sections.push('## KEY ENTITIES');
-    for (const e of insights.entities.slice(0, 15)) { // Top 15
+    for (const e of insights.entities) {
       sections.push(`- ${e.name} (${e.type}): ${e.context || ''}`);
     }
     sections.push('');
   }
-  
+
   return sections.join('\n');
 }
 
@@ -543,6 +583,7 @@ export function getConsolidationStats(consolidated) {
     metrics: consolidated.metrics?.length || 0,
     recommendations: consolidated.recommendations?.length || 0,
     quotes: consolidated.quotes?.length || 0,
+    tasks: consolidated.tasks?.length || 0,
     sourceFiles: consolidated.metadata?.sourceFiles?.length || 0,
     chunksProcessed: consolidated.metadata?.chunksProcessed || 0
   };
