@@ -154,7 +154,8 @@ export class SlidesView {
         div.style.left = el.style.left;
         div.style.top = el.style.top;
         div.style.width = el.style.width;
-        div.style.height = el.style.height;
+        // div.style.height = el.style.height; // Don't restrict height to allow expansion
+        div.style.minHeight = el.style.height; // Use as minimum height
         div.style.fontSize = el.style.fontSize; // Use extracted font size
         // Scale font size based on container width? 
         // For now, let's assume the extracted font size is for the full size slide.
@@ -168,7 +169,9 @@ export class SlidesView {
         div.style.color = el.style.color;
         div.style.textAlign = el.style.textAlign;
         div.style.whiteSpace = 'pre-wrap'; // Preserve newlines
-        div.style.overflow = 'hidden';
+        // div.style.overflow = 'hidden'; // Allow text to overflow its bounding box
+        div.style.lineHeight = '1.2'; // Ensure consistent line height
+        div.style.wordWrap = 'break-word'; // Prevent horizontal overflow
         
         // Populate content
         let content = '';
