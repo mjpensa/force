@@ -378,18 +378,15 @@ function selectAndApplyVariant(contentType, userPrompt, researchFiles, fallbackG
     );
   }
 
-  // Convert array of file objects to formatted string for prompt generators
-  const researchContent = researchFiles
-    .map(file => {
-      if (!file || !file.filename || !file.content) {
-        throw new Error(
-          `INVALID RESEARCH FILE: One or more uploaded files could not be processed. ` +
-          `File structure is missing filename or content. Please re-upload your documents.`
-        );
-      }
-      return `=== ${file.filename} ===\n${file.content}`;
-    })
-    .join('\n\n');
+  // Validate each file has required structure
+  for (const file of researchFiles) {
+    if (!file || !file.filename || !file.content) {
+      throw new Error(
+        `INVALID RESEARCH FILE: One or more uploaded files could not be processed. ` +
+        `File structure is missing filename or content. Please re-upload your documents.`
+      );
+    }
+  }
 
   // Validate that we actually have content (not just filenames with empty content)
   const totalContentLength = researchFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0);
@@ -401,9 +398,11 @@ function selectAndApplyVariant(contentType, userPrompt, researchFiles, fallbackG
     );
   }
 
+  // All prompt generators now expect researchFiles as an array
+  // They handle the conversion to string internally (consistent interface)
   if (!ENABLE_VARIANT_SELECTION) {
     return {
-      prompt: fallbackGenerator(userPrompt, researchContent),
+      prompt: fallbackGenerator(userPrompt, researchFiles),
       variantId: 'default',
       variantName: 'Default',
       usedVariant: false
@@ -416,12 +415,17 @@ function selectAndApplyVariant(contentType, userPrompt, researchFiles, fallbackG
     if (!variant || !variant.promptTemplate) {
       // Use default prompt generator - this is fine, just means A/B testing isn't configured
       return {
-        prompt: fallbackGenerator(userPrompt, researchContent),
+        prompt: fallbackGenerator(userPrompt, researchFiles),
         variantId: 'default',
         variantName: 'Default (no variant)',
         usedVariant: false
       };
     }
+
+    // For variant templates, convert to string format
+    const researchContent = researchFiles
+      .map(file => `=== ${file.filename} ===\n${file.content}`)
+      .join('\n\n');
 
     // Apply the variant template with user prompt and research
     const prompt = `${variant.promptTemplate}

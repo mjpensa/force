@@ -43,20 +43,31 @@ export const slidesSchema = {
   required: ["title", "slides"]
 };
 
-export const generateSlidesPrompt = (userPrompt, researchContent) => `
-You are creating presentation slides. Every slide MUST use this EXACT layout:
+/**
+ * Generate prompt for slides with research content
+ * @param {string} userPrompt - The user's request
+ * @param {Array<{filename: string, content: string}>} researchFiles - Research files to analyze
+ * @returns {string} Complete prompt for AI
+ */
+export function generateSlidesPrompt(userPrompt, researchFiles) {
+  // Convert array to formatted string (consistent with other generators)
+  const researchContent = researchFiles
+    .map(file => `=== ${file.filename} ===\n${file.content}`)
+    .join('\n\n');
+
+  return `You are creating presentation slides. Every slide MUST use this EXACT layout:
 - LEFT SIDE: Small red uppercase tagline + Large navy title (thin font)
 - RIGHT SIDE: Body text paragraphs
 
 Each slide object must have exactly three fields:
 - tagline: Short uppercase label - MUST be EXACTLY 2 words with a MAXIMUM of 21 characters total (including the space). Example: "EXECUTIVE SUMMARY" (17 chars) ✓, "KEY FINDINGS" (12 chars) ✓, "STRATEGIC TRANSFORMATION" (24 chars) ✗
 - title: Multi-line title text that can wrap (this is the main headline)
-- body: EXACTLY 2 paragraphs of body text. Separate paragraphs with a blank line (\n\n).
+- body: EXACTLY 2 paragraphs of body text. Separate paragraphs with a blank line (\\n\\n).
 
 BODY PARAGRAPH FORMAT REQUIREMENT:
 - The body MUST contain EXACTLY 2 paragraphs
 - Each paragraph MUST contain between 4 and 6 lines of text
-- Separate the two paragraphs with a double newline (\n\n)
+- Separate the two paragraphs with a double newline (\\n\\n)
 - Each line within a paragraph should be a natural sentence break
 
 CRITICAL TITLE TYPOGRAPHY RULES:
@@ -81,11 +92,11 @@ Example rewrites:
 - "Technology Strategy" → "Tech Roadmap"
 
 TITLE FORMAT REQUIREMENT:
-- Each title MUST be EXACTLY 4 lines separated by newline characters (\n)
+- Each title MUST be EXACTLY 4 lines separated by newline characters (\\n)
 - Each line MUST NOT EXCEED 10 characters (including spaces)
 - The TOTAL character count across ALL 4 lines MUST NOT EXCEED 40 characters (including spaces, excluding newlines)
-- Example: "Driving\nModern\nBusiness\nForward" = 7+6+8+7 = 28 chars, each line ≤10 ✓
-- Example: "Transformation\nIdeas" = 14 chars on line 1 ✗ (exceeds 10 per line)
+- Example: "Driving\\nModern\\nBusiness\\nForward" = 7+6+8+7 = 28 chars, each line ≤10 ✓
+- Example: "Transformation\\nIdeas" = 14 chars on line 1 ✗ (exceeds 10 per line)
 - COUNT CAREFULLY: Each line ≤10 chars AND total ≤40 chars
 
 USER REQUEST: "${userPrompt}"
@@ -95,3 +106,4 @@ ${researchContent}
 
 Generate JSON with "title" and "slides" array. Every slide must have tagline, title, body.
 `;
+}
