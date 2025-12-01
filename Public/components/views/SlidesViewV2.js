@@ -5,7 +5,7 @@
 import { PPT_TEMPLATES } from '../../config/templates.js';
 
 // Debug: verify templates loaded
-console.log('PPT_TEMPLATES loaded:', PPT_TEMPLATES ? Object.keys(PPT_TEMPLATES) : 'FAILED');
+console.log('PPT_TEMPLATES loaded:', PPT_TEMPLATES, 'keys:', Object.keys(PPT_TEMPLATES || {}));
 
 export class SlidesView {
   constructor(data, options = {}) {
@@ -115,7 +115,14 @@ export class SlidesView {
     
     // Fallback if templates failed to load
     if (typeof templateFn !== 'function') {
-      console.error('Template function not found!', { templateKey, templateFn, PPT_TEMPLATES });
+      console.error('Template function not found!', { 
+        templateKey, 
+        templateFn, 
+        PPT_TEMPLATES,
+        keys: Object.keys(PPT_TEMPLATES || {}),
+        hasTitle: 'title' in (PPT_TEMPLATES || {}),
+        typeofTemplates: typeof PPT_TEMPLATES
+      });
       const div = document.createElement('div');
       div.style.cssText = 'padding:40px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:white;';
       div.innerHTML = `<h1 style="margin:0;font-size:32px;color:#333">${slide.title || 'Untitled'}</h1>`;

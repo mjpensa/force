@@ -1,10 +1,12 @@
 /**
- * PPT Slide Templates
+ * PPT Slide Templates v2
  * Based on PPT Templates_SHORT3.pptx
  * Slide dimensions: 13.33" x 7.5" (16:9)
  * 
  * Layout types from AI: 'title', 'content', 'grid'
  */
+
+console.log('templates.js v2 loaded');
 
 // Design tokens (extracted from PPTX)
 const COLORS = {
