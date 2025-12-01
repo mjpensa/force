@@ -109,11 +109,13 @@ export class SlidesView {
 
     // Get template by slide.layout or slide.type, fallback to 'default'
     const templateKey = slide.layout || slide.type || 'default';
+    console.log('Rendering slide:', { index, templateKey, slideKeys: Object.keys(slide), PPT_TEMPLATES_keys: Object.keys(PPT_TEMPLATES || {}) });
+    
     const templateFn = PPT_TEMPLATES?.[templateKey] || PPT_TEMPLATES?.['default'];
     
     // Fallback if templates failed to load
     if (typeof templateFn !== 'function') {
-      console.warn('Template not found:', templateKey, 'Available:', Object.keys(PPT_TEMPLATES || {}));
+      console.error('Template function not found!', { templateKey, templateFn, PPT_TEMPLATES });
       const div = document.createElement('div');
       div.style.cssText = 'padding:40px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:white;';
       div.innerHTML = `<h1 style="margin:0;font-size:32px;color:#333">${slide.title || 'Untitled'}</h1>`;
