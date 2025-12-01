@@ -108,7 +108,7 @@ export class SlidesView {
         grid-template-columns: 1fr 1fr;
         grid-template-rows: min-content 1fr;
         grid-template-areas: 
-          "tagline body"
+          "tagline ."
           "title body";
         column-gap: 80px;
         align-items: start;
@@ -119,7 +119,7 @@ export class SlidesView {
         line-height: 0.85;
         letter-spacing: -4px;
         align-self: start;
-        margin-top: 10px;
+        margin-top: 0;
       }
       .layout-title .tagline {
         grid-area: tagline;
@@ -127,11 +127,11 @@ export class SlidesView {
         font-weight: bold;
         color: #DA291C;
         letter-spacing: 1px;
+        margin-bottom: 40px;
       }
       .layout-title .slide-body {
         grid-area: body;
-        align-self: end;
-        padding-bottom: 60px;
+        align-self: center;
         font-size: 18px;
         line-height: 1.6;
         color: #333;
