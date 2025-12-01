@@ -106,21 +106,56 @@ export class SlidesView {
       /* Layout: Title (Split 50/50) */
       .layout-title {
         grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: min-content 1fr;
         grid-template-areas: 
-          "tagline tagline"
+          "tagline body"
           "title body";
         column-gap: 80px;
-        align-items: center; /* Vertically center content */
+        align-items: start;
       }
       .layout-title .slide-title { 
-        font-size: 96px; 
-        align-self: center;
+        font-size: 100px; 
+        font-weight: 100;
+        line-height: 0.9;
+        letter-spacing: -2px;
+        align-self: start;
+        margin-top: 20px;
       }
       .layout-title .tagline {
+        grid-area: tagline;
+        font-size: 16px;
+        font-weight: bold;
+        color: #DA291C;
+        letter-spacing: 1px;
+      }
+      .layout-title .slide-body {
+        grid-area: body;
+        align-self: end;
+        padding-bottom: 60px;
+        font-size: 18px;
+        line-height: 1.6;
+        color: #333;
+      }
+
+      /* Footer Elements */
+      .slide-footer-number {
         position: absolute;
-        top: 60px;
+        bottom: 40px;
         left: 80px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #555;
+      }
+      
+      .slide-footer-logo {
+        position: absolute;
+        bottom: 40px;
+        right: 80px;
+        font-size: 24px;
+        font-weight: 900;
+        color: #DA291C;
+        font-family: sans-serif;
+        letter-spacing: -1px;
       }
 
       /* Layout: Content (Split 30/70) */
@@ -335,5 +370,16 @@ export class SlidesView {
         
         this.slideContainer.appendChild(gridWrapper);
     }
+
+    // 6. Footer
+    const pageNum = document.createElement('div');
+    pageNum.className = 'slide-footer-number';
+    pageNum.textContent = (this.currentSlideIndex + 1).toString();
+    this.slideContainer.appendChild(pageNum);
+
+    const logo = document.createElement('div');
+    logo.className = 'slide-footer-logo';
+    logo.textContent = 'bip.';
+    this.slideContainer.appendChild(logo);
   }
 }
