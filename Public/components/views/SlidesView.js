@@ -79,14 +79,14 @@ function renderSlide(slide, index) {
   // x=6167437/12192000 = 50.59%, y=3159889/6858000 = 46.08%
   // width=5400675/12192000 = 44.30%, height=3221861/6858000 = 46.98%
   // Font: 12pt Work Sans, #0C2340, line-height 120%
-  // Top aligned with bottom of title (title top 7% + ~40% visible text height = ~47%)
+  // Top aligned with bottom of title (accounting for descenders on last line)
   const body = document.createElement('div');
   body.style.cssText = `
     position: absolute;
     left: 50.59%;
     width: 44.30%;
-    top: 55%;
-    max-height: 40%;
+    top: 57%;
+    max-height: 38%;
     font-family: 'Work Sans', sans-serif;
     font-size: clamp(8px, 1.3cqw, 16px);
     font-weight: 400;
