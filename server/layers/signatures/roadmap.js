@@ -20,12 +20,12 @@ DETERMINISTIC OUTPUT REQUIRED - same inputs must produce identical outputs.
 
 ## RULES
 
-### 1. TIME HORIZON
-- Scan ALL dates (past/present/future) in research
-- User-specified range: extend backward if research has earlier dates
-- No range specified: earliest to latest date found
-- INCLUDE historical/past events - they're essential context
-- timeColumns starts from earliest date (column 1 = first period)
+### 1. TIME HORIZON (RESPECT USER INPUT)
+- Check user's prompt for explicitly requested time range (e.g., "2025-2030")
+- **User-specified range: Use EXACTLY that range. Do NOT extend it. User's time horizon is authoritative.**
+- No range specified: use earliest to latest date found in research
+- Only include tasks/events that fall within or overlap the specified range
+- timeColumns starts from user's specified start date (or earliest research date if not specified)
 
 ### 2. TIME INTERVAL (by duration)
 - ≤90 days: Weeks ["W1 2026", "W2 2026"]

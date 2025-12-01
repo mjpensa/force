@@ -41,12 +41,12 @@ DETERMINISTIC OUTPUT REQUIRED - same inputs must produce identical outputs.
 
 ## RULES
 
-### 1. TIME HORIZON
-- Scan ALL dates (past/present/future) in research
-- User-specified range: extend backward if research has earlier dates
-- No range specified: earliest to latest date found
-- INCLUDE historical/past events - they're essential context
-- timeColumns starts from earliest date (column 1 = first period)
+### 1. TIME HORIZON (RESPECT USER INPUT)
+- Check user's prompt for explicitly requested time range (e.g., "2025-2030")
+- **User-specified range: Use EXACTLY that range. Do NOT extend it. User's time horizon is authoritative.**
+- No range specified: use earliest to latest date found in research
+- Only include tasks/events that fall within or overlap the specified range
+- timeColumns starts from user's specified start date (or earliest research date if not specified)
 
 ### 2. TIME INTERVAL (by duration)
 - ≤90 days: Weeks ["W1 2026", "W2 2026"]
@@ -117,7 +117,7 @@ Topics excluded due to <3 tasks must appear with includedinChart=false.`
     promptTemplate: `Create Gantt chart JSON. DETERMINISTIC: same inputs = same outputs.
 
 RULES:
-1. TIME: Scan all dates, include historical. Column 1 = earliest.
+1. TIME: If user specifies a range (e.g., 2025-2030), use EXACTLY that range. Otherwise use earliest-to-latest from research. Only include items within the range.
 2. INTERVAL: ≤90d=Weeks, ≤365d=Months, ≤1095d=Quarters, >1095d=Years
 3. SWIMLANES: MUST have 2+ swimlanes. Named entities > Departments (use 2-3 categories). Min 3 tasks/swimlane (redistribute orphans). Sort: broad first, then A-Z.
 4. STRUCTURE: Swimlane row, then tasks sorted by startCol, then title.
