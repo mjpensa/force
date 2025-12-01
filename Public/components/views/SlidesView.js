@@ -58,9 +58,25 @@ function renderSlide(slide, index) {
     line-height: 0.85;
     color: #0C2340;
   `;
-  // Convert to sentence case: capitalize first letter, lowercase the rest
+  // Convert to sentence case and handle 'g' descender issue
+  // Replace lowercase 'g' with 'G' on all lines except the last to prevent overlap
   const titleText = slide.title || '';
-  title.textContent = titleText.charAt(0).toUpperCase() + titleText.slice(1).toLowerCase();
+  const sentenceCase = titleText.charAt(0).toUpperCase() + titleText.slice(1).toLowerCase();
+  const words = sentenceCase.split(' ');
+  
+  // Estimate ~3-4 words per line based on container width, process all but last line's worth
+  const wordsPerLine = 3;
+  const lastLineStart = Math.max(0, words.length - wordsPerLine);
+  
+  const processedWords = words.map((word, idx) => {
+    if (idx < lastLineStart) {
+      // Replace 'g' with 'G' on non-last lines to avoid descender
+      return word.replace(/g/g, 'G');
+    }
+    return word;
+  });
+  
+  title.textContent = processedWords.join(' ');
   el.appendChild(title);
 
   // BODY (right side) - EXACT from XML:
