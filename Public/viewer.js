@@ -404,7 +404,8 @@ class ContentViewer {
   async _renderSlidesView(data) {
     console.log('Loading SlidesView...');
     // Lazy load SlidesView module - using self-contained version (no external imports)
-    const SlidesView = await this._loadViewModule('slides', './components/views/SlidesView.js', 'SlidesView');
+    // Cache key 'slides-v3' ensures we don't load cached SlidesViewV2
+    const SlidesView = await this._loadViewModule('slides-v3', './components/views/SlidesView.js', 'SlidesView');
     const slidesView = new SlidesView(data);
 
     // Profile render time
