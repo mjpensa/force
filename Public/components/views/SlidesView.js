@@ -58,7 +58,9 @@ function renderSlide(slide, index) {
     line-height: 0.85;
     color: #0C2340;
   `;
-  title.textContent = slide.title || '';
+  // Convert to sentence case: capitalize first letter, lowercase the rest
+  const titleText = slide.title || '';
+  title.textContent = titleText.charAt(0).toUpperCase() + titleText.slice(1).toLowerCase();
   el.appendChild(title);
 
   // BODY (right side) - EXACT from XML:
