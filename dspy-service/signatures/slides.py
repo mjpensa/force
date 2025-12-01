@@ -15,6 +15,16 @@ class SlidesSignature(dspy.Signature):
     - Right column: Body paragraphs
     
     Each slide must have: tagline, title, body (all required).
+    
+    CRITICAL TITLE TYPOGRAPHY RULES (tight 70% line-height):
+    - DESCENDER letters (g, y, p, q, j) hang below the baseline
+    - ASCENDER letters (b, d, f, h, k, l, t) and CAPITALS extend above
+    - NEVER place descender endings directly above ascender/capital beginnings
+    
+    SAFE: "Innovation" above "drives" (n→d), "Success" above "through" (s→t)
+    UNSAFE: "Leading" above "Through" (g→T), "Strategy" above "For" (y→F)
+    
+    Reword titles to avoid unsafe letter stacking. Keep titles 3-5 words per line, 2-4 lines.
     """
 
     user_prompt: str = dspy.InputField(
@@ -28,7 +38,7 @@ class SlidesSignature(dspy.Signature):
         desc="Presentation title"
     )
     slides: List[dict] = dspy.OutputField(
-        desc="Array of slide objects. Each slide must have 'tagline' (uppercase label), 'title' (main headline), 'body' (paragraphs)"
+        desc="Array of slide objects. Each slide must have 'tagline' (uppercase label), 'title' (main headline with safe letter stacking - no descenders above ascenders), 'body' (paragraphs)"
     )
 
 
