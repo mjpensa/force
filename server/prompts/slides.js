@@ -66,7 +66,7 @@ Each slide object must have exactly three fields:
 
 BODY PARAGRAPH FORMAT REQUIREMENT:
 - The body MUST contain EXACTLY 2 paragraphs separated by a double newline (\\n\\n)
-- Each paragraph MUST be between 150-250 characters (roughly 25-40 words)
+- Each paragraph MUST be between 280-350 characters (5-6 lines when rendered)
 - This ensures the text fits properly in the slide layout
 - Focus on the most impactful insights, not comprehensive coverage
 
