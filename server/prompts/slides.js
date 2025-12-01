@@ -76,11 +76,11 @@ Example rewrites:
 
 TITLE FORMAT REQUIREMENT:
 - Each title MUST be EXACTLY 4 lines separated by newline characters (\n)
+- Each line MUST NOT EXCEED 10 characters (including spaces)
 - The TOTAL character count across ALL 4 lines MUST NOT EXCEED 40 characters (including spaces, excluding newlines)
-- Distribute characters across lines for visual balance (approximately 10 characters per line)
-- Example: "Driving\nModern\nBusiness\nForward" = 7+6+8+7 = 28 chars ✓
-- Example: "Transform\nThrough\nInnovtic\nExcelltic" = 9+7+8+9 = 33 chars ✓
-- COUNT CAREFULLY: Add up all characters in all 4 lines, must not exceed 40
+- Example: "Driving\nModern\nBusiness\nForward" = 7+6+8+7 = 28 chars, each line ≤10 ✓
+- Example: "Transformation\nIdeas" = 14 chars on line 1 ✗ (exceeds 10 per line)
+- COUNT CAREFULLY: Each line ≤10 chars AND total ≤40 chars
 
 USER REQUEST: "${userPrompt}"
 
