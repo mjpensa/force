@@ -59,9 +59,20 @@ function renderSlide(slide, index) {
     color: #0C2340;
     white-space: pre-line;
   `;
-  // Convert to sentence case: capitalize first letter, lowercase the rest
+  // Convert to sentence case and enforce exactly 4 lines
   const titleText = slide.title || '';
-  title.textContent = titleText.charAt(0).toUpperCase() + titleText.slice(1).toLowerCase();
+  const sentenceCase = titleText.charAt(0).toUpperCase() + titleText.slice(1).toLowerCase();
+  let lines = sentenceCase.split('\n').map(l => l.trim()).filter(l => l);
+  
+  // Enforce exactly 4 lines
+  if (lines.length > 4) {
+    lines = lines.slice(0, 4); // Truncate to 4 lines
+  }
+  while (lines.length < 4) {
+    lines.push(''); // Pad with empty lines if needed
+  }
+  
+  title.textContent = lines.join('\n');
   el.appendChild(title);
 
   // BODY (right side) - EXACT from XML:
