@@ -122,9 +122,25 @@ export const insightExtractionSchema = {
         },
         required: ["quote"]
       }
+    },
+    tasks: {
+      type: SchemaType.ARRAY,
+      description: "Tasks, activities, projects, initiatives, phases, decisions, and action items - anything that could appear on a Gantt chart or timeline",
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          task: { type: SchemaType.STRING, description: "The task, activity, or initiative name" },
+          description: { type: SchemaType.STRING, description: "Brief description of the task" },
+          type: { type: SchemaType.STRING, enum: ["task", "milestone", "decision", "phase", "initiative", "project", "activity"], description: "Type of item" },
+          entity: { type: SchemaType.STRING, description: "Company, organization, or department responsible (if mentioned)" },
+          timing: { type: SchemaType.STRING, description: "Any timing information mentioned (dates, durations, quarters, years, or 'unknown')" },
+          status: { type: SchemaType.STRING, enum: ["planned", "in-progress", "completed", "unknown"], description: "Status if mentioned" }
+        },
+        required: ["task", "type"]
+      }
     }
   },
-  required: ["keyFacts", "themes"]
+  required: ["keyFacts", "themes", "tasks"]
 };
 
 /**
@@ -186,7 +202,16 @@ Extract information into these categories:
    - Include the exact quote
    - Attribute to speaker if known
 
-Be comprehensive. Extract as much structured data as possible.`;
+8. TASKS & ACTIVITIES: Extract ALL tasks, projects, initiatives, activities, phases, decisions
+   - Include EVERY activity, project, or initiative mentioned
+   - Capture the task/activity name
+   - Note the type (task, milestone, decision, phase, initiative, project, activity)
+   - Include the responsible entity/organization if mentioned
+   - Include ANY timing info (dates, quarters, years, durations, or "unknown")
+   - This is CRITICAL for Gantt chart generation - extract liberally
+
+Be comprehensive. Extract as much structured data as possible.
+IMPORTANT: For Gantt chart generation, extracting ALL tasks and activities is critical - when in doubt, include it.`;
 }
 
 /**
@@ -292,7 +317,8 @@ export async function extractInsights(chunk, totalChunks, options = {}) {
         themes: [],
         metrics: [],
         recommendations: [],
-        quotes: []
+        quotes: [],
+        tasks: []
       },
       metadata: {
         error: error.message,
@@ -410,23 +436,24 @@ export function getExtractionStats(results) {
     totalMetrics: 0,
     totalRecommendations: 0,
     totalQuotes: 0,
+    totalTasks: 0,
     totalExtractionTime: 0
   };
-  
+
   for (const result of results) {
     if (result.metadata?.error) {
       stats.failedExtractions++;
     } else {
       stats.successfulExtractions++;
     }
-    
+
     // Track cache performance
     if (result.metadata?.cacheHit) {
       stats.cacheHits++;
     } else if (result.metadata?.cacheHit === false) {
       stats.cacheMisses++;
     }
-    
+
     if (result.insights) {
       stats.totalKeyFacts += result.insights.keyFacts?.length || 0;
       stats.totalDates += result.insights.dates?.length || 0;
@@ -435,18 +462,19 @@ export function getExtractionStats(results) {
       stats.totalMetrics += result.insights.metrics?.length || 0;
       stats.totalRecommendations += result.insights.recommendations?.length || 0;
       stats.totalQuotes += result.insights.quotes?.length || 0;
+      stats.totalTasks += result.insights.tasks?.length || 0;
     }
-    
+
     if (result.metadata?.extractionTime) {
       stats.totalExtractionTime += result.metadata.extractionTime;
     }
   }
-  
+
   // Add cache metrics summary
-  stats.cacheHitRate = stats.totalChunks > 0 
+  stats.cacheHitRate = stats.totalChunks > 0
     ? Math.round((stats.cacheHits / stats.totalChunks) * 100) + '%'
     : '0%';
-  
+
   return stats;
 }
 
