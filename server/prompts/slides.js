@@ -76,9 +76,9 @@ Example rewrites:
 
 TITLE FORMAT REQUIREMENT:
 - Each title MUST be EXACTLY 4 lines
-- Use 2-4 words per line
-- Structure the title so it wraps naturally into 4 lines
-- Use newline characters (\n) to force line breaks if needed
+- Each line MUST NOT exceed 11 characters (including spaces)
+- Use newline characters (\n) to separate the 4 lines
+- Example: "Driving\nModern\nBusiness\nForward" (4 lines, each ≤11 chars)
 
 USER REQUEST: "${userPrompt}"
 
