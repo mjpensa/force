@@ -19,7 +19,7 @@ const FONTS = {
 /**
  * Universal slide renderer - handles any slide data structure
  */
-function renderSlide(slide, index) {
+export function renderSlide(slide, index) {
   const el = document.createElement('div');
   el.style.cssText = `
     width: 100%;
@@ -206,6 +206,3 @@ export const PPT_TEMPLATES = {
   'grid': renderSlide,
   'default': renderSlide
 };
-
-// Also export individual function for direct use
-export { renderSlide };
