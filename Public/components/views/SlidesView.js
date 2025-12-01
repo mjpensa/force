@@ -108,12 +108,14 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 // ============================================
 export class SlidesView {
   constructor(data) {
-    // Use demo slide if no data provided or for testing
-    if (!data?.slides?.length) {
-      this.slides = [DEMO_SLIDE];
-    } else {
-      this.slides = data.slides;
+    // ALWAYS show demo slide first for template testing
+    this.slides = [DEMO_SLIDE];
+    
+    // Then add any provided slides after the demo
+    if (data?.slides?.length) {
+      this.slides = this.slides.concat(data.slides);
     }
+    
     this.index = 0;
     this.slideEl = null;
     this.counter = null;
