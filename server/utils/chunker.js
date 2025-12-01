@@ -6,11 +6,12 @@
  */
 
 export const CHUNK_CONFIG = {
-  targetChunkSize: 20000,      // ~5000 tokens per chunk
-  overlapSize: 500,            // Context overlap between chunks
+  targetChunkSize: 25000,      // ~6250 tokens per chunk (increased for better context)
+  overlapSize: 1000,           // Context overlap between chunks (increased for continuity)
   minChunkSize: 5000,          // Don't create tiny chunks
   maxChunks: 10,               // Safety limit
-  chunkThreshold: 50000        // Only chunk if total exceeds this
+  chunkThreshold: 100000       // Only chunk if total exceeds 100k chars (~25k tokens)
+                               // This ensures most research files use direct processing
 };
 
 /**

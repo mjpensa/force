@@ -70,8 +70,9 @@ function consolidateKeyFacts(allInsights) {
     }
   }
   
-  // Deduplicate
-  const unique = deduplicateByText(allFacts, 'fact', 0.6);
+  // Deduplicate - use HIGH threshold (0.9) to preserve distinct items
+  // Only merge nearly identical facts to avoid losing task details
+  const unique = deduplicateByText(allFacts, 'fact', 0.9);
   
   // Sort by importance
   const importanceOrder = { high: 0, medium: 1, low: 2 };
@@ -96,11 +97,12 @@ function consolidateDates(allInsights) {
     }
   }
   
-  // Deduplicate by date + event combo
+  // Deduplicate by date + event combo - use HIGH threshold (0.9)
+  // to preserve distinct timeline events/tasks
   const unique = deduplicateByText(
     allDates.map(d => ({ ...d, _key: `${d.date} ${d.event}` })),
     '_key',
-    0.7
+    0.9
   ).map(({ _key, ...rest }) => rest);
   
   return unique;
@@ -189,11 +191,11 @@ function consolidateMetrics(allInsights) {
     }
   }
   
-  // Deduplicate by value + context
+  // Deduplicate by value + context - use higher threshold to preserve distinct metrics
   return deduplicateByText(
     allMetrics.map(m => ({ ...m, _key: `${m.value} ${m.context}` })),
     '_key',
-    0.7
+    0.85
   ).map(({ _key, ...rest }) => rest);
 }
 
@@ -211,8 +213,8 @@ function consolidateRecommendations(allInsights) {
     }
   }
   
-  // Deduplicate
-  const unique = deduplicateByText(allRecs, 'recommendation', 0.6);
+  // Deduplicate - use higher threshold (0.85) to preserve distinct recommendations
+  const unique = deduplicateByText(allRecs, 'recommendation', 0.85);
   
   // Sort by priority
   const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
