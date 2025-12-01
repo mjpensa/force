@@ -8,6 +8,7 @@ import { PerformanceLogger, createTimer, globalMetrics } from './utils/performan
 import { getCachedContent, setCachedContent, getCacheMetrics } from './cache/contentCache.js';
 import { connectionPrewarmer, speculativeGenerator } from './utils/advancedOptimizer.js';
 import { CONFIG, isRoutingEnabled } from './config.js';
+import { prepareResearchContext, willUseMapReduce } from './utils/mapReduceProcessor.js';
 import {
   getRouter,
   getFallbackManager,
@@ -97,6 +98,11 @@ const ENABLE_OPTIMIZATION = process.env.ENABLE_OPTIMIZATION === 'true';
 
 // Feature flag for monitoring (PROMPT ML Layer 10) - DISABLED by default
 const ENABLE_MONITORING = process.env.ENABLE_MONITORING === 'true';
+
+// Feature flag for Map-Reduce processing of large research content
+// When enabled, large research files are chunked and processed in parallel
+// to ensure ALL content is analyzed regardless of size
+const ENABLE_MAP_REDUCE = process.env.ENABLE_MAP_REDUCE !== 'false'; // Enabled by default
 
 /**
  * Map content types to StrategyType for context engineering
@@ -453,6 +459,162 @@ Respond with ONLY the JSON object.`;
       `Please try again or contact support if the issue persists.`
     );
   }
+}
+
+/**
+ * Async version of selectAndApplyVariant that uses Map-Reduce for large content
+ * 
+ * When research content exceeds the threshold, this function:
+ * 1. Chunks the content into manageable pieces
+ * 2. Extracts structured insights from each chunk in parallel
+ * 3. Consolidates insights into a coherent context
+ * 4. Generates the prompt using consolidated insights
+ * 
+ * This ensures ALL research content is analyzed regardless of size.
+ * 
+ * @param {string} contentType - Content type (Roadmap, Slides, Document, ResearchAnalysis)
+ * @param {string} userPrompt - User's prompt
+ * @param {Array} researchFiles - Research files array
+ * @param {Function} fallbackGenerator - Fallback prompt generator function
+ * @param {object} options - Options including perfLogger and onProgress
+ * @returns {Promise<Object>} {prompt, variantId, variantName, usedVariant, mapReduceMetadata}
+ */
+async function selectAndApplyVariantAsync(contentType, userPrompt, researchFiles, fallbackGenerator, options = {}) {
+  const { perfLogger = null, onProgress = null } = options;
+  
+  // CRITICAL: Validate research files first (same validation as sync version)
+  if (!researchFiles || !Array.isArray(researchFiles) || researchFiles.length === 0) {
+    throw new Error(
+      `RESEARCH CONTENT MISSING: Cannot generate ${contentType} without research files. ` +
+      `No documents were provided or processed successfully. Please upload your research documents and try again.`
+    );
+  }
+
+  for (const file of researchFiles) {
+    if (!file || !file.filename || !file.content) {
+      throw new Error(
+        `INVALID RESEARCH FILE: One or more uploaded files could not be processed. ` +
+        `File structure is missing filename or content. Please re-upload your documents.`
+      );
+    }
+  }
+
+  const totalContentLength = researchFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0);
+  if (totalContentLength < 100) {
+    throw new Error(
+      `RESEARCH CONTENT EMPTY: The uploaded files contain insufficient text content ` +
+      `(${totalContentLength} characters). Please ensure your documents contain readable text.`
+    );
+  }
+
+  // Check if Map-Reduce should be used
+  const shouldUseMapReduce = ENABLE_MAP_REDUCE && willUseMapReduce(researchFiles);
+  
+  if (shouldUseMapReduce) {
+    console.log(`[MapReduce] Large content detected for ${contentType}, using map-reduce processing`);
+    
+    if (perfLogger) {
+      perfLogger.setMetadata(`mapreduce-${contentType.toLowerCase()}`, true);
+    }
+    
+    try {
+      // Map content type to the format expected by prepareResearchContext
+      const contentTypeMap = {
+        'Roadmap': 'roadmap',
+        'Slides': 'slides', 
+        'Document': 'document',
+        'ResearchAnalysis': 'researchAnalysis'
+      };
+      
+      // Process through map-reduce pipeline
+      const { context: extractedContext, metadata: mapReduceMetadata } = await prepareResearchContext(
+        researchFiles,
+        contentTypeMap[contentType] || 'document',
+        { onProgress }
+      );
+      
+      if (perfLogger) {
+        perfLogger.setMetadata(`mapreduce-chunks-${contentType.toLowerCase()}`, mapReduceMetadata.chunksProcessed);
+        perfLogger.setMetadata(`mapreduce-strategy-${contentType.toLowerCase()}`, mapReduceMetadata.strategy);
+      }
+      
+      // Create a "virtual" research file with the consolidated insights
+      // This allows us to use the existing prompt generators
+      const consolidatedFiles = [{
+        filename: 'consolidated-research-insights.txt',
+        content: extractedContext
+      }];
+      
+      // Now use the standard variant selection with consolidated content
+      if (!ENABLE_VARIANT_SELECTION) {
+        return {
+          prompt: fallbackGenerator(userPrompt, consolidatedFiles),
+          variantId: 'default',
+          variantName: 'Default (map-reduce)',
+          usedVariant: false,
+          mapReduceMetadata
+        };
+      }
+      
+      try {
+        const variant = selectVariant(contentType);
+        
+        if (!variant || !variant.promptTemplate) {
+          return {
+            prompt: fallbackGenerator(userPrompt, consolidatedFiles),
+            variantId: 'default',
+            variantName: 'Default (map-reduce)',
+            usedVariant: false,
+            mapReduceMetadata
+          };
+        }
+        
+        // Apply variant template with consolidated context
+        const prompt = `${variant.promptTemplate}
+
+**USER PROMPT:**
+${userPrompt}
+
+**RESEARCH CONTENT (Consolidated from ${mapReduceMetadata.fileCount} files, ${mapReduceMetadata.chunksProcessed} chunks):**
+${extractedContext}
+
+Respond with ONLY the JSON object.`;
+        
+        return {
+          prompt,
+          variantId: variant.id,
+          variantName: `${variant.name} (map-reduce)`,
+          usedVariant: true,
+          mapReduceMetadata
+        };
+      } catch (variantError) {
+        // Fall back to standard prompt with consolidated content
+        console.warn(`[MapReduce] Variant selection failed, using fallback: ${variantError.message}`);
+        return {
+          prompt: fallbackGenerator(userPrompt, consolidatedFiles),
+          variantId: 'default',
+          variantName: 'Default (map-reduce fallback)',
+          usedVariant: false,
+          mapReduceMetadata
+        };
+      }
+      
+    } catch (mapReduceError) {
+      // If map-reduce fails, fall through to standard processing
+      console.error(`[MapReduce] Processing failed, falling back to standard: ${mapReduceError.message}`);
+      if (perfLogger) {
+        perfLogger.setMetadata(`mapreduce-error-${contentType.toLowerCase()}`, mapReduceError.message);
+      }
+      // Fall through to standard processing below
+    }
+  }
+  
+  // Standard processing (no map-reduce needed or map-reduce failed)
+  // Use the synchronous version
+  return {
+    ...selectAndApplyVariant(contentType, userPrompt, researchFiles, fallbackGenerator),
+    mapReduceMetadata: null
+  };
 }
 
 /**
@@ -1373,7 +1535,7 @@ async function generateWithGemini(prompt, schema, contentType, configOverrides =
     throw new Error(`Failed to generate ${contentType}: ${error.message}`);
   }
 }
-async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
+async function generateRoadmap(userPrompt, researchFiles, perfLogger = null, options = {}) {
   const contentType = 'roadmap';
   const combinedContent = combineResearchContent(researchFiles);
   const startTime = Date.now();
@@ -1406,8 +1568,11 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'Roadmap', perfLogger);
     const processedFiles = contextResult.files;
 
-    // Select variant and generate prompt (A/B testing)
-    const variantResult = selectAndApplyVariant('Roadmap', userPrompt, processedFiles, generateRoadmapPrompt);
+    // Select variant and generate prompt (A/B testing) - uses async version for map-reduce support
+    const variantResult = await selectAndApplyVariantAsync('Roadmap', userPrompt, processedFiles, generateRoadmapPrompt, {
+      perfLogger,
+      onProgress: options.onProgress
+    });
 
     // Log variant selection
     if (perfLogger && variantResult.usedVariant) {
@@ -1484,7 +1649,8 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
       _contextEngineering: contextResult.metadata,
       _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
       _validation: validationResult.validation,
-      _generationId: generationId
+      _generationId: generationId,
+      _mapReduce: variantResult.mapReduceMetadata
     };
   } catch (error) {
     // Re-throw research validation errors - these MUST bubble up to the user
@@ -1495,7 +1661,7 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
   }
 }
 
-async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
+async function generateSlides(userPrompt, researchFiles, perfLogger = null, options = {}) {
   const contentType = 'slides';
   const combinedContent = combineResearchContent(researchFiles);
   const startTime = Date.now();
@@ -1525,8 +1691,11 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'Slides', perfLogger);
     const processedFiles = contextResult.files;
 
-    // Select variant and generate prompt (A/B testing)
-    const variantResult = selectAndApplyVariant('Slides', userPrompt, processedFiles, generateSlidesPrompt);
+    // Select variant and generate prompt (A/B testing) - uses async version for map-reduce support
+    const variantResult = await selectAndApplyVariantAsync('Slides', userPrompt, processedFiles, generateSlidesPrompt, {
+      perfLogger,
+      onProgress: options.onProgress
+    });
 
     // Log variant selection
     if (perfLogger && variantResult.usedVariant) {
@@ -1596,7 +1765,8 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
       _contextEngineering: contextResult.metadata,
       _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
       _validation: validationResult.validation,
-      _generationId: generationId
+      _generationId: generationId,
+      _mapReduce: variantResult.mapReduceMetadata
     };
   } catch (error) {
     // Re-throw research validation errors - these MUST bubble up to the user
@@ -1607,7 +1777,7 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
   }
 }
 
-async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
+async function generateDocument(userPrompt, researchFiles, perfLogger = null, options = {}) {
   const contentType = 'document';
   const combinedContent = combineResearchContent(researchFiles);
   const startTime = Date.now();
@@ -1637,8 +1807,11 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'Document', perfLogger);
     const processedFiles = contextResult.files;
 
-    // Select variant and generate prompt (A/B testing)
-    const variantResult = selectAndApplyVariant('Document', userPrompt, processedFiles, generateDocumentPrompt);
+    // Select variant and generate prompt (A/B testing) - uses async version for map-reduce support
+    const variantResult = await selectAndApplyVariantAsync('Document', userPrompt, processedFiles, generateDocumentPrompt, {
+      perfLogger,
+      onProgress: options.onProgress
+    });
 
     // Log variant selection
     if (perfLogger && variantResult.usedVariant) {
@@ -1708,7 +1881,8 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
       _contextEngineering: contextResult.metadata,
       _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
       _validation: validationResult.validation,
-      _generationId: generationId
+      _generationId: generationId,
+      _mapReduce: variantResult.mapReduceMetadata
     };
   } catch (error) {
     // Re-throw research validation errors - these MUST bubble up to the user
@@ -1719,7 +1893,7 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
   }
 }
 
-async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = null) {
+async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = null, options = {}) {
   const contentType = 'researchAnalysis';
   const combinedContent = combineResearchContent(researchFiles);
   const startTime = Date.now();
@@ -1749,8 +1923,11 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
     const contextResult = processContextEngineering(researchFiles, userPrompt, 'ResearchAnalysis', perfLogger);
     const processedFiles = contextResult.files;
 
-    // Select variant and generate prompt (A/B testing)
-    const variantResult = selectAndApplyVariant('ResearchAnalysis', userPrompt, processedFiles, generateResearchAnalysisPrompt);
+    // Select variant and generate prompt (A/B testing) - uses async version for map-reduce support
+    const variantResult = await selectAndApplyVariantAsync('ResearchAnalysis', userPrompt, processedFiles, generateResearchAnalysisPrompt, {
+      perfLogger,
+      onProgress: options.onProgress
+    });
 
     // Log variant selection
     if (perfLogger && variantResult.usedVariant) {
@@ -1820,7 +1997,8 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       _contextEngineering: contextResult.metadata,
       _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
       _validation: validationResult.validation,
-      _generationId: generationId
+      _generationId: generationId,
+      _mapReduce: variantResult.mapReduceMetadata
     };
   } catch (error) {
     // Re-throw research validation errors - these MUST bubble up to the user
