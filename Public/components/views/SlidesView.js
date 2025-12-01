@@ -29,9 +29,9 @@ function renderSlide(slide, index) {
     font-size: 12pt;
     font-weight: 600;
     color: #DA291C;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    margin-bottom: 6px;
+    margin-bottom: 10px;
   `;
   tagline.textContent = slide.tagline || '';
   leftCol.appendChild(tagline);
@@ -61,7 +61,7 @@ function renderSlide(slide, index) {
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
     font-weight: 400;
-    line-height: 1.5;
+    line-height: 1.65;
     color: #0C2340;
   `;
 
@@ -71,7 +71,7 @@ function renderSlide(slide, index) {
   // Render as paragraphs
   const paragraphs = bodyText.split(/\n\n|\n/).filter(p => p.trim());
   rightCol.innerHTML = paragraphs.map(p => 
-    `<p style="margin: 0 0 18px 0;">${p.trim()}</p>`
+    `<p style="margin: 0 0 24px 0;">${p.trim()}</p>`
   ).join('');
 
   el.appendChild(rightCol);
