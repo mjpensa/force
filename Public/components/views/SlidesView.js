@@ -42,7 +42,7 @@ function renderSlide(slide, index) {
     font-family: 'Work Sans', sans-serif;
     font-size: 72pt;
     font-weight: 100;
-    line-height: 0.95;
+    line-height: 1.0;
     color: #0C2340;
   `;
   title.textContent = slide.title || '';
@@ -54,14 +54,13 @@ function renderSlide(slide, index) {
   const rightCol = document.createElement('div');
   rightCol.style.cssText = `
     position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 35%;
     right: 5%;
     width: 43%;
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
     font-weight: 400;
-    line-height: 1.6;
+    line-height: 1.5;
     color: #0C2340;
   `;
 
@@ -83,7 +82,7 @@ function renderSlide(slide, index) {
     bottom: 4%;
     left: 5%;
     font-family: 'Work Sans', sans-serif;
-    font-size: 12pt;
+    font-size: 10pt;
     font-weight: 400;
     color: #0C2340;
   `;
