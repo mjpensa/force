@@ -85,7 +85,7 @@ function renderSlide(slide, index) {
     position: absolute;
     left: 50.59%;
     width: 44.30%;
-    top: 52%;
+    top: 57%;
     bottom: 6%;
     font-family: 'Work Sans', sans-serif;
     font-size: clamp(7px, 1.15cqw, 14px);
