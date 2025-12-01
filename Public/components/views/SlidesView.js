@@ -11,7 +11,6 @@ function renderSlide(slide, index) {
     position: relative;
     font-family: 'Work Sans', sans-serif;
     box-sizing: border-box;
-    padding: 40px 60px 30px 60px;
   `;
 
   // LEFT COLUMN: Tagline + Title (positioned absolutely for precise control)
@@ -30,9 +29,9 @@ function renderSlide(slide, index) {
     font-size: 12pt;
     font-weight: 600;
     color: #DA291C;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     text-transform: uppercase;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   `;
   tagline.textContent = slide.tagline || '';
   leftCol.appendChild(tagline);
@@ -43,9 +42,8 @@ function renderSlide(slide, index) {
     font-family: 'Work Sans', sans-serif;
     font-size: 72pt;
     font-weight: 100;
-    line-height: 1.0;
+    line-height: 0.95;
     color: #0C2340;
-    letter-spacing: -1px;
   `;
   title.textContent = slide.title || '';
   leftCol.appendChild(title);
@@ -73,7 +71,7 @@ function renderSlide(slide, index) {
   // Render as paragraphs
   const paragraphs = bodyText.split(/\n\n|\n/).filter(p => p.trim());
   rightCol.innerHTML = paragraphs.map(p => 
-    `<p style="margin: 0 0 20px 0;">${p.trim()}</p>`
+    `<p style="margin: 0 0 16px 0;">${p.trim()}</p>`
   ).join('');
 
   el.appendChild(rightCol);
@@ -84,8 +82,12 @@ function renderSlide(slide, index) {
     position: absolute;
     bottom: 4%;
     left: 5%;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 12pt;
+    font-weight: 400;
+    color: #0C2340;
   `;
-  footer.innerHTML = `<span style="font-size: 11px; color: #0C2340;">${index + 1}</span>`;
+  footer.textContent = index + 1;
   el.appendChild(footer);
 
   return el;
