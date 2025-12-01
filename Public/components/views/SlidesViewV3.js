@@ -60,7 +60,7 @@ export class SlidesView {
         padding: 80px; /* Generous padding */
         box-sizing: border-box;
         display: grid;
-        font-family: 'Arial', sans-serif;
+        font-family: "Helvetica Neue", "Segoe UI", "Roboto", Arial, sans-serif;
         color: #0C2340;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         transform-origin: center center;
@@ -114,12 +114,12 @@ export class SlidesView {
         align-items: start;
       }
       .layout-title .slide-title { 
-        font-size: 100px; 
-        font-weight: 100;
-        line-height: 0.9;
-        letter-spacing: -2px;
+        font-size: 130px; 
+        font-weight: 300;
+        line-height: 0.85;
+        letter-spacing: -4px;
         align-self: start;
-        margin-top: 20px;
+        margin-top: 10px;
       }
       .layout-title .tagline {
         grid-area: tagline;
