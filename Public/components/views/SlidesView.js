@@ -66,13 +66,13 @@ function renderSlide(slide, index) {
   // BODY (right side) - EXACT from XML:
   // x=6167437/12192000 = 50.59%, y=3159889/6858000 = 46.08%
   // width=5400675/12192000 = 44.30%, height=3221861/6858000 = 46.98%
-  // Font: 12pt Work Sans, #0C2340, line-height 120%, anchor=bottom (12pt ≈ 1% of 1200px)
+  // Font: 12pt Work Sans, #0C2340, line-height 120%, anchor=top (text expands downward)
   const body = document.createElement('div');
   body.style.cssText = `
     position: absolute;
     left: 50.59%;
     width: 44.30%;
-    bottom: 6.94%;
+    top: 46.08%;
     max-height: 46.98%;
     font-family: 'Work Sans', sans-serif;
     font-size: clamp(8px, 1.3cqw, 16px);
@@ -81,9 +81,6 @@ function renderSlide(slide, index) {
     letter-spacing: -0.01em;
     word-spacing: -0.05em;
     color: #0C2340;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
     overflow: hidden;
   `;
 
