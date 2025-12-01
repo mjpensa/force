@@ -89,12 +89,13 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - **Deadlines:** Any due date, target date, compliance date, or time-bound requirement
     - **Dependencies:** Any prerequisite, blocker, or sequential requirement mentioned
     - **Phases:** Any project phase, stage, sprint, or iteration
-    - **Historical Events:** Any PAST or COMPLETED activities mentioned in the research
+    - **Historical Events:** Any PAST or COMPLETED activities mentioned in the research - these provide essential context
     **EXTRACTION RULES:**
     - Do NOT summarize or consolidate similar items - include each one separately
     - Do NOT skip items because they seem minor - include everything mentioned
+    - Do NOT skip minor or past items - historical context is critical
     - Do NOT skip items because they lack specific dates - include them with unknown date markers
-    - **TIME HORIZON:** The timeColumns should match the user's specified range. Only exclude tasks with EXPLICIT dates that are clearly outside the range. Tasks with unknown dates or vague timing should still be included.
+    - **TIME HORIZON:** The timeColumns should match the user's specified range. Tasks with dates OUTSIDE the range should STILL be included but placed at the nearest boundary (startCol=1 for early dates, startCol=last for late dates). Tasks with unknown dates should also be included.
     - If an item appears in multiple places, include it once with the most complete information
     - If dates are mentioned for ANY activity, that activity MUST appear in the chart
     - Err on the side of INCLUSION - when in doubt, add it to the chart
