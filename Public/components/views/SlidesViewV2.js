@@ -194,7 +194,43 @@ export class SlidesView {
         if (content) {
             div.textContent = content;
             this.slideContainer.appendChild(div);
+            
+            // Auto-scale text to fit container
+            // Calculate target height in pixels (720px is the base height)
+            const targetHeight = (parseFloat(el.style.height) / 100) * 720;
+            this.fitText(div, targetHeight);
         }
     });
+  }
+
+  fitText(element, targetHeight) {
+    let fontSize = parseFloat(element.style.fontSize);
+    if (!fontSize || isNaN(fontSize)) return;
+
+    const minFontSize = 6; // Minimum readable size
+    const unit = element.style.fontSize.includes('pt') ? 'pt' : 'px';
+    
+    // Temporarily disable word breaking to detect true width overflow
+    const originalWordWrap = element.style.wordWrap;
+    element.style.wordWrap = 'normal';
+    element.style.overflowWrap = 'normal';
+
+    // Iteratively reduce font size
+    // Limit iterations to prevent freezing
+    for (let i = 0; i < 40; i++) {
+        if (fontSize <= minFontSize) break;
+
+        const isTooWide = element.scrollWidth > element.clientWidth;
+        const isTooTall = element.scrollHeight > targetHeight;
+
+        if (!isTooWide && !isTooTall) break;
+
+        fontSize -= 1; // Reduce by 1 unit
+        element.style.fontSize = `${fontSize}${unit}`;
+    }
+
+    // Restore word wrap
+    element.style.wordWrap = originalWordWrap;
+    element.style.overflowWrap = 'break-word'; // Ensure it breaks if still too long
   }
 }
