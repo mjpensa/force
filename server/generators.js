@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { jsonrepair } from 'jsonrepair';
 import { generateRoadmapPrompt, roadmapSchema } from './prompts/roadmap.js';
 import { generateDocumentPrompt, documentSchema } from './prompts/document.js';
+import { generateSlidesPrompt, slidesSchema } from './prompts/slides.js';
 import { generateResearchAnalysisPrompt, researchAnalysisSchema } from './prompts/research-analysis.js';
 import { PerformanceLogger, createTimer, globalMetrics } from './utils/performanceLogger.js';
 import { getCachedContent, setCachedContent, getCacheMetrics } from './cache/contentCache.js';
@@ -1112,6 +1113,15 @@ const ROADMAP_CONFIG = {
   maxOutputTokens: 16384 // Large charts need more tokens
 };
 
+// Slides: Structured presentation content
+const SLIDES_CONFIG = {
+  temperature: 0.2,      // Balanced for creativity and structure
+  topP: 0.4,
+  topK: 10,
+  thinkingBudget: 0,
+  maxOutputTokens: 8192
+};
+
 // Research Analysis: Detailed quality assessment
 const RESEARCH_ANALYSIS_CONFIG = {
   temperature: 0.15,     // Slightly higher for nuanced analysis
@@ -1396,27 +1406,111 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null) {
 }
 
 async function generateSlides(userPrompt, researchFiles, perfLogger = null) {
-  // Placeholder for slide generation - Updated to use new Template System
-  return {
-    success: true,
-    data: {
-      title: "Placeholder",
-      slides: [
-        {
-          layout: "title",
-          title: "AI Roadmap Generator",
-          tagline: "TEMPLATE INTEGRATION SUCCESSFUL",
-          body: "The new template system is active. Please generate new content to see the full results."
-        },
-        {
-          layout: "content",
-          title: "How to Generate",
-          tagline: "INSTRUCTIONS",
-          body: "1. Go to the Roadmap view.\n2. Enter a prompt.\n3. Click Generate.\n\nThe AI will now use the new 16:9 templates with pixel-perfect positioning."
+  const contentType = 'slides';
+  const combinedContent = combineResearchContent(researchFiles);
+  const startTime = Date.now();
+
+  try {
+    // Check cache first
+    if (ENABLE_CACHE) {
+      const cached = getCachedContent(contentType, combinedContent, userPrompt);
+      if (cached) {
+        if (perfLogger) {
+          perfLogger.setMetadata(`cache-hit-${contentType}`, true);
         }
-      ]
+        // Record cache hit metrics
+        const generationId = recordGenerationMetrics({
+          contentType: 'Slides',
+          variantId: 'default',
+          userPrompt,
+          fileCount: researchFiles.length,
+          cacheHit: true,
+          latencyMs: Date.now() - startTime
+        });
+        return { success: true, data: cached, _cached: true, _generationId: generationId };
+      }
     }
-  };
+
+    // Apply context engineering for optimized prompt assembly
+    const contextResult = processContextEngineering(researchFiles, userPrompt, 'Slides', perfLogger);
+    const processedFiles = contextResult.files;
+
+    // Select variant and generate prompt (A/B testing)
+    const variantResult = selectAndApplyVariant('Slides', userPrompt, processedFiles, generateSlidesPrompt);
+
+    // Log variant selection
+    if (perfLogger && variantResult.usedVariant) {
+      perfLogger.setMetadata('variant-slides', {
+        id: variantResult.variantId,
+        name: variantResult.variantName
+      });
+    }
+
+    // Build routing options for model selection
+    const routingOptions = {
+      content: combinedContent,
+      fileCount: researchFiles.length
+    };
+
+    const data = await generateWithGemini(variantResult.prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
+
+    // Validate generated output (PROMPT ML Layer 6)
+    const validationResult = validateGeneratedOutput(data, 'Slides', slidesSchema, {
+      userPrompt,
+      researchFiles: processedFiles
+    }, perfLogger);
+    const validatedData = validationResult.data;
+
+    // Fix: Ensure we have valid data before returning success
+    if (validatedData === null || validatedData === undefined) {
+      throw new Error('Slides generation completed but returned no data. The AI response may have been malformed.');
+    }
+
+    // Store in cache
+    if (ENABLE_CACHE && validatedData) {
+      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
+    }
+
+    const latencyMs = Date.now() - startTime;
+
+    // Record variant performance for A/B testing
+    if (variantResult.usedVariant) {
+      const perfMetrics = {
+        latencyMs,
+        qualityScore: validationResult.validation?.quality?.score || 0,
+        success: validationResult.validation?.valid !== false
+      };
+      recordVariantPerformance(variantResult.variantId, perfMetrics);
+
+      // Also record to active experiment if one exists
+      recordExperimentMetric(variantResult.variantId, perfMetrics);
+    }
+
+    // Record generation metrics for auto-optimization
+    const generationId = recordGenerationMetrics({
+      contentType: 'Slides',
+      variantId: variantResult.variantId,
+      prompt: variantResult.prompt,
+      userPrompt,
+      fileCount: researchFiles.length,
+      complexity: contextResult.metadata?.complexity || 0,
+      latencyMs,
+      inputTokens: contextResult.metadata?.tokensUsed || 0,
+      cacheHit: false,
+      validation: validationResult.validation
+    });
+
+    return {
+      success: true,
+      data: validatedData,
+      _contextEngineering: contextResult.metadata,
+      _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
+      _validation: validationResult.validation,
+      _generationId: generationId
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 }
 
 async function generateDocument(userPrompt, researchFiles, perfLogger = null) {
