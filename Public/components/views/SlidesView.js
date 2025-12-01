@@ -51,14 +51,13 @@ function renderSlide(slide, index) {
 
   el.appendChild(leftCol);
 
-  // RIGHT COLUMN: Body content (positioned to align with middle of slide)
+  // RIGHT COLUMN: Body content (positioned to start at ~40% from top)
   const rightCol = document.createElement('div');
   rightCol.style.cssText = `
     position: absolute;
-    top: 50%;
+    top: 38%;
     right: 60px;
     width: 45%;
-    transform: translateY(-30%);
     font-size: 14px;
     line-height: 1.7;
     color: #0C2340;
