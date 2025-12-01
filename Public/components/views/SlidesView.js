@@ -9,7 +9,7 @@ function renderSlide(slide, index) {
     width: 100%; height: 100%;
     background: #FFFFFF;
     position: relative;
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: 'Work Sans', sans-serif;
     box-sizing: border-box;
     padding: 40px 60px 30px 60px;
   `;
@@ -23,11 +23,12 @@ function renderSlide(slide, index) {
     width: 42%;
   `;
 
-  // Tagline (red, uppercase, small)
+  // Eyebrow (red, uppercase, Work Sans SemiBold 12pt)
   const tagline = document.createElement('div');
   tagline.style.cssText = `
-    font-size: 11px;
-    font-weight: 700;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 12pt;
+    font-weight: 600;
     color: #DA291C;
     letter-spacing: 1.5px;
     text-transform: uppercase;
@@ -36,11 +37,11 @@ function renderSlide(slide, index) {
   tagline.textContent = slide.tagline || '';
   leftCol.appendChild(tagline);
 
-  // Title (large, extra-light weight, navy)
+  // Title (Work Sans Thin 72pt)
   const title = document.createElement('div');
   title.style.cssText = `
-    font-family: 'Segoe UI Light', 'Helvetica Neue Light', Arial, sans-serif;
-    font-size: clamp(36px, 5vw, 54px);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 72pt;
     font-weight: 100;
     line-height: 1.1;
     color: #0C2340;
@@ -51,14 +52,16 @@ function renderSlide(slide, index) {
 
   el.appendChild(leftCol);
 
-  // RIGHT COLUMN: Body content (positioned to start at ~40% from top)
+  // RIGHT COLUMN: Body content (Work Sans 12pt)
   const rightCol = document.createElement('div');
   rightCol.style.cssText = `
     position: absolute;
     top: 38%;
     right: 60px;
     width: 45%;
-    font-size: 14px;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 12pt;
+    font-weight: 400;
     line-height: 1.7;
     color: #0C2340;
   `;
