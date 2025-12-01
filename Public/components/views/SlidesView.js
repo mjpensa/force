@@ -1,22 +1,23 @@
 /**
  * SlidesView - SELF-CONTAINED Slide Viewer
  * Zero external dependencies. Everything inline.
- * This ensures no import errors can occur.
+ * Clean, professional design with no branding.
  */
 
 // ============================================
 // INLINE TEMPLATE RENDERER (no imports needed)
 // ============================================
 const COLORS = {
-  navy: '#0C2340',
-  red: '#DA291C',
+  primary: '#1a1a2e',
+  accent: '#4a90d9',
   white: '#FFFFFF',
-  gray: '#666666'
+  gray: '#666666',
+  lightGray: '#f5f5f5'
 };
 
 const FONTS = {
-  title: "'Segoe UI Light', 'Helvetica Neue Light', Arial, sans-serif",
-  body: "'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+  title: "'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif",
+  body: "'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
 };
 
 function formatBody(text) {
@@ -50,8 +51,8 @@ function renderSlide(slide, index) {
   if (slide.tagline || slide.section) {
     const tagline = document.createElement('div');
     tagline.style.cssText = `
-      font-size: 12px; font-weight: 700;
-      color: ${COLORS.red}; letter-spacing: 1px;
+      font-size: 12px; font-weight: 600;
+      color: ${COLORS.accent}; letter-spacing: 1px;
       margin-bottom: 20px; text-transform: uppercase;
     `;
     tagline.textContent = slide.tagline || slide.section;
@@ -64,8 +65,8 @@ function renderSlide(slide, index) {
     title.style.cssText = `
       font-family: ${FONTS.title};
       font-size: clamp(28px, 4vw, 48px);
-      font-weight: 300; line-height: 1.2;
-      color: ${COLORS.navy}; margin: 0 0 20px 0;
+      font-weight: 600; line-height: 1.2;
+      color: ${COLORS.primary}; margin: 0 0 20px 0;
     `;
     title.textContent = slide.title;
     el.appendChild(title);
@@ -74,7 +75,7 @@ function renderSlide(slide, index) {
   // Subtitle
   if (slide.subtitle) {
     const subtitle = document.createElement('p');
-    subtitle.style.cssText = `font-size: 18px; color: ${COLORS.navy}; margin: 0 0 20px 0;`;
+    subtitle.style.cssText = `font-size: 18px; color: ${COLORS.primary}; margin: 0 0 20px 0;`;
     subtitle.textContent = slide.subtitle;
     el.appendChild(subtitle);
   }
@@ -82,7 +83,7 @@ function renderSlide(slide, index) {
   // Intro
   if (slide.intro) {
     const intro = document.createElement('p');
-    intro.style.cssText = `font-size: 14px; color: ${COLORS.navy}; margin: 0 0 25px 0; max-width: 80%;`;
+    intro.style.cssText = `font-size: 14px; color: ${COLORS.primary}; margin: 0 0 25px 0; max-width: 80%;`;
     intro.textContent = slide.intro;
     el.appendChild(intro);
   }
@@ -90,7 +91,7 @@ function renderSlide(slide, index) {
   // Body text
   if (slide.body) {
     const body = document.createElement('div');
-    body.style.cssText = `font-size: 14px; line-height: 1.7; color: ${COLORS.navy}; flex: 1;`;
+    body.style.cssText = `font-size: 14px; line-height: 1.7; color: ${COLORS.primary}; flex: 1;`;
     body.innerHTML = formatBody(slide.body);
     el.appendChild(body);
   }
@@ -98,7 +99,7 @@ function renderSlide(slide, index) {
   // Content array (bullet points)
   if (slide.content && Array.isArray(slide.content)) {
     const contentDiv = document.createElement('div');
-    contentDiv.style.cssText = `font-size: 14px; line-height: 1.7; color: ${COLORS.navy}; flex: 1;`;
+    contentDiv.style.cssText = `font-size: 14px; line-height: 1.7; color: ${COLORS.primary}; flex: 1;`;
     
     const ul = document.createElement('ul');
     ul.style.cssText = 'margin: 0; padding-left: 20px;';
@@ -124,11 +125,11 @@ function renderSlide(slide, index) {
     slide.gridItems.slice(0, 6).forEach(item => {
       const card = document.createElement('div');
       card.style.cssText = `
-        padding: 20px; background: #f8f9fa;
-        border-radius: 4px; border-left: 3px solid ${COLORS.red};
+        padding: 20px; background: ${COLORS.lightGray};
+        border-radius: 8px; border-left: 3px solid ${COLORS.accent};
       `;
       card.innerHTML = `
-        <h3 style="font-size: 16px; font-weight: 600; color: ${COLORS.navy}; margin: 0 0 10px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; color: ${COLORS.primary}; margin: 0 0 10px 0;">
           ${item.title || ''}
         </h3>
         <p style="font-size: 13px; color: ${COLORS.gray}; margin: 0; line-height: 1.5;">
@@ -140,15 +141,14 @@ function renderSlide(slide, index) {
     el.appendChild(grid);
   }
 
-  // Footer
+  // Footer - just slide number, no branding
   const footer = document.createElement('div');
   footer.style.cssText = `
     position: absolute; bottom: 20px; left: 40px; right: 40px;
-    display: flex; justify-content: space-between; align-items: center;
+    display: flex; justify-content: flex-end; align-items: center;
   `;
   footer.innerHTML = `
-    <span style="font-size: 10px; color: ${COLORS.navy};">${index + 1}</span>
-    <span style="font-size: 14px; font-weight: 700; color: ${COLORS.red};">bip.</span>
+    <span style="font-size: 12px; color: ${COLORS.gray};">${index + 1}</span>
   `;
   el.appendChild(footer);
 
