@@ -20,12 +20,12 @@ DETERMINISTIC OUTPUT REQUIRED - same inputs must produce identical outputs.
 
 ## RULES
 
-### 1. TIME HORIZON
-- Scan ALL dates (past/present/future) in research
-- User-specified range: extend backward if research has earlier dates
-- No range specified: earliest to latest date found
-- INCLUDE historical/past events - they're essential context
-- timeColumns starts from earliest date (column 1 = first period)
+### 1. TIME HORIZON (RESPECT USER INPUT)
+- Check user's prompt for explicitly requested time range (e.g., "2025-2030")
+- **User-specified range: Use EXACTLY that range for timeColumns. Do NOT extend it backward or forward.**
+- No range specified: use earliest to latest date found in research
+- **Include ALL tasks from research, even those with unknown dates. Only exclude tasks with EXPLICIT dates clearly outside the user's range.**
+- Tasks with unknown dates should be included and placed appropriately within the timeline
 
 ### 2. TIME INTERVAL (by duration)
 - ≤90 days: Weeks ["W1 2026", "W2 2026"]
@@ -40,8 +40,8 @@ Priority order:
 2. Departments: "IT/Technology", "Legal", "Business/Operations", "Finance", "Executive" - use at least 2-3 categories
 
 Sorting: Broad/industry-wide swimlanes first, then specific ones alphabetically.
-Threshold: Swimlanes need ≥3 tasks. Redistribute orphan tasks to nearest swimlane.
-VALIDATION: Must have AT LEAST 2 swimlanes. Re-analyze if only 1.
+Include ALL swimlanes that have tasks, even if only 1-2 tasks.
+VALIDATION: Must have AT LEAST 2 swimlanes. If only 1 exists, consider splitting by theme or phase.
 
 ### 4. DATA STRUCTURE
 - Swimlane row: {"title":"Name","isSwimlane":true,"entity":"Name"}
@@ -69,11 +69,12 @@ ELSE (fallback):
 - "task": default
 - Priority: decision > milestone if both match
 
-### 8. EXTRACTION (CRITICAL)
-Extract ALL: tasks, milestones, decisions, events, deadlines, phases, historical events.
+### 8. EXTRACTION (CRITICAL - INCLUDE EVERYTHING)
+Extract ALL items from research: tasks, milestones, decisions, events, deadlines, phases.
 - Do NOT consolidate similar items
-- Do NOT skip minor or past items
-- Include everything with dates
+- Do NOT skip items - include ALL of them
+- Include items WITH dates AND items WITHOUT dates
+- Items without dates should use {"startCol":null,"endCol":null}
 - When in doubt, include it
 
 ### 9. RESEARCH ANALYSIS (REQUIRED)
@@ -82,7 +83,7 @@ For each topic (included or not), provide:
 - taskCount, includedinChart, issues[], recommendation
 - overallScore (weighted avg), summary (1-2 sentences)
 
-Topics excluded due to <3 tasks must appear with includedinChart=false.`;
+All topics from the research should be represented in the chart.`;
 
 /**
  * Roadmap output schema (matching existing roadmapSchema)
