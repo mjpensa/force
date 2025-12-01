@@ -520,31 +520,62 @@ class StorageManager {
     return this.fallback;
   }
 
+  /**
+   * Retrieve a value from storage
+   * @param {string} key - The key to retrieve
+   * @returns {Promise<any>} The stored value or null
+   */
   async get(key) {
     await this.initialize();
     return this._getStorage().get(key);
   }
 
+  /**
+   * Store a value in storage
+   * @param {string} key - The key to store
+   * @param {any} value - The value to store
+   * @param {number} [ttlMs] - Optional TTL in milliseconds
+   * @returns {Promise<void>}
+   */
   async set(key, value, ttlMs) {
     await this.initialize();
     return this._getStorage().set(key, value, ttlMs);
   }
 
+  /**
+   * Delete a value from storage
+   * @param {string} key - The key to delete
+   * @returns {Promise<void>}
+   */
   async delete(key) {
     await this.initialize();
     return this._getStorage().delete(key);
   }
 
+  /**
+   * Check if a key exists in storage
+   * @param {string} key - The key to check
+   * @returns {Promise<boolean>} True if key exists
+   */
   async exists(key) {
     await this.initialize();
     return this._getStorage().exists(key);
   }
 
+  /**
+   * Update the TTL of a key
+   * @param {string} key - The key to touch
+   * @returns {Promise<void>}
+   */
   async touch(key) {
     await this.initialize();
     return this._getStorage().touch(key);
   }
 
+  /**
+   * Get the number of items in storage
+   * @returns {Promise<number>} The number of items
+   */
   async size() {
     await this.initialize();
     return this._getStorage().size();
