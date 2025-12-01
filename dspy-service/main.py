@@ -277,6 +277,13 @@ async def generate_content(request: GenerateRequest):
             detail="Language model not configured. Set GEMINI_API_KEY."
         )
 
+    # Validate research content - NEVER generate without real research
+    if not request.research_content or len(request.research_content.strip()) < 100:
+        raise HTTPException(
+            status_code=400,
+            detail="RESEARCH CONTENT MISSING: research_content must contain at least 100 characters of actual research data"
+        )
+
     if request.signature_type not in MODULES:
         raise HTTPException(
             status_code=400,
