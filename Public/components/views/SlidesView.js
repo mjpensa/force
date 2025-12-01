@@ -18,8 +18,8 @@ function renderSlide(slide, index) {
   const leftCol = document.createElement('div');
   leftCol.style.cssText = `
     position: absolute;
-    top: 30px;
-    left: 50px;
+    top: 5%;
+    left: 5%;
     width: 38%;
   `;
 
@@ -58,7 +58,7 @@ function renderSlide(slide, index) {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    right: 50px;
+    right: 5%;
     width: 43%;
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
@@ -82,8 +82,8 @@ function renderSlide(slide, index) {
   const footer = document.createElement('div');
   footer.style.cssText = `
     position: absolute;
-    bottom: 25px;
-    left: 60px;
+    bottom: 4%;
+    left: 5%;
   `;
   footer.innerHTML = `<span style="font-size: 11px; color: #0C2340;">${index + 1}</span>`;
   el.appendChild(footer);
