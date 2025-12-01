@@ -368,9 +368,15 @@ function recordGenerationMetrics(data) {
  * @returns {Object} {prompt, variantId, variantName, usedVariant}
  */
 function selectAndApplyVariant(contentType, userPrompt, researchFiles, fallbackGenerator) {
+  // Convert array of file objects to formatted string for prompt generators
+  // This is required because prompt generators expect a string, not an array
+  const researchContent = researchFiles
+    .map(file => `=== ${file.filename} ===\n${file.content}`)
+    .join('\n\n');
+
   if (!ENABLE_VARIANT_SELECTION) {
     return {
-      prompt: fallbackGenerator(userPrompt, researchFiles),
+      prompt: fallbackGenerator(userPrompt, researchContent),
       variantId: 'default',
       variantName: 'Default',
       usedVariant: false
@@ -383,17 +389,12 @@ function selectAndApplyVariant(contentType, userPrompt, researchFiles, fallbackG
     if (!variant || !variant.promptTemplate) {
       // Fallback if no variant found
       return {
-        prompt: fallbackGenerator(userPrompt, researchFiles),
+        prompt: fallbackGenerator(userPrompt, researchContent),
         variantId: 'default',
         variantName: 'Default (no variant)',
         usedVariant: false
       };
     }
-
-    // Build the prompt using the variant template
-    const researchContent = researchFiles
-      .map(file => `=== ${file.filename} ===\n${file.content}`)
-      .join('\n\n');
 
     // Apply the variant template with user prompt and research
     const prompt = `${variant.promptTemplate}
@@ -415,7 +416,7 @@ Respond with ONLY the JSON object.`;
   } catch (error) {
     console.warn(`[Variants] Selection failed for ${contentType}:`, error.message);
     return {
-      prompt: fallbackGenerator(userPrompt, researchFiles),
+      prompt: fallbackGenerator(userPrompt, researchContent),
       variantId: 'default',
       variantName: 'Default (error)',
       usedVariant: false,
