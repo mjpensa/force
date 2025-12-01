@@ -37,15 +37,15 @@ function renderSlide(slide, index) {
   tagline.textContent = slide.tagline || '';
   leftCol.appendChild(tagline);
 
-  // Title (Work Sans Thin - sized to fit)
+  // Title (Work Sans Thin 72pt)
   const title = document.createElement('div');
   title.style.cssText = `
     font-family: 'Work Sans', sans-serif;
-    font-size: 48pt;
+    font-size: 72pt;
     font-weight: 100;
-    line-height: 1.05;
+    line-height: 1.0;
     color: #0C2340;
-    letter-spacing: -0.5px;
+    letter-spacing: -1px;
   `;
   title.textContent = slide.title || '';
   leftCol.appendChild(title);
