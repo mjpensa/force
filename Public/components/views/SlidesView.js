@@ -1,6 +1,9 @@
 /**
  * SlidesView - Single Template Only
- * ONE layout. No variations. No options. No branding.
+ * EXACT measurements extracted from PPT Templates_SHORT3.pptx
+ * 
+ * Slide: 12192000 x 6858000 EMU (16:9)
+ * All positions calculated as percentages from source XML
  */
 
 function renderSlide(slide, index) {
@@ -13,75 +16,82 @@ function renderSlide(slide, index) {
     box-sizing: border-box;
   `;
 
-  // LEFT COLUMN: Tagline + Title (positioned absolutely for precise control)
-  const leftCol = document.createElement('div');
-  leftCol.style.cssText = `
-    position: absolute;
-    top: 4%;
-    left: 4%;
-    width: 38%;
-  `;
-
-  // Eyebrow (red, uppercase, Work Sans SemiBold 12pt)
+  // EYEBROW (red tagline) - EXACT from XML:
+  // x=257175/12192000 = 2.11%, y=235177/6858000 = 3.43%
+  // width=2039291/12192000 = 16.73%
+  // Font: 12pt Work Sans SemiBold, #DA291C
   const tagline = document.createElement('div');
   tagline.style.cssText = `
+    position: absolute;
+    top: 3.43%;
+    left: 2.11%;
+    width: 16.73%;
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
     font-weight: 600;
     color: #DA291C;
-    letter-spacing: 2px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    margin-bottom: 10px;
   `;
   tagline.textContent = slide.tagline || '';
-  leftCol.appendChild(tagline);
+  el.appendChild(tagline);
 
-  // Title (Work Sans Thin 72pt)
+  // TITLE - EXACT from XML:
+  // x=228208/12192000 = 1.87%, y=613997/6858000 = 8.95%
+  // width=5435991/12192000 = 44.59%, height=2150574/6858000 = 31.36%
+  // Font: 72pt Work Sans Thin, #0C2340, line-height 70%
   const title = document.createElement('div');
   title.style.cssText = `
+    position: absolute;
+    top: 8.95%;
+    left: 1.87%;
+    width: 44.59%;
+    height: 31.36%;
     font-family: 'Work Sans', sans-serif;
     font-size: 72pt;
     font-weight: 100;
-    line-height: 0.98;
+    line-height: 0.70;
     color: #0C2340;
   `;
   title.textContent = slide.title || '';
-  leftCol.appendChild(title);
+  el.appendChild(title);
 
-  el.appendChild(leftCol);
-
-  // RIGHT COLUMN: Body content (Work Sans 12pt)
-  const rightCol = document.createElement('div');
-  rightCol.style.cssText = `
+  // BODY (right side) - EXACT from XML:
+  // x=6167437/12192000 = 50.59%, y=3159889/6858000 = 46.08%
+  // width=5400675/12192000 = 44.30%, height=3221861/6858000 = 46.98%
+  // Font: 12pt Work Sans, #0C2340, line-height 120%, anchor=bottom
+  const body = document.createElement('div');
+  body.style.cssText = `
     position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    right: 4%;
-    width: 38%;
+    left: 50.59%;
+    width: 44.30%;
+    bottom: 6.94%;
+    max-height: 46.98%;
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
     font-weight: 400;
-    line-height: 1.65;
+    line-height: 1.20;
     color: #0C2340;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
   `;
 
-  // Body text only
+  // Body text with proper paragraph spacing
   const bodyText = slide.body || '';
-
-  // Render as paragraphs
   const paragraphs = bodyText.split(/\n\n|\n/).filter(p => p.trim());
-  rightCol.innerHTML = paragraphs.map(p => 
-    `<p style="margin: 0 0 24px 0;">${p.trim()}</p>`
+  body.innerHTML = paragraphs.map(p => 
+    `<p style="margin: 0 0 1em 0;">${p.trim()}</p>`
   ).join('');
 
-  el.appendChild(rightCol);
+  el.appendChild(body);
 
-  // FOOTER: Slide number only (bottom left)
+  // SLIDE NUMBER - bottom left, matching eyebrow position
   const footer = document.createElement('div');
   footer.style.cssText = `
     position: absolute;
-    bottom: 4%;
-    left: 4%;
+    bottom: 3.43%;
+    left: 2.11%;
     font-family: 'Work Sans', sans-serif;
     font-size: 9pt;
     font-weight: 400;
