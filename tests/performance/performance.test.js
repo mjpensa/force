@@ -242,7 +242,7 @@ describe('Performance Regression Tests', () => {
         sessionId: 'test-123',
         content: {
           roadmap: { success: true, data: { tasks: Array(50).fill({ name: 'Task', duration: 5 }) } },
-          slides: { success: true, data: { slides: Array(6).fill({ title: 'Slide', content: 'Text' }) } },
+          slides: { success: true, data: { slides: Array(6).fill({ tagline: 'SECTION', title: 'Slide Title', body: 'Body text' }) } },
           document: { success: true, data: { sections: Array(10).fill({ heading: 'Section', body: 'Content' }) } },
           researchAnalysis: null  // Will be removed
         },

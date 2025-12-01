@@ -152,12 +152,11 @@ force/
 │   │   │   ├── Accessibility.js         # Accessibility utilities (Phase 6)
 │   │   │   └── ErrorHandler.js          # Error handling (Phase 6)
 │   │   └── views/
-│   │       ├── SlidesViewV2.js          # Slides component (minimal)
+│   │       ├── SlidesView.js             # Slides component (single template)
 │   │       ├── DocumentView.js          # Document component
 │   │       └── ResearchAnalysisView.js  # Research analysis component
 │   ├── config/
-│   │   ├── shared.js                    # Shared configuration
-│   │   └── templates.js                 # PPT slide templates
+│   │   └── shared.js                    # Shared configuration
 │   ├── styles/
 │   │   ├── design-system.css            # Design tokens
 │   │   ├── app-shell.css                # App layout

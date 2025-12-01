@@ -1,5 +1,6 @@
 """
 DSPy Signature for Presentation Slides generation.
+Single template only: tagline + title (left), body (right).
 """
 
 import dspy
@@ -7,10 +8,13 @@ from typing import List
 
 
 class SlidesSignature(dspy.Signature):
-    """Generate presentation slides from research documents.
+    """Generate presentation slides using a single two-column template.
 
-    Create a well-structured presentation with title slide, content slides
-    with bullet points, and appropriate section breaks.
+    Every slide has the exact same layout:
+    - Left column: Red uppercase tagline + Large navy title
+    - Right column: Body paragraphs
+    
+    Each slide must have: tagline, title, body (all required).
     """
 
     user_prompt: str = dspy.InputField(
@@ -23,11 +27,8 @@ class SlidesSignature(dspy.Signature):
     title: str = dspy.OutputField(
         desc="Presentation title"
     )
-    subtitle: str = dspy.OutputField(
-        desc="Presentation subtitle or tagline"
-    )
     slides: List[dict] = dspy.OutputField(
-        desc="Array of slide objects with 'title', 'type', and 'content'"
+        desc="Array of slide objects. Each slide must have 'tagline' (uppercase label), 'title' (main headline), 'body' (paragraphs)"
     )
 
 

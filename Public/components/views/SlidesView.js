@@ -38,7 +38,7 @@ function renderSlide(slide, index) {
     text-transform: uppercase;
     margin-bottom: 16px;
   `;
-  tagline.textContent = slide.tagline || slide.section || '';
+  tagline.textContent = slide.tagline || '';
   leftCol.appendChild(tagline);
 
   // Title (large, thin weight, navy)
@@ -68,20 +68,8 @@ function renderSlide(slide, index) {
     justify-content: center;
   `;
 
-  // Gather all text content from any field
-  let bodyText = slide.body || slide.subtitle || slide.intro || '';
-  
-  if (!bodyText && slide.content && Array.isArray(slide.content)) {
-    bodyText = slide.content.map(item => 
-      typeof item === 'string' ? item : (item.text || item.title || '')
-    ).join('\n\n');
-  }
-  
-  if (!bodyText && slide.gridItems && Array.isArray(slide.gridItems)) {
-    bodyText = slide.gridItems.map(item => 
-      `${item.title || ''}: ${item.description || item.text || ''}`
-    ).join('\n\n');
-  }
+  // Body text only - no fallbacks, no alternatives
+  const bodyText = slide.body || '';
 
   // Render as paragraphs
   const paragraphs = bodyText.split(/\n\n|\n/).filter(p => p.trim());

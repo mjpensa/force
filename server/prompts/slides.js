@@ -1,7 +1,12 @@
 ﻿import { SchemaType } from '@google/generative-ai';
 
+/**
+ * Single Template Slide Schema
+ * Every slide uses the SAME layout: tagline + title (left), body (right)
+ * No variations. No options. No grid. No bullets. No layouts.
+ */
 export const slidesSchema = {
-  description: "Presentation slides data (Standard 16:9 Aspect Ratio)",
+  description: "Presentation slides - single two-column template only",
   type: SchemaType.OBJECT,
   properties: {
     title: {
@@ -11,55 +16,27 @@ export const slidesSchema = {
     },
     slides: {
       type: SchemaType.ARRAY,
-      description: "Array of slides",
+      description: "Array of slides - all use identical two-column layout",
       items: {
         type: SchemaType.OBJECT,
         properties: {
-          layout: {
-            type: SchemaType.STRING,
-            description: "Layout type: 'title', 'content', or 'grid'",
-            enum: ["title", "content", "grid"],
-            nullable: false
-          },
           tagline: {
             type: SchemaType.STRING,
-            description: "Small tagline (e.g. 'EXECUTIVE SUMMARY')",
-            nullable: true
+            description: "Small uppercase tagline in red (top-left, e.g. 'EXECUTIVE SUMMARY')",
+            nullable: false
           },
           title: {
             type: SchemaType.STRING,
-            description: "Slide title",
+            description: "Large title text (left column, thin font weight)",
             nullable: false
           },
           body: {
             type: SchemaType.STRING,
-            description: "Main body text (for title/content layouts)",
-            nullable: true
-          },
-          intro: {
-            type: SchemaType.STRING,
-            description: "Introductory text (for grid layout)",
-            nullable: true
-          },
-          gridItems: {
-            type: SchemaType.ARRAY,
-            description: "Items for grid layout (max 6)",
-            items: {
-              type: SchemaType.OBJECT,
-              properties: {
-                title: { type: SchemaType.STRING, description: "Item title" },
-                description: { type: SchemaType.STRING, description: "Item description" }
-              }
-            },
-            nullable: true
-          },
-          notes: {
-            type: SchemaType.STRING,
-            description: "Speaker notes",
-            nullable: true
+            description: "Body paragraphs (right column). Use newlines to separate paragraphs.",
+            nullable: false
           }
         },
-        required: ["layout", "title"]
+        required: ["tagline", "title", "body"]
       }
     }
   },
@@ -67,12 +44,19 @@ export const slidesSchema = {
 };
 
 export const generateSlidesPrompt = (userPrompt, researchContent) => `
-You are an expert presentation designer. Create a professional presentation based on the user's request and the provided research content.
+You are creating presentation slides. Every slide MUST use this EXACT layout:
+- LEFT SIDE: Small red uppercase tagline + Large navy title (thin font)
+- RIGHT SIDE: Body text paragraphs
+
+Each slide object must have exactly three fields:
+- tagline: Short uppercase label (e.g., "EXECUTIVE SUMMARY", "KEY FINDINGS", "NEXT STEPS")
+- title: Multi-line title text that can wrap (this is the main headline)
+- body: 2-3 paragraphs of body text. Separate paragraphs with newlines.
 
 USER REQUEST: "${userPrompt}"
 
 RESEARCH CONTENT:
 ${researchContent}
 
-Output must be valid JSON matching the schema.
+Generate JSON with "title" and "slides" array. Every slide must have tagline, title, body.
 `;
