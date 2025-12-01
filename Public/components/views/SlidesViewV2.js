@@ -1,138 +1,119 @@
+/**
+ * SlidesView - Minimal presentation viewer
+ * Preserves: 16:9 aspect ratio + navigation controls
+ */
+import { PPT_TEMPLATES } from '../../config/templates.js';
+
 export class SlidesView {
-  constructor(data) {
-    this.data = data;
-    this.currentSlideIndex = 0;
+  constructor(data, options = {}) {
+    this.slides = data?.slides || [];
+    this.index = 0;
+    this.slide = null;
+    this.counter = null;
+    this._keyHandler = null;
+    
+    // Customization hooks
+    this.renderSlide = options.renderSlide || this._templateRenderSlide.bind(this);
+    this.onSlideChange = options.onSlideChange || null;
   }
 
   render() {
     const container = document.createElement('div');
-    container.className = 'slides-view';
-    container.style.cssText = `
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      background: #1a1a1a;
-    `;
+    Object.assign(container.style, {
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column',
+      background: '#1a1a1a'
+    });
 
-    // 16:9 Aspect Ratio Container
-    const slideWrapper = document.createElement('div');
-    slideWrapper.style.cssText = `
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    `;
+    // 16:9 slide area
+    const wrapper = document.createElement('div');
+    Object.assign(wrapper.style, {
+      flex: '1', display: 'flex',
+      justifyContent: 'center', alignItems: 'center',
+      padding: '20px'
+    });
 
-    this.slideContainer = document.createElement('div');
-    this.slideContainer.style.cssText = `
-      width: 100%;
-      max-width: 1200px;
-      aspect-ratio: 16 / 9;
-      background: white;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    `;
-    
-    slideWrapper.appendChild(this.slideContainer);
-    container.appendChild(slideWrapper);
-    this.renderControls(container);
-    this.renderCurrentSlide();
+    this.slide = document.createElement('div');
+    Object.assign(this.slide.style, {
+      width: '100%', maxWidth: '1200px',
+      aspectRatio: '16 / 9',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+      overflow: 'hidden',
+      position: 'relative'
+    });
+    wrapper.appendChild(this.slide);
 
+    // Navigation controls
+    const nav = document.createElement('div');
+    Object.assign(nav.style, {
+      padding: '16px', display: 'flex',
+      justifyContent: 'center', alignItems: 'center',
+      gap: '24px', background: '#2a2a2a'
+    });
+
+    const btn = (text, fn) => {
+      const b = document.createElement('button');
+      b.textContent = text;
+      b.onclick = fn;
+      Object.assign(b.style, {
+        padding: '10px 20px', cursor: 'pointer',
+        background: '#444', color: 'white',
+        border: 'none', borderRadius: '4px', fontSize: '14px'
+      });
+      return b;
+    };
+
+    this.counter = document.createElement('span');
+    Object.assign(this.counter.style, { color: 'white', fontSize: '14px' });
+
+    nav.append(btn('← Prev', () => this.go(-1)), this.counter, btn('Next →', () => this.go(1)));
+    container.append(wrapper, nav);
+
+    // Keyboard nav (with cleanup support)
+    this._keyHandler = e => {
+      if (e.key === 'ArrowLeft') this.go(-1);
+      if (e.key === 'ArrowRight') this.go(1);
+    };
+    document.addEventListener('keydown', this._keyHandler);
+
+    this._update();
     return container;
   }
 
-  renderControls(container) {
-    const controls = document.createElement('div');
-    controls.style.cssText = `
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 30px;
-      background: #2a2a2a;
-    `;
-
-    const prevBtn = document.createElement('button');
-    prevBtn.textContent = '← Previous';
-    prevBtn.onclick = () => this.prevSlide();
-    prevBtn.style.cssText = `
-      padding: 10px 20px;
-      cursor: pointer;
-      background: #444;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-    `;
-
-    this.counter = document.createElement('span');
-    this.counter.style.cssText = `
-      color: white;
-      font-size: 16px;
-      min-width: 80px;
-      text-align: center;
-    `;
-
-    const nextBtn = document.createElement('button');
-    nextBtn.textContent = 'Next →';
-    nextBtn.onclick = () => this.nextSlide();
-    nextBtn.style.cssText = `
-      padding: 10px 20px;
-      cursor: pointer;
-      background: #444;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-    `;
-
-    controls.appendChild(prevBtn);
-    controls.appendChild(this.counter);
-    controls.appendChild(nextBtn);
-    
-    container.appendChild(controls);
-    this.updateCounter();
-  }
-
-  updateCounter() {
-    if (this.counter && this.data.slides) {
-      this.counter.textContent = `${this.currentSlideIndex + 1} / ${this.data.slides.length}`;
+  go(delta) {
+    const next = this.index + delta;
+    if (next >= 0 && next < this.slides.length) {
+      this.index = next;
+      this._update();
+      this.onSlideChange?.(this.index, this.slides[this.index]);
     }
   }
 
-  prevSlide() {
-    if (this.currentSlideIndex > 0) {
-      this.currentSlideIndex--;
-      this.renderCurrentSlide();
-      this.updateCounter();
-    }
+  _update() {
+    this.counter.textContent = this.slides.length ? `${this.index + 1} / ${this.slides.length}` : '—';
+    this.slide.innerHTML = '';
+    const content = this.renderSlide(this.slides[this.index], this.index);
+    if (content) this.slide.appendChild(content);
   }
 
-  nextSlide() {
-    if (this.data.slides && this.currentSlideIndex < this.data.slides.length - 1) {
-      this.currentSlideIndex++;
-      this.renderCurrentSlide();
-      this.updateCounter();
+  _templateRenderSlide(slide, index) {
+    if (!slide) {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:40px;height:100%;display:flex;align-items:center;justify-content:center;background:white;color:#666;';
+      div.textContent = 'No slide content';
+      return div;
     }
+
+    // Get template by slide.layout or slide.type, fallback to 'default'
+    const templateKey = slide.layout || slide.type || 'default';
+    const templateFn = PPT_TEMPLATES[templateKey] || PPT_TEMPLATES['default'];
+    
+    return templateFn(slide, index);
   }
 
-  renderCurrentSlide() {
-    if (!this.slideContainer || !this.data.slides) return;
-    
-    this.slideContainer.innerHTML = '';
-    const slide = this.data.slides[this.currentSlideIndex];
-    
-    // Minimal slide content - just display raw data
-    const content = document.createElement('div');
-    content.style.cssText = `
-      padding: 40px;
-      height: 100%;
-      overflow: auto;
-    `;
-
-    content.innerHTML = `<pre>${JSON.stringify(slide, null, 2)}</pre>`;
-    
-    this.slideContainer.appendChild(content);
+  destroy() {
+    if (this._keyHandler) {
+      document.removeEventListener('keydown', this._keyHandler);
+    }
   }
 }
