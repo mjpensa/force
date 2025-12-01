@@ -731,6 +731,7 @@ router.get('/:sessionId/:viewType', async (req, res) => {
     let contentResult = session.content[contentKey];
     
     // Self-healing: If slides content is missing OR if it's the old "Coming Soon" placeholder
+    // TODO: Remove this migration logic once all legacy sessions (pre-template update) have expired (approx. 1 hour)
     try {
       const isOldPlaceholder = contentResult?.data?.slides?.[0]?.title === "Coming Soon";
       
