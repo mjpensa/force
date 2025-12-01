@@ -44,7 +44,7 @@ function renderSlide(slide, index) {
   // TITLE - EXACT from XML:
   // x=228208/12192000 = 1.87%, y=613997/6858000 = 8.95%
   // width=5435991/12192000 = 44.59%, height=2150574/6858000 = 31.36%
-  // Font: 72pt Work Sans Thin, #0C2340, line-height adjusted for clarity
+  // Font: 72pt Work Sans Thin, #0C2340, line-height 70% (tight spacing - content must avoid descender/ascender conflicts)
   const title = document.createElement('div');
   title.style.cssText = `
     position: absolute;
@@ -55,7 +55,7 @@ function renderSlide(slide, index) {
     font-family: 'Work Sans', sans-serif;
     font-size: clamp(18px, 8cqw, 96px);
     font-weight: 100;
-    line-height: 1.0;
+    line-height: 0.85;
     color: #0C2340;
   `;
   title.textContent = slide.title || '';
