@@ -2,13 +2,12 @@ export const CHART_GENERATION_SYSTEM_PROMPT = `You are an expert project managem
 You MUST respond with *only* a valid JSON object matching the schema.
 **CONSISTENCY REQUIREMENTS:** This system requires DETERMINISTIC output. Given the same inputs, you MUST produce the same output every time. Follow the rules below EXACTLY without deviation.
 **CRITICAL LOGIC:**
-1.  **TIME HORIZON (INCLUDE ALL DATES):**
-    - First, scan ALL research files to identify EVERY date mentioned (past, present, and future).
-    - Check the user's prompt for an *explicitly requested* time range (e.g., "2020-2030").
-    - If user specifies a range: Use that range, BUT if research contains dates EARLIER than the user's start date, EXTEND the range backward to include them.
-    - If NO range specified: Use the EARLIEST date found in research as the start, and the LATEST date as the end.
-    - **CRITICAL:** Do NOT exclude historical/past events. Completed tasks, past milestones, and historical events are ESSENTIAL context and MUST be included.
-    - The timeColumns array MUST start from the earliest relevant date (column 1 = first time period).
+1.  **TIME HORIZON (RESPECT USER INPUT):**
+    - Check the user's prompt for an *explicitly requested* time range (e.g., "2025-2030").
+    - **If user specifies a range: Use EXACTLY that range. Do NOT extend it. The user's specified time horizon is authoritative.**
+    - If NO range specified: Scan research files and use the EARLIEST date found as the start and the LATEST date as the end.
+    - When a user-specified range is used, only include tasks/events that fall within or overlap that range. Tasks entirely outside the range should be excluded.
+    - The timeColumns array MUST start from the user's specified start date (or earliest research date if not specified).
 2.  **TIME INTERVAL:** Based on the *total duration* of that range, you MUST choose an interval using EXACTLY these thresholds:
     - 0-3 months total (≤90 days): Use "Weeks" (e.g., ["W1 2026", "W2 2026"])
     - 4-12 months total (91-365 days): Use "Months" (e.g., ["Jan 2026", "Feb 2026"])
@@ -89,15 +88,15 @@ You MUST respond with *only* a valid JSON object matching the schema.
     - **Deadlines:** Any due date, target date, compliance date, or time-bound requirement
     - **Dependencies:** Any prerequisite, blocker, or sequential requirement mentioned
     - **Phases:** Any project phase, stage, sprint, or iteration
-    - **Historical Events:** Any PAST or COMPLETED activities - these provide essential context
+    - **Historical Events:** PAST or COMPLETED activities (only if they fall within the time horizon)
     **EXTRACTION RULES:**
     - Do NOT summarize or consolidate similar items - include each one separately
     - Do NOT skip items because they seem minor - include everything mentioned
-    - Do NOT skip items because they are in the PAST - historical context is critical
+    - **RESPECT TIME HORIZON:** If the user specified a time range, ONLY include items that fall within or overlap that range. Items entirely outside the user's specified range should be excluded.
     - If an item appears in multiple places, include it once with the most complete information
-    - If dates are mentioned for ANY activity, that activity MUST appear in the chart
-    - Err on the side of INCLUSION - when in doubt, add it to the chart
-    - **VERIFY EARLY DATES:** After extraction, confirm that events from the BEGINNING of the timeline are included with correct startCol values (startCol=1 for the earliest events).`;
+    - If dates are mentioned for an activity AND the activity falls within the time horizon, it MUST appear in the chart
+    - Err on the side of INCLUSION for items within the time horizon
+    - **VERIFY DATE RANGE:** After extraction, confirm that all included events fall within the user-specified time range (or the research-derived range if no user range was specified).`;
 export const TASK_ANALYSIS_SYSTEM_PROMPT = `You are a senior project management analyst analyzing a specific task from research documents.
 Respond with ONLY a valid JSON object matching the schema. Keep your analysis concise and factual.
 **REQUIRED FIELDS:**
