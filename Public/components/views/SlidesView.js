@@ -66,6 +66,7 @@ function renderSlide(slide, index) {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    padding-top: 15%;
   `;
 
   // Body text only - no fallbacks, no alternatives
