@@ -10,7 +10,7 @@ export const PPT_TEMPLATES = {
         "style": {
           "left": "2.109375%",
           "top": "3.4292359288422287%",
-          "width": "16.726468175853018%",
+          "width": "95%",
           "height": "2.941411490230388%",
           "fontSize": "12pt",
           "color": "#DA291C",
@@ -31,7 +31,7 @@ export const PPT_TEMPLATES = {
         "style": {
           "left": "1.871784776902887%",
           "top": "8.953003791192767%",
-          "width": "44.58654035433071%",
+          "width": "95%",
           "height": "31.3586176727909%",
           "fontSize": "72pt",
           "color": "#0C2340",
