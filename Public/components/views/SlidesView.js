@@ -57,10 +57,28 @@ function renderSlide(slide, index) {
     font-weight: 100;
     line-height: 0.85;
     color: #0C2340;
+    white-space: pre-line;
   `;
-  // Convert to sentence case: capitalize first letter, lowercase the rest
+  // Process title: sentence case, and remove lowercase 'g' from first 3 lines (only allowed on line 4)
+  // Uppercase 'G' is only allowed as the very first character of the title
   const titleText = slide.title || '';
-  title.textContent = titleText.charAt(0).toUpperCase() + titleText.slice(1).toLowerCase();
+  const sentenceCase = titleText.charAt(0).toUpperCase() + titleText.slice(1).toLowerCase();
+  const lines = sentenceCase.split('\n');
+  const processedLines = lines.map((line, idx) => {
+    if (idx < lines.length - 1) {
+      // Not the last line: remove all 'g' (lowercase)
+      // Also remove 'G' unless it's the first character of the entire title (idx 0, position 0)
+      if (idx === 0) {
+        // First line: keep first char if G, remove other g/G
+        return line.charAt(0) + line.slice(1).replace(/[gG]/g, '');
+      } else {
+        // Lines 2-3: remove all g and G
+        return line.replace(/[gG]/g, '');
+      }
+    }
+    return line; // Last line: keep as-is
+  });
+  title.textContent = processedLines.join('\n');
   el.appendChild(title);
 
   // BODY (right side) - EXACT from XML:
