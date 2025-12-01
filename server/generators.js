@@ -368,11 +368,38 @@ function recordGenerationMetrics(data) {
  * @returns {Object} {prompt, variantId, variantName, usedVariant}
  */
 function selectAndApplyVariant(contentType, userPrompt, researchFiles, fallbackGenerator) {
+  // CRITICAL: Validate research files are present and properly formatted
+  // We must NEVER generate content without the user's research - this would produce
+  // generic/random content that misleads the user into thinking their documents were processed
+  if (!researchFiles || !Array.isArray(researchFiles) || researchFiles.length === 0) {
+    throw new Error(
+      `RESEARCH CONTENT MISSING: Cannot generate ${contentType} without research files. ` +
+      `No documents were provided or processed successfully. Please upload your research documents and try again.`
+    );
+  }
+
   // Convert array of file objects to formatted string for prompt generators
-  // This is required because prompt generators expect a string, not an array
   const researchContent = researchFiles
-    .map(file => `=== ${file.filename} ===\n${file.content}`)
+    .map(file => {
+      if (!file || !file.filename || !file.content) {
+        throw new Error(
+          `INVALID RESEARCH FILE: One or more uploaded files could not be processed. ` +
+          `File structure is missing filename or content. Please re-upload your documents.`
+        );
+      }
+      return `=== ${file.filename} ===\n${file.content}`;
+    })
     .join('\n\n');
+
+  // Validate that we actually have content (not just filenames with empty content)
+  const totalContentLength = researchFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0);
+  if (totalContentLength < 100) {
+    throw new Error(
+      `RESEARCH CONTENT EMPTY: The uploaded files contain insufficient text content ` +
+      `(${totalContentLength} characters). Please ensure your documents contain readable text ` +
+      `and are not corrupted, password-protected, or image-only PDFs.`
+    );
+  }
 
   if (!ENABLE_VARIANT_SELECTION) {
     return {
@@ -387,7 +414,7 @@ function selectAndApplyVariant(contentType, userPrompt, researchFiles, fallbackG
     const variant = selectVariant(contentType);
 
     if (!variant || !variant.promptTemplate) {
-      // Fallback if no variant found
+      // Use default prompt generator - this is fine, just means A/B testing isn't configured
       return {
         prompt: fallbackGenerator(userPrompt, researchContent),
         variantId: 'default',
@@ -414,14 +441,13 @@ Respond with ONLY the JSON object.`;
       usedVariant: true
     };
   } catch (error) {
-    console.warn(`[Variants] Selection failed for ${contentType}:`, error.message);
-    return {
-      prompt: fallbackGenerator(userPrompt, researchContent),
-      variantId: 'default',
-      variantName: 'Default (error)',
-      usedVariant: false,
-      error: error.message
-    };
+    // If variant selection fails, that's a system error - do NOT silently continue
+    // The user must know their research may not have been properly included
+    throw new Error(
+      `CONTENT GENERATION FAILED: Unable to process ${contentType} generation. ` +
+      `Error: ${error.message}. Your research documents may not have been included. ` +
+      `Please try again or contact support if the issue persists.`
+    );
   }
 }
 
