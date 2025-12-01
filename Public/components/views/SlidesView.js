@@ -48,7 +48,7 @@ function renderSlide(slide, index) {
   const title = document.createElement('div');
   title.style.cssText = `
     position: absolute;
-    top: 8.95%;
+    top: 7%;
     left: 1.87%;
     width: 44.59%;
     height: 40%;
