@@ -4,6 +4,9 @@
  */
 import { PPT_TEMPLATES } from '../../config/templates.js';
 
+// Debug: verify templates loaded
+console.log('PPT_TEMPLATES loaded:', PPT_TEMPLATES ? Object.keys(PPT_TEMPLATES) : 'FAILED');
+
 export class SlidesView {
   constructor(data, options = {}) {
     this.slides = data?.slides || [];
@@ -106,7 +109,16 @@ export class SlidesView {
 
     // Get template by slide.layout or slide.type, fallback to 'default'
     const templateKey = slide.layout || slide.type || 'default';
-    const templateFn = PPT_TEMPLATES[templateKey] || PPT_TEMPLATES['default'];
+    const templateFn = PPT_TEMPLATES?.[templateKey] || PPT_TEMPLATES?.['default'];
+    
+    // Fallback if templates failed to load
+    if (typeof templateFn !== 'function') {
+      console.warn('Template not found:', templateKey, 'Available:', Object.keys(PPT_TEMPLATES || {}));
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:40px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:white;';
+      div.innerHTML = `<h1 style="margin:0;font-size:32px;color:#333">${slide.title || 'Untitled'}</h1>`;
+      return div;
+    }
     
     return templateFn(slide, index);
   }
