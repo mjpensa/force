@@ -91,11 +91,12 @@ ELSE (fallback):
 - Priority: decision > milestone if both match
 
 ### 8. EXTRACTION (CRITICAL - INCLUDE EVERYTHING)
-Extract ALL items from research: tasks, milestones, decisions, events, deadlines, phases.
+Extract ALL: tasks, milestones, decisions, events, deadlines, phases, historical events.
 - Do NOT consolidate similar items
-- Do NOT skip items - include ALL of them
+- Do NOT skip minor or past items - historical context is critical
 - Include items WITH dates AND items WITHOUT dates
 - Items without dates should use {"startCol":null,"endCol":null}
+- Tasks with dates OUTSIDE user's range: STILL include them, place at nearest boundary
 - When in doubt, include it
 
 ### 9. RESEARCH ANALYSIS (REQUIRED)
