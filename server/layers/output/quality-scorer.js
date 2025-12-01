@@ -482,12 +482,7 @@ export class OutputQualityScorer {
   _checkSlideFlow(slides) {
     if (slides.length < 2) return true;
 
-    // Check for title slide first
-    const firstSlideGood = slides[0].title?.toLowerCase().includes('overview') ||
-                          slides[0].section?.toLowerCase().includes('summary') ||
-                          slides[0].type === 'title';
-
-    return firstSlideGood || true; // Basic check
+    return true;
   }
 
   /**
