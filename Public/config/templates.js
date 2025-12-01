@@ -79,7 +79,7 @@ export const PPT_TEMPLATES = {
         "style": {
           "left": "2.109375%",
           "top": "3.4292359288422287%",
-          "width": "16.726468175853018%",
+          "width": "95%",
           "height": "2.941411490230388%",
           "fontSize": "12pt",
           "color": "#DA291C",
@@ -100,7 +100,7 @@ export const PPT_TEMPLATES = {
         "style": {
           "left": "1.8717929790026246%",
           "top": "8.953003791192767%",
-          "width": "20.667273622047244%",
+          "width": "95%",
           "height": "31.3586176727909%",
           "fontSize": "44pt",
           "color": "#0C2340",
@@ -148,7 +148,7 @@ export const PPT_TEMPLATES = {
         "style": {
           "left": "2.109375%",
           "top": "3.4292359288422287%",
-          "width": "16.726468175853018%",
+          "width": "95%",
           "height": "2.941411490230388%",
           "fontSize": "12pt",
           "color": "#DA291C",
@@ -169,7 +169,7 @@ export const PPT_TEMPLATES = {
         "style": {
           "left": "1.8717929790026246%",
           "top": "8.953003791192767%",
-          "width": "20.667273622047244%",
+          "width": "95%",
           "height": "31.3586176727909%",
           "fontSize": "44pt",
           "color": "#0C2340",
