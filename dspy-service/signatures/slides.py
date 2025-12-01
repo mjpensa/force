@@ -42,7 +42,7 @@ class SlidesSignature(dspy.Signature):
         desc="Presentation title"
     )
     slides: List[dict] = dspy.OutputField(
-        desc="Array of slide objects. Each slide must have 'tagline' (uppercase label), 'title' (main headline - AVOID letters g,y,p,q,j except on last line), 'body' (paragraphs)"
+        desc="Array of slide objects. Each slide must have 'tagline' (uppercase label), 'title' (main headline - AVOID letters g,y,p,q,j except on last line), 'body' (EXACTLY 2 paragraphs, each 4-6 lines, separated by double newline)"
     )
 
 

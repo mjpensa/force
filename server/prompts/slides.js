@@ -51,7 +51,13 @@ You are creating presentation slides. Every slide MUST use this EXACT layout:
 Each slide object must have exactly three fields:
 - tagline: Short uppercase label (e.g., "EXECUTIVE SUMMARY", "KEY FINDINGS", "NEXT STEPS")
 - title: Multi-line title text that can wrap (this is the main headline)
-- body: 2-3 paragraphs of body text. Separate paragraphs with newlines.
+- body: EXACTLY 2 paragraphs of body text. Separate paragraphs with a blank line (\n\n).
+
+BODY PARAGRAPH FORMAT REQUIREMENT:
+- The body MUST contain EXACTLY 2 paragraphs
+- Each paragraph MUST contain between 4 and 6 lines of text
+- Separate the two paragraphs with a double newline (\n\n)
+- Each line within a paragraph should be a natural sentence break
 
 CRITICAL TITLE TYPOGRAPHY RULES:
 The slide title uses very tight line spacing (70% line-height) and sentence case. To prevent letter overlap, you MUST:
