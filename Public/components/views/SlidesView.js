@@ -106,6 +106,30 @@ function renderSlide(slide, index) {
 
   el.appendChild(body);
 
+  // CORNER GRAPHIC - top right
+  const cornerGraphic = document.createElement('img');
+  cornerGraphic.src = 'bip corner graphic.svg';
+  cornerGraphic.style.cssText = `
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 18%;
+    height: auto;
+  `;
+  el.appendChild(cornerGraphic);
+
+  // BIP LOGO - bottom right
+  const bipLogo = document.createElement('img');
+  bipLogo.src = 'Red BIP Logo.png';
+  bipLogo.style.cssText = `
+    position: absolute;
+    bottom: 3%;
+    right: 2%;
+    height: 4%;
+    width: auto;
+  `;
+  el.appendChild(bipLogo);
+
   // SLIDE NUMBER - bottom left, matching eyebrow position
   const footer = document.createElement('div');
   footer.style.cssText = `
