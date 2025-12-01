@@ -18,9 +18,9 @@ function renderSlide(slide, index) {
   const leftCol = document.createElement('div');
   leftCol.style.cssText = `
     position: absolute;
-    top: 40px;
-    left: 60px;
-    width: 42%;
+    top: 30px;
+    left: 50px;
+    width: 45%;
   `;
 
   // Eyebrow (red, uppercase, Work Sans SemiBold 12pt)
@@ -37,13 +37,13 @@ function renderSlide(slide, index) {
   tagline.textContent = slide.tagline || '';
   leftCol.appendChild(tagline);
 
-  // Title (Work Sans Thin 72pt)
+  // Title (Work Sans Thin - sized to fit)
   const title = document.createElement('div');
   title.style.cssText = `
     font-family: 'Work Sans', sans-serif;
-    font-size: 72pt;
+    font-size: 48pt;
     font-weight: 100;
-    line-height: 1.1;
+    line-height: 1.05;
     color: #0C2340;
     letter-spacing: -0.5px;
   `;
@@ -56,13 +56,14 @@ function renderSlide(slide, index) {
   const rightCol = document.createElement('div');
   rightCol.style.cssText = `
     position: absolute;
-    top: 38%;
-    right: 60px;
-    width: 45%;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 50px;
+    width: 43%;
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
     font-weight: 400;
-    line-height: 1.7;
+    line-height: 1.6;
     color: #0C2340;
   `;
 
