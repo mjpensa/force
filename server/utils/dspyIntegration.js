@@ -364,6 +364,33 @@ async function optimizeSignature(signatureType, options = {}) {
  * @param {Object} options - Generation options
  */
 async function generateWithDspy(signatureType, prompt, researchFiles, options = {}) {
+  // CRITICAL: Validate research files - we must NEVER generate without user's research
+  if (!researchFiles || !Array.isArray(researchFiles) || researchFiles.length === 0) {
+    throw new Error(
+      `RESEARCH CONTENT MISSING: Cannot generate ${signatureType} without research files. ` +
+      `No documents were provided or processed successfully. Please upload your research documents and try again.`
+    );
+  }
+
+  // Validate each file has content
+  for (const file of researchFiles) {
+    if (!file || !file.filename || !file.content) {
+      throw new Error(
+        `INVALID RESEARCH FILE: One or more uploaded files could not be processed. ` +
+        `File structure is missing filename or content. Please re-upload your documents.`
+      );
+    }
+  }
+
+  // Validate total content length
+  const totalContentLength = researchFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0);
+  if (totalContentLength < 100) {
+    throw new Error(
+      `RESEARCH CONTENT EMPTY: The uploaded files contain insufficient text content ` +
+      `(${totalContentLength} characters). Please ensure your documents contain readable text.`
+    );
+  }
+
   const {
     useOptimized = true,
     fallbackGenerator = null,
