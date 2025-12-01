@@ -93,14 +93,27 @@ function renderSlide(slide, index) {
 }
 
 // ============================================
+// DEMO SLIDE - Exact content from template
+// ============================================
+const DEMO_SLIDE = {
+  tagline: 'LOREM IPSUM',
+  title: 'Lorem ipsum sit amet sit lorem',
+  body: `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitationLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitationLorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.`
+};
+
+// ============================================
 // SLIDES VIEW CLASS
 // ============================================
 export class SlidesView {
   constructor(data) {
+    // Use demo slide if no data provided or for testing
     if (!data?.slides?.length) {
-      throw new Error('SlidesView requires data.slides array with at least one slide');
+      this.slides = [DEMO_SLIDE];
+    } else {
+      this.slides = data.slides;
     }
-    this.slides = data.slides;
     this.index = 0;
     this.slideEl = null;
     this.counter = null;
