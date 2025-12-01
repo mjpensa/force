@@ -55,7 +55,7 @@ function renderSlide(slide, index) {
     font-family: 'Work Sans', sans-serif;
     font-size: clamp(18px, 8cqw, 96px);
     font-weight: 100;
-    line-height: 0.85;
+    line-height: 1.0;
     color: #0C2340;
   `;
   title.textContent = slide.title || '';
