@@ -59,28 +59,18 @@ function renderSlide(slide, index) {
     color: #0C2340;
     white-space: pre-line;
   `;
-  // Convert to sentence case and enforce exactly 4 lines, max 24 total characters
+  // Convert to sentence case and enforce exactly 4 lines
   const titleText = slide.title || '';
   const sentenceCase = titleText.charAt(0).toUpperCase() + titleText.slice(1).toLowerCase();
   let lines = sentenceCase.split('\n').map(l => l.trim()).filter(l => l);
   
   // Enforce exactly 4 lines
   if (lines.length > 4) {
-    lines = lines.slice(0, 4); // Truncate to 4 lines
+    lines = lines.slice(0, 4);
   }
   while (lines.length < 4) {
-    lines.push(''); // Pad with empty lines if needed
+    lines.push('');
   }
-  
-  // Enforce max 24 total characters across all 4 lines (including spaces within lines, excluding newlines)
-  let totalChars = 0;
-  lines = lines.map(line => {
-    const remaining = 24 - totalChars;
-    if (remaining <= 0) return '';
-    const truncated = line.slice(0, remaining);
-    totalChars += truncated.length;
-    return truncated;
-  });
   
   title.textContent = lines.join('\n');
   el.appendChild(title);

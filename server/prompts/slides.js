@@ -75,10 +75,14 @@ Example rewrites:
 - "Technology Strategy" → "Tech Roadmap"
 
 TITLE FORMAT REQUIREMENT:
-- Each title MUST be EXACTLY 4 lines
-- Each line MUST NOT exceed 11 characters (including spaces)
-- Use newline characters (\n) to separate the 4 lines
-- Example: "Driving\nModern\nBusiness\nForward" (4 lines, each ≤11 chars)
+- Each title MUST be EXACTLY 4 lines separated by newline characters (\n)
+- The TOTAL character count across ALL 4 lines MUST be EXACTLY 24 characters (including spaces, excluding newlines)
+- Distribute characters across lines for visual balance (approximately 6 characters per line)
+- Example: "Drive\nNew\nIdeas\nToward" = 5+3+5+6 = 19 chars ❌
+- Example: "Driven\nModern\nIdeas\nNow" = 6+6+5+3 = 20 chars ❌  
+- Example: "Driving\nModern\nIdeas\nAhead" = 7+6+5+5 = 23 chars ❌
+- Example: "Driving\nModern\nIdeas\nAheadd" = 7+6+5+6 = 24 chars ✓
+- COUNT CAREFULLY: Add up all characters in all 4 lines, must equal exactly 24
 
 USER REQUEST: "${userPrompt}"
 

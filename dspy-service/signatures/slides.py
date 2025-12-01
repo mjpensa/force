@@ -28,7 +28,7 @@ class SlidesSignature(dspy.Signature):
     
     EXCEPTION: The LAST LINE (line 4) may contain g, y, p, q, j (no line below).
     
-    TITLE FORMAT: Each title MUST be EXACTLY 4 lines, max 11 characters per line (including spaces). Use \n to separate lines.
+    TITLE FORMAT: Each title MUST be EXACTLY 4 lines with EXACTLY 24 TOTAL characters across all lines (including spaces, excluding newlines). Use \n to separate lines. Count carefully!
     """
 
     user_prompt: str = dspy.InputField(
