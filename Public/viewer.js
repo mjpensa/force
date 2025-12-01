@@ -1,8 +1,4 @@
 import { StateManager } from './components/shared/StateManager.js';
-// Views are lazy-loaded on demand for better initial load performance
-// import { SlidesView } from './components/views/SlidesView.js';
-// import { DocumentView } from './components/views/DocumentView.js';
-// import { ResearchAnalysisView } from './components/views/ResearchAnalysisView.js';
 import { addLazyLoadingStyles, initLazyLoading } from './components/shared/LazyLoader.js';
 import { SidebarNav } from './components/SidebarNav.js';
 import {

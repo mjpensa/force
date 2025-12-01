@@ -6,8 +6,6 @@
  * Layout types from AI: 'title', 'content', 'grid'
  */
 
-console.log('templates.js v2 loaded');
-
 // Design tokens (extracted from PPTX)
 const COLORS = {
   navy: '#0C2340',         // Dark navy (titles, body)
