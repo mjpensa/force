@@ -18,7 +18,7 @@ function renderSlide(slide, index) {
   leftCol.style.cssText = `
     position: absolute;
     top: 4%;
-    left: 5%;
+    left: 4%;
     width: 38%;
   `;
 
@@ -56,7 +56,7 @@ function renderSlide(slide, index) {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    right: 5%;
+    right: 4%;
     width: 42%;
     font-family: 'Work Sans', sans-serif;
     font-size: 12pt;
@@ -80,8 +80,8 @@ function renderSlide(slide, index) {
   const footer = document.createElement('div');
   footer.style.cssText = `
     position: absolute;
-    bottom: 3%;
-    left: 5%;
+    bottom: 4%;
+    left: 4%;
     font-family: 'Work Sans', sans-serif;
     font-size: 9pt;
     font-weight: 400;
