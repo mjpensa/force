@@ -65,10 +65,10 @@ Each slide object must have exactly three fields:
 - body: EXACTLY 2 paragraphs of body text. Separate paragraphs with a blank line (\\n\\n).
 
 BODY PARAGRAPH FORMAT REQUIREMENT:
-- The body MUST contain EXACTLY 2 paragraphs
-- Each paragraph MUST contain between 4 and 6 lines of text
-- Separate the two paragraphs with a double newline (\\n\\n)
-- Each line within a paragraph should be a natural sentence break
+- The body MUST contain EXACTLY 2 paragraphs separated by a double newline (\\n\\n)
+- Each paragraph MUST be between 150-250 characters (roughly 25-40 words)
+- This ensures the text fits properly in the slide layout
+- Focus on the most impactful insights, not comprehensive coverage
 
 CRITICAL TITLE TYPOGRAPHY RULES:
 The slide title uses very tight line spacing (70% line-height) and sentence case. To prevent letter overlap, you MUST:
