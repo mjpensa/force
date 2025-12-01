@@ -11,6 +11,7 @@
 import { SchemaType } from '@google/generative-ai';
 import { callGeminiForJson } from '../gemini.js';
 import { generateContentHash, getCachedInsights, cacheInsights, getInsightCacheMetrics } from '../cache/insightCache.js';
+import { CONFIG } from '../config.js';
 
 // Rate limiting configuration
 const RATE_LIMIT = {
@@ -232,14 +233,30 @@ export async function extractInsights(chunk, totalChunks, options = {}) {
     totalChunks,
     chunk.sourceFiles || []
   );
-  
+
+  // Construct proper API payload
+  const payload = {
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: prompt }]
+      }
+    ],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: insightExtractionSchema,
+      maxOutputTokens: CONFIG.API.MAX_OUTPUT_TOKENS_ANALYSIS,
+      temperature: 0.1,  // Low temperature for factual extraction
+      topP: CONFIG.API.TOP_P,
+      topK: CONFIG.API.TOP_K,
+      seed: CONFIG.API.SEED
+    }
+  };
+
   try {
     const llmStartTime = Date.now();
-    
-    const result = await callGeminiForJson(prompt, insightExtractionSchema, {
-      temperature: 0.1,  // Low temperature for factual extraction
-      maxRetries: 2
-    });
+
+    const result = await callGeminiForJson(payload, 2); // 2 retries
     
     const llmDuration = Date.now() - llmStartTime;
     const totalDuration = Date.now() - startTime;

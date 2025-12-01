@@ -8,7 +8,11 @@
       "Bash(git fetch:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npm test:*)",
+      "Bash(set \"NODE_OPTIONS=--experimental-vm-modules\")",
+      "Bash(set \"NODE_ENV=test\")",
+      "Bash(npx jest:*)"
     ],
     "deny": [],
     "ask": []
