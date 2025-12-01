@@ -67,14 +67,18 @@ Instead of words containing g, y, p, q, j, use synonyms:
 - "Quality" → "Excellence", "Efficiency" → "Performance"
 - "Supply" → "Source", "Delivery" → "Distribution"
 
-EXCEPTION: The LAST LINE of the title may contain these letters since there's no line below it.
+EXCEPTION: The LAST LINE (line 4) of the title may contain these letters since there's no line below it.
 
 Example rewrites:
 - "Leading Through Digital Transformation" → "Driving Modern Transformation"
 - "Building Strong Partnerships" → "Creating Enduring Alliances"  
 - "Technology Strategy" → "Tech Roadmap"
 
-Keep titles impactful and concise (3-5 words per line, 2-4 lines total).
+TITLE FORMAT REQUIREMENT:
+- Each title MUST be EXACTLY 4 lines
+- Use 2-4 words per line
+- Structure the title so it wraps naturally into 4 lines
+- Use newline characters (\n) to force line breaks if needed
 
 USER REQUEST: "${userPrompt}"
 

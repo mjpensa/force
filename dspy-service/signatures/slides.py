@@ -26,9 +26,9 @@ class SlidesSignature(dspy.Signature):
     - "Growing" → "Expanding", "Building" → "Creating", "Company" → "Firm"
     - "Quality" → "Excellence", "Supply" → "Source", "Delivery" → "Distribution"
     
-    EXCEPTION: The LAST LINE of the title may contain g, y, p, q, j (no line below).
+    EXCEPTION: The LAST LINE (line 4) may contain g, y, p, q, j (no line below).
     
-    Keep titles 3-5 words per line, 2-4 lines total.
+    TITLE FORMAT: Each title MUST be EXACTLY 4 lines, 2-4 words per line.
     """
 
     user_prompt: str = dspy.InputField(
