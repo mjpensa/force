@@ -160,6 +160,7 @@ describe('Insight Extractor', () => {
     });
 
     it('should continue processing even if some chunks fail', async () => {
+      // Reset any cache state
       let callCount = 0;
       callGeminiForJson.mockImplementation(async () => {
         callCount++;
@@ -167,7 +168,7 @@ describe('Insight Extractor', () => {
           throw new Error('Chunk 2 failed');
         }
         return {
-          keyFacts: [{ fact: 'Success', importance: 'high' }],
+          keyFacts: [{ fact: `Success ${callCount}`, importance: 'high' }],
           dates: [],
           entities: [],
           themes: [],
@@ -177,18 +178,21 @@ describe('Insight Extractor', () => {
         };
       });
       
+      // Use unique content to avoid cache hits
+      const uniqueId = Date.now();
       const chunks = [
-        { content: 'Chunk 1', chunkId: 1, sourceFiles: [] },
-        { content: 'Chunk 2', chunkId: 2, sourceFiles: [] },
-        { content: 'Chunk 3', chunkId: 3, sourceFiles: [] }
+        { content: `Chunk 1 unique ${uniqueId}`, chunkId: 1, sourceFiles: [] },
+        { content: `Chunk 2 unique ${uniqueId}`, chunkId: 2, sourceFiles: [] },
+        { content: `Chunk 3 unique ${uniqueId}`, chunkId: 3, sourceFiles: [] }
       ];
       
       const results = await processChunksParallel(chunks);
       
       expect(results).toHaveLength(3);
-      // One should have an error
+      // One should have an error - check that the error was properly recorded
       const failedResults = results.filter(r => r.metadata?.error);
       expect(failedResults.length).toBe(1);
+      expect(failedResults[0].metadata.error).toContain('Chunk 2 failed');
     });
 
     it('should handle empty chunks array', async () => {
