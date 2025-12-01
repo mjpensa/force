@@ -30,7 +30,6 @@ function renderSlide(slide, index) {
     position: absolute;
     top: 3.43%;
     left: 2.11%;
-    width: 16.73%;
     font-family: 'Work Sans', sans-serif;
     font-size: clamp(8px, 1.3cqw, 16px);
     font-weight: 600;
@@ -38,8 +37,6 @@ function renderSlide(slide, index) {
     letter-spacing: 0.5px;
     text-transform: uppercase;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   `;
   tagline.textContent = slide.tagline || '';
   el.appendChild(tagline);
