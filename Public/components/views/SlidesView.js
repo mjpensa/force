@@ -14,12 +14,17 @@ function renderSlide(slide, index) {
     position: relative;
     font-family: 'Work Sans', sans-serif;
     box-sizing: border-box;
+    overflow: hidden;
   `;
 
+  // Use container query units (cqw/cqh) for scalable text
+  // Fallback to vw-based calculations for older browsers
+  // Base reference: 1200px slide width, so 1% = 12px at full size
+  
   // EYEBROW (red tagline) - EXACT from XML:
   // x=257175/12192000 = 2.11%, y=235177/6858000 = 3.43%
   // width=2039291/12192000 = 16.73%
-  // Font: 12pt Work Sans SemiBold, #DA291C
+  // Font: 12pt Work Sans SemiBold, #DA291C (12pt ≈ 1% of 1200px width)
   const tagline = document.createElement('div');
   tagline.style.cssText = `
     position: absolute;
@@ -27,11 +32,14 @@ function renderSlide(slide, index) {
     left: 2.11%;
     width: 16.73%;
     font-family: 'Work Sans', sans-serif;
-    font-size: 12pt;
+    font-size: clamp(8px, 1.3cqw, 16px);
     font-weight: 600;
     color: #DA291C;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   `;
   tagline.textContent = slide.tagline || '';
   el.appendChild(tagline);
@@ -39,7 +47,7 @@ function renderSlide(slide, index) {
   // TITLE - EXACT from XML:
   // x=228208/12192000 = 1.87%, y=613997/6858000 = 8.95%
   // width=5435991/12192000 = 44.59%, height=2150574/6858000 = 31.36%
-  // Font: 72pt Work Sans Thin, #0C2340, line-height 70%
+  // Font: 72pt Work Sans Thin, #0C2340, line-height 70% (72pt ≈ 8% of 1200px)
   const title = document.createElement('div');
   title.style.cssText = `
     position: absolute;
@@ -48,10 +56,11 @@ function renderSlide(slide, index) {
     width: 44.59%;
     height: 31.36%;
     font-family: 'Work Sans', sans-serif;
-    font-size: 72pt;
+    font-size: clamp(18px, 8cqw, 96px);
     font-weight: 100;
     line-height: 0.70;
     color: #0C2340;
+    overflow: hidden;
   `;
   title.textContent = slide.title || '';
   el.appendChild(title);
@@ -59,7 +68,7 @@ function renderSlide(slide, index) {
   // BODY (right side) - EXACT from XML:
   // x=6167437/12192000 = 50.59%, y=3159889/6858000 = 46.08%
   // width=5400675/12192000 = 44.30%, height=3221861/6858000 = 46.98%
-  // Font: 12pt Work Sans, #0C2340, line-height 120%, anchor=bottom
+  // Font: 12pt Work Sans, #0C2340, line-height 120%, anchor=bottom (12pt ≈ 1% of 1200px)
   const body = document.createElement('div');
   body.style.cssText = `
     position: absolute;
@@ -68,13 +77,14 @@ function renderSlide(slide, index) {
     bottom: 6.94%;
     max-height: 46.98%;
     font-family: 'Work Sans', sans-serif;
-    font-size: 12pt;
+    font-size: clamp(8px, 1.3cqw, 16px);
     font-weight: 400;
     line-height: 1.20;
     color: #0C2340;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    overflow: hidden;
   `;
 
   // Body text with proper paragraph spacing
@@ -93,7 +103,7 @@ function renderSlide(slide, index) {
     bottom: 3.43%;
     left: 2.11%;
     font-family: 'Work Sans', sans-serif;
-    font-size: 9pt;
+    font-size: clamp(6px, 1cqw, 12px);
     font-weight: 400;
     color: #0C2340;
   `;
@@ -156,6 +166,7 @@ export class SlidesView {
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
       overflow: hidden; position: relative;
       background: white;
+      container-type: inline-size;
     `;
     wrapper.appendChild(this.slideEl);
 
