@@ -256,9 +256,13 @@ function consolidateTasks(allInsights) {
     }
   }
 
-  // Deduplicate by task name - use VERY HIGH threshold (0.95) to preserve distinct tasks
-  // Only merge near-identical tasks to avoid losing valid entries
-  const unique = deduplicateByText(allTasks, 'task', 0.95);
+  // Deduplicate by task name + entity combo - tasks with same name but different
+  // entities/swimlanes should be preserved as distinct items
+  const unique = deduplicateByText(
+    allTasks.map(t => ({ ...t, _key: `${t.task} | ${t.entity || 'unknown'}` })),
+    '_key',
+    0.95
+  ).map(({ _key, ...rest }) => rest);
 
   // Sort by type priority (milestones first, then decisions, then others)
   const typeOrder = { milestone: 0, decision: 1, phase: 2, project: 3, initiative: 4, activity: 5, task: 6 };
