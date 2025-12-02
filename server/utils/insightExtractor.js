@@ -140,7 +140,7 @@ export const insightExtractionSchema = {
       }
     }
   },
-  required: ["keyFacts", "themes", "tasks"]
+  required: ["keyFacts", "themes"]
 };
 
 /**
