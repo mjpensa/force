@@ -8,7 +8,7 @@
 
 ## Overview
 
-Current CSS footprint: **9,735 LOC across 13 files**
+Current CSS footprint: **9,290 LOC across 12 files**
 
 This plan targets:
 1. Unused CSS removal with PurgeCSS
@@ -23,20 +23,22 @@ This plan targets:
 
 | File | Size | Purpose |
 |------|------|---------|
-| `Public/styles/design-system.css` | ~1,000 LOC | Primary design system |
-| `Public/styles/analysis-view.css` | ~850 LOC | Analysis interface |
-| `Public/styles/gantt.css` | ~420 LOC | Gantt chart styles |
-| `Public/styles/slides-view.css` | ~340 LOC | Slides/presentation |
-| `Public/styles/app-shell.css` | ~200 LOC | App shell/layout |
-| `Public/styles/analysis.css` | ~180 LOC | Additional analysis |
-| `Public/styles/modal.css` | ~150 LOC | Modal dialogs |
-| `Public/styles/responsive.css` | ~120 LOC | Responsive breakpoints |
-| `Public/styles/base.css` | ~100 LOC | Base/reset styles |
-| `Public/styles/style.css` | ~2,800 LOC | Combined main stylesheet |
-| `Public/styles/tailwind.css` | ~3,000 LOC | Compiled TailwindCSS |
-| Other CSS files | ~575 LOC | Miscellaneous |
+| `Public/style.css` | ~4,543 LOC | Combined main stylesheet |
+| `Public/styles/design-system.css` | ~1,383 LOC | Primary design system |
+| `Public/styles/analysis-view.css` | ~1,221 LOC | Analysis interface |
+| `Public/styles/gantt.css` | ~788 LOC | Gantt chart styles |
+| `Public/styles/analysis.css` | ~506 LOC | Additional analysis |
+| `Public/styles/app-shell.css` | ~450 LOC | App shell/layout |
+| `Public/styles/modal.css` | ~197 LOC | Modal dialogs |
+| `Public/styles/base.css` | ~109 LOC | Base/reset styles |
+| `Public/styles/responsive.css` | ~53 LOC | Responsive breakpoints |
+| `Public/styles/index.css` | ~37 LOC | Index/entry point |
+| `Public/styles/tailwind-source.css` | ~3 LOC | Tailwind source |
+| `Public/styles/tailwind.css` | 0 LOC | Compiled TailwindCSS (empty) |
 
-**Total:** ~9,735 LOC
+**Total:** ~9,290 LOC
+
+**Note:** `tailwind.css` is currently empty (0 LOC). Tailwind styles may have been integrated into `style.css`.
 
 ---
 
@@ -255,18 +257,20 @@ npx tailwindcss -i Public/styles/tailwind-source.css -o Public/styles/tailwind.c
 ### 5.1 Current Structure Analysis
 
 ```
-Public/styles/
-├── design-system.css    # Keep - primary system
-├── analysis-view.css    # Merge candidate
-├── analysis.css         # Merge with analysis-view.css
-├── gantt.css           # Keep - component-specific
-├── slides-view.css     # Keep - component-specific
-├── app-shell.css       # Merge into design-system
-├── modal.css           # Merge into design-system
-├── responsive.css      # Merge into design-system
-├── base.css            # Merge into design-system
-├── style.css           # Generated - rebuild
-└── tailwind.css        # Generated - optimize
+Public/
+├── style.css            # Main stylesheet (4,543 LOC) - review for consolidation
+└── styles/
+    ├── design-system.css    # Keep - primary system (1,383 LOC)
+    ├── analysis-view.css    # Merge candidate (1,221 LOC)
+    ├── analysis.css         # Merge with analysis-view.css (506 LOC)
+    ├── gantt.css           # Keep - component-specific (788 LOC)
+    ├── app-shell.css       # Merge into design-system (450 LOC)
+    ├── modal.css           # Merge into design-system (197 LOC)
+    ├── responsive.css      # Merge into design-system (53 LOC)
+    ├── base.css            # Merge into design-system (109 LOC)
+    ├── index.css           # Entry point (37 LOC)
+    ├── tailwind-source.css # Tailwind source (3 LOC)
+    └── tailwind.css        # Empty - investigate (0 LOC)
 ```
 
 ### 5.2 Target Structure
@@ -453,10 +457,10 @@ npx backstop test
 
 | Metric | Before | After (Est.) | Reduction |
 |--------|--------|--------------|-----------|
-| CSS Files | 13 | 5-6 | 7-8 files |
-| Total LOC | 9,735 | 5,500-7,500 | 2,200-4,200 |
-| Tailwind LOC | ~3,000 | ~1,000-1,500 | 1,500-2,000 |
-| Custom CSS LOC | ~6,735 | ~4,500-6,000 | 700-2,200 |
+| CSS Files | 12 | 4-5 | 7-8 files |
+| Total LOC | 9,290 | 5,500-7,000 | 2,200-3,800 |
+| Main style.css LOC | ~4,543 | ~3,000-3,500 | 1,000-1,500 |
+| Component CSS LOC | ~4,747 | ~2,500-3,500 | 1,200-2,300 |
 | HTTP Requests | 10+ | 1-2 | 8-9 requests |
 
 ---
@@ -474,9 +478,11 @@ npx backstop test
 - [ ] `modal.css` → merge into `design-system.css`
 - [ ] `responsive.css` → merge into `design-system.css`
 - [ ] `analysis.css` → merge into `analysis-view.css`
+- [ ] `tailwind.css` → investigate (currently empty)
+- [ ] `index.css` → merge into main entry point
 
 ### Files to Optimize
-- [ ] `tailwind.css` - rebuild with purge
+- [ ] `style.css` - deduplicate and optimize (largest file at 4,543 LOC)
 - [ ] `design-system.css` - deduplicate
 - [ ] All CSS - convert to CSS variables
 

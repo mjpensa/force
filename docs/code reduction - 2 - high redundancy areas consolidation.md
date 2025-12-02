@@ -10,10 +10,10 @@
 
 This plan targets the four highest-redundancy areas identified in the codebase analysis:
 
-1. **Feedback Systems** (4 files, ~1,500 LOC)
-2. **Optimization Layer** (18 files, ~7,400 LOC)
-3. **Training Utilities** (6+ files, ~2,000 LOC)
-4. **Monolithic Files** (3 files, ~15,000 LOC)
+1. **Feedback Systems** (5 files, ~3,125 LOC)
+2. **Optimization Layer** (19 files, ~7,558 LOC)
+3. **Training Utilities** (6+ files, ~3,267 LOC)
+4. **Monolithic Files** (3 files, ~4,291 LOC)
 
 ---
 
@@ -23,12 +23,13 @@ This plan targets the four highest-redundancy areas identified in the codebase a
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `server/utils/feedbackAnalytics.js` | ~400 | Analytics and reporting |
-| `server/utils/feedbackStorage.js` | ~350 | Persistence layer |
-| `server/utils/feedbackSimulation.js` | ~300 | Test data generation |
-| `server/utils/hybridFeedback.js` | ~450 | Combined approach |
+| `server/utils/feedbackAnalytics.js` | ~614 | Analytics and reporting |
+| `server/utils/feedbackStorage.js` | ~653 | Persistence layer |
+| `server/utils/feedbackSimulation.js` | ~958 | Test data generation |
+| `server/utils/hybridFeedback.js` | ~438 | Combined approach |
+| `server/utils/feedbackSchema.js` | ~462 | Schema definitions |
 
-**Total:** ~1,500 LOC across 4 files with overlapping functionality
+**Total:** ~3,125 LOC across 5 files with overlapping functionality
 
 ### Phase 1.1: Analysis (Day 1)
 
@@ -66,13 +67,13 @@ server/utils/feedback/
 
 ```bash
 # Ensure no references to old modules
-grep -rn "feedbackAnalytics\|feedbackStorage\|feedbackSimulation\|hybridFeedback" server/ --include="*.js"
+grep -rn "feedbackAnalytics\|feedbackStorage\|feedbackSimulation\|hybridFeedback\|feedbackSchema" server/ --include="*.js"
 # Should return 0 results
 
 npm test
 ```
 
-**Expected Reduction:** 400-600 LOC (consolidation + deduplication)
+**Expected Reduction:** 800-1,200 LOC (consolidation + deduplication)
 
 ---
 
@@ -81,21 +82,21 @@ npm test
 ### Current State
 
 ```
-server/layers/optimization/ (18 files, ~7,400 LOC)
-├── index.js
-├── cache-optimizer.js
-├── performance-tuner.js
-├── prompt-optimizer.js
-├── metrics/
-│   └── (multiple files)
-├── dashboard/
-│   └── (multiple files)
-├── variants/
-│   └── (multiple files)
-├── evolution/
-│   └── (multiple files)
-└── experiments/
-    └── (multiple files)
+server/layers/optimization/ (19 files, ~7,558 LOC)
+├── index.js (408 LOC)
+├── cache-optimizer.js (570 LOC)
+├── performance-tuner.js (568 LOC)
+├── prompt-optimizer.js (570 LOC)
+├── metrics/ (4 files, 1,164 LOC)
+│   ├── collector.js, index.js, schema.js, storage.js
+├── dashboard/ (2 files, 623 LOC)
+│   ├── aggregator.js, index.js
+├── variants/ (4 files, 1,476 LOC)
+│   ├── definitions.js, index.js, registry.js, data/variants.json
+├── evolution/ (3 files, 1,191 LOC)
+│   ├── generator.js, index.js, scheduler.js
+└── experiments/ (2 files, 988 LOC)
+    ├── index.js, manager.js
 ```
 
 ### Phase 2.1: Dependency Mapping (Day 1)
@@ -110,13 +111,13 @@ done > reports/optimization-deps.txt
 
 ### Phase 2.2: Identify Consolidation Groups (Day 1-2)
 
-| Group | Current Files | Target |
-|-------|---------------|--------|
-| **Caching** | cache-optimizer.js + related | `caching.js` |
-| **Metrics** | metrics/* | `metrics.js` |
-| **Experiments** | experiments/* + variants/* | `experiments.js` |
-| **Performance** | performance-tuner.js + dashboard/* | `performance.js` |
-| **Prompts** | prompt-optimizer.js + evolution/* | `prompts.js` |
+| Group | Current Files | Current LOC | Target |
+|-------|---------------|-------------|--------|
+| **Caching** | cache-optimizer.js | 570 | `caching.js` |
+| **Metrics** | metrics/* (4 files) | 1,164 | `metrics.js` |
+| **Experiments** | experiments/* + variants/* (6 files) | 2,464 | `experiments.js` |
+| **Performance** | performance-tuner.js + dashboard/* (3 files) | 1,191 | `performance.js` |
+| **Prompts** | prompt-optimizer.js + evolution/* (4 files) | 1,761 | `prompts.js` |
 
 ### Phase 2.3: Consolidation Strategy (Day 2-4)
 
@@ -146,7 +147,7 @@ server/layers/optimization/
 4. Repeat until all consolidated
 5. Delete empty/unused files
 
-**Expected Reduction:** 1,500-2,500 LOC
+**Expected Reduction:** 1,800-3,000 LOC
 
 ---
 
@@ -156,14 +157,16 @@ server/layers/optimization/
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `server/utils/statisticalTraining.js` | ~400 | Statistical methods |
-| `server/utils/sequentialAnalysis.js` | ~350 | Sequential processing |
-| `server/utils/scoringTests.js` | ~300 | Score validation |
-| `server/utils/advancedOptimizer.js` | ~450 | Advanced optimization |
-| `server/utils/trendAnalysis.js` | ~300 | Trend detection |
-| `server/utils/qualityDimensions.js` | ~200 | Quality metrics |
+| `server/utils/statisticalTraining.js` | ~461 | Statistical methods |
+| `server/utils/sequentialAnalysis.js` | ~404 | Sequential processing |
+| `server/utils/scoringTests.js` | ~566 | Score validation |
+| `server/utils/advancedOptimizer.js` | ~699 | Advanced optimization |
+| `server/utils/trendAnalysis.js` | ~572 | Trend detection |
+| `server/utils/qualityDimensions.js` | ~565 | Quality metrics |
 
-**Total:** ~2,000 LOC with significant overlap
+**Total:** ~3,267 LOC with significant overlap
+
+**Note:** Additional related files exist including statisticalUtils.js (403 LOC), hypothesisTesting.js (617 LOC), anomalyDetection.js (587 LOC), and others totaling 5,000+ additional lines.
 
 ### Phase 3.1: Functional Analysis (Day 1)
 
@@ -203,7 +206,7 @@ server/utils/training/
 5. Update all imports
 6. Delete legacy files
 
-**Expected Reduction:** 800-1,200 LOC
+**Expected Reduction:** 1,000-1,600 LOC
 
 ---
 
@@ -213,9 +216,9 @@ server/utils/training/
 
 | File | Size | Issues |
 |------|------|--------|
-| `server/generators.js` | 72 KB (~2,000 LOC) | Multiple responsibilities |
-| `Public/main.js` | 28 KB (~800 LOC) | UI + logic mixed |
-| `Public/viewer.js` | 41 KB (~1,200 LOC) | Rendering + state |
+| `server/generators.js` | 84 KB (~2,610 LOC) | Multiple responsibilities |
+| `Public/main.js` | 28 KB (~654 LOC) | UI + logic mixed |
+| `Public/viewer.js` | 40 KB (~1,027 LOC) | Rendering + state |
 
 ### Phase 4.1: generators.js Analysis (Day 1)
 
@@ -259,7 +262,7 @@ server/generators/
 
 ```
 Public/
-├── main.js            # Slim entry point (~200 LOC)
+├── main.js            # Slim entry point (~150 LOC)
 ├── app/
 │   ├── init.js        # Initialization logic
 │   ├── events.js      # Event handlers
@@ -281,7 +284,7 @@ Public/
 │   └── export.js      # Export functionality
 ```
 
-**Expected Reduction:** 1,500-3,500 LOC (through deduplication and removal of dead code within monoliths)
+**Expected Reduction:** 1,000-2,000 LOC (through deduplication and removal of dead code within monoliths)
 
 ---
 
@@ -289,12 +292,12 @@ Public/
 
 | Week | Target | Files | Est. Reduction |
 |------|--------|-------|----------------|
-| 1 | Feedback Systems | 4 → 4 (reorganized) | 400-600 LOC |
-| 1-2 | Optimization Layer | 18 → 6 | 1,500-2,500 LOC |
-| 2 | Training Utilities | 6 → 4 | 800-1,200 LOC |
-| 2-3 | Monolithic Files | 3 → 12 (modular) | 1,500-3,500 LOC |
+| 1 | Feedback Systems | 5 → 4 (reorganized) | 800-1,200 LOC |
+| 1-2 | Optimization Layer | 19 → 6 | 1,800-3,000 LOC |
+| 2 | Training Utilities | 6 → 4 | 1,000-1,600 LOC |
+| 2-3 | Monolithic Files | 3 → 12 (modular) | 1,000-2,000 LOC |
 
-**Total Estimated Reduction:** 4,200-7,800 LOC
+**Total Estimated Reduction:** 4,600-7,800 LOC
 
 ---
 
@@ -348,10 +351,10 @@ For each consolidated area:
 
 ## Success Criteria
 
-- [ ] Feedback systems: 4 files → unified module
-- [ ] Optimization layer: 18 files → 6 files
+- [ ] Feedback systems: 5 files → unified module
+- [ ] Optimization layer: 19 files → 6 files
 - [ ] Training utilities: 6 files → 4 files
 - [ ] Monolithic files: Each split into focused modules
-- [ ] Minimum 4,000 LOC net reduction
+- [ ] Minimum 4,600 LOC net reduction
 - [ ] All tests passing
 - [ ] No functionality regression
