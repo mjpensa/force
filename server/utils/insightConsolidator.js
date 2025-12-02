@@ -70,9 +70,8 @@ function consolidateKeyFacts(allInsights) {
     }
   }
   
-  // Deduplicate - use VERY HIGH threshold (0.95) to preserve distinct items
-  // Only merge near-identical facts to avoid losing task details
-  const unique = deduplicateByText(allFacts, 'fact', 0.95);
+  // Deduplicate - threshold 0.8 to balance preserving distinct items vs removing duplicates
+  const unique = deduplicateByText(allFacts, 'fact', 0.8);
   
   // Sort by importance
   const importanceOrder = { high: 0, medium: 1, low: 2 };
@@ -97,12 +96,11 @@ function consolidateDates(allInsights) {
     }
   }
   
-  // Deduplicate by date + event combo - use VERY HIGH threshold (0.95)
-  // to preserve distinct timeline events/tasks - only merge near-duplicates
+  // Deduplicate by date + event combo
   const unique = deduplicateByText(
     allDates.map(d => ({ ...d, _key: `${d.date} ${d.event}` })),
     '_key',
-    0.95
+    0.8
   ).map(({ _key, ...rest }) => rest);
   
   return unique;
@@ -191,11 +189,11 @@ function consolidateMetrics(allInsights) {
     }
   }
   
-  // Deduplicate by value + context - use VERY HIGH threshold to preserve distinct metrics
+  // Deduplicate by value + context
   return deduplicateByText(
     allMetrics.map(m => ({ ...m, _key: `${m.value} ${m.context}` })),
     '_key',
-    0.95
+    0.8
   ).map(({ _key, ...rest }) => rest);
 }
 
@@ -213,8 +211,8 @@ function consolidateRecommendations(allInsights) {
     }
   }
   
-  // Deduplicate - use VERY HIGH threshold (0.95) to preserve distinct recommendations
-  const unique = deduplicateByText(allRecs, 'recommendation', 0.95);
+  // Deduplicate recommendations
+  const unique = deduplicateByText(allRecs, 'recommendation', 0.8);
   
   // Sort by priority
   const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -261,7 +259,7 @@ function consolidateTasks(allInsights) {
   const unique = deduplicateByText(
     allTasks.map(t => ({ ...t, _key: `${t.task} | ${t.entity || 'unknown'}` })),
     '_key',
-    0.95
+    0.8
   ).map(({ _key, ...rest }) => rest);
 
   // Sort by type priority (milestones first, then decisions, then others)
