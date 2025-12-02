@@ -55,9 +55,9 @@ const LAYER_CHECKS = {
   async inputSafety() {
     try {
       // Check if input safety module is loaded and functional
-      const { getInputValidator } = await import('../safety/input-validator.js').catch(() => null);
+      const { getInputSafetyLayer } = await import('../input-safety/index.js').catch(() => null);
 
-      if (!getInputValidator) {
+      if (!getInputSafetyLayer) {
         return {
           status: HealthStatus.UNKNOWN,
           message: 'Input safety module not available'

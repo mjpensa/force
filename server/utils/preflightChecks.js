@@ -5,12 +5,8 @@
  * This prevents wasted training time due to broken scoring/validation logic.
  */
 
-import {
-  TrainingError,
-  ErrorCategory,
-  categorizeValidationBug,
-  categorizeScoringBug
-} from './trainingErrors.js';
+
+
 
 // =============================================================================
 // MOCK DATA FOR TESTING

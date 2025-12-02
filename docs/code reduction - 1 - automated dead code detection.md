@@ -241,8 +241,8 @@ echo "=== LOC Reduction ===" >> docs/post-cleanup-loc.txt
 
 | Metric | Before | After (Est.) | Reduction |
 |--------|--------|--------------|-----------|
-| JavaScript Files | 163 | 155-160 | 3-8 files |
-| Total LOC | 71,122 | 66,000-69,000 | 2,000-5,000 |
+| JavaScript Files | 177 | 165-170 | 7-12 files |
+| Total LOC | 80,574 | 74,000-77,000 | 3,500-6,500 |
 | Dependencies | TBD | TBD | 2-5 packages |
 | Duplicate Blocks | TBD | 0 critical | 100% critical |
 

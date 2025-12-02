@@ -1,4 +1,4 @@
-import { CONFIG, FILE_TYPES } from './config.js';
+import { FILE_TYPES } from './config.js';
 const SUPPORTED_FILE_MIMES = FILE_TYPES.MIMES;
 const SUPPORTED_FILE_EXTENSIONS = FILE_TYPES.EXTENSIONS;
 const SUPPORTED_FILES_STRING = SUPPORTED_FILE_EXTENSIONS.join(', ');
@@ -233,7 +233,8 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
             const text = await response.text();
             errorText = text.substring(0, 200) || errorText;
           }
-        } catch (parseError) {
+        } catch (_parseError) {
+          // Ignore JSON parse errors - we'll use the default error text
         }
         throw new Error(errorText);
       }
@@ -318,7 +319,7 @@ async function streamContentGeneration(formData, callbacks) {
         } else if (line.startsWith('data: ')) {
           try {
             eventData = JSON.parse(line.slice(6));
-          } catch (e) {
+          } catch (_e) {
             // Skip malformed JSON
             continue;
           }
@@ -440,6 +441,7 @@ async function handleChartGenerate(event) {
 
     let sessionId = null;
     let ganttData = null;
+    let roadmapError = null; // Track roadmap-specific errors
 
     // Try streaming first if supported, fall back to synchronous
     if (supportsStreaming()) {
@@ -447,7 +449,6 @@ async function handleChartGenerate(event) {
         // Track which content types have completed
         const completedContent = new Set();
         const contentTypes = ['document', 'slides', 'roadmap', 'research-analysis'];
-        let roadmapError = null; // Track roadmap-specific errors
 
         const streamResult = await streamContentGeneration(formData, {
           onProgress: (message) => {
@@ -491,7 +492,7 @@ async function handleChartGenerate(event) {
               }
             }
           },
-          onComplete: (sid, results, performance) => {
+          onComplete: (sid, results, _performance) => {
             sessionId = sid;
             generateBtn.textContent = `Complete! Opening viewer...`;
 
@@ -576,7 +577,7 @@ async function handleChartGenerate(event) {
               const text = await response.text();
               errorText = text.substring(0, 200) || errorText;
             }
-          } catch (parseError) {
+          } catch (_parseError) {
           }
           throw new Error(errorText);
         }
@@ -604,7 +605,7 @@ async function handleChartGenerate(event) {
             const text = await response.text();
             errorText = text.substring(0, 200) || errorText;
           }
-        } catch (parseError) {
+        } catch (_parseError) {
         }
         throw new Error(errorText);
       }

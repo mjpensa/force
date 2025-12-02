@@ -60,6 +60,9 @@ export default [
         Headers: 'readonly',
         Request: 'readonly',
         Response: 'readonly',
+        TextDecoder: 'readonly',
+        TextEncoder: 'readonly',
+        structuredClone: 'readonly',
         // Drag and drop API
         DataTransfer: 'readonly',
         DragEvent: 'readonly',
@@ -123,7 +126,9 @@ export default [
         process: 'readonly',
         Buffer: 'readonly',
         __dirname: 'readonly',
-        __filename: 'readonly'
+        __filename: 'readonly',
+        setImmediate: 'readonly',
+        clearImmediate: 'readonly'
       }
     }
   },

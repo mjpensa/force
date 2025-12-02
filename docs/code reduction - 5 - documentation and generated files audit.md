@@ -10,11 +10,13 @@
 
 This plan targets non-source-code files that inflate repository size without contributing to functionality:
 
-1. **Documentation files** (20 files, ~12,500 LOC)
-2. **Training data** (23 DOCX files)
-3. **Assets** (16 MB)
+1. **Documentation files** (28 markdown files, ~22,215 LOC)
+2. **Training data** (22 DOCX files + 5 markdown samples)
+3. **Training directory size** (~21 MB)
 4. **Generated files** (should not be in repo)
 5. **Historical/planning documents**
+
+**Note:** The `assets/` directory referenced in earlier documentation does not exist.
 
 ---
 
@@ -22,32 +24,35 @@ This plan targets non-source-code files that inflate repository size without con
 
 ### Documentation (`docs/`)
 
+**Total: 63 files | Size: 3.1 MB**
+
 | File/Directory | Size | Purpose | Action |
 |---------------|------|---------|--------|
-| `README.md` | ~500 LOC | Project overview | Keep |
-| `ARCHITECTURE` | ~300 LOC | System architecture | Keep |
-| `BUG_FIX_IMPLEMENTATION_PLAN.md` | 33 KB | Historical planning | Archive |
-| `BUG_REVIEW_REPORT.md` | 11 KB | Historical report | Archive |
-| `Gantt Upgrade Plan` | 19 KB | Historical planning | Archive |
-| `ML Prompting Design Spec.ini` | 235 KB | Design spec | Review |
-| `PROMPT ML` | 229 KB | ML documentation | Review |
-| `docs/screenshots/` | ~2 MB | UI screenshots | Prune old |
-| `docs/training-plans/` | ~500 KB | Training documentation | Archive |
+| `CODE_CLEANUP_PLAN.md` | 17 KB | Cleanup planning | Review |
+| `PERFORMANCE_REVIEW_PLAN.md` | 32 KB | Performance planning | Review |
+| `REDIS_INTEGRATION_DESIGN.md` | 49 KB | Redis design | Keep |
+| `code reduction - 1-5` | ~50 KB | Code reduction plans | Keep/Update |
+| `docs/implementation-plans/` | 5 files | Implementation specs | Keep |
+| `docs/training-plans/` | 15 files | Training documentation | Archive |
+| `docs/screenshots/` | 34 PNG files (~2.5 MB) | UI screenshots | Prune old |
 
 ### Training Data (`training/`)
 
+**Total: 33 files | Size: ~21 MB**
+
 | Content | Count | Size | Action |
 |---------|-------|------|--------|
-| DOCX files | 23 | ~5 MB | Keep minimal set |
-| PNG files | Various | ~3 MB | Keep minimal set |
-| Sample sets | 3 | ~8 MB total | Reduce to 1 |
+| sample-set-1/ | 5 markdown files | ~167 KB | Review (training samples) |
+| sample-set-2/ | 12 DOCX + 2 PNG | ~6.2 MB | Keep minimal set |
+| sample-set-3/ | 10 DOCX files | ~15 MB | Keep minimal set |
+
+**Note:** sample-set-3 contains large files (AI Regulation: 6.4 MB, EU AI Act: 5.6 MB)
 
 ### Assets (`assets/`)
 
-| File | Size | Action |
-|------|------|--------|
-| `PPTX TEMPLATE.pptx` | ~15 MB | Compress or move to releases |
-| `BIP Background Logo.svg` | ~1 MB | Optimize |
+**Status: Directory does not exist**
+
+The `assets/` directory referenced in earlier documentation has been removed or relocated.
 
 ### Generated Files (Should Not Be Committed)
 
@@ -136,9 +141,9 @@ du -sh training/
 
 ### 2.2 Determine Minimal Training Set
 
-**Current:** 3 sample sets with 23 DOCX files
+**Current:** 3 sample sets with 22 DOCX files + 5 markdown files (~21 MB total)
 
-**Goal:** 1 representative sample set with 5-8 files
+**Goal:** 1 representative sample set with 5-8 files (~5 MB)
 
 | Keep | Reason |
 |------|--------|
@@ -196,48 +201,38 @@ Update paths in code if needed.
 
 ## Phase 3: Asset Optimization (Day 3)
 
-### 3.1 Audit Assets
+**Note:** The `assets/` directory does not currently exist. This phase should be skipped or repurposed.
+
+### 3.1 Audit for Scattered Assets
 
 ```bash
-# List all assets
-find assets/ -type f -exec ls -lh {} \;
+# Find large binary files in the repo
+find . -type f \( -name "*.pptx" -o -name "*.png" -o -name "*.jpg" -o -name "*.svg" \) -exec ls -lh {} \;
 
-# Total size
-du -sh assets/
+# Check training directory for large images
+ls -lah training/sample-set-2/*.png
 ```
 
-### 3.2 Optimize Large Assets
+### 3.2 Optimize Training Images
 
-**PPTX Template (~15 MB)**
+**Large PNG files in training/sample-set-2/:**
+- `Payments Roadmap_v2.png` (~3.1 MB)
+- `Payments Roadmap_v3.png` (~2.7 MB)
 
 ```bash
-# Check if template has embedded media
-unzip -l assets/PPTX\ TEMPLATE.pptx | grep -i "media\|image"
-
 # Options:
-# 1. Compress images in template
-# 2. Move to releases (download on demand)
-# 3. Keep minimal version
-```
-
-**SVG Files**
-
-```bash
-# Install svgo
-npm install -g svgo
-
-# Optimize SVGs
-svgo assets/*.svg --multipass
+# 1. Compress images
+# 2. Move to Git LFS
+# 3. Move to releases (download on demand)
 ```
 
 ### 3.3 Asset Management Strategy
 
-| Asset Type | Strategy |
-|------------|----------|
-| Templates | Keep in repo, optimize |
-| Large logos | Optimize, consider CDN |
-| Screenshots | Keep essential only |
-| Sample outputs | Move to releases |
+| Asset Type | Location | Strategy |
+|------------|----------|----------|
+| Training PNGs | training/sample-set-2/ | Compress or move to LFS |
+| Screenshots | docs/screenshots/ | Keep essential only, prune old |
+| Training DOCX | training/ | Keep minimal representative set |
 
 ---
 
@@ -466,42 +461,41 @@ npm start
 
 | Metric | Before | After | Reduction |
 |--------|--------|-------|-----------|
-| Docs LOC | ~12,500 | ~3,000 | ~9,500 LOC |
-| Training Data | ~8 MB | ~2 MB | 6 MB |
-| Assets | ~16 MB | ~5 MB | 11 MB |
-| Total Repo Size | ~50 MB | ~20 MB | ~30 MB |
-| Doc Files | 20 | 5-8 | 12-15 files |
+| Docs LOC | ~22,215 | ~5,000 | ~17,000 LOC |
+| Docs Size | ~3.1 MB | ~1 MB | ~2 MB |
+| Training Data | ~21 MB | ~5 MB | ~16 MB |
+| Screenshots | 34 files (~2.5 MB) | 10-15 files (~1 MB) | ~1.5 MB |
+| Total Repo Reduction | - | - | ~20 MB |
+| Doc Files | 28 markdown | 8-10 | 18-20 files |
 
 ---
 
 ## Files to Archive/Remove
 
 ### Archive to Wiki/Branch
-- [ ] `docs/BUG_FIX_IMPLEMENTATION_PLAN.md`
-- [ ] `docs/BUG_REVIEW_REPORT.md`
-- [ ] `docs/Gantt Upgrade Plan`
-- [ ] `docs/training-plans/*`
-- [ ] Old screenshots
+- [ ] `docs/training-plans/*` (15 files)
+- [ ] `docs/implementation-plans/*` (5 files - review which are still active)
+- [ ] Old screenshots (34 files - keep only recent/relevant)
 
 ### Remove from Repo
-- [ ] Duplicate training samples
+- [ ] Duplicate training samples (sample-set-2 or sample-set-3)
 - [ ] Generated/cached files
 - [ ] Log files
 - [ ] Temporary files
 
 ### Optimize
-- [ ] PPTX template (compress or move)
-- [ ] SVG files (svgo optimization)
-- [ ] PNG screenshots (compress)
+- [ ] `training/sample-set-2/*.png` (compress ~5.8 MB in images)
+- [ ] Consider Git LFS for large DOCX files in sample-set-3
 
 ---
 
 ## Success Criteria
 
-- [ ] Repository size reduced by minimum 50%
-- [ ] Essential documentation preserved
-- [ ] Historical docs archived appropriately
-- [ ] Training data reduced to minimal set
+- [ ] Repository size reduced by ~20 MB
+- [ ] Essential documentation preserved (README, key design docs)
+- [ ] Historical docs archived appropriately (training-plans, old implementation plans)
+- [ ] Training data reduced to minimal set (~5 MB from ~21 MB)
+- [ ] Screenshots pruned (keep 10-15 from 34)
 - [ ] Generated files properly gitignored
 - [ ] Application fully functional
 - [ ] Clean, professional repository structure

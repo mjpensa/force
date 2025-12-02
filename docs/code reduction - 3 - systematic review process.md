@@ -81,6 +81,18 @@ Compare these layer pairs for duplicates:
 | `evaluation/` | `output/` | Quality scoring |
 | `input-safety/` | `middleware.js` | Validation logic |
 | `routing/` | `routes/` | Request handling |
+| `signatures/` | `utils/` | Document processing logic |
+
+**Current Layer Structure (9 layers, 53 files):**
+- context/ (5 files)
+- evaluation/ (4 files)
+- input-safety/ (4 files)
+- monitoring/ (4 files)
+- observability/ (4 files)
+- optimization/ (19 files)
+- output/ (4 files)
+- routing/ (4 files)
+- signatures/ (5 files)
 
 ### 2.2 Functional Overlap Detection
 
@@ -103,6 +115,7 @@ For each layer pair, review:
 - [ ] `server/layers/evaluation/` vs `server/utils/qualityDimensions.js`
 - [ ] `server/layers/output/` vs `server/utils/` output-related files
 - [ ] `server/layers/context/` vs `server/prompts.js` context handling
+- [ ] `server/layers/signatures/` vs `server/utils/` document/research processing
 
 ---
 

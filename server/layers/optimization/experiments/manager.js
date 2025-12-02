@@ -11,7 +11,7 @@ import { randomUUID } from 'crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { getVariantRegistry, VariantStatus } from '../variants/index.js';
+import { getVariantRegistry } from '../variants/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

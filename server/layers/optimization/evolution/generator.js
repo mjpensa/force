@@ -7,7 +7,6 @@
  * @module evolution/generator
  */
 
-import { randomUUID } from 'crypto';
 import { getVariantRegistry, VariantStatus } from '../variants/index.js';
 import { getMetricsCollector } from '../metrics/index.js';
 

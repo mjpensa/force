@@ -41,3 +41,36 @@ data/metrics.json
 
 # Code analysis reports
 reports/
+
+# Build outputs
+build/
+*.min.js
+*.min.css
+
+# Test outputs
+.nyc_output/
+
+# Logs
+*.log
+
+# Caches
+.cache/
+*.cache
+.eslintcache
+
+# Database cache
+data/cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# Temp files
+temp/
+tmp/
+*.tmp

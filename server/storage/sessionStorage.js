@@ -16,7 +16,6 @@
  *   const session = await sessionStorage.get('sessionId');
  */
 
-import { createHash } from 'crypto';
 import zlib from 'zlib';
 import { promisify } from 'util';
 import { getRedisClient, isRedisHealthy } from '../redis/client.js';

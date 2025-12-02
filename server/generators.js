@@ -11,14 +11,11 @@ import { CONFIG, isRoutingEnabled } from './config.js';
 import { prepareResearchContext, willUseMapReduce } from './utils/mapReduceProcessor.js';
 import {
   getRouter,
-  getFallbackManager,
-  TaskType,
-  analyzeComplexity
+  TaskType
 } from './layers/routing/index.js';
 import {
   getContextLayer,
-  StrategyType,
-  countTokens
+  StrategyType
 } from './layers/context/index.js';
 import {
   SignatureType,
@@ -26,38 +23,30 @@ import {
   validateSignatureInputs
 } from './layers/signatures/index.js';
 import {
-  getOutputProcessor,
-  quickCheckOutput
+  getOutputProcessor
 } from './layers/output/index.js';
 import {
-  getObservabilityPipeline,
-  LayerSpan
+  getObservabilityPipeline
 } from './layers/observability/index.js';
 import {
-  getEvaluationPipeline,
-  FeedbackType
+  getEvaluationPipeline
 } from './layers/evaluation/index.js';
 import {
   getOptimizationPipeline,
   TuningMode
 } from './layers/optimization/index.js';
 import {
-  getMonitoringPipeline,
-  quickHealthCheck,
-  quickDashboard
+  getMonitoringPipeline
 } from './layers/monitoring/index.js';
 import {
   getMetricsCollector
 } from './layers/optimization/metrics/index.js';
 import {
   selectVariant,
-  recordVariantPerformance,
-  initializeVariants,
-  ContentType
+  recordVariantPerformance
 } from './layers/optimization/variants/index.js';
 import {
-  recordExperimentMetric,
-  getActiveExperiment
+  recordExperimentMetric
 } from './layers/optimization/experiments/index.js';
 
 // Feature flag for caching - can be disabled for testing
