@@ -13,12 +13,11 @@
  */
 
 import express from 'express';
-import mammoth from 'mammoth';
 import crypto from 'crypto';
 import { generateAllContent, generateAllContentStreaming, regenerateContent, globalMetrics, apiQueue, getCacheMetrics, speculativeGenerator, enforceYearlyIntervalsForLongRanges } from '../generators.js';
 import { uploadMiddleware, handleUploadErrors } from '../middleware.js';
 import { PerformanceLogger, createTimer } from '../utils/performanceLogger.js';
-import { generateETag, clearAllCaches, clearExpiredEntries } from '../cache/contentCache.js';
+import { clearAllCaches, clearExpiredEntries } from '../cache/contentCache.js';
 import { processFiles } from '../utils/fileProcessor.js';
 import { cleanJsonResponse } from '../utils/networkOptimizer.js';
 import { sessionStorage } from '../storage/sessionStorage.js';
@@ -30,15 +29,10 @@ import {
   getDashboardData
 } from '../utils/monitoring.js';
 import { generateSecureSessionId, verifyApiKey } from '../middleware/auth.js';
-import { generateCsrfToken, getCsrfTokenHandler } from '../middleware/csrf.js';
+import { getCsrfTokenHandler } from '../middleware/csrf.js';
 import {
   validateSchema,
-  isValidArrayIndex,
-  isNonEmptyString,
-  parseIntSafe,
-  ValidationError,
-  NotFoundError,
-  handleRouteError
+  isValidArrayIndex
 } from '../utils/validation.js';
 
 const router = express.Router();

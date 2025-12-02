@@ -45,8 +45,8 @@ export {
   COST_RATES
 } from './metrics-collector.js';
 
-import { getTracer, SpanKind, SpanStatus, LayerSpan, Attributes, createChildSpan } from './tracer.js';
-import { getEventLogger, EventCategory } from './event-logger.js';
+import { getTracer, SpanKind, SpanStatus, Attributes, createChildSpan } from './tracer.js';
+import { getEventLogger } from './event-logger.js';
 import { getMetricsCollector, COST_RATES } from './metrics-collector.js';
 
 /**

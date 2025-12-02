@@ -28,13 +28,12 @@ import { runPreflightChecks } from '../utils/preflightChecks.js';
 import { calculateCorrelatedFeedback } from '../utils/feedbackSimulation.js';
 import { PromptEvolutionEngine } from '../utils/promptEvolution.js';
 import { scoreContentQuality } from '../utils/contentQualityScoring.js';
-import { executeWithCache, getCacheStats } from '../utils/dspyExecutor.js';
+import { executeWithCache } from '../utils/dspyExecutor.js';
 import {
   runTrainingGraph,
   resumeTrainingGraph,
   stopTrainingGraph,
-  getTrainingStatus as getGraphStatus,
-  streamTrainingGraph
+  getTrainingStatus as getGraphStatus
 } from '../workflows/index.js';
 import { TrainingCheckpointManager } from '../utils/trainingCheckpointManager.js';
 import { createInitialCheckpoint, getCheckpointSummary } from '../utils/trainingCheckpoint.js';

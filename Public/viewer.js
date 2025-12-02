@@ -7,8 +7,7 @@ import {
   reportWebVitals,
   trackContentTiming,
   trackApiTiming,
-  logPerformanceMetrics,
-  getAllMetrics
+  logPerformanceMetrics
 } from './components/shared/Performance.js';
 import {
   initAccessibility,
@@ -21,7 +20,7 @@ import {
 } from './components/shared/ErrorHandler.js';
 import { loadFooterSVG } from './Utils.js'; // For GanttChart footer
 import { TaskAnalyzer } from './analysis/TaskAnalyzer.js'; // For task clicks
-import { profileRender, getRenderMetrics } from './components/shared/DomUtils.js';
+import { profileRender } from './components/shared/DomUtils.js';
 
 // View module cache for lazy loading
 const viewModuleCache = new Map();

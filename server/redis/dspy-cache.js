@@ -27,7 +27,7 @@
 import crypto from 'crypto';
 import zlib from 'zlib';
 import { promisify } from 'util';
-import { getRedisClient, isRedisHealthy } from './client.js';
+import { getRedisClient } from './client.js';
 import { CONFIG } from '../config.js';
 
 const gzip = promisify(zlib.gzip);

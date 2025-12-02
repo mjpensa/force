@@ -17,7 +17,7 @@
 
 import mammoth from 'mammoth';
 import crypto from 'crypto';
-import { createSanitizer, createDetector, InjectionType } from '../layers/input-safety/index.js';
+import { createSanitizer, createDetector } from '../layers/input-safety/index.js';
 
 // ============================================================================
 // CONFIGURATION

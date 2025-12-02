@@ -9,9 +9,9 @@
  * Based on PROMPT ML design specification.
  */
 
-import { InputSanitizer, createSanitizer } from './sanitizer.js';
-import { InjectionDetector, createDetector, InjectionType } from './injection-detector.js';
-import { RateLimiter, createRateLimiter, TokenEstimator } from './rate-limiter.js';
+import { createSanitizer } from './sanitizer.js';
+import { createDetector } from './injection-detector.js';
+import { createRateLimiter, TokenEstimator } from './rate-limiter.js';
 
 /**
  * @typedef {Object} InputProcessingResult

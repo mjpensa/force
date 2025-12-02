@@ -34,7 +34,6 @@ import {
 } from '../redis/pubsub.js';
 
 import { variantMetrics } from '../redis/variant-metrics.js';
-import { getRedisClient } from '../redis/client.js';
 
 // ============================================================================
 // SESSION LIFECYCLE EVENTS

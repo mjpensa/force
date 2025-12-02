@@ -344,7 +344,7 @@ export function progressStreamHandler(req, res) {
   
   if (!success) {
     res.status(503).json({ error: 'Too many active sessions' });
-    return;
+    
   }
   
   // Keep connection open - SSE will be managed by session

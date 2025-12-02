@@ -43,9 +43,24 @@ export {
 
 
 // Import for internal use
-import { RoadmapSignature } from './roadmap.js';
-import { DocumentSignature } from './document.js';
-import { ResearchAnalysisSignature } from './research-analysis.js';
+import {
+  RoadmapSignature,
+  generateRoadmapSignaturePrompt,
+  validateRoadmapInputs,
+  getRoadmapOutputSchema
+} from './roadmap.js';
+import {
+  DocumentSignature,
+  generateDocumentSignaturePrompt,
+  validateDocumentInputs,
+  getDocumentOutputSchema
+} from './document.js';
+import {
+  ResearchAnalysisSignature,
+  generateResearchAnalysisSignaturePrompt,
+  validateResearchAnalysisInputs,
+  getResearchAnalysisOutputSchema
+} from './research-analysis.js';
 
 /**
  * Signature types enum
