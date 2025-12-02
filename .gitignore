@@ -46,6 +46,7 @@ reports/
 build/
 *.min.js
 *.min.css
+Public/styles/tailwind.css
 
 # Test outputs
 .nyc_output/
