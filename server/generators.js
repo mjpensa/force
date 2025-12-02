@@ -14,31 +14,6 @@ import {
   TaskType
 } from './layers/routing/index.js';
 import {
-  getContextLayer,
-  StrategyType
-} from './layers/context/index.js';
-import {
-  SignatureType,
-  generateSignaturePrompt,
-  validateSignatureInputs
-} from './layers/signatures/index.js';
-import {
-  getOutputProcessor
-} from './layers/output/index.js';
-import {
-  getObservabilityPipeline
-} from './layers/observability/index.js';
-import {
-  getEvaluationPipeline
-} from './layers/evaluation/index.js';
-import {
-  getOptimizationPipeline,
-  TuningMode
-} from './layers/optimization/index.js';
-import {
-  getMonitoringPipeline
-} from './layers/monitoring/index.js';
-import {
   getMetricsCollector
 } from './layers/optimization/metrics/index.js';
 import {
@@ -67,49 +42,12 @@ const ENABLE_VARIANT_SELECTION = process.env.ENABLE_VARIANT_SELECTION === 'true'
 // to ensure proper configuration (persistPath, autoPersist).
 // Do NOT initialize here to avoid race conditions with config.
 
-// Feature flag for context engineering layer - DISABLED by default for consistency
-const ENABLE_CONTEXT_ENGINEERING = process.env.ENABLE_CONTEXT_ENGINEERING === 'true';
-
-// Feature flag for DSPy-style signatures - DISABLED by default for consistency
-const ENABLE_SIGNATURES = process.env.ENABLE_SIGNATURES === 'true';
-
-// Feature flag for output validation (PROMPT ML Layer 6) - DISABLED by default for consistency
-const ENABLE_OUTPUT_VALIDATION = process.env.ENABLE_OUTPUT_VALIDATION === 'true';
-
-// Feature flag for observability (PROMPT ML Layer 7) - logging only, safe to enable
-const ENABLE_OBSERVABILITY = process.env.ENABLE_OBSERVABILITY === 'true';
-
-// Feature flag for evaluation (PROMPT ML Layer 8) - DISABLED by default
-const ENABLE_EVALUATION = process.env.ENABLE_EVALUATION === 'true';
-
-// Feature flag for optimization (PROMPT ML Layer 9) - DISABLED by default
-const ENABLE_OPTIMIZATION = process.env.ENABLE_OPTIMIZATION === 'true';
-
-// Feature flag for monitoring (PROMPT ML Layer 10) - DISABLED by default
-const ENABLE_MONITORING = process.env.ENABLE_MONITORING === 'true';
 
 // Feature flag for Map-Reduce processing of large research content
 // When enabled, large research files are chunked and processed in parallel
 // to ensure ALL content is analyzed regardless of size
 const ENABLE_MAP_REDUCE = process.env.ENABLE_MAP_REDUCE !== 'false'; // Enabled by default
 
-/**
- * Map content types to StrategyType for context engineering
- */
-const CONTENT_TYPE_TO_STRATEGY = {
-  'Roadmap': StrategyType.ROADMAP,
-  'Document': StrategyType.DOCUMENT,
-  'ResearchAnalysis': StrategyType.RESEARCH_ANALYSIS
-};
-
-/**
- * Map content types to SignatureType for DSPy-style signatures
- */
-const CONTENT_TYPE_TO_SIGNATURE = {
-  'Roadmap': SignatureType.ROADMAP,
-  'Document': SignatureType.DOCUMENT,
-  'ResearchAnalysis': SignatureType.RESEARCH_ANALYSIS
-};
 
 /**
  * Detects interval type from timeColumns
@@ -673,515 +611,8 @@ function combineResearchContent(researchFiles) {
     .join('\n---\n');
 }
 
-/**
- * Process research files through context engineering layer
- *
- * Applies task-specific strategies, token budgeting, and compression
- * to optimize context for each generation type.
- *
- * @param {Array} researchFiles - Array of { filename, content } objects
- * @param {string} userPrompt - User's prompt
- * @param {string} contentType - Type of content being generated
- * @param {object} perfLogger - Performance logger instance
- * @returns {object} Processed context with files and metadata
- */
-function processContextEngineering(researchFiles, userPrompt, contentType, perfLogger = null) {
-  if (!ENABLE_CONTEXT_ENGINEERING) {
-    return {
-      files: researchFiles,
-      applied: false,
-      metadata: null
-    };
-  }
 
-  const contextTimer = perfLogger ? createTimer(perfLogger, `context-${contentType.toLowerCase()}`) : null;
 
-  try {
-    const contextLayer = getContextLayer();
-    const strategyType = CONTENT_TYPE_TO_STRATEGY[contentType] || StrategyType.DEFAULT;
-
-    // Process through context engineering pipeline
-    const result = contextLayer.process({
-      researchFiles,
-      userPrompt,
-      taskType: strategyType,
-      tokenBudget: getTokenBudgetForType(contentType)
-    });
-
-    // Log context metrics
-    if (perfLogger) {
-      perfLogger.setMetadata(`context-tokens-${contentType.toLowerCase()}`, result.tokenUsage.used);
-      perfLogger.setMetadata(`context-budget-${contentType.toLowerCase()}`, result.tokenUsage.budget);
-      perfLogger.setMetadata(`context-utilization-${contentType.toLowerCase()}`,
-        `${(result.tokenUsage.utilization * 100).toFixed(1)}%`);
-
-      if (result.compression?.applied) {
-        perfLogger.setMetadata(`context-compression-${contentType.toLowerCase()}`, {
-          originalTokens: result.compression.originalTokens,
-          compressedTokens: result.compression.compressedTokens,
-          saved: result.compression.originalTokens - result.compression.compressedTokens
-        });
-      }
-    }
-
-    if (contextTimer) contextTimer.stop();
-
-    // Return processed files from context assembly
-    const processedFiles = result.context?.components
-      ?.find(c => c.name === 'content')?.metadata?.processedFiles || researchFiles;
-
-    return {
-      files: processedFiles,
-      applied: true,
-      result,
-      metadata: {
-        strategy: result.strategy?.name || 'default',
-        tokensUsed: result.tokenUsage.used,
-        compressionApplied: result.compression?.applied || false
-      }
-    };
-  } catch (error) {
-    // Context engineering failed - fall back to original files
-    if (perfLogger) {
-      perfLogger.setMetadata(`context-error-${contentType.toLowerCase()}`, error.message);
-    }
-    if (contextTimer) contextTimer.stop();
-
-    return {
-      files: researchFiles,
-      applied: false,
-      error: error.message,
-      metadata: null
-    };
-  }
-}
-
-/**
- * Get token budget for content type
- * Different content types have different complexity and output requirements
- */
-function getTokenBudgetForType(contentType) {
-  const budgets = {
-    'Roadmap': 12000,      // Complex timeline extraction
-    'Document': 10000,     // Comprehensive sections
-    'ResearchAnalysis': 8000  // Quality assessment
-  };
-  return budgets[contentType] || 8000;
-}
-
-/**
- * Generate prompt using either traditional or signature-based method
- *
- * When ENABLE_SIGNATURES is true, uses DSPy-style structured signatures
- * for more consistent, typed prompt generation with validation.
- *
- * @param {string} contentType - Type of content (Roadmap, Slides, etc.)
- * @param {string} userPrompt - User's prompt
- * @param {Array} researchFiles - Research files
- * @param {Function} traditionalGenerator - Traditional prompt generator function
- * @param {object} perfLogger - Performance logger
- * @returns {object} {prompt, usedSignature, validationResult}
- */
-function generatePromptWithSignature(contentType, userPrompt, researchFiles, traditionalGenerator, perfLogger = null) {
-  if (ENABLE_SIGNATURES) {
-    const signatureType = CONTENT_TYPE_TO_SIGNATURE[contentType];
-
-    if (signatureType) {
-      try {
-        // Validate inputs first
-        const validation = validateSignatureInputs(signatureType, userPrompt, researchFiles);
-
-        if (!validation.valid) {
-          // Log validation errors but continue with traditional prompt
-          if (perfLogger) {
-            perfLogger.setMetadata(`signature-validation-${contentType.toLowerCase()}`, {
-              valid: false,
-              errors: validation.errors
-            });
-          }
-        }
-
-        // Generate using signature
-        const prompt = generateSignaturePrompt(signatureType, userPrompt, researchFiles);
-
-        if (perfLogger) {
-          perfLogger.setMetadata(`signature-used-${contentType.toLowerCase()}`, true);
-        }
-
-        return {
-          prompt,
-          usedSignature: true,
-          signatureType,
-          validationResult: validation
-        };
-      } catch (error) {
-        // Fall back to traditional on signature error
-        if (perfLogger) {
-          perfLogger.setMetadata(`signature-error-${contentType.toLowerCase()}`, error.message);
-        }
-      }
-    }
-  }
-
-  // Traditional prompt generation
-  return {
-    prompt: traditionalGenerator(userPrompt, researchFiles),
-    usedSignature: false,
-    signatureType: null,
-    validationResult: null
-  };
-}
-
-/**
- * Map content types to output types for validation
- */
-const CONTENT_TYPE_TO_OUTPUT_TYPE = {
-  'Roadmap': 'roadmap',
-  'Document': 'document',
-  'ResearchAnalysis': 'research-analysis'
-};
-
-/**
- * Validate and process generated output
- *
- * Runs output through PROMPT ML Layer 6 validation pipeline:
- * - Schema validation
- * - Safety checking
- * - Quality scoring
- *
- * @param {*} data - Generated data to validate
- * @param {string} contentType - Type of content
- * @param {Object} schema - JSON schema for validation
- * @param {Object} context - Additional context (userPrompt, researchFiles)
- * @param {object} perfLogger - Performance logger
- * @returns {object} {data, validation}
- */
-function validateGeneratedOutput(data, contentType, schema, context = {}, perfLogger = null) {
-  if (!ENABLE_OUTPUT_VALIDATION || !data) {
-    return {
-      data,
-      validation: null
-    };
-  }
-
-  const validationTimer = perfLogger ? createTimer(perfLogger, `validation-${contentType.toLowerCase()}`) : null;
-
-  try {
-    const outputProcessor = getOutputProcessor();
-    const outputType = CONTENT_TYPE_TO_OUTPUT_TYPE[contentType];
-
-    // Process through validation pipeline
-    const result = outputProcessor.process(data, {
-      outputType,
-      schema,
-      userPrompt: context.userPrompt,
-      sourceFiles: context.researchFiles
-    });
-
-    // Log validation metrics
-    if (perfLogger) {
-      perfLogger.setMetadata(`output-valid-${contentType.toLowerCase()}`, result.valid);
-      perfLogger.setMetadata(`output-safe-${contentType.toLowerCase()}`, result.safe);
-
-      if (result.quality) {
-        perfLogger.setMetadata(`output-quality-${contentType.toLowerCase()}`, {
-          grade: result.quality.grade,
-          score: result.quality.overall
-        });
-      }
-
-      if (result.validation?.errors?.length > 0) {
-        perfLogger.setMetadata(`output-errors-${contentType.toLowerCase()}`, result.validation.errors.slice(0, 3));
-      }
-
-      if (result.safety?.concerns?.length > 0) {
-        perfLogger.setMetadata(`output-concerns-${contentType.toLowerCase()}`, result.safety.concerns.length);
-      }
-    }
-
-    if (validationTimer) validationTimer.stop();
-
-    return {
-      data: result.output,
-      validation: {
-        valid: result.valid,
-        safe: result.safe,
-        quality: result.quality ? {
-          grade: result.quality.grade,
-          score: result.quality.overall,
-          strengths: result.quality.strengths,
-          weaknesses: result.quality.weaknesses
-        } : null,
-        errors: result.validation?.errors || [],
-        concerns: result.safety?.concerns || []
-      }
-    };
-  } catch (error) {
-    // Validation failed - return original data
-    if (perfLogger) {
-      perfLogger.setMetadata(`validation-error-${contentType.toLowerCase()}`, error.message);
-    }
-    if (validationTimer) validationTimer.stop();
-
-    return {
-      data,
-      validation: {
-        error: error.message
-      }
-    };
-  }
-}
-
-/**
- * Get observability pipeline for request tracking
- *
- * Provides distributed tracing, structured logging, and metrics
- * collection for the entire generation pipeline.
- *
- * @returns {Object|null} Observability pipeline or null if disabled
- */
-function getObservability() {
-  if (!ENABLE_OBSERVABILITY) {
-    return null;
-  }
-  return getObservabilityPipeline();
-}
-
-/**
- * Record LLM call metrics in observability
- *
- * @param {Object} context - Observability context
- * @param {Object} details - Call details
- */
-function recordLLMMetrics(context, details) {
-  if (!ENABLE_OBSERVABILITY || !context) return;
-
-  const observability = getObservability();
-  if (observability) {
-    observability.observeLLMCall(context, details);
-  }
-}
-
-/**
- * Record validation results in observability
- *
- * @param {Object} context - Observability context
- * @param {Object} validation - Validation result
- */
-function recordValidationMetrics(context, validation) {
-  if (!ENABLE_OBSERVABILITY || !context || !validation) return;
-
-  const observability = getObservability();
-  if (observability) {
-    observability.observeValidation(context, validation);
-  }
-}
-
-/**
- * Get evaluation pipeline for output evaluation
- *
- * @returns {Object|null} Evaluation pipeline or null if disabled
- */
-function getEvaluation() {
-  if (!ENABLE_EVALUATION) {
-    return null;
-  }
-  return getEvaluationPipeline();
-}
-
-/**
- * Run evaluation on generated output
- *
- * @param {*} output - Generated output
- * @param {Object} context - Evaluation context
- * @returns {Object|null} Evaluation result
- */
-function evaluateGeneratedOutput(output, context = {}) {
-  if (!ENABLE_EVALUATION) return null;
-
-  const evaluation = getEvaluation();
-  if (!evaluation) return null;
-
-  try {
-    return evaluation.runFullEvaluation(output, context);
-  } catch (error) {
-    console.warn('[Evaluation] Failed:', error.message);
-    return null;
-  }
-}
-
-/**
- * Record user feedback
- *
- * @param {string} feedbackType - Type of feedback
- * @param {string} contentType - Content type
- * @param {*} value - Feedback value
- * @param {Object} context - Additional context
- */
-function recordUserFeedback(feedbackType, contentType, value, context = {}) {
-  if (!ENABLE_EVALUATION) return null;
-
-  const evaluation = getEvaluation();
-  if (!evaluation) return null;
-
-  try {
-    return evaluation.recordFeedback(feedbackType, contentType, value, context);
-  } catch (error) {
-    console.warn('[Feedback] Failed to record:', error.message);
-    return null;
-  }
-}
-
-/**
- * Get optimization pipeline for request optimization
- *
- * Provides prompt optimization, caching, and performance tuning
- * for the generation pipeline.
- *
- * @returns {Object|null} Optimization pipeline or null if disabled
- */
-function getOptimization() {
-  if (!ENABLE_OPTIMIZATION) {
-    return null;
-  }
-  return getOptimizationPipeline();
-}
-
-/**
- * Optimize a request before execution
- *
- * @param {Object} request - Request details
- * @returns {Object} Optimized request
- */
-function optimizeRequest(request) {
-  if (!ENABLE_OPTIMIZATION) {
-    return { ...request, optimizations: { applied: [] } };
-  }
-
-  const optimization = getOptimization();
-  if (!optimization) {
-    return { ...request, optimizations: { applied: [] } };
-  }
-
-  try {
-    return optimization.optimizeRequest(request);
-  } catch (error) {
-    console.warn('[Optimization] Request optimization failed:', error.message);
-    return { ...request, optimizations: { applied: [], error: error.message } };
-  }
-}
-
-/**
- * Record optimization result for learning
- *
- * @param {Object} request - Original request
- * @param {Object} result - Request result
- */
-function recordOptimizationResult(request, result) {
-  if (!ENABLE_OPTIMIZATION) return;
-
-  const optimization = getOptimization();
-  if (!optimization) return;
-
-  try {
-    optimization.recordResult(request, result);
-  } catch (error) {
-    console.warn('[Optimization] Failed to record result:', error.message);
-  }
-}
-
-/**
- * Get optimized timeout for content type
- *
- * @param {string} contentType - Content type
- * @returns {number} Timeout in ms
- */
-function getOptimizedTimeout(contentType) {
-  if (!ENABLE_OPTIMIZATION) {
-    return GENERATION_TIMEOUT_MS;
-  }
-
-  const optimization = getOptimization();
-  if (!optimization) {
-    return GENERATION_TIMEOUT_MS;
-  }
-
-  return optimization.getOptimizedTimeout(contentType);
-}
-
-/**
- * Track request lifecycle for optimization
- */
-function trackOptimizationRequestStart() {
-  if (!ENABLE_OPTIMIZATION) return;
-
-  const optimization = getOptimization();
-  if (optimization) {
-    optimization.trackRequestStart();
-  }
-}
-
-function trackOptimizationRequestEnd() {
-  if (!ENABLE_OPTIMIZATION) return;
-
-  const optimization = getOptimization();
-  if (optimization) {
-    optimization.trackRequestEnd();
-  }
-}
-
-/**
- * Get monitoring pipeline for system monitoring
- *
- * Provides health checks, metrics dashboard, and alerting
- * for the PROMPT ML system.
- *
- * @returns {Object|null} Monitoring pipeline or null if disabled
- */
-function getMonitoring() {
-  if (!ENABLE_MONITORING) {
-    return null;
-  }
-  return getMonitoringPipeline();
-}
-
-/**
- * Record request metrics for monitoring dashboard
- *
- * @param {Object} data - Request metrics
- */
-function recordMonitoringMetrics(data) {
-  if (!ENABLE_MONITORING) return;
-
-  const monitoring = getMonitoring();
-  if (monitoring) {
-    monitoring.recordRequest(data);
-  }
-}
-
-/**
- * Start monitoring system
- */
-function startMonitoring() {
-  if (!ENABLE_MONITORING) return;
-
-  const monitoring = getMonitoring();
-  if (monitoring) {
-    monitoring.start();
-  }
-}
-
-/**
- * Stop monitoring system
- */
-function stopMonitoring() {
-  if (!ENABLE_MONITORING) return;
-
-  const monitoring = getMonitoring();
-  if (monitoring) {
-    monitoring.stop();
-  }
-}
 
 // Initialize Gemini API (using API_KEY from environment to match server/config.js)
 const genAI = new GoogleGenerativeAI(process.env.API_KEY);
@@ -1553,12 +984,8 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null, opt
       }
     }
 
-    // Apply context engineering for optimized prompt assembly
-    const contextResult = processContextEngineering(researchFiles, userPrompt, 'Roadmap', perfLogger);
-    const processedFiles = contextResult.files;
-
     // Select variant and generate prompt (A/B testing) - uses async version for map-reduce support
-    const variantResult = await selectAndApplyVariantAsync('Roadmap', userPrompt, processedFiles, generateRoadmapPrompt, {
+    const variantResult = await selectAndApplyVariantAsync('Roadmap', userPrompt, researchFiles, generateRoadmapPrompt, {
       perfLogger,
       onProgress: options.onProgress
     });
@@ -1579,26 +1006,18 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null, opt
 
     const data = await generateWithGemini(variantResult.prompt, roadmapSchema, 'Roadmap', ROADMAP_CONFIG, perfLogger, routingOptions);
 
-    // Validate generated output (PROMPT ML Layer 6)
-    const validationResult = validateGeneratedOutput(data, 'Roadmap', roadmapSchema, {
-      userPrompt,
-      researchFiles: processedFiles
-    }, perfLogger);
-    const validatedData = validationResult.data;
-
-    // Fix: Ensure we have valid data before returning success
-    if (validatedData === null || validatedData === undefined) {
+    // Ensure we have valid data before returning success
+    if (data === null || data === undefined) {
       throw new Error('Roadmap generation completed but returned no data. The AI response may have been malformed.');
     }
 
     // Enforce yearly intervals for long time ranges (5+ years)
-    // This corrects AI-generated quarterly/monthly intervals to yearly when appropriate
-    const intervalCorrectedData = enforceYearlyIntervalsForLongRanges(validatedData);
+    const intervalCorrectedData = enforceYearlyIntervalsForLongRanges(data);
 
     // Ensure all tasks have valid bar objects with bounds checking
     const correctedData = ensureTaskBars(intervalCorrectedData);
 
-    // Store in cache (use corrected data so cached results also have valid bars)
+    // Store in cache
     if (ENABLE_CACHE && correctedData) {
       setCachedContent(contentType, combinedContent, userPrompt, correctedData);
     }
@@ -1609,12 +1028,10 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null, opt
     if (variantResult.usedVariant) {
       const perfMetrics = {
         latencyMs,
-        qualityScore: validationResult.validation?.quality?.score || 0,
-        success: validationResult.validation?.valid !== false
+        qualityScore: 0,
+        success: true
       };
       recordVariantPerformance(variantResult.variantId, perfMetrics);
-
-      // Also record to active experiment if one exists
       recordExperimentMetric(variantResult.variantId, perfMetrics);
     }
 
@@ -1625,19 +1042,14 @@ async function generateRoadmap(userPrompt, researchFiles, perfLogger = null, opt
       prompt: variantResult.prompt,
       userPrompt,
       fileCount: researchFiles.length,
-      complexity: contextResult.metadata?.complexity || 0,
       latencyMs,
-      inputTokens: contextResult.metadata?.tokensUsed || 0,
-      cacheHit: false,
-      validation: validationResult.validation
+      cacheHit: false
     });
 
     return {
       success: true,
       data: correctedData,
-      _contextEngineering: contextResult.metadata,
       _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
-      _validation: validationResult.validation,
       _generationId: generationId,
       _mapReduce: variantResult.mapReduceMetadata
     };
@@ -1676,12 +1088,8 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null, opti
       }
     }
 
-    // Apply context engineering for optimized prompt assembly
-    const contextResult = processContextEngineering(researchFiles, userPrompt, 'Slides', perfLogger);
-    const processedFiles = contextResult.files;
-
     // Select variant and generate prompt (A/B testing) - uses async version for map-reduce support
-    const variantResult = await selectAndApplyVariantAsync('Slides', userPrompt, processedFiles, generateSlidesPrompt, {
+    const variantResult = await selectAndApplyVariantAsync('Slides', userPrompt, researchFiles, generateSlidesPrompt, {
       perfLogger,
       onProgress: options.onProgress
     });
@@ -1702,21 +1110,14 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null, opti
 
     const data = await generateWithGemini(variantResult.prompt, slidesSchema, 'Slides', SLIDES_CONFIG, perfLogger, routingOptions);
 
-    // Validate generated output (PROMPT ML Layer 6)
-    const validationResult = validateGeneratedOutput(data, 'Slides', slidesSchema, {
-      userPrompt,
-      researchFiles: processedFiles
-    }, perfLogger);
-    const validatedData = validationResult.data;
-
-    // Fix: Ensure we have valid data before returning success
-    if (validatedData === null || validatedData === undefined) {
+    // Ensure we have valid data before returning success
+    if (data === null || data === undefined) {
       throw new Error('Slides generation completed but returned no data. The AI response may have been malformed.');
     }
 
     // Store in cache
-    if (ENABLE_CACHE && validatedData) {
-      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
+    if (ENABLE_CACHE && data) {
+      setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
     const latencyMs = Date.now() - startTime;
@@ -1725,12 +1126,10 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null, opti
     if (variantResult.usedVariant) {
       const perfMetrics = {
         latencyMs,
-        qualityScore: validationResult.validation?.quality?.score || 0,
-        success: validationResult.validation?.valid !== false
+        qualityScore: 0,
+        success: true
       };
       recordVariantPerformance(variantResult.variantId, perfMetrics);
-
-      // Also record to active experiment if one exists
       recordExperimentMetric(variantResult.variantId, perfMetrics);
     }
 
@@ -1741,19 +1140,14 @@ async function generateSlides(userPrompt, researchFiles, perfLogger = null, opti
       prompt: variantResult.prompt,
       userPrompt,
       fileCount: researchFiles.length,
-      complexity: contextResult.metadata?.complexity || 0,
       latencyMs,
-      inputTokens: contextResult.metadata?.tokensUsed || 0,
-      cacheHit: false,
-      validation: validationResult.validation
+      cacheHit: false
     });
 
     return {
       success: true,
-      data: validatedData,
-      _contextEngineering: contextResult.metadata,
+      data,
       _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
-      _validation: validationResult.validation,
       _generationId: generationId,
       _mapReduce: variantResult.mapReduceMetadata
     };
@@ -1792,12 +1186,8 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null, op
       }
     }
 
-    // Apply context engineering for optimized prompt assembly
-    const contextResult = processContextEngineering(researchFiles, userPrompt, 'Document', perfLogger);
-    const processedFiles = contextResult.files;
-
     // Select variant and generate prompt (A/B testing) - uses async version for map-reduce support
-    const variantResult = await selectAndApplyVariantAsync('Document', userPrompt, processedFiles, generateDocumentPrompt, {
+    const variantResult = await selectAndApplyVariantAsync('Document', userPrompt, researchFiles, generateDocumentPrompt, {
       perfLogger,
       onProgress: options.onProgress
     });
@@ -1818,21 +1208,14 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null, op
 
     const data = await generateWithGemini(variantResult.prompt, documentSchema, 'Document', DOCUMENT_CONFIG, perfLogger, routingOptions);
 
-    // Validate generated output (PROMPT ML Layer 6)
-    const validationResult = validateGeneratedOutput(data, 'Document', documentSchema, {
-      userPrompt,
-      researchFiles: processedFiles
-    }, perfLogger);
-    const validatedData = validationResult.data;
-
-    // Fix: Ensure we have valid data before returning success
-    if (validatedData === null || validatedData === undefined) {
+    // Ensure we have valid data before returning success
+    if (data === null || data === undefined) {
       throw new Error('Document generation completed but returned no data. The AI response may have been malformed.');
     }
 
     // Store in cache
-    if (ENABLE_CACHE && validatedData) {
-      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
+    if (ENABLE_CACHE && data) {
+      setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
     const latencyMs = Date.now() - startTime;
@@ -1841,12 +1224,10 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null, op
     if (variantResult.usedVariant) {
       const perfMetrics = {
         latencyMs,
-        qualityScore: validationResult.validation?.quality?.score || 0,
-        success: validationResult.validation?.valid !== false
+        qualityScore: 0,
+        success: true
       };
       recordVariantPerformance(variantResult.variantId, perfMetrics);
-
-      // Also record to active experiment if one exists
       recordExperimentMetric(variantResult.variantId, perfMetrics);
     }
 
@@ -1857,19 +1238,14 @@ async function generateDocument(userPrompt, researchFiles, perfLogger = null, op
       prompt: variantResult.prompt,
       userPrompt,
       fileCount: researchFiles.length,
-      complexity: contextResult.metadata?.complexity || 0,
       latencyMs,
-      inputTokens: contextResult.metadata?.tokensUsed || 0,
-      cacheHit: false,
-      validation: validationResult.validation
+      cacheHit: false
     });
 
     return {
       success: true,
-      data: validatedData,
-      _contextEngineering: contextResult.metadata,
+      data,
       _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
-      _validation: validationResult.validation,
       _generationId: generationId,
       _mapReduce: variantResult.mapReduceMetadata
     };
@@ -1908,12 +1284,8 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       }
     }
 
-    // Apply context engineering for optimized prompt assembly
-    const contextResult = processContextEngineering(researchFiles, userPrompt, 'ResearchAnalysis', perfLogger);
-    const processedFiles = contextResult.files;
-
     // Select variant and generate prompt (A/B testing) - uses async version for map-reduce support
-    const variantResult = await selectAndApplyVariantAsync('ResearchAnalysis', userPrompt, processedFiles, generateResearchAnalysisPrompt, {
+    const variantResult = await selectAndApplyVariantAsync('ResearchAnalysis', userPrompt, researchFiles, generateResearchAnalysisPrompt, {
       perfLogger,
       onProgress: options.onProgress
     });
@@ -1934,21 +1306,14 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
 
     const data = await generateWithGemini(variantResult.prompt, researchAnalysisSchema, 'ResearchAnalysis', RESEARCH_ANALYSIS_CONFIG, perfLogger, routingOptions);
 
-    // Validate generated output (PROMPT ML Layer 6)
-    const validationResult = validateGeneratedOutput(data, 'ResearchAnalysis', researchAnalysisSchema, {
-      userPrompt,
-      researchFiles: processedFiles
-    }, perfLogger);
-    const validatedData = validationResult.data;
-
-    // Fix: Ensure we have valid data before returning success
-    if (validatedData === null || validatedData === undefined) {
+    // Ensure we have valid data before returning success
+    if (data === null || data === undefined) {
       throw new Error('Research analysis generation completed but returned no data. The AI response may have been malformed.');
     }
 
     // Store in cache
-    if (ENABLE_CACHE && validatedData) {
-      setCachedContent(contentType, combinedContent, userPrompt, validatedData);
+    if (ENABLE_CACHE && data) {
+      setCachedContent(contentType, combinedContent, userPrompt, data);
     }
 
     const latencyMs = Date.now() - startTime;
@@ -1957,12 +1322,10 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
     if (variantResult.usedVariant) {
       const perfMetrics = {
         latencyMs,
-        qualityScore: validationResult.validation?.quality?.score || 0,
-        success: validationResult.validation?.valid !== false
+        qualityScore: 0,
+        success: true
       };
       recordVariantPerformance(variantResult.variantId, perfMetrics);
-
-      // Also record to active experiment if one exists
       recordExperimentMetric(variantResult.variantId, perfMetrics);
     }
 
@@ -1973,19 +1336,14 @@ async function generateResearchAnalysis(userPrompt, researchFiles, perfLogger = 
       prompt: variantResult.prompt,
       userPrompt,
       fileCount: researchFiles.length,
-      complexity: contextResult.metadata?.complexity || 0,
       latencyMs,
-      inputTokens: contextResult.metadata?.tokensUsed || 0,
-      cacheHit: false,
-      validation: validationResult.validation
+      cacheHit: false
     });
 
     return {
       success: true,
-      data: validatedData,
-      _contextEngineering: contextResult.metadata,
+      data,
       _variant: variantResult.usedVariant ? { id: variantResult.variantId, name: variantResult.variantName } : null,
-      _validation: validationResult.validation,
       _generationId: generationId,
       _mapReduce: variantResult.mapReduceMetadata
     };
@@ -2023,15 +1381,6 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
   perfLogger.setMetadata('totalInputSize', researchFiles.reduce((sum, f) => sum + (f.content?.length || 0), 0));
   perfLogger.setMetadata('promptLength', userPrompt.length);
 
-  // Start observability tracking (PROMPT ML Layer 7)
-  const observability = getObservability();
-  const obsContext = observability?.startRequest({
-    sessionId: options.sessionId,
-    contentTypes: ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
-    userPrompt,
-    fileCount: researchFiles.length
-  });
-
   try {
     // Use apiQueue.runAll to control concurrency and prevent rate limiting
     const tasks = [
@@ -2043,56 +1392,22 @@ export async function generateAllContent(userPrompt, researchFiles, options = {}
 
     const [roadmap, slides, document, researchAnalysis] = await apiQueue.runAll(tasks);
 
-    // Record validation metrics for each content type
-    if (obsContext) {
-      if (roadmap._validation) {
-        recordValidationMetrics({ ...obsContext, contentType: 'Roadmap' }, roadmap._validation);
-      }
-      if (document._validation) {
-        recordValidationMetrics({ ...obsContext, contentType: 'Document' }, document._validation);
-      }
-      if (researchAnalysis._validation) {
-        recordValidationMetrics({ ...obsContext, contentType: 'ResearchAnalysis' }, researchAnalysis._validation);
-      }
-    }
-
     // Complete performance logging
     const perfReport = perfLogger.complete();
-
-    // Store in global metrics for aggregation
     globalMetrics.addRequest(perfReport);
-
-    // Log performance report
     perfLogger.logReport();
-
-    // End observability tracking
-    if (observability && obsContext) {
-      await observability.endRequest(obsContext, {
-        success: true,
-        contentTypes: ['Roadmap', 'Slides', 'Document', 'ResearchAnalysis'],
-        cached: roadmap._cached || slides._cached || document._cached || researchAnalysis._cached
-      });
-    }
 
     return {
       roadmap,
       slides,
       document,
       researchAnalysis,
-      _performanceMetrics: perfReport,
-      _observability: obsContext ? { traceId: obsContext.traceId } : null
+      _performanceMetrics: perfReport
     };
   } catch (error) {
     perfLogger.setMetadata('fatalError', error.message);
     perfLogger.complete();
     perfLogger.logReport();
-
-    // Record error in observability
-    if (observability && obsContext) {
-      observability.observeError(obsContext, error);
-      await observability.endRequest(obsContext, { success: false, error: error.message });
-    }
-
     throw error;
   }
 }
@@ -2201,298 +1516,6 @@ export {
   clearDashboardCache,
   TimePeriod
 } from './layers/optimization/dashboard/index.js';
-
-/**
- * Get observability metrics summary
- * Returns tracing stats, LLM metrics, and recent traces
- *
- * @returns {Object} Observability summary
- */
-export function getObservabilityMetrics() {
-  const observability = getObservability();
-  if (!observability) {
-    return { enabled: false };
-  }
-
-  return {
-    enabled: true,
-    ...observability.getSummary()
-  };
-}
-
-/**
- * Get recent traces for debugging
- *
- * @param {number} count - Number of traces to return
- * @returns {Array} Recent traces
- */
-export function getRecentTraces(count = 10) {
-  const observability = getObservability();
-  if (!observability) {
-    return [];
-  }
-
-  return observability.getRecentTraces(count);
-}
-
-/**
- * Get metrics in Prometheus format
- *
- * @returns {string} Prometheus-formatted metrics
- */
-export function getPrometheusMetrics() {
-  const observability = getObservability();
-  if (!observability) {
-    return '# Observability disabled\n';
-  }
-
-  return observability.getPrometheusMetrics();
-}
-
-/**
- * Get evaluation summary including feedback and suggestions
- *
- * @returns {Object} Evaluation summary
- */
-export function getEvaluationSummary() {
-  const evaluation = getEvaluation();
-  if (!evaluation) {
-    return { enabled: false };
-  }
-
-  return {
-    enabled: true,
-    ...evaluation.getSummary()
-  };
-}
-
-/**
- * Record user feedback for generated content
- *
- * @param {string} feedbackType - Type of feedback (rating, thumbs, comment, etc.)
- * @param {string} contentType - Content type (roadmap, slides, document, research-analysis)
- * @param {*} value - Feedback value
- * @param {Object} context - Additional context (sessionId, traceId)
- * @returns {Object|null} Feedback entry
- */
-export function submitFeedback(feedbackType, contentType, value, context = {}) {
-  return recordUserFeedback(feedbackType, contentType, value, context);
-}
-
-/**
- * Get improvement suggestions based on collected feedback
- *
- * @returns {Array} Improvement suggestions
- */
-export function getImprovementSuggestions() {
-  const evaluation = getEvaluation();
-  if (!evaluation || !evaluation.feedbackCollector) {
-    return [];
-  }
-
-  return evaluation.feedbackCollector.getImprovementSuggestions();
-}
-
-/**
- * Get optimization summary including prompt, cache, and performance optimization
- *
- * @returns {Object} Optimization summary
- */
-export function getOptimizationSummary() {
-  const optimization = getOptimization();
-  if (!optimization) {
-    return { enabled: false };
-  }
-
-  return {
-    enabled: true,
-    ...optimization.getSummary()
-  };
-}
-
-/**
- * Get all optimization recommendations
- *
- * @returns {Array} Optimization recommendations
- */
-export function getOptimizationRecommendations() {
-  const optimization = getOptimization();
-  if (!optimization) {
-    return [];
-  }
-
-  return optimization.getAllRecommendations();
-}
-
-/**
- * Run auto-tuning cycle for optimization
- *
- * @returns {Object} Tuning results
- */
-export function runAutoTuning() {
-  const optimization = getOptimization();
-  if (!optimization) {
-    return { enabled: false };
-  }
-
-  return optimization.autoTune();
-}
-
-/**
- * Set optimization tuning mode
- *
- * @param {string} mode - Tuning mode (conservative, balanced, aggressive, auto)
- */
-export function setOptimizationMode(mode) {
-  const optimization = getOptimization();
-  if (!optimization) return;
-
-  const modeMap = {
-    'conservative': TuningMode.CONSERVATIVE,
-    'balanced': TuningMode.BALANCED,
-    'aggressive': TuningMode.AGGRESSIVE,
-    'auto': TuningMode.AUTO
-  };
-
-  const tuningMode = modeMap[mode] || TuningMode.BALANCED;
-  optimization.setTuningMode(tuningMode);
-}
-
-/**
- * Get monitoring health report
- *
- * @returns {Object} Health report
- */
-export async function getHealthReport() {
-  const monitoring = getMonitoring();
-  if (!monitoring) {
-    return { enabled: false };
-  }
-
-  return {
-    enabled: true,
-    ...(await monitoring.getHealthReport())
-  };
-}
-
-/**
- * Get monitoring liveness status (for Kubernetes probes)
- *
- * @returns {Object} Liveness status
- */
-export async function getLiveness() {
-  const monitoring = getMonitoring();
-  if (!monitoring) {
-    return { alive: true, status: 'unknown' };
-  }
-
-  return monitoring.getLiveness();
-}
-
-/**
- * Get monitoring readiness status (for Kubernetes probes)
- *
- * @returns {Object} Readiness status
- */
-export async function getReadiness() {
-  const monitoring = getMonitoring();
-  if (!monitoring) {
-    return { ready: true, status: 'unknown' };
-  }
-
-  return monitoring.getReadiness();
-}
-
-/**
- * Get monitoring dashboard data
- *
- * @returns {Object} Dashboard data
- */
-export function getMonitoringDashboard() {
-  const monitoring = getMonitoring();
-  if (!monitoring) {
-    return { enabled: false };
-  }
-
-  return {
-    enabled: true,
-    ...monitoring.getDashboardData()
-  };
-}
-
-/**
- * Get active alerts from monitoring
- *
- * @param {string} minSeverity - Minimum severity filter
- * @returns {Array} Active alerts
- */
-export function getMonitoringAlerts(minSeverity = null) {
-  const monitoring = getMonitoring();
-  if (!monitoring) {
-    return [];
-  }
-
-  return monitoring.getActiveAlerts(minSeverity);
-}
-
-/**
- * Get monitoring summary including health, metrics, and alerts
- *
- * @returns {Object} Comprehensive monitoring summary
- */
-export async function getMonitoringSummary() {
-  const monitoring = getMonitoring();
-  if (!monitoring) {
-    return { enabled: false };
-  }
-
-  return {
-    enabled: true,
-    ...(await monitoring.getSummary())
-  };
-}
-
-/**
- * Export monitoring metrics in Prometheus format
- *
- * @returns {string} Prometheus-formatted metrics
- */
-export function getMonitoringMetrics() {
-  const monitoring = getMonitoring();
-  if (!monitoring) {
-    return '# Monitoring disabled\n';
-  }
-
-  return monitoring.exportMetrics('prometheus');
-}
-
-/**
- * Acknowledge a monitoring alert
- *
- * @param {string} alertId - Alert ID
- * @param {string} by - Acknowledger
- * @returns {Object|null} Updated alert
- */
-export function acknowledgeAlert(alertId, by = 'user') {
-  const monitoring = getMonitoring();
-  if (!monitoring) return null;
-
-  return monitoring.acknowledgeAlert(alertId, by);
-}
-
-/**
- * Resolve a monitoring alert
- *
- * @param {string} alertId - Alert ID
- * @param {string} resolution - Resolution note
- * @returns {Object|null} Updated alert
- */
-export function resolveAlert(alertId, resolution = '') {
-  const monitoring = getMonitoring();
-  if (!monitoring) return null;
-
-  return monitoring.resolveAlert(alertId, resolution);
-}
 
 /**
  * Generate all content types with streaming - emits results as each completes
