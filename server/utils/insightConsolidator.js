@@ -70,9 +70,9 @@ function consolidateKeyFacts(allInsights) {
     }
   }
   
-  // Deduplicate - use HIGH threshold (0.9) to preserve distinct items
-  // Only merge nearly identical facts to avoid losing task details
-  const unique = deduplicateByText(allFacts, 'fact', 0.9);
+  // Deduplicate - use VERY HIGH threshold (0.95) to preserve distinct items
+  // Only merge near-identical facts to avoid losing task details
+  const unique = deduplicateByText(allFacts, 'fact', 0.95);
   
   // Sort by importance
   const importanceOrder = { high: 0, medium: 1, low: 2 };
@@ -97,12 +97,12 @@ function consolidateDates(allInsights) {
     }
   }
   
-  // Deduplicate by date + event combo - use HIGH threshold (0.9)
-  // to preserve distinct timeline events/tasks
+  // Deduplicate by date + event combo - use VERY HIGH threshold (0.95)
+  // to preserve distinct timeline events/tasks - only merge near-duplicates
   const unique = deduplicateByText(
     allDates.map(d => ({ ...d, _key: `${d.date} ${d.event}` })),
     '_key',
-    0.9
+    0.95
   ).map(({ _key, ...rest }) => rest);
   
   return unique;
@@ -191,11 +191,11 @@ function consolidateMetrics(allInsights) {
     }
   }
   
-  // Deduplicate by value + context - use higher threshold to preserve distinct metrics
+  // Deduplicate by value + context - use VERY HIGH threshold to preserve distinct metrics
   return deduplicateByText(
     allMetrics.map(m => ({ ...m, _key: `${m.value} ${m.context}` })),
     '_key',
-    0.85
+    0.95
   ).map(({ _key, ...rest }) => rest);
 }
 
@@ -213,8 +213,8 @@ function consolidateRecommendations(allInsights) {
     }
   }
   
-  // Deduplicate - use higher threshold (0.85) to preserve distinct recommendations
-  const unique = deduplicateByText(allRecs, 'recommendation', 0.85);
+  // Deduplicate - use VERY HIGH threshold (0.95) to preserve distinct recommendations
+  const unique = deduplicateByText(allRecs, 'recommendation', 0.95);
   
   // Sort by priority
   const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -256,8 +256,9 @@ function consolidateTasks(allInsights) {
     }
   }
 
-  // Deduplicate by task name - use HIGH threshold (0.9) to preserve distinct tasks
-  const unique = deduplicateByText(allTasks, 'task', 0.9);
+  // Deduplicate by task name - use VERY HIGH threshold (0.95) to preserve distinct tasks
+  // Only merge near-identical tasks to avoid losing valid entries
+  const unique = deduplicateByText(allTasks, 'task', 0.95);
 
   // Sort by type priority (milestones first, then decisions, then others)
   const typeOrder = { milestone: 0, decision: 1, phase: 2, project: 3, initiative: 4, activity: 5, task: 6 };
