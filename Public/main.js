@@ -3,9 +3,6 @@ const SUPPORTED_FILE_MIMES = FILE_TYPES.MIMES;
 const SUPPORTED_FILE_EXTENSIONS = FILE_TYPES.EXTENSIONS;
 const SUPPORTED_FILES_STRING = SUPPORTED_FILE_EXTENSIONS.join(', ');
 
-// Feature flag for streaming - disabled due to Railway proxy buffering issues
-// SSE streams are buffered by Railway's proxy, preventing real-time delivery
-const ENABLE_STREAMING = false;
 function displayError(message) {
     const errorMessage = document.getElementById('error-message');
     errorMessage.textContent = message;
@@ -269,108 +266,6 @@ async function pollForPhase2Content(sessionId, viewType, generateBtn) {
   return await poll();
 }
 
-/**
- * Stream content generation using Server-Sent Events
- * Parses SSE events from a POST request (using Fetch API)
- *
- * @param {FormData} formData - Form data with prompt and research files
- * @param {Object} callbacks - Event callbacks
- * @param {Function} callbacks.onProgress - Called for progress updates
- * @param {Function} callbacks.onContent - Called when a content type is ready
- * @param {Function} callbacks.onComplete - Called when all content is ready
- * @param {Function} callbacks.onError - Called on error
- * @returns {Promise<Object>} - Final results with sessionId
- */
-async function streamContentGeneration(formData, callbacks) {
-  const { onProgress, onContent, onComplete, onError } = callbacks;
-
-  try {
-    const response = await fetch('/api/content/generate/stream', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let sessionId = null;
-    const contentResults = {};
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      // Parse SSE events from buffer
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-      let eventType = null;
-      let eventData = null;
-
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          eventType = line.slice(7).trim();
-        } else if (line.startsWith('data: ')) {
-          try {
-            eventData = JSON.parse(line.slice(6));
-          } catch (_e) {
-            // Skip malformed JSON
-            continue;
-          }
-
-          // Handle event based on type
-          if (eventType === 'progress' && eventData) {
-            if (eventData.sessionId) {
-              sessionId = eventData.sessionId;
-            }
-            if (onProgress) onProgress(eventData.message);
-          } else if (eventType === 'content' && eventData) {
-            const { type, success, data, error } = eventData;
-            contentResults[type] = { success, data, error };
-            if (onContent) onContent(type, { success, data, error });
-          } else if (eventType === 'complete' && eventData) {
-            sessionId = eventData.sessionId || sessionId;
-            if (onComplete) onComplete(sessionId, contentResults, eventData._performance);
-            return { sessionId, content: contentResults, _performance: eventData._performance };
-          } else if (eventType === 'error' && eventData) {
-            throw new Error(eventData.message || 'Unknown streaming error');
-          }
-
-          // Reset for next event
-          eventType = null;
-          eventData = null;
-        }
-      }
-    }
-
-    // If we get here without a complete event, something went wrong
-    if (!sessionId) {
-      throw new Error('Stream ended without completion event');
-    }
-
-    return { sessionId, content: contentResults };
-
-  } catch (error) {
-    if (onError) onError(error);
-    throw error;
-  }
-}
-
-/**
- * Check if streaming is supported (modern browsers with ReadableStream)
- */
-function supportsStreaming() {
-  return ENABLE_STREAMING &&
-    typeof ReadableStream !== 'undefined' &&
-    typeof TextDecoder !== 'undefined';
-}
-
 async function handleChartGenerate(event) {
   event.preventDefault(); // Stop form from reloading page
   const generateBtn = document.getElementById('generate-btn');
@@ -441,188 +336,36 @@ async function handleChartGenerate(event) {
 
     let sessionId = null;
     let ganttData = null;
-    let roadmapError = null; // Track roadmap-specific errors
 
-    // Try streaming first if supported, fall back to synchronous
-    if (supportsStreaming()) {
+    // Use synchronous endpoint with polling
+    const response = await fetch('/api/content/generate', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) {
+      let errorText = `Server error: ${response.status}`;
       try {
-        // Track which content types have completed
-        const completedContent = new Set();
-        const contentTypes = ['document', 'slides', 'roadmap', 'research-analysis'];
-
-        const streamResult = await streamContentGeneration(formData, {
-          onProgress: (message) => {
-            // Show progress message with elapsed time
-            if (completedContent.size === 0) {
-              generateBtn.textContent = `${message} (${formatElapsed(elapsedSeconds)})`;
-            }
-          },
-          onContent: (type, result) => {
-            // Track completed content
-            completedContent.add(type);
-
-            // Build progress string showing completed types
-            const progressCount = `${completedContent.size}/${contentTypes.length}`;
-            const typeLabels = {
-              'document': 'Doc',
-              'slides': 'Slides',
-              'roadmap': 'Roadmap',
-              'research-analysis': 'Analysis'
-            };
-
-            // Show which types are ready
-            const readyList = Array.from(completedContent).map(t => typeLabels[t] || t).join(', ');
-            generateBtn.textContent = `Ready: ${readyList} [${progressCount}] (${formatElapsed(elapsedSeconds)})`;
-
-            // Store roadmap data when it arrives, or track error
-            if (type === 'roadmap') {
-              if (result.success && result.data) {
-                ganttData = result.data;
-              } else if (result.success && (result.data === null || result.data === undefined)) {
-                // Handle edge case where server returns success but with null data
-                roadmapError = 'Chart generation completed but returned no data. Please try again.';
-              } else if (!result.success && result.error) {
-                roadmapError = result.error;
-              } else if (!result.success) {
-                // Handle case where success is false but no error message provided
-                roadmapError = 'Chart generation failed. Please try again.';
-              } else {
-                // Catch-all for unexpected result format
-                roadmapError = 'Chart generation returned an unexpected response. Please try again.';
-              }
-            }
-          },
-          onComplete: (sid, results, _performance) => {
-            sessionId = sid;
-            generateBtn.textContent = `Complete! Opening viewer...`;
-
-            // Extract roadmap data from final results if not already set
-            if (!ganttData && results.roadmap?.data) {
-              ganttData = results.roadmap.data;
-            }
-            // Track roadmap error from final results if not already tracked
-            if (!roadmapError && results.roadmap && !results.roadmap.success && results.roadmap.error) {
-              roadmapError = results.roadmap.error;
-            }
-            // Handle edge case where success is true but data is null
-            if (!roadmapError && !ganttData && results.roadmap?.success && (results.roadmap.data === null || results.roadmap.data === undefined)) {
-              roadmapError = 'Chart generation completed but returned no data. Please try again.';
-            }
-            // Handle case where roadmap content was never received in results
-            if (!roadmapError && !ganttData && !results.roadmap) {
-              roadmapError = 'Chart generation did not complete. The roadmap content was not received.';
-            }
-            // Catch-all: if we still don't have ganttData and no error, something unexpected happened
-            if (!roadmapError && !ganttData) {
-              roadmapError = results.roadmap
-                ? 'Chart generation returned an unexpected response format. Please try again.'
-                : 'Chart generation failed with no response. Please try again.';
-            }
-          },
-          onError: (error) => {
-            throw error;
-          }
-        });
-
-        // Use results from streaming
-        sessionId = streamResult.sessionId;
-        if (!ganttData && streamResult.content?.roadmap?.data) {
-          ganttData = streamResult.content.roadmap.data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const err = await response.json();
+          errorText = err.error || errorText;
+        } else {
+          const text = await response.text();
+          errorText = text.substring(0, 200) || errorText;
         }
-        // Check for roadmap error from stream result
-        if (!roadmapError && streamResult.content?.roadmap && !streamResult.content.roadmap.success && streamResult.content.roadmap.error) {
-          roadmapError = streamResult.content.roadmap.error;
-        }
-        // Handle edge case where success is true but data is null
-        if (!roadmapError && !ganttData && streamResult.content?.roadmap?.success && (streamResult.content.roadmap.data === null || streamResult.content.roadmap.data === undefined)) {
-          roadmapError = 'Chart generation completed but returned no data. Please try again.';
-        }
-        // Handle case where roadmap content was never received
-        if (!roadmapError && !ganttData && !streamResult.content?.roadmap) {
-          roadmapError = 'Chart generation did not complete. The roadmap content was not received. Please try again.';
-        }
-        // Catch-all: if we still don't have ganttData and no error, something unexpected happened
-        if (!roadmapError && !ganttData) {
-          roadmapError = streamResult.content?.roadmap
-            ? 'Chart generation returned an unexpected response format. Please try again.'
-            : 'Chart generation failed with no response. Please try again.';
-        }
-
-        // If roadmap generation failed, throw the actual error message
-        if (roadmapError && !ganttData) {
-          throw new Error(`Chart generation failed: ${roadmapError}`);
-        }
-
-      } catch (streamError) {
-        // If the error is a roadmap generation error (not a streaming transport error),
-        // re-throw it instead of falling back to synchronous
-        if (streamError.message && streamError.message.startsWith('Chart generation failed:')) {
-          throw streamError;
-        }
-
-        // Fall back to synchronous endpoint for transport/streaming errors
-        console.warn('Streaming failed, falling back to synchronous:', streamError.message);
-        const response = await fetch('/api/content/generate', {
-          method: 'POST',
-          body: formData,
-        });
-        if (!response.ok) {
-          let errorText = `Server error: ${response.status}`;
-          try {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              const err = await response.json();
-              errorText = err.error || errorText;
-            } else {
-              const text = await response.text();
-              errorText = text.substring(0, 200) || errorText;
-            }
-          } catch (_parseError) {
-          }
-          throw new Error(errorText);
-        }
-        const generationResponse = await response.json();
-        sessionId = generationResponse.sessionId;
-        if (!sessionId) {
-          throw new Error('Server did not return a session ID');
-        }
-        ganttData = await pollForPhase2Content(sessionId, 'roadmap', generateBtn);
+      } catch (_parseError) {
       }
-    } else {
-      // Streaming not supported - use synchronous endpoint
-      const response = await fetch('/api/content/generate', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!response.ok) {
-        let errorText = `Server error: ${response.status}`;
-        try {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const err = await response.json();
-            errorText = err.error || errorText;
-          } else {
-            const text = await response.text();
-            errorText = text.substring(0, 200) || errorText;
-          }
-        } catch (_parseError) {
-        }
-        throw new Error(errorText);
-      }
-      const generationResponse = await response.json();
-      sessionId = generationResponse.sessionId;
-      if (!sessionId) {
-        throw new Error('Server did not return a session ID');
-      }
-      ganttData = await pollForPhase2Content(sessionId, 'roadmap', generateBtn);
+      throw new Error(errorText);
     }
+    const generationResponse = await response.json();
+    sessionId = generationResponse.sessionId;
+    if (!sessionId) {
+      throw new Error('Server did not return a session ID');
+    }
+    ganttData = await pollForPhase2Content(sessionId, 'roadmap', generateBtn);
 
-    // Validate roadmap data - this should never trigger if earlier checks work
+    // Validate roadmap data
     if (ganttData === null || ganttData === undefined) {
-      // Log debug info to help diagnose the issue
-      console.error('[Chart] Final null check triggered - this indicates a bug in earlier handling');
-      console.error('[Chart] sessionId:', sessionId);
-      console.error('[Chart] roadmapError:', roadmapError);
       throw new Error('Chart generation failed: No data was returned. This may be a temporary issue. Please try again.');
     }
     if (typeof ganttData !== 'object' || Array.isArray(ganttData)) {

@@ -9,7 +9,7 @@
  * - utils/date.js - Date calculation utilities
  * - utils/analysis-builders.js - Analysis HTML builders
  * - utils/performance.js - Performance measurement
- * - utils/assets.js - Asset loading and legend building
+ * - utils/assets.js - Asset loading
  */
 
 // Fetch utilities
@@ -20,7 +20,6 @@ export {
   safeGetElement,
   safeQuerySelector,
   isSafeUrl,
-  createButton,
   createModal
 } from './dom.js';
 
@@ -33,13 +32,7 @@ export {
 // Analysis builders
 export {
   buildAnalysisSection,
-  buildAnalysisList,
-  buildTimelineScenarios,
-  buildRiskAnalysis,
-  buildImpactAnalysis,
-  buildSchedulingContext,
-  buildProgressIndicators,
-  buildAccelerators
+  buildAnalysisList
 } from './analysis-builders.js';
 
 // Performance utilities
@@ -49,7 +42,4 @@ export {
 } from './performance.js';
 
 // Asset utilities
-export {
-  loadFooterSVG,
-  buildLegend
-} from './assets.js';
+export { loadFooterSVG } from './assets.js';

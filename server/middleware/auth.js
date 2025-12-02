@@ -43,15 +43,6 @@ export function generateSecureSessionId() {
 }
 
 /**
- * Generate a secure random token for CSRF, API keys, etc.
- * @param {number} bytes - Number of bytes of entropy (default 32)
- * @returns {string} Hex-encoded token
- */
-export function generateSecureToken(bytes = 32) {
-  return crypto.randomBytes(bytes).toString('hex');
-}
-
-/**
  * Simple JWT implementation for future user authentication
  * Note: For production, consider using jsonwebtoken library
  */
@@ -135,16 +126,6 @@ class SimpleJWT {
 }
 
 /**
- * Generate a JWT token for a user
- * @param {Object} payload - User data to encode
- * @param {string} expiresIn - Expiration time
- * @returns {string} JWT token
- */
-export function generateToken(payload, expiresIn = '24h') {
-  return SimpleJWT.sign(payload, expiresIn);
-}
-
-/**
  * Middleware to verify JWT token from Authorization header
  * Extracts user info and attaches to req.user
  */
@@ -220,61 +201,8 @@ export function verifyApiKey(req, res, next) {
   next();
 }
 
-/**
- * Middleware to require admin access
- * Can be used after verifyToken to check admin flag
- */
-export function requireAdmin(req, res, next) {
-  if (!req.user?.isAdmin && !req.isAdmin) {
-    return res.status(403).json({
-      error: 'Admin access required',
-      message: 'This endpoint requires administrator privileges'
-    });
-  }
-  next();
-}
-
-/**
- * Middleware to optionally authenticate
- * Attaches user if token present, but doesn't require it
- */
-export function optionalAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    try {
-      req.user = SimpleJWT.verify(token);
-    } catch {
-      // Token invalid, but that's okay for optional auth
-      req.user = null;
-    }
-  }
-
-  next();
-}
-
-/**
- * Rate limiting key generator based on user/IP
- * @param {Request} req - Express request
- * @returns {string} Rate limit key
- */
-export function getRateLimitKey(req) {
-  // If authenticated, use user ID
-  if (req.user?.id) {
-    return `user:${req.user.id}`;
-  }
-  // Otherwise use IP address
-  return `ip:${req.ip}`;
-}
-
 export default {
   generateSecureSessionId,
-  generateSecureToken,
-  generateToken,
   verifyToken,
-  verifyApiKey,
-  requireAdmin,
-  optionalAuth,
-  getRateLimitKey
+  verifyApiKey
 };

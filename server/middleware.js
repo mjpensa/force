@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import multer from 'multer';
 import { CONFIG } from './config.js';
 import { getFileExtension } from './utils.js';
+
 export function configureHelmet() {
   return helmet({
     contentSecurityPolicy: {
@@ -13,13 +14,13 @@ export function configureHelmet() {
           "https://cdn.tailwindcss.com",
           "https://cdnjs.cloudflare.com",
           "https://cdn.jsdelivr.net",
-          "'unsafe-inline'" // Required for Tailwind config - TODO: Replace with nonces
+          "'unsafe-inline'"
         ],
         styleSrc: [
           "'self'",
           "https://cdn.tailwindcss.com",
           "https://fonts.googleapis.com",
-          "'unsafe-inline'" // Required for inline styles
+          "'unsafe-inline'"
         ],
         imgSrc: ["'self'", "data:", "blob:"],
         connectSrc: ["'self'"],
@@ -32,10 +33,11 @@ export function configureHelmet() {
         upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
       },
     },
-    crossOriginEmbedderPolicy: false, // Required for CDN resources
+    crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" }
   });
 }
+
 export function configureCacheControl(req, res, next) {
   if (req.path.match(/\.(jpg|jpeg|png|gif|ico|css|js|svg)$/)) {
     res.set('Cache-Control', `public, max-age=${CONFIG.CACHE.STATIC_ASSETS_MAX_AGE}`);
@@ -44,9 +46,8 @@ export function configureCacheControl(req, res, next) {
   }
   next();
 }
+
 export function configureTimeout(req, res, next) {
-  // Skip global timeout for streaming routes - they set their own extended timeouts
-  // This prevents the global 2-minute timeout from interfering with long-running SSE connections
   if (req.path.includes('/generate/stream')) {
     return next();
   }
@@ -54,20 +55,22 @@ export function configureTimeout(req, res, next) {
   res.setTimeout(CONFIG.TIMEOUTS.RESPONSE_MS);
   next();
 }
+
 export const apiLimiter = rateLimit({
   windowMs: CONFIG.RATE_LIMIT.WINDOW_MS,
   max: CONFIG.RATE_LIMIT.MAX_REQUESTS,
   message: {
     error: CONFIG.ERRORS.RATE_LIMIT_EXCEEDED
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
   handler: (req, res) => {
     res.status(429).json({
       error: CONFIG.ERRORS.RATE_LIMIT_EXCEEDED
     });
   }
 });
+
 export const strictLimiter = rateLimit({
   windowMs: CONFIG.RATE_LIMIT.WINDOW_MS,
   max: CONFIG.RATE_LIMIT.STRICT_MAX_REQUESTS,
@@ -82,6 +85,7 @@ export const strictLimiter = rateLimit({
     });
   }
 });
+
 export const uploadMiddleware = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -94,13 +98,11 @@ export const uploadMiddleware = multer({
     const fileExtension = getFileExtension(file.originalname);
     const allowedExtensions = CONFIG.FILES.ALLOWED_EXTENSIONS;
 
-    // Security: Always validate extension to prevent MIME type spoofing
     if (!allowedExtensions.includes(fileExtension)) {
       cb(new Error(CONFIG.ERRORS.INVALID_FILE_EXTENSION(fileExtension)));
       return;
     }
 
-    // Accept if MIME type is allowed (includes octet-stream for .md files)
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -108,6 +110,7 @@ export const uploadMiddleware = multer({
     }
   }
 });
+
 export function handleUploadErrors(error, req, res, next) {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
@@ -127,26 +130,15 @@ export function handleUploadErrors(error, req, res, next) {
   next();
 }
 
-// Re-export authentication and CSRF middleware
+// Re-export authentication middleware
 export {
   generateSecureSessionId,
-  generateSecureToken,
-  generateToken,
   verifyToken,
-  verifyApiKey,
-  requireAdmin,
-  optionalAuth,
-  getRateLimitKey
+  verifyApiKey
 } from './middleware/auth.js';
 
+// Re-export CSRF middleware (getCsrfTokenHandler is used in content.js)
 export {
   generateCsrfToken,
-  validateCsrfToken,
-  invalidateSessionTokens,
-  cleanupExpiredTokens,
-  csrfProtection,
-  attachCsrfToken,
-  getCsrfTokenHandler,
-  startCleanupInterval,
-  stopCleanupInterval
+  getCsrfTokenHandler
 } from './middleware/csrf.js';

@@ -35,7 +35,8 @@ export class TaskAnalyzer {
             const text = await response.text();
             errorMessage = text.substring(0, 200) || errorMessage;
           }
-        } catch (parseError) {
+        } catch {
+          // Use default error message if response parsing fails
         }
         throw new Error(errorMessage);
       }
@@ -138,7 +139,11 @@ export class TaskAnalyzer {
     URL.revokeObjectURL(url);
   }
   _buildConfidenceBadge(confidence) {
-    return '';
+    if (!confidence) return '';
+    const level = String(confidence).toLowerCase();
+    const colors = { high: '#22c55e', medium: '#f59e0b', low: '#ef4444' };
+    const color = colors[level] || '#6b7280';
+    return `<span class="confidence-badge" style="background:${color};color:white;padding:2px 8px;border-radius:4px;font-size:0.75rem;margin-left:8px;">${DOMPurify.sanitize(confidence)}</span>`;
   }
   _buildQuickFacts(analysis) {
     const statusClass = analysis.status.replace(/\s+/g, '-').toLowerCase();

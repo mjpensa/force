@@ -61,8 +61,11 @@ export async function fetchWithRetry(url, options = {}) {
     return response;
   }, { maxRetries: 3, initialDelay: 1000 });
 }
-export function logError(_error, _context = {}) {
-  // Stub: Error logging handled by browser console in production
+export function logError(error, context = {}) {
+  // Log errors in development; production errors handled by browser console
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('[AppError]', error?.message || error, context);
+  }
 }
 export function showErrorNotification(error, options = {}) {
   const { onRetry = null, dismissible = true } = options;
