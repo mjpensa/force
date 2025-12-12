@@ -1,7 +1,7 @@
 # V1 Build Specification
 ## Consulting-Grade Research & Proposal Generator (Azure-Ready, Portable)
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Created:** 2025-12-12
 **Updated:** 2025-12-12
 **Status:** Implementation Blueprint
@@ -24,7 +24,11 @@
 12. [Operational Resilience](#12-operational-resilience)
 13. [Cost Management & Usage Tracking](#13-cost-management--usage-tracking)
 14. [Testing & Performance Targets](#14-testing--performance-targets)
-15. [Implementation Checklist](#15-implementation-checklist)
+15. [Admin & Management APIs](#15-admin--management-apis)
+16. [Document Processing Pipeline](#16-document-processing-pipeline)
+17. [Graceful Degradation & Fallbacks](#17-graceful-degradation--fallbacks)
+18. [Health Monitoring](#18-health-monitoring)
+19. [Implementation Checklist](#19-implementation-checklist)
 
 ---
 
@@ -587,11 +591,17 @@ CREATE TABLE jobs (
     progress        INTEGER DEFAULT 0,  -- 0-100
     progress_message VARCHAR(500),
 
+    -- Checkpoint system for mid-pipeline recovery
+    last_completed_step VARCHAR(50),  -- 'extract', 'chunk', 'embed', 'index'
+    checkpoint_data JSONB,            -- State to resume from (e.g., last chunk index)
+    checkpoint_at   TIMESTAMPTZ,      -- When checkpoint was saved
+
     -- Error handling
     error_message   TEXT,
     error_details   JSONB,
     retry_count     INTEGER DEFAULT 0,
     max_retries     INTEGER DEFAULT 3,
+    failed_step     VARCHAR(50),      -- Which step failed for targeted retry
 
     -- Timing
     queued_at       TIMESTAMPTZ,
@@ -2813,6 +2823,124 @@ export const DEFAULT_RERANK_CONFIG: RerankConfig = {
   batchSize: 50,
   timeout: 30000,
 };
+
+// Concrete Cohere Implementation
+export class CohereRerankAdapter implements RerankAdapter {
+  private client: CohereClient;
+  private config: RerankConfig;
+
+  constructor(config: RerankConfig) {
+    this.config = config;
+    this.client = new CohereClient({
+      token: config.cohere!.apiKey,
+    });
+  }
+
+  async rerank(
+    query: string,
+    documents: RerankDocument[],
+    options: RerankOptions = {}
+  ): Promise<RerankResult[]> {
+    const { topK = 20, minScore = 0.0 } = options;
+
+    // Batch documents if exceeding batch size
+    const batches = this.batchDocuments(documents, this.config.batchSize);
+    const allResults: RerankResult[] = [];
+
+    for (const batch of batches) {
+      try {
+        const response = await this.client.rerank({
+          model: this.config.cohere!.model,
+          query,
+          documents: batch.map(d => d.text),
+          topN: Math.min(topK, batch.length),
+          returnDocuments: false,
+        });
+
+        // Map results back to original indices
+        for (const result of response.results) {
+          const originalDoc = batch[result.index];
+          allResults.push({
+            id: originalDoc.id,
+            score: result.relevanceScore,
+            originalRank: documents.findIndex(d => d.id === originalDoc.id),
+            newRank: -1, // Will be set after sorting
+          });
+        }
+      } catch (error) {
+        console.error('Cohere rerank batch failed:', error);
+        // On failure, return original order for this batch
+        batch.forEach((doc, idx) => {
+          allResults.push({
+            id: doc.id,
+            score: 1 - (idx / batch.length), // Decay score by position
+            originalRank: documents.findIndex(d => d.id === doc.id),
+            newRank: -1,
+          });
+        });
+      }
+    }
+
+    // Sort by score and assign new ranks
+    allResults.sort((a, b) => b.score - a.score);
+    allResults.forEach((r, idx) => { r.newRank = idx; });
+
+    // Filter by minScore and limit to topK
+    return allResults
+      .filter(r => r.score >= minScore)
+      .slice(0, topK);
+  }
+
+  private batchDocuments(
+    documents: RerankDocument[],
+    batchSize: number
+  ): RerankDocument[][] {
+    const batches: RerankDocument[][] = [];
+    for (let i = 0; i < documents.length; i += batchSize) {
+      batches.push(documents.slice(i, i + batchSize));
+    }
+    return batches;
+  }
+}
+
+// Cross-Encoder Fallback Implementation
+export class CrossEncoderRerankAdapter implements RerankAdapter {
+  private model: CrossEncoderModel;
+
+  constructor(config: RerankConfig) {
+    // Uses local model for fallback when Cohere is unavailable
+    this.model = new CrossEncoderModel(
+      config.crossEncoder?.model || 'cross-encoder/ms-marco-MiniLM-L-6-v2'
+    );
+  }
+
+  async rerank(
+    query: string,
+    documents: RerankDocument[],
+    options: RerankOptions = {}
+  ): Promise<RerankResult[]> {
+    const { topK = 20, minScore = 0.0 } = options;
+
+    // Score all query-document pairs
+    const pairs = documents.map(d => ({ query, text: d.text }));
+    const scores = await this.model.predict(pairs);
+
+    const results: RerankResult[] = documents.map((doc, idx) => ({
+      id: doc.id,
+      score: scores[idx],
+      originalRank: idx,
+      newRank: -1,
+    }));
+
+    // Sort and assign ranks
+    results.sort((a, b) => b.score - a.score);
+    results.forEach((r, idx) => { r.newRank = idx; });
+
+    return results
+      .filter(r => r.score >= minScore)
+      .slice(0, topK);
+  }
+}
 ```
 
 ### 10.4 Full RAG Pipeline
@@ -4502,7 +4630,1783 @@ describe('RAG Pipeline Integration', () => {
 
 ---
 
-## 15. Implementation Checklist
+## 15. Admin & Management APIs
+
+### 15.1 Tenant Management
+
+```typescript
+// apps/api/src/routes/admin/tenants.ts
+
+import { Router } from 'express';
+import { adminAuthMiddleware } from '../../middleware/admin-auth';
+
+const router = Router();
+
+// All admin routes require admin role
+router.use(adminAuthMiddleware);
+
+/**
+ * Create a new tenant (organization)
+ */
+router.post('/api/v1/admin/tenants', async (req, res) => {
+  const { name, slug, settings, adminEmail } = req.body;
+
+  // Validate unique slug
+  const existing = await db.tenants.findBySlug(slug);
+  if (existing) {
+    return res.status(409).json({ error: 'Tenant slug already exists' });
+  }
+
+  // Create tenant
+  const tenant = await db.tenants.create({
+    name,
+    slug,
+    settings: settings || {},
+  });
+
+  // Create default usage limits
+  await db.tenantUsageLimits.create({
+    tenantId: tenant.id,
+    monthlyEmbeddingTokens: 10000000,
+    monthlyGenerationTokens: 5000000,
+    monthlyCostLimitUsd: 500.00,
+  });
+
+  // Create default firm knowledge base
+  await db.knowledgeBases.create({
+    tenantId: tenant.id,
+    kbType: 'firm',
+    name: 'Firm Knowledge Base',
+    qdrantCollection: `kb_${slug}_firm`,
+  });
+
+  // Provision admin user if email provided
+  if (adminEmail) {
+    await db.users.create({
+      tenantId: tenant.id,
+      email: adminEmail,
+      role: 'admin',
+      entraOid: null, // Will be linked on first login
+    });
+  }
+
+  // Create Qdrant collection
+  await qdrantService.createCollection(`kb_${slug}_firm`);
+
+  // Audit log
+  await auditLog.record({
+    tenantId: tenant.id,
+    action: 'tenant.created',
+    resourceType: 'tenant',
+    resourceId: tenant.id,
+    newValues: { name, slug },
+  });
+
+  res.status(201).json({
+    id: tenant.id,
+    name: tenant.name,
+    slug: tenant.slug,
+    createdAt: tenant.createdAt,
+  });
+});
+
+/**
+ * Get tenant details
+ */
+router.get('/api/v1/admin/tenants/:id', async (req, res) => {
+  const tenant = await db.tenants.findById(req.params.id);
+  if (!tenant) {
+    return res.status(404).json({ error: 'Tenant not found' });
+  }
+
+  const usage = await usageService.getSummary(tenant.id, 'month');
+  const limits = await db.tenantUsageLimits.findByTenantId(tenant.id);
+
+  res.json({
+    ...tenant,
+    usage,
+    limits,
+  });
+});
+
+/**
+ * Update tenant settings
+ */
+router.put('/api/v1/admin/tenants/:id', async (req, res) => {
+  const { name, settings } = req.body;
+
+  const tenant = await db.tenants.update(req.params.id, {
+    name,
+    settings,
+  });
+
+  res.json(tenant);
+});
+
+/**
+ * Deactivate tenant (soft delete)
+ */
+router.delete('/api/v1/admin/tenants/:id', async (req, res) => {
+  await db.tenants.softDelete(req.params.id);
+
+  // Archive all Qdrant collections
+  const kbs = await db.knowledgeBases.findByTenantId(req.params.id);
+  for (const kb of kbs) {
+    await qdrantService.archiveCollection(kb.qdrantCollection);
+  }
+
+  res.status(204).send();
+});
+
+export default router;
+```
+
+### 15.2 Knowledge Base Management
+
+```typescript
+// apps/api/src/routes/knowledge-bases.ts
+
+import { Router } from 'express';
+import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+
+const router = Router();
+
+router.use(authMiddleware);
+
+/**
+ * List knowledge bases for tenant
+ */
+router.get('/api/v1/knowledge-bases', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+  const { engagementId, kbType } = req.query;
+
+  const kbs = await db.knowledgeBases.findByTenant(tenantId, {
+    engagementId: engagementId as string,
+    kbType: kbType as 'client' | 'firm' | 'oss',
+  });
+
+  // Include document counts
+  const withCounts = await Promise.all(
+    kbs.map(async (kb) => ({
+      ...kb,
+      documentCount: await db.documents.countByKb(kb.id),
+      chunkCount: await db.documentChunks.countByKb(kb.id),
+    }))
+  );
+
+  res.json({ knowledgeBases: withCounts });
+});
+
+/**
+ * Create a new knowledge base
+ */
+router.post('/api/v1/knowledge-bases', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+  const { name, kbType, engagementId, description } = req.body;
+
+  // Validate engagement exists and belongs to tenant
+  if (kbType === 'client') {
+    if (!engagementId) {
+      return res.status(400).json({ error: 'engagementId required for client KB' });
+    }
+    const engagement = await db.engagements.findById(engagementId);
+    if (!engagement || engagement.tenantId !== tenantId) {
+      return res.status(404).json({ error: 'Engagement not found' });
+    }
+  }
+
+  // Generate collection name
+  const tenant = await db.tenants.findById(tenantId);
+  const collectionSuffix = kbType === 'client'
+    ? `eng_${engagementId.slice(0, 8)}`
+    : kbType;
+  const qdrantCollection = `kb_${tenant.slug}_${collectionSuffix}`;
+
+  // Create KB record
+  const kb = await db.knowledgeBases.create({
+    tenantId,
+    engagementId: kbType === 'client' ? engagementId : null,
+    kbType,
+    name,
+    description,
+    qdrantCollection,
+  });
+
+  // Create Qdrant collection
+  await qdrantService.createCollection(qdrantCollection);
+
+  res.status(201).json(kb);
+});
+
+/**
+ * Get knowledge base details
+ */
+router.get('/api/v1/knowledge-bases/:id', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+
+  const kb = await db.knowledgeBases.findById(req.params.id);
+  if (!kb || kb.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Knowledge base not found' });
+  }
+
+  // Include stats
+  const stats = {
+    documentCount: await db.documents.countByKb(kb.id),
+    chunkCount: await db.documentChunks.countByKb(kb.id),
+    vectorCount: await qdrantService.getPointCount(kb.qdrantCollection),
+    lastUpdated: await db.documents.getLastUpdatedAt(kb.id),
+  };
+
+  res.json({ ...kb, stats });
+});
+
+/**
+ * Update knowledge base
+ */
+router.put('/api/v1/knowledge-bases/:id', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+  const { name, description, settings } = req.body;
+
+  const kb = await db.knowledgeBases.findById(req.params.id);
+  if (!kb || kb.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Knowledge base not found' });
+  }
+
+  const updated = await db.knowledgeBases.update(req.params.id, {
+    name,
+    description,
+    settings,
+  });
+
+  res.json(updated);
+});
+
+/**
+ * Delete knowledge base
+ */
+router.delete('/api/v1/knowledge-bases/:id', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+
+  const kb = await db.knowledgeBases.findById(req.params.id);
+  if (!kb || kb.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Knowledge base not found' });
+  }
+
+  // Prevent deletion of default firm KB
+  if (kb.kbType === 'firm' && kb.name === 'Firm Knowledge Base') {
+    return res.status(400).json({ error: 'Cannot delete default firm knowledge base' });
+  }
+
+  // Delete Qdrant collection
+  await qdrantService.deleteCollection(kb.qdrantCollection);
+
+  // Cascade delete documents and chunks (handled by DB)
+  await db.knowledgeBases.delete(req.params.id);
+
+  res.status(204).send();
+});
+
+/**
+ * Trigger reindex of knowledge base
+ */
+router.post('/api/v1/knowledge-bases/:id/reindex', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+  const { force = false } = req.body;
+
+  const kb = await db.knowledgeBases.findById(req.params.id);
+  if (!kb || kb.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Knowledge base not found' });
+  }
+
+  // Create reindex job
+  const job = await jobService.create({
+    tenantId,
+    jobType: 'kb_reindex',
+    inputPayload: {
+      knowledgeBaseId: kb.id,
+      force,
+    },
+    priority: 0,
+    createdBy: req.user.id,
+  });
+
+  res.status(202).json({ jobId: job.id, status: 'queued' });
+});
+
+export default router;
+```
+
+### 15.3 Engagement Management
+
+```typescript
+// apps/api/src/routes/engagements.ts
+
+import { Router } from 'express';
+import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+
+const router = Router();
+
+router.use(authMiddleware);
+
+/**
+ * List engagements for tenant
+ */
+router.get('/api/v1/engagements', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+  const { status, limit = 50, offset = 0 } = req.query;
+
+  const engagements = await db.engagements.findByTenant(tenantId, {
+    status: status as string,
+    limit: Number(limit),
+    offset: Number(offset),
+  });
+
+  const total = await db.engagements.countByTenant(tenantId, { status: status as string });
+
+  res.json({
+    engagements,
+    pagination: { total, limit: Number(limit), offset: Number(offset) },
+  });
+});
+
+/**
+ * Create a new engagement
+ */
+router.post('/api/v1/engagements', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+  const { name, description, settings } = req.body;
+
+  // Create engagement
+  const engagement = await db.engagements.create({
+    tenantId,
+    name,
+    description,
+    status: 'active',
+    settings: settings || {},
+    createdBy: req.user.id,
+  });
+
+  // Auto-create client knowledge base
+  const tenant = await db.tenants.findById(tenantId);
+  const qdrantCollection = `kb_${tenant.slug}_client_eng_${engagement.id.slice(0, 8)}`;
+
+  await db.knowledgeBases.create({
+    tenantId,
+    engagementId: engagement.id,
+    kbType: 'client',
+    name: `${name} - Client Documents`,
+    qdrantCollection,
+  });
+
+  // Create Qdrant collection
+  await qdrantService.createCollection(qdrantCollection);
+
+  res.status(201).json(engagement);
+});
+
+/**
+ * Get engagement details
+ */
+router.get('/api/v1/engagements/:id', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+
+  const engagement = await db.engagements.findById(req.params.id);
+  if (!engagement || engagement.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Engagement not found' });
+  }
+
+  // Include related data
+  const knowledgeBases = await db.knowledgeBases.findByEngagement(engagement.id);
+  const recentJobs = await db.jobs.findByEngagement(engagement.id, { limit: 5 });
+  const generatedContent = await db.generatedContent.findByEngagement(engagement.id);
+
+  res.json({
+    ...engagement,
+    knowledgeBases,
+    recentJobs,
+    generatedContent: generatedContent.map(c => ({
+      id: c.id,
+      contentType: c.contentType,
+      version: c.version,
+      createdAt: c.createdAt,
+    })),
+  });
+});
+
+/**
+ * Update engagement
+ */
+router.put('/api/v1/engagements/:id', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+  const { name, description, status, settings } = req.body;
+
+  const engagement = await db.engagements.findById(req.params.id);
+  if (!engagement || engagement.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Engagement not found' });
+  }
+
+  const updated = await db.engagements.update(req.params.id, {
+    name,
+    description,
+    status,
+    settings,
+  });
+
+  res.json(updated);
+});
+
+/**
+ * Archive engagement
+ */
+router.post('/api/v1/engagements/:id/archive', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+
+  const engagement = await db.engagements.findById(req.params.id);
+  if (!engagement || engagement.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Engagement not found' });
+  }
+
+  // Update status
+  await db.engagements.update(req.params.id, { status: 'archived' });
+
+  // Archive Qdrant collections (export to blob, delete from Qdrant)
+  const kbs = await db.knowledgeBases.findByEngagement(req.params.id);
+  for (const kb of kbs) {
+    await collectionLifecycle.archiveCollection(kb.qdrantCollection, {
+      tenantId,
+      engagementId: req.params.id,
+    });
+  }
+
+  // Invalidate caches
+  await cacheInvalidator.onEngagementArchive(req.params.id);
+
+  res.json({ status: 'archived' });
+});
+
+/**
+ * Restore archived engagement
+ */
+router.post('/api/v1/engagements/:id/restore', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+
+  const engagement = await db.engagements.findById(req.params.id);
+  if (!engagement || engagement.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Engagement not found' });
+  }
+
+  if (engagement.status !== 'archived') {
+    return res.status(400).json({ error: 'Engagement is not archived' });
+  }
+
+  // Restore Qdrant collections from blob storage
+  const kbs = await db.knowledgeBases.findByEngagement(req.params.id);
+  for (const kb of kbs) {
+    await collectionLifecycle.restoreCollection(kb.qdrantCollection, {
+      tenantId,
+      engagementId: req.params.id,
+    });
+  }
+
+  // Update status
+  await db.engagements.update(req.params.id, { status: 'active' });
+
+  res.json({ status: 'active' });
+});
+
+/**
+ * Delete engagement (permanent)
+ */
+router.delete('/api/v1/engagements/:id', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+
+  const engagement = await db.engagements.findById(req.params.id);
+  if (!engagement || engagement.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Engagement not found' });
+  }
+
+  // Must be archived first
+  if (engagement.status !== 'archived') {
+    return res.status(400).json({ error: 'Engagement must be archived before deletion' });
+  }
+
+  // Delete Qdrant collections permanently
+  const kbs = await db.knowledgeBases.findByEngagement(req.params.id);
+  for (const kb of kbs) {
+    await qdrantService.deleteCollection(kb.qdrantCollection);
+    // Also delete archived backups
+    await objectStore.deletePrefix(`archived/${tenantId}/${req.params.id}/`);
+  }
+
+  // Cascade delete (KBs, docs, chunks, generated content)
+  await db.engagements.delete(req.params.id);
+
+  res.status(204).send();
+});
+
+export default router;
+```
+
+### 15.4 Document Management
+
+```typescript
+// apps/api/src/routes/documents.ts
+
+import { Router } from 'express';
+import multer from 'multer';
+import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+
+const router = Router();
+const upload = multer({
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  fileFilter: (req, file, cb) => {
+    if (SUPPORTED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Unsupported file type: ${file.mimetype}`));
+    }
+  },
+});
+
+// Supported file types
+const SUPPORTED_MIME_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+  'text/plain',
+  'text/markdown',
+  'text/csv',
+  'application/json',
+];
+
+router.use(authMiddleware);
+
+/**
+ * Upload document to knowledge base
+ */
+router.post(
+  '/api/v1/documents/upload',
+  upload.single('file'),
+  async (req: AuthenticatedRequest, res) => {
+    const { tenantId } = req.user;
+    const { knowledgeBaseId } = req.body;
+
+    // Validate KB exists and belongs to tenant
+    const kb = await db.knowledgeBases.findById(knowledgeBaseId);
+    if (!kb || kb.tenantId !== tenantId) {
+      return res.status(404).json({ error: 'Knowledge base not found' });
+    }
+
+    const file = req.file!;
+    const fileHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
+
+    // Check for duplicate
+    const existing = await db.documents.findByHash(knowledgeBaseId, fileHash);
+    if (existing) {
+      return res.status(409).json({
+        error: 'Document already exists',
+        existingDocumentId: existing.id,
+      });
+    }
+
+    // Upload to blob storage
+    const blobPath = `documents/${tenantId}/${kb.id}/${fileHash}/${file.originalname}`;
+    await objectStore.upload(blobPath, file.buffer, {
+      contentType: file.mimetype,
+      metadata: { originalName: file.originalname },
+    });
+
+    // Create document record
+    const document = await db.documents.create({
+      knowledgeBaseId: kb.id,
+      tenantId,
+      filename: `${fileHash}_${file.originalname}`,
+      originalFilename: file.originalname,
+      mimeType: file.mimetype,
+      fileSize: file.size,
+      fileHash,
+      blobPath,
+      status: 'pending',
+      sourceType: 'upload',
+      createdBy: req.user.id,
+    });
+
+    // Create ingestion job
+    const job = await jobService.create({
+      tenantId,
+      engagementId: kb.engagementId,
+      jobType: 'document_ingest',
+      inputPayload: {
+        documentId: document.id,
+        knowledgeBaseId: kb.id,
+        blobPath,
+        filename: file.originalname,
+        mimeType: file.mimetype,
+      },
+      priority: 1,
+      createdBy: req.user.id,
+    });
+
+    res.status(202).json({
+      documentId: document.id,
+      jobId: job.id,
+      status: 'processing',
+    });
+  }
+);
+
+/**
+ * List documents in knowledge base
+ */
+router.get('/api/v1/documents', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+  const { knowledgeBaseId, status, limit = 50, offset = 0 } = req.query;
+
+  // Validate KB access
+  if (knowledgeBaseId) {
+    const kb = await db.knowledgeBases.findById(knowledgeBaseId as string);
+    if (!kb || kb.tenantId !== tenantId) {
+      return res.status(404).json({ error: 'Knowledge base not found' });
+    }
+  }
+
+  const documents = await db.documents.find({
+    tenantId,
+    knowledgeBaseId: knowledgeBaseId as string,
+    status: status as string,
+    limit: Number(limit),
+    offset: Number(offset),
+  });
+
+  res.json({ documents });
+});
+
+/**
+ * Get document details
+ */
+router.get('/api/v1/documents/:id', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+
+  const document = await db.documents.findById(req.params.id);
+  if (!document || document.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Document not found' });
+  }
+
+  // Include chunks summary
+  const chunks = await db.documentChunks.findByDocument(document.id);
+
+  res.json({
+    ...document,
+    chunks: {
+      count: chunks.length,
+      totalTokens: chunks.reduce((sum, c) => sum + c.tokenCount, 0),
+    },
+  });
+});
+
+/**
+ * Delete document
+ */
+router.delete('/api/v1/documents/:id', async (req: AuthenticatedRequest, res) => {
+  const { tenantId } = req.user;
+
+  const document = await db.documents.findById(req.params.id);
+  if (!document || document.tenantId !== tenantId) {
+    return res.status(404).json({ error: 'Document not found' });
+  }
+
+  // Delete from Qdrant
+  const kb = await db.knowledgeBases.findById(document.knowledgeBaseId);
+  await qdrantService.deleteByFilter(kb.qdrantCollection, {
+    document_id: document.id,
+  });
+
+  // Delete from blob storage
+  await objectStore.delete(document.blobPath);
+
+  // Delete from database (cascades to chunks)
+  await db.documents.delete(document.id);
+
+  // Invalidate caches
+  await cacheInvalidator.onDocumentDelete(document.id, kb.engagementId);
+
+  res.status(204).send();
+});
+
+export default router;
+```
+
+---
+
+## 16. Document Processing Pipeline
+
+### 16.1 File Type Handling Configuration
+
+```typescript
+// packages/shared/src/config/document-processing.ts
+
+export interface DocumentProcessingConfig {
+  // Supported file types
+  supportedTypes: {
+    mimeType: string;
+    extensions: string[];
+    extractor: 'pdf' | 'docx' | 'text' | 'markdown' | 'csv' | 'json';
+    maxSizeMb: number;
+  }[];
+
+  // PDF-specific configuration
+  pdf: {
+    // OCR settings for scanned documents
+    ocr: {
+      enabled: boolean;
+      provider: 'tesseract' | 'azure-document-intelligence';
+      languages: string[];
+      dpi: number;
+      // Threshold: if text extraction yields < N chars per page, use OCR
+      textThreshold: number;
+    };
+
+    // Table extraction
+    tables: {
+      enabled: boolean;
+      provider: 'camelot' | 'azure-document-intelligence' | 'tabula';
+      outputFormat: 'markdown' | 'html' | 'csv';
+    };
+
+    // Layout analysis
+    layout: {
+      enabled: boolean;
+      preserveColumns: boolean;
+      preserveHeaders: boolean;
+    };
+  };
+
+  // DOCX-specific configuration
+  docx: {
+    preserveFormatting: boolean;
+    extractImages: boolean;
+    extractTables: boolean;
+  };
+}
+
+export const DEFAULT_PROCESSING_CONFIG: DocumentProcessingConfig = {
+  supportedTypes: [
+    {
+      mimeType: 'application/pdf',
+      extensions: ['.pdf'],
+      extractor: 'pdf',
+      maxSizeMb: 50,
+    },
+    {
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      extensions: ['.docx'],
+      extractor: 'docx',
+      maxSizeMb: 25,
+    },
+    {
+      mimeType: 'text/plain',
+      extensions: ['.txt'],
+      extractor: 'text',
+      maxSizeMb: 10,
+    },
+    {
+      mimeType: 'text/markdown',
+      extensions: ['.md', '.markdown'],
+      extractor: 'markdown',
+      maxSizeMb: 10,
+    },
+    {
+      mimeType: 'text/csv',
+      extensions: ['.csv'],
+      extractor: 'csv',
+      maxSizeMb: 50,
+    },
+    {
+      mimeType: 'application/json',
+      extensions: ['.json'],
+      extractor: 'json',
+      maxSizeMb: 10,
+    },
+  ],
+
+  pdf: {
+    ocr: {
+      enabled: true,
+      provider: 'azure-document-intelligence',
+      languages: ['en'],
+      dpi: 300,
+      textThreshold: 100, // chars per page
+    },
+    tables: {
+      enabled: true,
+      provider: 'azure-document-intelligence',
+      outputFormat: 'markdown',
+    },
+    layout: {
+      enabled: true,
+      preserveColumns: true,
+      preserveHeaders: true,
+    },
+  },
+
+  docx: {
+    preserveFormatting: true,
+    extractImages: false, // Images need separate embedding
+    extractTables: true,
+  },
+};
+```
+
+### 16.2 PDF Extraction with OCR
+
+```typescript
+// apps/worker/src/processors/pdfExtract.ts
+
+import { DocumentAnalysisClient, AzureKeyCredential } from '@azure/ai-form-recognizer';
+
+export interface PdfExtractionResult {
+  text: string;
+  pages: PageContent[];
+  tables: TableContent[];
+  metadata: {
+    pageCount: number;
+    wordCount: number;
+    usedOcr: boolean;
+    language: string;
+  };
+}
+
+export class PdfExtractor {
+  private docIntelClient: DocumentAnalysisClient;
+
+  constructor(config: DocumentProcessingConfig) {
+    this.config = config;
+
+    if (config.pdf.ocr.provider === 'azure-document-intelligence') {
+      this.docIntelClient = new DocumentAnalysisClient(
+        process.env.AZURE_DOC_INTELLIGENCE_ENDPOINT!,
+        new AzureKeyCredential(process.env.AZURE_DOC_INTELLIGENCE_KEY!)
+      );
+    }
+  }
+
+  async extract(buffer: Buffer, filename: string): Promise<PdfExtractionResult> {
+    // First, try standard text extraction
+    const basicResult = await this.basicExtraction(buffer);
+
+    // Check if OCR is needed
+    const needsOcr = this.config.pdf.ocr.enabled &&
+      this.shouldUseOcr(basicResult);
+
+    if (needsOcr) {
+      return await this.ocrExtraction(buffer);
+    }
+
+    return basicResult;
+  }
+
+  private shouldUseOcr(result: PdfExtractionResult): boolean {
+    // Use OCR if average chars per page is below threshold
+    const avgCharsPerPage = result.text.length / result.metadata.pageCount;
+    return avgCharsPerPage < this.config.pdf.ocr.textThreshold;
+  }
+
+  private async basicExtraction(buffer: Buffer): Promise<PdfExtractionResult> {
+    const pdfParse = await import('pdf-parse');
+    const data = await pdfParse(buffer);
+
+    return {
+      text: data.text,
+      pages: this.splitIntoPages(data),
+      tables: [], // Basic extraction doesn't get tables
+      metadata: {
+        pageCount: data.numpages,
+        wordCount: data.text.split(/\s+/).length,
+        usedOcr: false,
+        language: 'en', // Could use langdetect
+      },
+    };
+  }
+
+  private async ocrExtraction(buffer: Buffer): Promise<PdfExtractionResult> {
+    console.log('Using Azure Document Intelligence for OCR extraction');
+
+    const poller = await this.docIntelClient.beginAnalyzeDocument(
+      'prebuilt-document',
+      buffer
+    );
+    const result = await poller.pollUntilDone();
+
+    const pages: PageContent[] = [];
+    const tables: TableContent[] = [];
+    let fullText = '';
+
+    // Extract text from pages
+    for (const page of result.pages || []) {
+      const pageText = (page.lines || [])
+        .map(line => line.content)
+        .join('\n');
+      pages.push({
+        pageNumber: page.pageNumber,
+        text: pageText,
+        width: page.width,
+        height: page.height,
+      });
+      fullText += pageText + '\n\n';
+    }
+
+    // Extract tables
+    for (const table of result.tables || []) {
+      const tableContent: TableContent = {
+        pageNumber: table.boundingRegions?.[0]?.pageNumber || 1,
+        rowCount: table.rowCount,
+        columnCount: table.columnCount,
+        cells: table.cells.map(cell => ({
+          rowIndex: cell.rowIndex,
+          columnIndex: cell.columnIndex,
+          content: cell.content,
+          isHeader: cell.kind === 'columnHeader',
+        })),
+        markdown: this.tableToMarkdown(table),
+      };
+      tables.push(tableContent);
+    }
+
+    return {
+      text: fullText,
+      pages,
+      tables,
+      metadata: {
+        pageCount: pages.length,
+        wordCount: fullText.split(/\s+/).length,
+        usedOcr: true,
+        language: result.languages?.[0] || 'en',
+      },
+    };
+  }
+
+  private tableToMarkdown(table: any): string {
+    const rows: string[][] = [];
+    const headers: string[] = [];
+
+    // Build 2D array from cells
+    for (const cell of table.cells) {
+      if (!rows[cell.rowIndex]) {
+        rows[cell.rowIndex] = [];
+      }
+      rows[cell.rowIndex][cell.columnIndex] = cell.content;
+
+      if (cell.kind === 'columnHeader') {
+        headers[cell.columnIndex] = cell.content;
+      }
+    }
+
+    // Generate markdown
+    let md = '| ' + headers.join(' | ') + ' |\n';
+    md += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+
+    for (let i = 1; i < rows.length; i++) {
+      md += '| ' + (rows[i] || []).join(' | ') + ' |\n';
+    }
+
+    return md;
+  }
+}
+
+interface PageContent {
+  pageNumber: number;
+  text: string;
+  width?: number;
+  height?: number;
+}
+
+interface TableContent {
+  pageNumber: number;
+  rowCount: number;
+  columnCount: number;
+  cells: TableCell[];
+  markdown: string;
+}
+
+interface TableCell {
+  rowIndex: number;
+  columnIndex: number;
+  content: string;
+  isHeader: boolean;
+}
+```
+
+### 16.3 Checkpoint-Based Pipeline Recovery
+
+```typescript
+// apps/worker/src/pipelines/ingestion.ts
+
+export interface PipelineCheckpoint {
+  step: 'extract' | 'chunk' | 'embed' | 'index';
+  completedAt: Date;
+  data: {
+    // For chunking resume
+    extractedText?: string;
+    lastChunkIndex?: number;
+
+    // For embedding resume
+    chunks?: Array<{ id: string; text: string }>;
+    lastEmbeddedIndex?: number;
+
+    // For indexing resume
+    chunksWithEmbeddings?: Array<{ id: string; embedding: number[] }>;
+    lastIndexedIndex?: number;
+  };
+}
+
+export class DocumentIngestionPipeline {
+  async process(job: DocumentIngestJob): Promise<void> {
+    const startStep = this.determineStartStep(job);
+
+    console.log(`Starting ingestion from step: ${startStep}`);
+
+    try {
+      // Step 1: Extract
+      if (startStep === 'extract') {
+        await this.extractStep(job);
+        await this.saveCheckpoint(job, 'extract');
+      }
+
+      // Step 2: Chunk
+      if (['extract', 'chunk'].includes(startStep)) {
+        await this.chunkStep(job);
+        await this.saveCheckpoint(job, 'chunk');
+      }
+
+      // Step 3: Embed
+      if (['extract', 'chunk', 'embed'].includes(startStep)) {
+        await this.embedStep(job);
+        await this.saveCheckpoint(job, 'embed');
+      }
+
+      // Step 4: Index
+      await this.indexStep(job);
+
+      // Mark job complete
+      await this.completeJob(job);
+
+    } catch (error) {
+      await this.handleStepFailure(job, error);
+      throw error;
+    }
+  }
+
+  private determineStartStep(job: DocumentIngestJob): string {
+    if (!job.lastCompletedStep) {
+      return 'extract';
+    }
+
+    const steps = ['extract', 'chunk', 'embed', 'index'];
+    const lastIndex = steps.indexOf(job.lastCompletedStep);
+
+    // Resume from next step
+    return steps[lastIndex + 1] || 'extract';
+  }
+
+  private async saveCheckpoint(
+    job: DocumentIngestJob,
+    step: string
+  ): Promise<void> {
+    const checkpointData = await this.buildCheckpointData(job, step);
+
+    await db.jobs.update(job.id, {
+      lastCompletedStep: step,
+      checkpointData,
+      checkpointAt: new Date(),
+      progress: this.calculateProgress(step),
+    });
+
+    console.log(`Checkpoint saved: ${step}`);
+  }
+
+  private async handleStepFailure(
+    job: DocumentIngestJob,
+    error: Error
+  ): Promise<void> {
+    const currentStep = await this.getCurrentStep(job);
+
+    await db.jobs.update(job.id, {
+      failedStep: currentStep,
+      errorMessage: error.message,
+      errorDetails: {
+        stack: error.stack,
+        step: currentStep,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    // If retryable, queue for retry from failed step
+    if (job.retryCount < job.maxRetries && this.isRetryableError(error)) {
+      await this.scheduleRetry(job);
+    }
+  }
+
+  private isRetryableError(error: Error): boolean {
+    const retryableErrors = [
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'rate_limit',
+      'service_unavailable',
+    ];
+    return retryableErrors.some(e =>
+      error.message.toLowerCase().includes(e.toLowerCase())
+    );
+  }
+
+  private calculateProgress(step: string): number {
+    const progressMap: Record<string, number> = {
+      extract: 25,
+      chunk: 50,
+      embed: 75,
+      index: 100,
+    };
+    return progressMap[step] || 0;
+  }
+
+  private async embedStep(job: DocumentIngestJob): Promise<void> {
+    const chunks = await this.getChunksToEmbed(job);
+    const startIndex = job.checkpointData?.lastEmbeddedIndex || 0;
+
+    // Process in batches with checkpointing
+    const batchSize = 100;
+
+    for (let i = startIndex; i < chunks.length; i += batchSize) {
+      const batch = chunks.slice(i, i + batchSize);
+
+      // Generate embeddings
+      const embeddings = await embeddingAdapter.embedBatch(
+        batch.map(c => c.text)
+      );
+
+      // Store embeddings
+      for (let j = 0; j < batch.length; j++) {
+        batch[j].embedding = embeddings[j];
+      }
+
+      // Checkpoint after each batch
+      await db.jobs.update(job.id, {
+        checkpointData: {
+          ...job.checkpointData,
+          lastEmbeddedIndex: i + batch.length,
+        },
+        progress: 50 + Math.round(25 * (i + batch.length) / chunks.length),
+      });
+
+      // Broadcast progress
+      await realtimeService.broadcastJobProgress(job.id, {
+        progress: 50 + Math.round(25 * (i + batch.length) / chunks.length),
+        message: `Embedding chunk ${i + batch.length} of ${chunks.length}`,
+      });
+    }
+  }
+}
+```
+
+---
+
+## 17. Graceful Degradation & Fallbacks
+
+### 17.1 Service Fallback Chain
+
+```typescript
+// packages/shared/src/resilience/fallback-chain.ts
+
+export interface FallbackChainConfig {
+  reranking: {
+    primary: 'cohere';
+    fallbacks: ('cross-encoder' | 'none')[];
+    healthCheck: {
+      endpoint: string;
+      timeout: number;
+      interval: number;
+    };
+  };
+
+  embedding: {
+    primary: 'openai';
+    fallbacks: ('azure-openai' | 'local')[];
+  };
+
+  llm: {
+    primary: 'gemini';
+    fallbacks: ('azure-openai' | 'openai')[];
+  };
+
+  vectorDb: {
+    primary: 'qdrant';
+    fallbacks: ('qdrant-cloud' | 'pinecone')[];
+  };
+}
+
+export const DEFAULT_FALLBACK_CONFIG: FallbackChainConfig = {
+  reranking: {
+    primary: 'cohere',
+    fallbacks: ['cross-encoder', 'none'],
+    healthCheck: {
+      endpoint: 'https://api.cohere.ai/v1/check',
+      timeout: 5000,
+      interval: 60000,
+    },
+  },
+
+  embedding: {
+    primary: 'openai',
+    fallbacks: ['azure-openai'],
+  },
+
+  llm: {
+    primary: 'gemini',
+    fallbacks: ['azure-openai', 'openai'],
+  },
+
+  vectorDb: {
+    primary: 'qdrant',
+    fallbacks: ['qdrant-cloud'],
+  },
+};
+
+export class FallbackChainManager {
+  private serviceStatus: Map<string, ServiceStatus> = new Map();
+
+  constructor(
+    private config: FallbackChainConfig,
+    private circuitBreakers: CircuitBreakerRegistry
+  ) {
+    this.startHealthChecks();
+  }
+
+  /**
+   * Get the current active provider for a service
+   */
+  async getActiveProvider<T>(
+    service: keyof FallbackChainConfig,
+    providers: Map<string, T>
+  ): Promise<{ provider: T; name: string }> {
+    const chain = this.config[service];
+    const allProviders = [chain.primary, ...chain.fallbacks];
+
+    for (const name of allProviders) {
+      // Skip 'none' fallback
+      if (name === 'none') {
+        return { provider: null as any, name: 'none' };
+      }
+
+      const status = this.serviceStatus.get(`${service}.${name}`);
+      const breaker = this.circuitBreakers.get(`${service}.${name}`);
+
+      // Check if service is healthy
+      if (status?.healthy && breaker?.getState() !== 'open') {
+        const provider = providers.get(name);
+        if (provider) {
+          return { provider, name };
+        }
+      }
+    }
+
+    throw new Error(`No healthy provider available for ${service}`);
+  }
+
+  /**
+   * Execute with automatic fallback
+   */
+  async executeWithFallback<T, R>(
+    service: keyof FallbackChainConfig,
+    providers: Map<string, T>,
+    operation: (provider: T) => Promise<R>,
+    options: { skipFallback?: boolean } = {}
+  ): Promise<{ result: R; usedProvider: string }> {
+    const chain = this.config[service];
+    const allProviders = [chain.primary, ...chain.fallbacks];
+    const errors: Error[] = [];
+
+    for (const name of allProviders) {
+      // Handle 'none' fallback (skip operation)
+      if (name === 'none') {
+        console.warn(`Using 'none' fallback for ${service}`);
+        return {
+          result: null as any,
+          usedProvider: 'none',
+        };
+      }
+
+      const provider = providers.get(name);
+      if (!provider) continue;
+
+      const breaker = this.circuitBreakers.get(`${service}.${name}`);
+
+      try {
+        const result = await breaker.execute(() => operation(provider));
+
+        // Log if using fallback
+        if (name !== chain.primary) {
+          console.warn(`Using fallback provider ${name} for ${service}`);
+        }
+
+        return { result, usedProvider: name };
+      } catch (error) {
+        errors.push(error as Error);
+        console.error(`Provider ${name} failed for ${service}:`, error);
+
+        if (options.skipFallback) {
+          throw error;
+        }
+      }
+    }
+
+    // All providers failed
+    const aggregateError = new Error(
+      `All providers failed for ${service}: ${errors.map(e => e.message).join('; ')}`
+    );
+    (aggregateError as any).errors = errors;
+    throw aggregateError;
+  }
+
+  private startHealthChecks(): void {
+    // Check reranking service health periodically
+    setInterval(async () => {
+      await this.checkServiceHealth('reranking', 'cohere');
+    }, this.config.reranking.healthCheck.interval);
+  }
+
+  private async checkServiceHealth(
+    service: string,
+    provider: string
+  ): Promise<void> {
+    const key = `${service}.${provider}`;
+    try {
+      // Provider-specific health check
+      await this.performHealthCheck(service, provider);
+      this.serviceStatus.set(key, { healthy: true, lastCheck: new Date() });
+    } catch (error) {
+      this.serviceStatus.set(key, {
+        healthy: false,
+        lastCheck: new Date(),
+        lastError: (error as Error).message,
+      });
+    }
+  }
+}
+
+interface ServiceStatus {
+  healthy: boolean;
+  lastCheck: Date;
+  lastError?: string;
+}
+```
+
+### 17.2 RAG Pipeline with Fallbacks
+
+```typescript
+// apps/api/src/services/rag-pipeline-resilient.ts
+
+export class ResilientRAGPipeline {
+  constructor(
+    private fallbackManager: FallbackChainManager,
+    private embeddingProviders: Map<string, EmbeddingAdapter>,
+    private rerankProviders: Map<string, RerankAdapter>,
+    private llmProviders: Map<string, LLMAdapter>
+  ) {}
+
+  async generate(
+    query: string,
+    filter: RetrievalFilter,
+    prompt: PromptTemplate
+  ): Promise<GenerationResult> {
+    // 1. Generate query embedding with fallback
+    const { result: queryEmbedding, usedProvider: embeddingProvider } =
+      await this.fallbackManager.executeWithFallback(
+        'embedding',
+        this.embeddingProviders,
+        (adapter) => adapter.embed(query)
+      );
+
+    // 2. Retrieve candidates
+    const candidates = await this.vectorStore.search(
+      filter.knowledge_base_ids?.[0] || 'default',
+      queryEmbedding,
+      filter,
+      { limit: 100 }
+    );
+
+    // 3. Rerank with fallback (graceful degradation to no reranking)
+    let rerankedResults: SearchResult[];
+    const { result: reranked, usedProvider: rerankProvider } =
+      await this.fallbackManager.executeWithFallback(
+        'reranking',
+        this.rerankProviders,
+        async (adapter) => {
+          if (adapter === null) {
+            // 'none' fallback - skip reranking
+            return candidates;
+          }
+          const rerankDocs = candidates.map(c => ({
+            id: c.id,
+            text: c.payload.text as string,
+          }));
+          const reranked = await adapter.rerank(query, rerankDocs);
+          return reranked.map(r => candidates.find(c => c.id === r.id)!);
+        }
+      );
+    rerankedResults = reranked;
+
+    // Log degradation
+    if (rerankProvider === 'none') {
+      console.warn('Reranking skipped - using vector search ordering');
+    }
+
+    // 4. Build context
+    const context = this.buildContext(rerankedResults);
+
+    // 5. Generate with LLM fallback
+    const { result: generated, usedProvider: llmProvider } =
+      await this.fallbackManager.executeWithFallback(
+        'llm',
+        this.llmProviders,
+        (adapter) =>
+          adapter.generateStructured(
+            {
+              systemPrompt: prompt.system,
+              userPrompt: prompt.buildUserPrompt(query, context),
+              temperature: 0.7,
+              maxTokens: 4000,
+            },
+            prompt.outputSchema
+          )
+      );
+
+    return {
+      content: generated,
+      metadata: {
+        embeddingProvider,
+        rerankProvider,
+        llmProvider,
+        chunksUsed: context.chunks.length,
+        degraded: rerankProvider === 'none',
+      },
+    };
+  }
+}
+```
+
+---
+
+## 18. Health Monitoring
+
+### 18.1 Health Check Endpoint
+
+```typescript
+// apps/api/src/routes/health.ts
+
+import { Router } from 'express';
+
+const router = Router();
+
+interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  version: string;
+  uptime: number;
+  checks: {
+    [service: string]: {
+      status: 'up' | 'down' | 'degraded';
+      latency?: number;
+      message?: string;
+    };
+  };
+}
+
+/**
+ * Lightweight liveness probe
+ */
+router.get('/health/live', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+/**
+ * Comprehensive readiness probe
+ */
+router.get('/health/ready', async (req, res) => {
+  const health = await performHealthChecks();
+
+  const statusCode = health.status === 'healthy' ? 200 :
+                     health.status === 'degraded' ? 200 : 503;
+
+  res.status(statusCode).json(health);
+});
+
+/**
+ * Deep health check with all dependencies
+ */
+router.get('/health', async (req, res) => {
+  const health = await performHealthChecks({ deep: true });
+
+  const statusCode = health.status === 'healthy' ? 200 :
+                     health.status === 'degraded' ? 200 : 503;
+
+  res.status(statusCode).json(health);
+});
+
+async function performHealthChecks(options: { deep?: boolean } = {}): Promise<HealthStatus> {
+  const checks: HealthStatus['checks'] = {};
+
+  // Database check
+  checks.database = await checkDatabase();
+
+  // Redis check
+  checks.redis = await checkRedis();
+
+  // Qdrant check
+  checks.qdrant = await checkQdrant();
+
+  // Queue check
+  checks.queue = await checkQueue();
+
+  if (options.deep) {
+    // External services (only on deep check to avoid rate limits)
+    checks.embedding = await checkEmbeddingService();
+    checks.llm = await checkLLMService();
+    checks.reranking = await checkRerankService();
+  }
+
+  // Determine overall status
+  const statuses = Object.values(checks).map(c => c.status);
+  let overallStatus: HealthStatus['status'];
+
+  if (statuses.every(s => s === 'up')) {
+    overallStatus = 'healthy';
+  } else if (statuses.some(s => s === 'down')) {
+    // Core services down = unhealthy
+    const coreDown = ['database', 'redis', 'qdrant'].some(
+      s => checks[s]?.status === 'down'
+    );
+    overallStatus = coreDown ? 'unhealthy' : 'degraded';
+  } else {
+    overallStatus = 'degraded';
+  }
+
+  return {
+    status: overallStatus,
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '1.0.0',
+    uptime: process.uptime(),
+    checks,
+  };
+}
+
+async function checkDatabase(): Promise<{ status: 'up' | 'down'; latency?: number; message?: string }> {
+  const start = Date.now();
+  try {
+    await db.raw('SELECT 1');
+    return { status: 'up', latency: Date.now() - start };
+  } catch (error) {
+    return { status: 'down', message: (error as Error).message };
+  }
+}
+
+async function checkRedis(): Promise<{ status: 'up' | 'down'; latency?: number; message?: string }> {
+  const start = Date.now();
+  try {
+    await redis.ping();
+    return { status: 'up', latency: Date.now() - start };
+  } catch (error) {
+    return { status: 'down', message: (error as Error).message };
+  }
+}
+
+async function checkQdrant(): Promise<{ status: 'up' | 'down' | 'degraded'; latency?: number; message?: string }> {
+  const start = Date.now();
+  try {
+    const info = await qdrantClient.getCollections();
+    return { status: 'up', latency: Date.now() - start };
+  } catch (error) {
+    return { status: 'down', message: (error as Error).message };
+  }
+}
+
+async function checkQueue(): Promise<{ status: 'up' | 'down' | 'degraded'; latency?: number; message?: string }> {
+  const start = Date.now();
+  try {
+    // Check queue depth
+    const depth = await queueAdapter.getQueueDepth('jobs');
+    const status = depth > 1000 ? 'degraded' : 'up';
+    return {
+      status,
+      latency: Date.now() - start,
+      message: status === 'degraded' ? `Queue depth: ${depth}` : undefined,
+    };
+  } catch (error) {
+    return { status: 'down', message: (error as Error).message };
+  }
+}
+
+async function checkEmbeddingService(): Promise<{ status: 'up' | 'down' | 'degraded'; latency?: number }> {
+  const start = Date.now();
+  try {
+    // Quick embedding test
+    await embeddingAdapter.embed('health check');
+    return { status: 'up', latency: Date.now() - start };
+  } catch (error) {
+    // Check if fallback is available
+    const hasFallback = fallbackManager.hasHealthyFallback('embedding');
+    return {
+      status: hasFallback ? 'degraded' : 'down',
+      latency: Date.now() - start,
+    };
+  }
+}
+
+async function checkLLMService(): Promise<{ status: 'up' | 'down' | 'degraded'; latency?: number }> {
+  const start = Date.now();
+  try {
+    // Quick generation test (minimal tokens)
+    await llmAdapter.generate({
+      userPrompt: 'Reply with OK',
+      maxTokens: 5,
+    });
+    return { status: 'up', latency: Date.now() - start };
+  } catch (error) {
+    const hasFallback = fallbackManager.hasHealthyFallback('llm');
+    return {
+      status: hasFallback ? 'degraded' : 'down',
+      latency: Date.now() - start,
+    };
+  }
+}
+
+async function checkRerankService(): Promise<{ status: 'up' | 'down' | 'degraded'; latency?: number }> {
+  const start = Date.now();
+  try {
+    await rerankAdapter.rerank('test', [{ id: '1', text: 'test document' }]);
+    return { status: 'up', latency: Date.now() - start };
+  } catch (error) {
+    // Reranking has 'none' fallback, so never fully down
+    return { status: 'degraded', latency: Date.now() - start };
+  }
+}
+
+export default router;
+```
+
+### 18.2 Monitoring Dashboard Metrics
+
+```typescript
+// packages/shared/src/observability/metrics.ts
+
+import { Counter, Histogram, Gauge, Registry } from 'prom-client';
+
+export const metricsRegistry = new Registry();
+
+// Request metrics
+export const httpRequestDuration = new Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request duration in seconds',
+  labelNames: ['method', 'path', 'status'],
+  buckets: [0.1, 0.3, 0.5, 1, 2, 5],
+  registers: [metricsRegistry],
+});
+
+export const httpRequestTotal = new Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['method', 'path', 'status'],
+  registers: [metricsRegistry],
+});
+
+// RAG pipeline metrics
+export const ragRetrievalDuration = new Histogram({
+  name: 'rag_retrieval_duration_seconds',
+  help: 'RAG retrieval duration in seconds',
+  labelNames: ['kb_type'],
+  buckets: [0.1, 0.2, 0.5, 1, 2],
+  registers: [metricsRegistry],
+});
+
+export const ragRerankDuration = new Histogram({
+  name: 'rag_rerank_duration_seconds',
+  help: 'RAG reranking duration in seconds',
+  labelNames: ['provider'],
+  buckets: [0.1, 0.3, 0.5, 1, 2],
+  registers: [metricsRegistry],
+});
+
+export const ragGenerationDuration = new Histogram({
+  name: 'rag_generation_duration_seconds',
+  help: 'RAG generation duration in seconds',
+  labelNames: ['content_type', 'model'],
+  buckets: [1, 3, 5, 10, 20, 30],
+  registers: [metricsRegistry],
+});
+
+// Document processing metrics
+export const documentsProcessed = new Counter({
+  name: 'documents_processed_total',
+  help: 'Total documents processed',
+  labelNames: ['status', 'mime_type'],
+  registers: [metricsRegistry],
+});
+
+export const chunksCreated = new Counter({
+  name: 'chunks_created_total',
+  help: 'Total chunks created',
+  labelNames: ['kb_type'],
+  registers: [metricsRegistry],
+});
+
+// Queue metrics
+export const queueDepth = new Gauge({
+  name: 'queue_depth',
+  help: 'Current queue depth',
+  labelNames: ['queue_name'],
+  registers: [metricsRegistry],
+});
+
+export const jobDuration = new Histogram({
+  name: 'job_duration_seconds',
+  help: 'Job processing duration in seconds',
+  labelNames: ['job_type', 'status'],
+  buckets: [1, 5, 10, 30, 60, 120, 300],
+  registers: [metricsRegistry],
+});
+
+// Cost metrics
+export const tokensUsed = new Counter({
+  name: 'tokens_used_total',
+  help: 'Total tokens used',
+  labelNames: ['operation', 'model', 'tenant_id'],
+  registers: [metricsRegistry],
+});
+
+export const costUsd = new Counter({
+  name: 'cost_usd_total',
+  help: 'Total cost in USD',
+  labelNames: ['operation', 'model', 'tenant_id'],
+  registers: [metricsRegistry],
+});
+
+// Service availability
+export const serviceStatus = new Gauge({
+  name: 'service_status',
+  help: 'Service health status (1=up, 0=down, 0.5=degraded)',
+  labelNames: ['service', 'provider'],
+  registers: [metricsRegistry],
+});
+
+// Metrics endpoint
+export function metricsMiddleware(app: Express) {
+  app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', metricsRegistry.contentType);
+    res.send(await metricsRegistry.metrics());
+  });
+}
+```
+
+---
+
+## 19. Implementation Checklist
 
 ### Phase 1: Foundation (Weeks 1-2)
 
