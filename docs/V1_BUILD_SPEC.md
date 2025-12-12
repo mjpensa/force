@@ -1,8 +1,9 @@
 # V1 Build Specification
 ## Consulting-Grade Research & Proposal Generator (Azure-Ready, Portable)
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Created:** 2025-12-12
+**Updated:** 2025-12-12
 **Status:** Implementation Blueprint
 
 ---
@@ -18,7 +19,12 @@
 7. [Adapter Interfaces](#7-adapter-interfaces)
 8. [Container Configurations](#8-container-configurations)
 9. [Service Bus Topics & Queues](#9-service-bus-topics--queues)
-10. [Implementation Checklist](#10-implementation-checklist)
+10. [RAG Pipeline Configuration](#10-rag-pipeline-configuration)
+11. [Frontend Authentication Flow](#11-frontend-authentication-flow)
+12. [Operational Resilience](#12-operational-resilience)
+13. [Cost Management & Usage Tracking](#13-cost-management--usage-tracking)
+14. [Testing & Performance Targets](#14-testing--performance-targets)
+15. [Implementation Checklist](#15-implementation-checklist)
 
 ---
 
@@ -732,6 +738,212 @@ CREATE INDEX idx_retrieval_tenant ON retrieval_logs(tenant_id, created_at DESC);
 CREATE INDEX idx_retrieval_engagement ON retrieval_logs(engagement_id, created_at DESC);
 
 -- ============================================
+-- EXTRACTED EVENTS (for Timeline/Gantt)
+-- ============================================
+
+CREATE TABLE extracted_events (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    document_id     UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    chunk_id        UUID REFERENCES document_chunks(id),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id),
+    engagement_id   UUID REFERENCES engagements(id),
+    knowledge_base_id UUID NOT NULL REFERENCES knowledge_bases(id),
+
+    -- Event data
+    event_date      DATE,
+    event_date_text VARCHAR(100),      -- Original text: "Q1 2024", "mid-2025"
+    event_end_date  DATE,              -- For ranges
+    event_type      VARCHAR(50) NOT NULL,  -- milestone, decision, deadline, phase_start, phase_end
+    event_title     VARCHAR(500) NOT NULL,
+    event_description TEXT,
+    event_entity    VARCHAR(255),      -- Associated organization/system/workstream
+
+    -- Dependencies & relationships
+    depends_on      UUID[],            -- Array of other event IDs
+    related_events  UUID[],            -- Non-dependency relationships
+
+    -- Provenance (critical for citations)
+    source_text     TEXT NOT NULL,     -- Exact text extracted from
+    source_context  TEXT,              -- Surrounding context
+    page_number     INTEGER,
+    char_start      INTEGER,
+    char_end        INTEGER,
+
+    -- Extraction metadata
+    extraction_model VARCHAR(100),     -- Model that extracted this
+    confidence      FLOAT NOT NULL DEFAULT 0.0,  -- 0.0-1.0
+    manually_verified BOOLEAN DEFAULT false,
+    verified_by     UUID REFERENCES users(id),
+
+    -- Metadata
+    metadata        JSONB DEFAULT '{}',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_events_document ON extracted_events(document_id);
+CREATE INDEX idx_events_engagement ON extracted_events(engagement_id);
+CREATE INDEX idx_events_date ON extracted_events(event_date) WHERE event_date IS NOT NULL;
+CREATE INDEX idx_events_type ON extracted_events(event_type);
+CREATE INDEX idx_events_entity ON extracted_events(event_entity) WHERE event_entity IS NOT NULL;
+CREATE INDEX idx_events_confidence ON extracted_events(confidence DESC);
+
+-- ============================================
+-- DOCUMENT VERSIONING
+-- ============================================
+
+CREATE TABLE document_versions (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    document_id     UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    version_number  INTEGER NOT NULL,
+
+    -- Version-specific data
+    file_hash       VARCHAR(64) NOT NULL,
+    blob_path       VARCHAR(1000) NOT NULL,
+    file_size       BIGINT NOT NULL,
+
+    -- Change tracking
+    change_summary  TEXT,
+    change_type     VARCHAR(50),  -- initial, update, correction, major_revision
+
+    -- Processing state for this version
+    chunks_count    INTEGER,
+    events_count    INTEGER,
+
+    -- Metadata
+    created_by      UUID REFERENCES users(id),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE(document_id, version_number)
+);
+
+CREATE INDEX idx_doc_versions ON document_versions(document_id, version_number DESC);
+
+-- Add current_version to documents
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS current_version INTEGER DEFAULT 1;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS version_count INTEGER DEFAULT 1;
+
+-- ============================================
+-- PROMPT VERSIONING (for A/B testing & rollback)
+-- ============================================
+
+CREATE TABLE prompts (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id       UUID REFERENCES tenants(id),  -- NULL = global/system prompt
+
+    -- Identification
+    name            VARCHAR(100) NOT NULL,  -- 'roadmap', 'slides', 'document', 'event_extraction'
+    version         INTEGER NOT NULL,
+
+    -- Content
+    system_prompt   TEXT NOT NULL,
+    user_prompt_template TEXT,  -- Template with {placeholders}
+    output_schema   JSONB,      -- JSON schema for structured output
+
+    -- Configuration
+    model_config    JSONB DEFAULT '{}',  -- temperature, max_tokens, etc.
+
+    -- Status
+    is_active       BOOLEAN DEFAULT false,
+    is_default      BOOLEAN DEFAULT false,
+
+    -- Performance tracking
+    usage_count     INTEGER DEFAULT 0,
+    avg_latency_ms  INTEGER,
+    avg_tokens      INTEGER,
+    success_rate    FLOAT,  -- Successful generations / total attempts
+    quality_score   FLOAT,  -- Manual quality rating 0-5
+
+    -- Metadata
+    description     TEXT,
+    changelog       TEXT,
+    created_by      UUID REFERENCES users(id),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deprecated_at   TIMESTAMPTZ,
+
+    UNIQUE(tenant_id, name, version)
+);
+
+CREATE INDEX idx_prompts_active ON prompts(name, is_active) WHERE is_active = true;
+CREATE INDEX idx_prompts_default ON prompts(name, is_default) WHERE is_default = true;
+
+-- Link generated content to prompts
+ALTER TABLE generated_content ADD COLUMN IF NOT EXISTS prompt_id UUID REFERENCES prompts(id);
+ALTER TABLE generated_content ADD COLUMN IF NOT EXISTS prompt_version INTEGER;
+
+-- ============================================
+-- USAGE TRACKING & COST MANAGEMENT
+-- ============================================
+
+CREATE TABLE usage_logs (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id),
+    user_id         UUID REFERENCES users(id),
+    engagement_id   UUID REFERENCES engagements(id),
+
+    -- Operation details
+    operation_type  VARCHAR(50) NOT NULL,  -- embedding, generation, retrieval, extraction
+    provider        VARCHAR(50) NOT NULL,  -- openai, gemini, azure-openai
+    model           VARCHAR(100) NOT NULL, -- text-embedding-ada-002, gemini-2.5-flash, etc.
+
+    -- Usage metrics
+    input_tokens    INTEGER NOT NULL DEFAULT 0,
+    output_tokens   INTEGER NOT NULL DEFAULT 0,
+    total_tokens    INTEGER NOT NULL DEFAULT 0,
+
+    -- Cost (in USD, calculated at log time)
+    cost_usd        DECIMAL(10, 6) NOT NULL DEFAULT 0,
+
+    -- Performance
+    latency_ms      INTEGER,
+    success         BOOLEAN NOT NULL DEFAULT true,
+    error_code      VARCHAR(50),
+
+    -- Context
+    job_id          UUID REFERENCES jobs(id),
+    request_id      VARCHAR(100),  -- Correlation ID
+
+    -- Timestamp
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Partitioned by month for performance (create partitions as needed)
+CREATE INDEX idx_usage_tenant_month ON usage_logs(tenant_id, created_at);
+CREATE INDEX idx_usage_operation ON usage_logs(operation_type, created_at);
+CREATE INDEX idx_usage_engagement ON usage_logs(engagement_id, created_at) WHERE engagement_id IS NOT NULL;
+
+-- Tenant usage limits
+CREATE TABLE tenant_usage_limits (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id) UNIQUE,
+
+    -- Monthly limits
+    monthly_embedding_tokens INTEGER DEFAULT 10000000,  -- 10M tokens
+    monthly_generation_tokens INTEGER DEFAULT 5000000,  -- 5M tokens
+    monthly_cost_limit_usd DECIMAL(10, 2) DEFAULT 500.00,
+
+    -- Rate limits (per minute)
+    rate_limit_embeddings INTEGER DEFAULT 1000,
+    rate_limit_generations INTEGER DEFAULT 100,
+    rate_limit_retrievals INTEGER DEFAULT 500,
+
+    -- Current period tracking (reset monthly)
+    current_period_start DATE NOT NULL DEFAULT CURRENT_DATE,
+    current_embedding_tokens INTEGER DEFAULT 0,
+    current_generation_tokens INTEGER DEFAULT 0,
+    current_cost_usd DECIMAL(10, 2) DEFAULT 0,
+
+    -- Alerts
+    alert_threshold_percent INTEGER DEFAULT 80,  -- Alert at 80% usage
+    alert_email VARCHAR(255),
+    last_alert_sent TIMESTAMPTZ,
+
+    -- Metadata
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================
 -- HELPER FUNCTIONS
 -- ============================================
 
@@ -961,6 +1173,206 @@ services:
 
 volumes:
   qdrant_storage:
+```
+
+### 4.5 Qdrant High Availability (Production)
+
+**Option A: Qdrant Cloud (Recommended for Production)**
+
+```typescript
+// packages/adapters/src/vector/qdrant-cloud.ts
+
+interface QdrantCloudConfig {
+  // Managed service - handles HA, backups, scaling
+  cluster: {
+    url: 'https://your-cluster.qdrant.io:6333';
+    apiKey: process.env.QDRANT_API_KEY;
+
+    // Built-in replication
+    replicationFactor: 2;
+
+    // Automatic backups
+    backups: {
+      enabled: true;
+      retention: '30d';
+    };
+  };
+}
+```
+
+**Option B: Self-Hosted Cluster (Azure Container Apps)**
+
+```yaml
+# infrastructure/azure/qdrant-cluster.yaml
+
+# Qdrant Cluster Configuration for Azure
+# Requires 3 nodes minimum for HA
+
+apiVersion: apps.containerapps.azure/v1
+kind: ContainerApp
+metadata:
+  name: qdrant-node-0
+spec:
+  configuration:
+    ingress:
+      external: false
+      targetPort: 6333
+  template:
+    containers:
+      - name: qdrant
+        image: qdrant/qdrant:v1.7.4
+        resources:
+          cpu: 2.0
+          memory: 8Gi
+        env:
+          - name: QDRANT__CLUSTER__ENABLED
+            value: "true"
+          - name: QDRANT__CLUSTER__P2P__PORT
+            value: "6335"
+          - name: QDRANT__CLUSTER__CONSENSUS__TICK_PERIOD_MS
+            value: "100"
+        volumeMounts:
+          - volumeName: qdrant-storage
+            mountPath: /qdrant/storage
+    volumes:
+      - name: qdrant-storage
+        storageName: qdrant-premium-files
+        storageType: AzureFile
+
+---
+# Repeat for qdrant-node-1, qdrant-node-2
+```
+
+### 4.6 Qdrant Backup & Recovery
+
+```typescript
+// packages/adapters/src/vector/qdrant-backup.ts
+
+interface QdrantBackupConfig {
+  // Backup schedule
+  schedule: {
+    full: '0 2 * * 0';     // Full backup: Sundays at 2 AM
+    snapshot: '0 */6 * * *'; // Snapshots: Every 6 hours
+  };
+
+  // Storage destination
+  destination: {
+    provider: 'azure-blob';
+    container: 'qdrant-backups';
+    path: '{date}/{collection}/';
+    retention: {
+      snapshots: 7;   // Keep 7 days of snapshots
+      full: 30;       // Keep 30 days of full backups
+    };
+  };
+
+  // Recovery configuration
+  recovery: {
+    // Point-in-time recovery via snapshots
+    maxRecoveryTime: '15m';  // RTO target
+
+    // Procedure
+    steps: [
+      '1. Stop write traffic to affected collection',
+      '2. Identify latest valid snapshot',
+      '3. Restore snapshot to new collection',
+      '4. Validate data integrity',
+      '5. Swap collection alias',
+      '6. Resume traffic'
+    ];
+  };
+}
+
+// Backup implementation
+export class QdrantBackupService {
+  async createSnapshot(collectionName: string): Promise<string> {
+    const response = await this.client.createSnapshot(collectionName);
+    const snapshotPath = response.result.name;
+
+    // Upload to blob storage
+    await this.uploadToBlob(
+      `snapshots/${collectionName}/${Date.now()}.snapshot`,
+      snapshotPath
+    );
+
+    return snapshotPath;
+  }
+
+  async restoreSnapshot(
+    collectionName: string,
+    snapshotPath: string
+  ): Promise<void> {
+    // Download from blob
+    const localPath = await this.downloadFromBlob(snapshotPath);
+
+    // Restore to new collection
+    const tempCollection = `${collectionName}_restore_${Date.now()}`;
+    await this.client.recoverSnapshot(tempCollection, localPath);
+
+    // Validate
+    const info = await this.client.getCollectionInfo(tempCollection);
+    if (info.status !== 'green') {
+      throw new Error('Restored collection unhealthy');
+    }
+
+    // Swap via alias (zero-downtime)
+    await this.client.updateCollectionAliases({
+      actions: [
+        { delete_alias: { alias_name: collectionName } },
+        { create_alias: { alias_name: collectionName, collection_name: tempCollection } }
+      ]
+    });
+  }
+}
+```
+
+### 4.7 Collection Lifecycle Management
+
+```typescript
+// packages/adapters/src/vector/collection-lifecycle.ts
+
+interface CollectionLifecycleConfig {
+  // Auto-archive completed engagements
+  archivePolicy: {
+    // Archive when engagement status = 'completed' + N days
+    archiveAfterCompletionDays: 90;
+
+    // Archive procedure
+    procedure: {
+      // 1. Export vectors to blob storage
+      exportToBlob: true;
+      blobPath: 'archived/{tenantId}/{engagementId}/{date}/';
+
+      // 2. Delete from Qdrant
+      deleteCollection: true;
+
+      // 3. Update DB status
+      updateDbStatus: 'archived';
+    };
+  };
+
+  // Restore on demand
+  restorePolicy: {
+    // Automatically restore when engagement accessed
+    restoreOnAccess: true;
+    restoreTimeout: 60000;  // 60 seconds max
+
+    // Keep restored collections for N days before re-archiving
+    keepRestoredDays: 7;
+  };
+
+  // Cleanup orphaned collections
+  cleanupPolicy: {
+    // Run cleanup job daily
+    schedule: '0 3 * * *';
+
+    // Delete collections with no DB reference
+    deleteOrphaned: true;
+
+    // Delete empty collections older than N days
+    deleteEmptyAfterDays: 7;
+  };
+}
 ```
 
 ---
@@ -2113,7 +2525,1984 @@ output connectionString string = listKeys(
 
 ---
 
-## 10. Implementation Checklist
+## 10. RAG Pipeline Configuration
+
+### 10.1 Chunking Strategy
+
+```typescript
+// packages/shared/src/config/chunking.ts
+
+export interface ChunkingConfig {
+  // Chunking algorithm
+  strategy: 'recursive' | 'semantic' | 'markdown-aware';
+
+  // Size configuration
+  maxTokens: number;        // Target chunk size (default: 500)
+  overlapTokens: number;    // Overlap between chunks (default: 50)
+  minTokens: number;        // Minimum chunk size (default: 100)
+
+  // Structured content handling
+  preserveTables: boolean;       // Keep tables as single chunks
+  preserveCodeBlocks: boolean;   // Don't split code blocks
+  preserveLists: boolean;        // Keep lists together
+  preserveHeadings: boolean;     // Keep heading with following content
+
+  // Parent-child chunking for context retrieval
+  enableParentChunks: boolean;   // Store larger parent chunks
+  parentChunkSize: number;       // Parent chunk size (default: 2000)
+  parentOverlap: number;         // Parent overlap (default: 200)
+
+  // Metadata extraction
+  extractHeadings: boolean;      // Extract section headings
+  extractPageNumbers: boolean;   // Track page numbers (PDF)
+}
+
+export const DEFAULT_CHUNKING_CONFIG: ChunkingConfig = {
+  strategy: 'markdown-aware',
+  maxTokens: 500,
+  overlapTokens: 50,
+  minTokens: 100,
+
+  preserveTables: true,
+  preserveCodeBlocks: true,
+  preserveLists: true,
+  preserveHeadings: true,
+
+  enableParentChunks: true,
+  parentChunkSize: 2000,
+  parentOverlap: 200,
+
+  extractHeadings: true,
+  extractPageNumbers: true,
+};
+
+// Chunking implementation
+export class DocumentChunker {
+  constructor(private config: ChunkingConfig) {}
+
+  async chunk(text: string, metadata: DocumentMetadata): Promise<Chunk[]> {
+    // 1. Pre-process: identify structural elements
+    const structures = this.identifyStructures(text);
+
+    // 2. Split respecting structure boundaries
+    const rawChunks = this.splitWithStructure(text, structures);
+
+    // 3. Merge small chunks, split large ones
+    const sizedChunks = this.normalizeChunkSizes(rawChunks);
+
+    // 4. Add overlap
+    const overlappedChunks = this.addOverlap(sizedChunks);
+
+    // 5. Create parent chunks if enabled
+    if (this.config.enableParentChunks) {
+      return this.createParentChildChunks(overlappedChunks);
+    }
+
+    return overlappedChunks;
+  }
+
+  private identifyStructures(text: string): Structure[] {
+    const structures: Structure[] = [];
+
+    // Tables (markdown)
+    const tableRegex = /\|[^\n]+\|[\s\S]*?\n(?=\n[^|]|\n*$)/g;
+    // Code blocks
+    const codeRegex = /```[\s\S]*?```/g;
+    // Lists
+    const listRegex = /(?:^|\n)(?:[-*+]|\d+\.)\s+[\s\S]*?(?=\n\n|\n(?![-*+\d]))/g;
+    // Headings
+    const headingRegex = /^#{1,6}\s+.+$/gm;
+
+    // Mark regions as protected
+    // ...implementation
+    return structures;
+  }
+}
+
+export interface Chunk {
+  id: string;
+  text: string;
+  tokenCount: number;
+  chunkIndex: number;
+
+  // Position in source
+  startChar: number;
+  endChar: number;
+  pageNumber?: number;
+
+  // Hierarchy
+  parentChunkId?: string;
+  childChunkIds?: string[];
+
+  // Metadata
+  sectionHeading?: string;
+  structureType?: 'text' | 'table' | 'code' | 'list';
+}
+```
+
+### 10.2 Hybrid Search Configuration
+
+```typescript
+// packages/adapters/src/vector/hybrid-search.ts
+
+export interface HybridSearchConfig {
+  // Search mode
+  mode: 'vector-only' | 'keyword-only' | 'hybrid';
+
+  // Hybrid weights (must sum to 1.0)
+  vectorWeight: number;   // Semantic similarity weight (default: 0.7)
+  keywordWeight: number;  // BM25/keyword weight (default: 0.3)
+
+  // Fusion method
+  fusionMethod: 'rrf' | 'linear' | 'convex';
+  rrfK: number;           // RRF parameter (default: 60)
+
+  // Keyword search configuration
+  keyword: {
+    analyzer: 'standard' | 'english' | 'whitespace';
+    fuzziness: number;    // Edit distance for fuzzy matching
+    prefixLength: number; // Minimum prefix for fuzzy
+  };
+}
+
+export const DEFAULT_HYBRID_CONFIG: HybridSearchConfig = {
+  mode: 'hybrid',
+  vectorWeight: 0.7,
+  keywordWeight: 0.3,
+
+  fusionMethod: 'rrf',
+  rrfK: 60,
+
+  keyword: {
+    analyzer: 'english',
+    fuzziness: 1,
+    prefixLength: 2,
+  },
+};
+
+// Hybrid search implementation
+export class HybridSearchService {
+  async search(
+    query: string,
+    filter: RetrievalFilter,
+    config: HybridSearchConfig = DEFAULT_HYBRID_CONFIG
+  ): Promise<SearchResult[]> {
+    const [vectorResults, keywordResults] = await Promise.all([
+      this.vectorSearch(query, filter, config),
+      this.keywordSearch(query, filter, config),
+    ]);
+
+    return this.fuseResults(vectorResults, keywordResults, config);
+  }
+
+  private fuseResults(
+    vectorResults: SearchResult[],
+    keywordResults: SearchResult[],
+    config: HybridSearchConfig
+  ): SearchResult[] {
+    if (config.fusionMethod === 'rrf') {
+      return this.reciprocalRankFusion(vectorResults, keywordResults, config.rrfK);
+    }
+    // Linear combination
+    return this.linearFusion(vectorResults, keywordResults, config);
+  }
+
+  private reciprocalRankFusion(
+    vectorResults: SearchResult[],
+    keywordResults: SearchResult[],
+    k: number
+  ): SearchResult[] {
+    const scores = new Map<string, number>();
+
+    // Score from vector search
+    vectorResults.forEach((result, rank) => {
+      const score = 1 / (k + rank + 1);
+      scores.set(result.id, (scores.get(result.id) || 0) + score);
+    });
+
+    // Score from keyword search
+    keywordResults.forEach((result, rank) => {
+      const score = 1 / (k + rank + 1);
+      scores.set(result.id, (scores.get(result.id) || 0) + score);
+    });
+
+    // Sort by combined score
+    const allResults = [...vectorResults, ...keywordResults];
+    const uniqueResults = new Map(allResults.map(r => [r.id, r]));
+
+    return Array.from(uniqueResults.values())
+      .map(r => ({ ...r, score: scores.get(r.id) || 0 }))
+      .sort((a, b) => b.score - a.score);
+  }
+}
+```
+
+### 10.3 Reranking Configuration
+
+```typescript
+// packages/adapters/src/rerank/interface.ts
+
+export interface RerankAdapter {
+  rerank(
+    query: string,
+    documents: RerankDocument[],
+    options?: RerankOptions
+  ): Promise<RerankResult[]>;
+}
+
+export interface RerankDocument {
+  id: string;
+  text: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RerankResult {
+  id: string;
+  score: number;        // Relevance score from reranker
+  originalRank: number; // Position before reranking
+  newRank: number;      // Position after reranking
+}
+
+export interface RerankOptions {
+  topK?: number;           // Return top K after reranking (default: 20)
+  minScore?: number;       // Drop below threshold (default: 0.0)
+  returnOriginalScore?: boolean;
+}
+
+// Configuration
+export interface RerankConfig {
+  enabled: boolean;
+  provider: 'cohere' | 'cross-encoder' | 'llm-based';
+
+  // Provider-specific
+  cohere?: {
+    model: 'rerank-english-v3.0' | 'rerank-multilingual-v3.0';
+    apiKey: string;
+  };
+
+  crossEncoder?: {
+    model: 'cross-encoder/ms-marco-MiniLM-L-6-v2' | 'BAAI/bge-reranker-base';
+    maxLength: number;  // Max input length
+  };
+
+  // When to apply reranking
+  applyWhen: {
+    minCandidates: number;  // Only rerank if >= N candidates (default: 10)
+    maxCandidates: number;  // Max candidates to rerank (default: 100)
+  };
+
+  // Performance
+  batchSize: number;      // Batch size for reranking
+  timeout: number;        // Timeout per batch
+}
+
+export const DEFAULT_RERANK_CONFIG: RerankConfig = {
+  enabled: true,
+  provider: 'cohere',
+
+  cohere: {
+    model: 'rerank-english-v3.0',
+    apiKey: process.env.COHERE_API_KEY!,
+  },
+
+  applyWhen: {
+    minCandidates: 10,
+    maxCandidates: 100,
+  },
+
+  batchSize: 50,
+  timeout: 30000,
+};
+```
+
+### 10.4 Full RAG Pipeline
+
+```typescript
+// apps/api/src/services/rag-pipeline.ts
+
+export interface RAGPipelineConfig {
+  // Retrieval
+  retrieval: {
+    initialTopK: number;        // Initial candidates (default: 100)
+    hybridSearch: HybridSearchConfig;
+  };
+
+  // Reranking
+  rerank: RerankConfig;
+
+  // Context assembly
+  context: {
+    maxTokens: number;          // Max context tokens (default: 8000)
+    maxChunks: number;          // Max chunks in context (default: 20)
+    includeMetadata: boolean;   // Include chunk metadata
+    citationStyle: 'inline' | 'footnote' | 'none';
+  };
+
+  // Generation
+  generation: {
+    model: string;
+    temperature: number;
+    maxOutputTokens: number;
+  };
+}
+
+export class RAGPipeline {
+  constructor(
+    private vectorStore: VectorStoreAdapter,
+    private reranker: RerankAdapter,
+    private llm: LLMAdapter,
+    private config: RAGPipelineConfig
+  ) {}
+
+  async generate(
+    query: string,
+    filter: RetrievalFilter,
+    prompt: PromptTemplate
+  ): Promise<GenerationResult> {
+    // 1. Retrieve candidates (hybrid search)
+    const candidates = await this.retrieve(query, filter);
+
+    // 2. Rerank if enabled and enough candidates
+    const reranked = await this.maybeRerank(query, candidates);
+
+    // 3. Build context within token budget
+    const context = await this.buildContext(reranked);
+
+    // 4. Generate with LLM
+    const result = await this.llm.generateStructured(
+      {
+        systemPrompt: prompt.system,
+        userPrompt: prompt.buildUserPrompt(query, context),
+        temperature: this.config.generation.temperature,
+        maxTokens: this.config.generation.maxOutputTokens,
+      },
+      prompt.outputSchema
+    );
+
+    // 5. Add citations
+    return this.addCitations(result, context);
+  }
+
+  private async buildContext(chunks: Chunk[]): Promise<ContextPack> {
+    const contextChunks: ContextChunk[] = [];
+    let totalTokens = 0;
+
+    for (const chunk of chunks) {
+      if (totalTokens + chunk.tokenCount > this.config.context.maxTokens) {
+        break;
+      }
+      if (contextChunks.length >= this.config.context.maxChunks) {
+        break;
+      }
+
+      contextChunks.push({
+        id: chunk.id,
+        text: chunk.text,
+        source: chunk.sourceFile,
+        page: chunk.pageNumber,
+        relevanceScore: chunk.score,
+      });
+
+      totalTokens += chunk.tokenCount;
+    }
+
+    return {
+      chunks: contextChunks,
+      totalTokens,
+      sourceDocuments: [...new Set(contextChunks.map(c => c.source))],
+    };
+  }
+}
+```
+
+### 10.5 Event Extraction Pipeline
+
+```typescript
+// apps/worker/src/processors/eventExtract.ts
+
+export interface EventExtractionConfig {
+  // Model configuration
+  model: string;
+  temperature: number;
+
+  // Extraction settings
+  confidenceThreshold: number;  // Min confidence to keep (default: 0.5)
+  maxEventsPerChunk: number;    // Max events per chunk (default: 10)
+  deduplicateWindow: number;    // Days window for dedup (default: 7)
+
+  // Date parsing
+  dateFormats: string[];        // Supported date formats
+  inferRelativeDates: boolean;  // "next quarter" -> actual date
+  referenceDate: Date;          // Reference for relative dates
+}
+
+export interface ExtractedEvent {
+  date: Date | null;
+  dateText: string;             // Original text: "Q1 2024"
+  endDate?: Date;               // For ranges
+  eventType: EventType;
+  title: string;
+  description?: string;
+  entity?: string;
+
+  // Provenance
+  sourceText: string;
+  sourceChunkId: string;
+  confidence: number;
+
+  // Dependencies (extracted from text)
+  dependsOnText?: string[];     // Raw dependency mentions
+}
+
+export type EventType =
+  | 'milestone'
+  | 'deadline'
+  | 'decision'
+  | 'phase_start'
+  | 'phase_end'
+  | 'deliverable'
+  | 'review'
+  | 'dependency';
+
+export class EventExtractor {
+  async extractFromChunks(
+    chunks: Chunk[],
+    config: EventExtractionConfig
+  ): Promise<ExtractedEvent[]> {
+    const allEvents: ExtractedEvent[] = [];
+
+    for (const chunk of chunks) {
+      const events = await this.extractFromChunk(chunk, config);
+      allEvents.push(...events);
+    }
+
+    // Deduplicate similar events
+    const deduplicated = this.deduplicateEvents(allEvents, config);
+
+    // Resolve dependencies between events
+    const withDependencies = this.resolveDependencies(deduplicated);
+
+    return withDependencies;
+  }
+
+  private async extractFromChunk(
+    chunk: Chunk,
+    config: EventExtractionConfig
+  ): Promise<ExtractedEvent[]> {
+    const prompt = this.buildExtractionPrompt(chunk);
+
+    const result = await this.llm.generateStructured<EventExtractionResult>(
+      {
+        systemPrompt: EVENT_EXTRACTION_SYSTEM_PROMPT,
+        userPrompt: prompt,
+        temperature: config.temperature,
+      },
+      EVENT_EXTRACTION_SCHEMA
+    );
+
+    return result.events
+      .filter(e => e.confidence >= config.confidenceThreshold)
+      .slice(0, config.maxEventsPerChunk)
+      .map(e => ({
+        ...e,
+        sourceChunkId: chunk.id,
+        sourceText: this.extractSourceSpan(chunk.text, e),
+      }));
+  }
+}
+```
+
+---
+
+## 11. Frontend Authentication Flow
+
+### 11.1 Azure Static Web Apps Authentication
+
+```json
+// apps/web/staticwebapp.config.json
+
+{
+  "routes": [
+    {
+      "route": "/api/*",
+      "allowedRoles": ["authenticated"],
+      "rewrite": "https://force-api.azurecontainerapps.io/api/*"
+    },
+    {
+      "route": "/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/.auth/*",
+      "allowedRoles": ["anonymous"]
+    }
+  ],
+  "auth": {
+    "identityProviders": {
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://login.microsoftonline.com/{TENANT_ID}/v2.0",
+          "clientIdSettingName": "AAD_CLIENT_ID",
+          "clientSecretSettingName": "AAD_CLIENT_SECRET"
+        },
+        "userDetailsClaim": "http://schemas.microsoft.com/identity/claims/objectidentifier",
+        "login": {
+          "loginParameters": ["scope=openid profile email"]
+        }
+      }
+    }
+  },
+  "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/aad",
+      "statusCode": 302
+    },
+    "403": {
+      "rewrite": "/unauthorized.html",
+      "statusCode": 403
+    }
+  },
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: https:; connect-src 'self' https://force-api.azurecontainerapps.io"
+  }
+}
+```
+
+### 11.2 Frontend Auth Integration
+
+```javascript
+// apps/web/utils/auth.js
+
+/**
+ * Authentication utilities for frontend
+ * Handles token management, user info, and auth state
+ */
+
+export class AuthService {
+  constructor() {
+    this.userInfo = null;
+    this.tokenRefreshInterval = null;
+  }
+
+  /**
+   * Initialize auth - call on app startup
+   */
+  async init() {
+    await this.loadUserInfo();
+    this.startTokenRefresh();
+  }
+
+  /**
+   * Load current user info from Static Web Apps auth
+   */
+  async loadUserInfo() {
+    try {
+      const response = await fetch('/.auth/me');
+      const data = await response.json();
+
+      if (data.clientPrincipal) {
+        this.userInfo = {
+          id: data.clientPrincipal.userId,
+          name: data.clientPrincipal.userDetails,
+          email: data.clientPrincipal.userDetails,
+          roles: data.clientPrincipal.userRoles || [],
+          claims: data.clientPrincipal.claims || [],
+          identityProvider: data.clientPrincipal.identityProvider,
+        };
+        return this.userInfo;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to load user info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  isAuthenticated() {
+    return this.userInfo !== null;
+  }
+
+  /**
+   * Get current user
+   */
+  getUser() {
+    return this.userInfo;
+  }
+
+  /**
+   * Redirect to login
+   */
+  login(returnUrl = window.location.pathname) {
+    const encodedReturn = encodeURIComponent(returnUrl);
+    window.location.href = `/.auth/login/aad?post_login_redirect_uri=${encodedReturn}`;
+  }
+
+  /**
+   * Logout user
+   */
+  async logout() {
+    this.stopTokenRefresh();
+    this.userInfo = null;
+    window.location.href = '/.auth/logout?post_logout_redirect_uri=/';
+  }
+
+  /**
+   * Start periodic token refresh check
+   */
+  startTokenRefresh() {
+    // Check token validity every 5 minutes
+    this.tokenRefreshInterval = setInterval(async () => {
+      const user = await this.loadUserInfo();
+      if (!user) {
+        // Token expired, redirect to login
+        this.login();
+      }
+    }, 5 * 60 * 1000);
+  }
+
+  /**
+   * Stop token refresh
+   */
+  stopTokenRefresh() {
+    if (this.tokenRefreshInterval) {
+      clearInterval(this.tokenRefreshInterval);
+      this.tokenRefreshInterval = null;
+    }
+  }
+
+  /**
+   * Check if user has required role
+   */
+  hasRole(role) {
+    return this.userInfo?.roles?.includes(role) || false;
+  }
+
+  /**
+   * Check if user has any of the required roles
+   */
+  hasAnyRole(roles) {
+    return roles.some(role => this.hasRole(role));
+  }
+}
+
+// Singleton instance
+export const auth = new AuthService();
+
+/**
+ * Fetch wrapper that handles auth errors
+ */
+export async function authFetch(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    credentials: 'include',  // Include cookies for auth
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  // Handle auth errors
+  if (response.status === 401) {
+    auth.login();
+    throw new Error('Authentication required');
+  }
+
+  if (response.status === 403) {
+    throw new Error('Access denied');
+  }
+
+  return response;
+}
+```
+
+### 11.3 API Token Validation (Backend)
+
+```typescript
+// apps/api/src/middleware/auth.ts
+
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
+
+interface AuthConfig {
+  tenantId: string;
+  clientId: string;
+  audience: string;
+}
+
+const config: AuthConfig = {
+  tenantId: process.env.AZURE_AD_TENANT_ID!,
+  clientId: process.env.AZURE_AD_CLIENT_ID!,
+  audience: process.env.AZURE_AD_AUDIENCE || `api://${process.env.AZURE_AD_CLIENT_ID}`,
+};
+
+// JWKS client for key retrieval
+const jwks = jwksClient({
+  jwksUri: `https://login.microsoftonline.com/${config.tenantId}/discovery/v2.0/keys`,
+  cache: true,
+  cacheMaxAge: 86400000, // 24 hours
+});
+
+function getSigningKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
+  jwks.getSigningKey(header.kid, (err, key) => {
+    if (err) {
+      callback(err);
+      return;
+    }
+    const signingKey = key?.getPublicKey();
+    callback(null, signingKey);
+  });
+}
+
+export interface AuthenticatedRequest extends Request {
+  user: {
+    id: string;           // Object ID from Entra
+    email: string;
+    name: string;
+    tenantId: string;     // App tenant (from DB, not Azure tenant)
+    roles: string[];
+  };
+}
+
+export async function authMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  // Extract token from header or Static Web Apps header
+  const authHeader = req.headers.authorization;
+  const swaHeader = req.headers['x-ms-client-principal'];
+
+  let token: string | undefined;
+
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else if (swaHeader) {
+    // Static Web Apps passes user info in header
+    const decoded = Buffer.from(swaHeader as string, 'base64').toString('utf8');
+    const principal = JSON.parse(decoded);
+
+    // Validate and attach user
+    (req as AuthenticatedRequest).user = await getUserFromPrincipal(principal);
+    return next();
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: 'No authentication token provided' });
+  }
+
+  // Verify JWT
+  jwt.verify(
+    token,
+    getSigningKey,
+    {
+      audience: config.audience,
+      issuer: `https://login.microsoftonline.com/${config.tenantId}/v2.0`,
+      algorithms: ['RS256'],
+    },
+    async (err, decoded) => {
+      if (err) {
+        console.error('Token verification failed:', err.message);
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+
+      const payload = decoded as jwt.JwtPayload;
+
+      // Get or create user in our DB
+      const user = await getOrCreateUser({
+        entraOid: payload.oid!,
+        email: payload.email || payload.preferred_username!,
+        name: payload.name,
+      });
+
+      (req as AuthenticatedRequest).user = user;
+      next();
+    }
+  );
+}
+
+async function getUserFromPrincipal(principal: any) {
+  return getOrCreateUser({
+    entraOid: principal.userId,
+    email: principal.userDetails,
+    name: principal.userDetails,
+  });
+}
+
+async function getOrCreateUser(data: {
+  entraOid: string;
+  email: string;
+  name?: string;
+}) {
+  // Look up user by Entra OID
+  let user = await db.users.findByEntraOid(data.entraOid);
+
+  if (!user) {
+    // Auto-provision user on first login
+    // Tenant assignment logic would go here
+    user = await db.users.create({
+      entraOid: data.entraOid,
+      email: data.email,
+      displayName: data.name,
+      // Default tenant assignment (customize as needed)
+      tenantId: await getDefaultTenantForEmail(data.email),
+      role: 'member',
+    });
+  }
+
+  // Update last login
+  await db.users.updateLastLogin(user.id);
+
+  return {
+    id: user.entraOid,
+    email: user.email,
+    name: user.displayName,
+    tenantId: user.tenantId,
+    roles: [user.role],
+  };
+}
+```
+
+---
+
+## 12. Operational Resilience
+
+### 12.1 Circuit Breaker Pattern
+
+```typescript
+// packages/shared/src/resilience/circuit-breaker.ts
+
+export interface CircuitBreakerConfig {
+  failureThreshold: number;     // Failures before opening (default: 5)
+  successThreshold: number;     // Successes to close (default: 3)
+  timeout: number;              // Time in open state before half-open (ms)
+  volumeThreshold: number;      // Min requests before calculating failure rate
+}
+
+export type CircuitState = 'closed' | 'open' | 'half-open';
+
+export class CircuitBreaker {
+  private state: CircuitState = 'closed';
+  private failures = 0;
+  private successes = 0;
+  private lastFailure: number = 0;
+  private requestCount = 0;
+
+  constructor(
+    private name: string,
+    private config: CircuitBreakerConfig
+  ) {}
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.state === 'open') {
+      if (Date.now() - this.lastFailure > this.config.timeout) {
+        this.state = 'half-open';
+        this.successes = 0;
+      } else {
+        throw new CircuitOpenError(this.name);
+      }
+    }
+
+    try {
+      const result = await fn();
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      this.onFailure();
+      throw error;
+    }
+  }
+
+  private onSuccess() {
+    this.requestCount++;
+    this.failures = 0;
+
+    if (this.state === 'half-open') {
+      this.successes++;
+      if (this.successes >= this.config.successThreshold) {
+        this.state = 'closed';
+        console.log(`Circuit ${this.name} closed`);
+      }
+    }
+  }
+
+  private onFailure() {
+    this.requestCount++;
+    this.failures++;
+    this.lastFailure = Date.now();
+
+    if (this.requestCount >= this.config.volumeThreshold &&
+        this.failures >= this.config.failureThreshold) {
+      this.state = 'open';
+      console.log(`Circuit ${this.name} opened`);
+    }
+  }
+
+  getState(): CircuitState {
+    return this.state;
+  }
+}
+
+// Service-specific circuit breakers
+export const circuitBreakers = {
+  embedding: new CircuitBreaker('embedding', {
+    failureThreshold: 5,
+    successThreshold: 3,
+    timeout: 30000,
+    volumeThreshold: 10,
+  }),
+  llm: new CircuitBreaker('llm', {
+    failureThreshold: 3,
+    successThreshold: 2,
+    timeout: 60000,
+    volumeThreshold: 5,
+  }),
+  vectorDb: new CircuitBreaker('vectorDb', {
+    failureThreshold: 5,
+    successThreshold: 3,
+    timeout: 15000,
+    volumeThreshold: 10,
+  }),
+};
+```
+
+### 12.2 Idempotency Pattern
+
+```typescript
+// packages/shared/src/resilience/idempotency.ts
+
+import { createHash } from 'crypto';
+
+export interface IdempotencyConfig {
+  keyPrefix: string;
+  ttlSeconds: number;       // How long to remember completed operations
+  lockTimeoutMs: number;    // Lock timeout for in-progress operations
+}
+
+export class IdempotencyService {
+  constructor(
+    private redis: RedisClient,
+    private config: IdempotencyConfig
+  ) {}
+
+  /**
+   * Generate idempotency key from operation parameters
+   */
+  generateKey(operation: string, params: Record<string, unknown>): string {
+    const hash = createHash('sha256')
+      .update(JSON.stringify({ operation, params }))
+      .digest('hex');
+    return `${this.config.keyPrefix}:${operation}:${hash}`;
+  }
+
+  /**
+   * Execute operation with idempotency guarantee
+   */
+  async execute<T>(
+    key: string,
+    operation: () => Promise<T>
+  ): Promise<{ result: T; cached: boolean }> {
+    // Check if operation already completed
+    const cached = await this.redis.get(key);
+    if (cached) {
+      return { result: JSON.parse(cached), cached: true };
+    }
+
+    // Try to acquire lock
+    const lockKey = `${key}:lock`;
+    const acquired = await this.redis.set(lockKey, '1', {
+      NX: true,
+      PX: this.config.lockTimeoutMs,
+    });
+
+    if (!acquired) {
+      // Another process is executing, wait and retry
+      await this.waitForCompletion(key);
+      const result = await this.redis.get(key);
+      if (result) {
+        return { result: JSON.parse(result), cached: true };
+      }
+      throw new Error('Operation failed in another process');
+    }
+
+    try {
+      // Execute operation
+      const result = await operation();
+
+      // Store result
+      await this.redis.set(key, JSON.stringify(result), {
+        EX: this.config.ttlSeconds,
+      });
+
+      return { result, cached: false };
+    } finally {
+      // Release lock
+      await this.redis.del(lockKey);
+    }
+  }
+
+  private async waitForCompletion(key: string, maxWaitMs = 30000): Promise<void> {
+    const start = Date.now();
+    while (Date.now() - start < maxWaitMs) {
+      const result = await this.redis.get(key);
+      if (result) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+}
+
+// Usage in job processor
+export async function processDocumentIngest(
+  job: DocumentIngestJob,
+  idempotency: IdempotencyService
+): Promise<void> {
+  const key = idempotency.generateKey('document_ingest', {
+    documentId: job.documentId,
+    fileHash: job.fileHash,
+  });
+
+  const { cached } = await idempotency.execute(key, async () => {
+    // Actual processing logic
+    await extractText(job);
+    await chunkDocument(job);
+    await embedChunks(job);
+    await indexVectors(job);
+    return { success: true };
+  });
+
+  if (cached) {
+    console.log(`Skipped duplicate job: ${job.documentId}`);
+  }
+}
+```
+
+### 12.3 Cache Invalidation Strategy
+
+```typescript
+// packages/shared/src/cache/invalidation.ts
+
+export interface CacheInvalidationConfig {
+  // Event-driven invalidation patterns
+  patterns: {
+    onDocumentUpdate: string[];
+    onDocumentDelete: string[];
+    onChunkUpdate: string[];
+    onKbReindex: string[];
+    onEngagementArchive: string[];
+  };
+
+  // Invalidation channels
+  channel: string;
+}
+
+export const DEFAULT_INVALIDATION_CONFIG: CacheInvalidationConfig = {
+  patterns: {
+    onDocumentUpdate: [
+      'context:{engagementId}:*',
+      'retrieval:{documentId}:*',
+      'chunks:{documentId}:*',
+    ],
+    onDocumentDelete: [
+      'context:{engagementId}:*',
+      'retrieval:{documentId}:*',
+      'chunks:{documentId}:*',
+      'document:{documentId}',
+    ],
+    onChunkUpdate: [
+      'context:{engagementId}:*',
+      'retrieval:{documentId}:*',
+      'chunk:{chunkId}',
+    ],
+    onKbReindex: [
+      'context:{engagementId}:*',
+      'retrieval:kb:{kbId}:*',
+    ],
+    onEngagementArchive: [
+      'context:{engagementId}:*',
+      'retrieval:engagement:{engagementId}:*',
+      'content:{engagementId}:*',
+    ],
+  },
+  channel: 'cache-invalidation',
+};
+
+export class CacheInvalidator {
+  constructor(
+    private redis: RedisClient,
+    private pubsub: RedisPubSub,
+    private config: CacheInvalidationConfig
+  ) {
+    this.subscribeToInvalidations();
+  }
+
+  /**
+   * Invalidate cache for document update
+   */
+  async onDocumentUpdate(documentId: string, engagementId: string): Promise<void> {
+    await this.invalidatePatterns(
+      this.config.patterns.onDocumentUpdate,
+      { documentId, engagementId }
+    );
+  }
+
+  /**
+   * Invalidate cache for document delete
+   */
+  async onDocumentDelete(documentId: string, engagementId: string): Promise<void> {
+    await this.invalidatePatterns(
+      this.config.patterns.onDocumentDelete,
+      { documentId, engagementId }
+    );
+  }
+
+  /**
+   * Invalidate patterns with variable substitution
+   */
+  private async invalidatePatterns(
+    patterns: string[],
+    vars: Record<string, string>
+  ): Promise<void> {
+    for (const pattern of patterns) {
+      const resolvedPattern = this.resolvePattern(pattern, vars);
+      const keys = await this.redis.keys(resolvedPattern);
+
+      if (keys.length > 0) {
+        await this.redis.del(...keys);
+        console.log(`Invalidated ${keys.length} keys matching ${resolvedPattern}`);
+      }
+    }
+
+    // Publish invalidation event for distributed cache
+    await this.pubsub.publish(this.config.channel, {
+      patterns,
+      vars,
+      timestamp: Date.now(),
+    });
+  }
+
+  private resolvePattern(pattern: string, vars: Record<string, string>): string {
+    return pattern.replace(/{(\w+)}/g, (_, key) => vars[key] || '*');
+  }
+
+  /**
+   * Subscribe to invalidation events from other nodes
+   */
+  private subscribeToInvalidations(): void {
+    this.pubsub.subscribe(this.config.channel, async (message) => {
+      // Only process if from another node
+      if (message.nodeId !== this.nodeId) {
+        for (const pattern of message.patterns) {
+          const resolved = this.resolvePattern(pattern, message.vars);
+          const keys = await this.redis.keys(resolved);
+          if (keys.length > 0) {
+            await this.redis.del(...keys);
+          }
+        }
+      }
+    });
+  }
+}
+```
+
+### 12.4 Real-Time Job Progress (WebSocket)
+
+```typescript
+// apps/api/src/routes/realtime.ts
+
+import { WebSocketServer, WebSocket } from 'ws';
+import { Server } from 'http';
+
+interface JobProgressMessage {
+  type: 'job_progress';
+  jobId: string;
+  status: string;
+  progress: number;
+  message: string;
+  updatedAt: string;
+}
+
+interface DocumentStatusMessage {
+  type: 'document_status';
+  documentId: string;
+  status: string;
+  stage: string;
+  progress: number;
+}
+
+export class RealtimeService {
+  private wss: WebSocketServer;
+  private jobSubscriptions = new Map<string, Set<WebSocket>>();
+
+  constructor(server: Server) {
+    this.wss = new WebSocketServer({ server, path: '/ws' });
+    this.setupHandlers();
+    this.subscribeToJobUpdates();
+  }
+
+  private setupHandlers() {
+    this.wss.on('connection', (ws, req) => {
+      // Authenticate WebSocket connection
+      const token = new URL(req.url!, 'http://localhost').searchParams.get('token');
+      if (!this.validateToken(token)) {
+        ws.close(4001, 'Unauthorized');
+        return;
+      }
+
+      ws.on('message', (data) => {
+        const message = JSON.parse(data.toString());
+        this.handleMessage(ws, message);
+      });
+
+      ws.on('close', () => {
+        this.removeFromAllSubscriptions(ws);
+      });
+    });
+  }
+
+  private handleMessage(ws: WebSocket, message: any) {
+    switch (message.type) {
+      case 'subscribe_job':
+        this.subscribeToJob(ws, message.jobId);
+        break;
+      case 'unsubscribe_job':
+        this.unsubscribeFromJob(ws, message.jobId);
+        break;
+    }
+  }
+
+  private subscribeToJob(ws: WebSocket, jobId: string) {
+    if (!this.jobSubscriptions.has(jobId)) {
+      this.jobSubscriptions.set(jobId, new Set());
+    }
+    this.jobSubscriptions.get(jobId)!.add(ws);
+  }
+
+  /**
+   * Broadcast job progress to subscribed clients
+   */
+  broadcastJobProgress(jobId: string, update: Partial<JobProgressMessage>) {
+    const subscribers = this.jobSubscriptions.get(jobId);
+    if (!subscribers) return;
+
+    const message: JobProgressMessage = {
+      type: 'job_progress',
+      jobId,
+      status: update.status || 'processing',
+      progress: update.progress || 0,
+      message: update.message || '',
+      updatedAt: new Date().toISOString(),
+    };
+
+    const payload = JSON.stringify(message);
+    subscribers.forEach(ws => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+      }
+    });
+  }
+
+  /**
+   * Subscribe to Redis pub/sub for job updates
+   */
+  private subscribeToJobUpdates() {
+    this.redis.subscribe('job-progress', (message) => {
+      const { jobId, ...update } = JSON.parse(message);
+      this.broadcastJobProgress(jobId, update);
+    });
+  }
+}
+
+// Frontend WebSocket client
+export class JobProgressClient {
+  private ws: WebSocket | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+
+  constructor(private baseUrl: string) {}
+
+  connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.ws = new WebSocket(`${this.baseUrl}/ws`);
+
+      this.ws.onopen = () => {
+        this.reconnectAttempts = 0;
+        resolve();
+      };
+
+      this.ws.onerror = (error) => {
+        reject(error);
+      };
+
+      this.ws.onclose = () => {
+        this.attemptReconnect();
+      };
+
+      this.ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        this.handleMessage(message);
+      };
+    });
+  }
+
+  subscribeToJob(jobId: string, callback: (update: JobProgressMessage) => void) {
+    this.callbacks.set(jobId, callback);
+    this.ws?.send(JSON.stringify({ type: 'subscribe_job', jobId }));
+  }
+}
+```
+
+### 12.5 Distributed Tracing
+
+```typescript
+// packages/shared/src/observability/tracing.ts
+
+import { trace, context, SpanKind, Span } from '@opentelemetry/api';
+import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import { AzureMonitorTraceExporter } from '@azure/monitor-opentelemetry-exporter';
+
+export interface TracingConfig {
+  serviceName: string;
+  environment: string;
+  sampleRate: number;
+  exporter: 'azure-monitor' | 'jaeger' | 'console';
+}
+
+export function initTracing(config: TracingConfig) {
+  const provider = new NodeTracerProvider({
+    resource: {
+      attributes: {
+        'service.name': config.serviceName,
+        'deployment.environment': config.environment,
+      },
+    },
+  });
+
+  // Configure exporter
+  let exporter;
+  switch (config.exporter) {
+    case 'azure-monitor':
+      exporter = new AzureMonitorTraceExporter({
+        connectionString: process.env.APPLICATIONINSIGHTS_CONNECTION_STRING,
+      });
+      break;
+    // ... other exporters
+  }
+
+  provider.addSpanProcessor(new BatchSpanProcessor(exporter));
+  provider.register();
+
+  return trace.getTracer(config.serviceName);
+}
+
+// Tracing decorators for key operations
+export function traced(spanName: string, kind: SpanKind = SpanKind.INTERNAL) {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor
+  ) {
+    const originalMethod = descriptor.value;
+
+    descriptor.value = async function (...args: any[]) {
+      const tracer = trace.getTracer('force');
+      return tracer.startActiveSpan(spanName, { kind }, async (span: Span) => {
+        try {
+          const result = await originalMethod.apply(this, args);
+          span.setStatus({ code: SpanStatusCode.OK });
+          return result;
+        } catch (error) {
+          span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+          span.recordException(error);
+          throw error;
+        } finally {
+          span.end();
+        }
+      });
+    };
+
+    return descriptor;
+  };
+}
+
+// Usage example
+class RetrievalService {
+  @traced('retrieval.vector_search', SpanKind.CLIENT)
+  async vectorSearch(query: string, filter: RetrievalFilter) {
+    // Implementation
+  }
+
+  @traced('retrieval.rerank', SpanKind.INTERNAL)
+  async rerank(query: string, candidates: Chunk[]) {
+    // Implementation
+  }
+}
+```
+
+---
+
+## 13. Cost Management & Usage Tracking
+
+### 13.1 Cost Calculation Service
+
+```typescript
+// packages/shared/src/billing/cost-calculator.ts
+
+export interface CostRates {
+  embedding: {
+    'text-embedding-ada-002': number;      // $ per 1K tokens
+    'text-embedding-3-small': number;
+    'text-embedding-3-large': number;
+  };
+  generation: {
+    'gemini-2.5-flash': { input: number; output: number };
+    'gpt-4o': { input: number; output: number };
+    'gpt-4o-mini': { input: number; output: number };
+    'claude-3-sonnet': { input: number; output: number };
+  };
+  rerank: {
+    'cohere-rerank-v3': number;  // $ per 1K searches
+  };
+}
+
+export const COST_RATES: CostRates = {
+  embedding: {
+    'text-embedding-ada-002': 0.0001,    // $0.0001 per 1K tokens
+    'text-embedding-3-small': 0.00002,
+    'text-embedding-3-large': 0.00013,
+  },
+  generation: {
+    'gemini-2.5-flash': { input: 0.000075, output: 0.0003 },
+    'gpt-4o': { input: 0.0025, output: 0.01 },
+    'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
+    'claude-3-sonnet': { input: 0.003, output: 0.015 },
+  },
+  rerank: {
+    'cohere-rerank-v3': 0.002,
+  },
+};
+
+export class CostCalculator {
+  calculateEmbeddingCost(model: string, tokens: number): number {
+    const rate = COST_RATES.embedding[model];
+    if (!rate) throw new Error(`Unknown embedding model: ${model}`);
+    return (tokens / 1000) * rate;
+  }
+
+  calculateGenerationCost(
+    model: string,
+    inputTokens: number,
+    outputTokens: number
+  ): number {
+    const rates = COST_RATES.generation[model];
+    if (!rates) throw new Error(`Unknown generation model: ${model}`);
+    return (inputTokens / 1000) * rates.input + (outputTokens / 1000) * rates.output;
+  }
+}
+```
+
+### 13.2 Usage Tracking Service
+
+```typescript
+// packages/shared/src/billing/usage-tracker.ts
+
+export class UsageTracker {
+  constructor(
+    private db: Database,
+    private redis: RedisClient,
+    private costCalculator: CostCalculator
+  ) {}
+
+  /**
+   * Log usage and check limits
+   */
+  async trackUsage(params: {
+    tenantId: string;
+    userId?: string;
+    engagementId?: string;
+    operationType: 'embedding' | 'generation' | 'retrieval';
+    provider: string;
+    model: string;
+    inputTokens: number;
+    outputTokens?: number;
+    latencyMs: number;
+    success: boolean;
+    jobId?: string;
+    requestId?: string;
+  }): Promise<{ allowed: boolean; reason?: string }> {
+    // Calculate cost
+    let costUsd = 0;
+    if (params.operationType === 'embedding') {
+      costUsd = this.costCalculator.calculateEmbeddingCost(
+        params.model,
+        params.inputTokens
+      );
+    } else if (params.operationType === 'generation') {
+      costUsd = this.costCalculator.calculateGenerationCost(
+        params.model,
+        params.inputTokens,
+        params.outputTokens || 0
+      );
+    }
+
+    // Check limits before logging
+    const limits = await this.getTenantLimits(params.tenantId);
+    const currentUsage = await this.getCurrentUsage(params.tenantId);
+
+    // Check monthly token limits
+    if (params.operationType === 'embedding') {
+      if (currentUsage.embeddingTokens + params.inputTokens > limits.monthlyEmbeddingTokens) {
+        return { allowed: false, reason: 'Monthly embedding token limit exceeded' };
+      }
+    } else if (params.operationType === 'generation') {
+      const totalTokens = params.inputTokens + (params.outputTokens || 0);
+      if (currentUsage.generationTokens + totalTokens > limits.monthlyGenerationTokens) {
+        return { allowed: false, reason: 'Monthly generation token limit exceeded' };
+      }
+    }
+
+    // Check cost limit
+    if (currentUsage.costUsd + costUsd > limits.monthlyCostLimitUsd) {
+      return { allowed: false, reason: 'Monthly cost limit exceeded' };
+    }
+
+    // Log usage
+    await this.db.usageLogs.create({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      engagementId: params.engagementId,
+      operationType: params.operationType,
+      provider: params.provider,
+      model: params.model,
+      inputTokens: params.inputTokens,
+      outputTokens: params.outputTokens || 0,
+      totalTokens: params.inputTokens + (params.outputTokens || 0),
+      costUsd,
+      latencyMs: params.latencyMs,
+      success: params.success,
+      jobId: params.jobId,
+      requestId: params.requestId,
+    });
+
+    // Update current period counters
+    await this.incrementUsage(params.tenantId, {
+      embeddingTokens: params.operationType === 'embedding' ? params.inputTokens : 0,
+      generationTokens: params.operationType === 'generation'
+        ? params.inputTokens + (params.outputTokens || 0)
+        : 0,
+      costUsd,
+    });
+
+    // Check alert thresholds
+    await this.checkAlerts(params.tenantId, limits, currentUsage);
+
+    return { allowed: true };
+  }
+
+  /**
+   * Get current usage for tenant (cached in Redis)
+   */
+  private async getCurrentUsage(tenantId: string): Promise<TenantUsage> {
+    const cacheKey = `usage:${tenantId}:current`;
+    const cached = await this.redis.get(cacheKey);
+
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
+    // Calculate from DB
+    const limits = await this.db.tenantUsageLimits.findByTenantId(tenantId);
+    const usage = await this.db.usageLogs.sumForPeriod(
+      tenantId,
+      limits.currentPeriodStart,
+      new Date()
+    );
+
+    // Cache for 1 minute
+    await this.redis.set(cacheKey, JSON.stringify(usage), { EX: 60 });
+
+    return usage;
+  }
+
+  /**
+   * Check and send alerts if thresholds exceeded
+   */
+  private async checkAlerts(
+    tenantId: string,
+    limits: TenantUsageLimits,
+    usage: TenantUsage
+  ): Promise<void> {
+    const threshold = limits.alertThresholdPercent / 100;
+
+    const costPercent = usage.costUsd / limits.monthlyCostLimitUsd;
+    const embeddingPercent = usage.embeddingTokens / limits.monthlyEmbeddingTokens;
+    const generationPercent = usage.generationTokens / limits.monthlyGenerationTokens;
+
+    if (costPercent >= threshold || embeddingPercent >= threshold || generationPercent >= threshold) {
+      // Don't send more than one alert per day
+      const lastAlert = limits.lastAlertSent;
+      if (lastAlert && Date.now() - lastAlert.getTime() < 24 * 60 * 60 * 1000) {
+        return;
+      }
+
+      // Send alert
+      await this.sendUsageAlert(tenantId, {
+        costPercent,
+        embeddingPercent,
+        generationPercent,
+        limits,
+      });
+
+      await this.db.tenantUsageLimits.updateLastAlert(tenantId);
+    }
+  }
+}
+```
+
+### 13.3 Usage Dashboard API
+
+```typescript
+// apps/api/src/routes/usage.ts
+
+router.get('/api/v1/usage/summary', auth, async (req, res) => {
+  const { tenantId } = req.user;
+  const { period = 'month' } = req.query;
+
+  const summary = await usageService.getSummary(tenantId, period);
+
+  res.json({
+    period,
+    usage: {
+      embedding: {
+        tokens: summary.embeddingTokens,
+        cost: summary.embeddingCost,
+        limit: summary.limits.monthlyEmbeddingTokens,
+        percentUsed: (summary.embeddingTokens / summary.limits.monthlyEmbeddingTokens) * 100,
+      },
+      generation: {
+        tokens: summary.generationTokens,
+        cost: summary.generationCost,
+        limit: summary.limits.monthlyGenerationTokens,
+        percentUsed: (summary.generationTokens / summary.limits.monthlyGenerationTokens) * 100,
+      },
+      total: {
+        cost: summary.totalCost,
+        limit: summary.limits.monthlyCostLimitUsd,
+        percentUsed: (summary.totalCost / summary.limits.monthlyCostLimitUsd) * 100,
+      },
+    },
+    breakdown: {
+      byModel: summary.byModel,
+      byEngagement: summary.byEngagement,
+      byDay: summary.dailyBreakdown,
+    },
+  });
+});
+```
+
+---
+
+## 14. Testing & Performance Targets
+
+### 14.1 Performance Requirements
+
+```typescript
+// packages/shared/src/config/performance.ts
+
+export interface PerformanceTargets {
+  // Retrieval latency
+  retrieval: {
+    p50: number;  // 200ms
+    p95: number;  // 500ms
+    p99: number;  // 1000ms
+  };
+
+  // Generation latency (end-to-end RAG)
+  generation: {
+    p50: number;  // 5000ms (5 seconds)
+    p95: number;  // 15000ms (15 seconds)
+    p99: number;  // 30000ms (30 seconds)
+  };
+
+  // Document ingestion
+  ingestion: {
+    documentsPerMinute: number;  // 10
+    pagesPerMinute: number;      // 100
+    chunksPerSecond: number;     // 50
+    embeddingsPerSecond: number; // 100
+  };
+
+  // API throughput
+  api: {
+    requestsPerSecond: number;   // 100
+    concurrentUsers: number;     // 50
+  };
+
+  // Availability
+  availability: {
+    uptime: number;              // 99.9%
+    rto: number;                 // 15 minutes (Recovery Time Objective)
+    rpo: number;                 // 1 hour (Recovery Point Objective)
+  };
+}
+
+export const PERFORMANCE_TARGETS: PerformanceTargets = {
+  retrieval: { p50: 200, p95: 500, p99: 1000 },
+  generation: { p50: 5000, p95: 15000, p99: 30000 },
+  ingestion: {
+    documentsPerMinute: 10,
+    pagesPerMinute: 100,
+    chunksPerSecond: 50,
+    embeddingsPerSecond: 100,
+  },
+  api: { requestsPerSecond: 100, concurrentUsers: 50 },
+  availability: { uptime: 99.9, rto: 15, rpo: 60 },
+};
+```
+
+### 14.2 Contract Testing
+
+```typescript
+// tests/contracts/api-schemas.test.ts
+
+import Ajv from 'ajv';
+import { GanttChartSchema, SlidesSchema, DocumentSchema } from '@force/shared/schemas';
+
+const ajv = new Ajv({ allErrors: true });
+
+describe('API Contract Tests', () => {
+  describe('GanttChart Schema', () => {
+    const validate = ajv.compile(GanttChartSchema);
+
+    it('should validate correct roadmap response', () => {
+      const validResponse = {
+        title: 'Project Roadmap',
+        timeColumns: ['Q1 2024', 'Q2 2024', 'Q3 2024'],
+        data: [
+          { title: 'Workstream A', isSwimlane: true, entity: 'Team A', bar: null },
+          {
+            title: 'Task 1',
+            isSwimlane: false,
+            entity: 'Team A',
+            bar: { startCol: 0, endCol: 1, color: '#4A90D9' },
+            taskType: 'task',
+          },
+        ],
+        legend: [{ color: '#4A90D9', label: 'Development' }],
+      };
+
+      expect(validate(validResponse)).toBe(true);
+    });
+
+    it('should reject invalid response', () => {
+      const invalidResponse = {
+        title: 'Project Roadmap',
+        // Missing required fields
+      };
+
+      expect(validate(invalidResponse)).toBe(false);
+    });
+  });
+
+  describe('Slides Schema', () => {
+    // Similar tests for slides
+  });
+
+  describe('Document Schema', () => {
+    // Similar tests for document
+  });
+});
+```
+
+### 14.3 Load Testing Configuration
+
+```yaml
+# tests/load/k6-config.yml
+
+scenarios:
+  # Baseline: Normal load
+  baseline:
+    executor: 'constant-arrival-rate'
+    rate: 10
+    timeUnit: '1s'
+    duration: '5m'
+    preAllocatedVUs: 50
+
+  # Stress: Peak load
+  stress:
+    executor: 'ramping-arrival-rate'
+    startRate: 10
+    timeUnit: '1s'
+    stages:
+      - duration: '2m', target: 50
+      - duration: '5m', target: 50
+      - duration: '2m', target: 100
+      - duration: '5m', target: 100
+      - duration: '2m', target: 10
+    preAllocatedVUs: 200
+
+  # Soak: Sustained load
+  soak:
+    executor: 'constant-arrival-rate'
+    rate: 20
+    timeUnit: '1s'
+    duration: '30m'
+    preAllocatedVUs: 100
+
+thresholds:
+  http_req_duration:
+    - 'p(50)<200'    # 50% of requests under 200ms
+    - 'p(95)<1000'   # 95% of requests under 1s
+    - 'p(99)<3000'   # 99% of requests under 3s
+  http_req_failed:
+    - 'rate<0.01'    # Less than 1% failure rate
+  http_reqs:
+    - 'rate>50'      # At least 50 requests per second
+```
+
+```javascript
+// tests/load/scenarios/retrieval.js
+
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+import { Rate, Trend } from 'k6/metrics';
+
+const retrievalLatency = new Trend('retrieval_latency');
+const retrievalErrors = new Rate('retrieval_errors');
+
+export default function () {
+  const payload = JSON.stringify({
+    query: 'What are the key milestones for Phase 1?',
+    filter: {
+      tenant_id: __ENV.TENANT_ID,
+      engagement_id: __ENV.ENGAGEMENT_ID,
+      kb_types: ['client', 'firm'],
+    },
+    options: {
+      limit: 20,
+      withRerank: true,
+    },
+  });
+
+  const response = http.post(
+    `${__ENV.API_URL}/api/v1/retrieval/search`,
+    payload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${__ENV.AUTH_TOKEN}`,
+      },
+    }
+  );
+
+  retrievalLatency.add(response.timings.duration);
+
+  const success = check(response, {
+    'status is 200': (r) => r.status === 200,
+    'response has results': (r) => JSON.parse(r.body).results?.length > 0,
+    'latency under 500ms': (r) => r.timings.duration < 500,
+  });
+
+  if (!success) {
+    retrievalErrors.add(1);
+  }
+
+  sleep(1);
+}
+```
+
+### 14.4 Integration Test Suite
+
+```typescript
+// tests/integration/rag-pipeline.test.ts
+
+describe('RAG Pipeline Integration', () => {
+  let testEngagement: Engagement;
+  let testDocuments: Document[];
+
+  beforeAll(async () => {
+    // Setup test data
+    testEngagement = await createTestEngagement();
+    testDocuments = await uploadTestDocuments(testEngagement.id, [
+      'tests/fixtures/sample-research.md',
+      'tests/fixtures/sample-timeline.pdf',
+    ]);
+
+    // Wait for ingestion to complete
+    await waitForDocumentsIndexed(testDocuments);
+  });
+
+  afterAll(async () => {
+    await cleanupTestData(testEngagement.id);
+  });
+
+  describe('Retrieval', () => {
+    it('should retrieve relevant chunks for timeline query', async () => {
+      const results = await retrievalService.search(
+        'What are the key dates and milestones?',
+        {
+          tenant_id: testEngagement.tenantId,
+          engagement_id: testEngagement.id,
+          kb_types: ['client'],
+        }
+      );
+
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0].score).toBeGreaterThan(0.7);
+    });
+
+    it('should respect tenant isolation', async () => {
+      const results = await retrievalService.search(
+        'What are the key dates?',
+        {
+          tenant_id: 'other-tenant-id',
+          engagement_id: testEngagement.id,
+          kb_types: ['client'],
+        }
+      );
+
+      expect(results.length).toBe(0);
+    });
+  });
+
+  describe('Generation', () => {
+    it('should generate roadmap from research', async () => {
+      const result = await generationService.generateRoadmap(
+        testEngagement.id,
+        'Create a roadmap for the digital transformation initiative'
+      );
+
+      expect(result.title).toBeDefined();
+      expect(result.timeColumns.length).toBeGreaterThan(0);
+      expect(result.data.length).toBeGreaterThan(0);
+
+      // Validate schema
+      const valid = validateGanttChart(result);
+      expect(valid).toBe(true);
+    });
+
+    it('should include citations in generated content', async () => {
+      const result = await generationService.generateDocument(
+        testEngagement.id,
+        'Summarize the key findings'
+      );
+
+      // Check that sources are cited
+      expect(result.sourceDocuments.length).toBeGreaterThan(0);
+    });
+  });
+});
+```
+
+---
+
+## 15. Implementation Checklist
 
 ### Phase 1: Foundation (Weeks 1-2)
 
