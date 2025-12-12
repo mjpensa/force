@@ -1,10 +1,26 @@
 # V1 Build Specification
 ## Consulting-Grade Research & Proposal Generator (Azure-Ready, Portable)
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Created:** 2025-12-12
 **Updated:** 2025-12-12
 **Status:** Implementation Blueprint
+
+### Changelog
+
+**v1.3.0** (2025-12-12) - Critical Gap Fixes
+- **P0-1**: Fixed auth architecture - MSAL + Bearer tokens end-to-end (removed SWA header fallback)
+- **P0-2**: Fixed tenant isolation - server-side override + actual RLS policies
+- **P0-3**: Fixed schema conflicts - `entra_oid` now nullable, added `user_invitations` table
+- **P0-4**: Fixed contract validation - added JSON Schemas (not just TS interfaces) for AJV
+- **P1-1**: Fixed hybrid search - added Postgres FTS implementation
+- **P1-2**: Fixed document ingestion - streaming uploads, extracted text in blob storage
+- **P1-3**: Fixed Qdrant posture - capacity plan + managed recommendation
+- **P1-4**: Fixed reranking - added `COHERE_API_KEY`, documented fallback strategy
+- **P2-1**: Added security hardening (malware scan, private networking, prompt injection)
+- **P2-2**: Added data lifecycle governance
+- **P2-3**: Added observability completeness (SLIs/SLOs)
+- **P2-4**: Added CI/CD + migrations strategy
 
 ---
 
@@ -28,7 +44,10 @@
 16. [Document Processing Pipeline](#16-document-processing-pipeline)
 17. [Graceful Degradation & Fallbacks](#17-graceful-degradation--fallbacks)
 18. [Health Monitoring](#18-health-monitoring)
-19. [Implementation Checklist](#19-implementation-checklist)
+19. [Security Hardening](#19-security-hardening)
+20. [Data Lifecycle & Governance](#20-data-lifecycle--governance)
+21. [CI/CD & Migrations](#21-cicd--migrations)
+22. [Implementation Checklist](#22-implementation-checklist)
 
 ---
 
@@ -400,23 +419,53 @@ CREATE TABLE tenants (
 CREATE INDEX idx_tenants_slug ON tenants(slug) WHERE deleted_at IS NULL;
 
 -- Users (linked to Entra ID)
+-- NOTE: entra_oid is nullable to support pre-provisioned/invited users
 CREATE TABLE users (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id),
-    entra_oid       VARCHAR(255) NOT NULL UNIQUE,  -- Azure AD Object ID
+    entra_oid       VARCHAR(255),  -- Azure AD Object ID (NULL until first login)
     email           VARCHAR(255) NOT NULL,
     display_name    VARCHAR(255),
     role            VARCHAR(50) NOT NULL DEFAULT 'member',  -- admin, member, viewer
+    status          VARCHAR(50) NOT NULL DEFAULT 'pending', -- pending, active, suspended
     settings        JSONB DEFAULT '{}',
     last_login_at   TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ
+    deleted_at      TIMESTAMPTZ,
+
+    -- Unique constraint only on non-null entra_oid values
+    CONSTRAINT users_entra_oid_unique UNIQUE (entra_oid)
 );
 
 CREATE INDEX idx_users_tenant ON users(tenant_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_users_entra ON users(entra_oid);
+CREATE INDEX idx_users_entra ON users(entra_oid) WHERE entra_oid IS NOT NULL;
 CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_status ON users(tenant_id, status) WHERE deleted_at IS NULL;
+
+-- User Invitations (for pre-provisioning users before first login)
+CREATE TABLE user_invitations (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id),
+    email           VARCHAR(255) NOT NULL,
+    role            VARCHAR(50) NOT NULL DEFAULT 'member',
+    invited_by      UUID REFERENCES users(id),
+    token           VARCHAR(255) NOT NULL UNIQUE,  -- Secure invitation token
+    expires_at      TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+    accepted_at     TIMESTAMPTZ,
+    user_id         UUID REFERENCES users(id),  -- Links to user after acceptance
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Prevent duplicate pending invitations
+    CONSTRAINT unique_pending_invitation UNIQUE (tenant_id, email)
+        -- Note: Partial unique index below handles this more precisely
+);
+
+CREATE INDEX idx_invitations_tenant ON user_invitations(tenant_id);
+CREATE INDEX idx_invitations_email ON user_invitations(email);
+CREATE INDEX idx_invitations_token ON user_invitations(token);
+CREATE UNIQUE INDEX idx_invitations_pending ON user_invitations(tenant_id, email)
+    WHERE accepted_at IS NULL AND expires_at > NOW();
 
 -- Engagements (Client Projects)
 CREATE TABLE engagements (
@@ -981,20 +1030,72 @@ CREATE TRIGGER update_jobs_updated_at BEFORE UPDATE ON jobs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ============================================
--- ROW LEVEL SECURITY (Optional but recommended)
+-- ROW LEVEL SECURITY (REQUIRED for multi-tenant isolation)
 -- ============================================
 
--- Enable RLS on tenant-scoped tables
+-- Enable RLS on ALL tenant-scoped tables
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE engagements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_bases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE document_chunks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE generated_content ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE retrieval_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE usage_logs ENABLE ROW LEVEL SECURITY;
 
--- Example policy (requires app to set current_setting('app.tenant_id'))
--- CREATE POLICY tenant_isolation ON engagements
---     USING (tenant_id = current_setting('app.tenant_id')::uuid);
+-- Create application role for API connections (not superuser)
+-- This role will be subject to RLS policies
+CREATE ROLE force_api_role NOLOGIN;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO force_api_role;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO force_api_role;
+
+-- Create actual user for API connections
+CREATE USER force_api WITH PASSWORD 'CHANGE_IN_PRODUCTION' IN ROLE force_api_role;
+
+-- CRITICAL: Tenant isolation policies
+-- The API MUST call: SET LOCAL app.tenant_id = '<uuid>'; at start of each transaction
+
+CREATE POLICY tenant_isolation_users ON users
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_engagements ON engagements
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_kb ON knowledge_bases
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_documents ON documents
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_chunks ON document_chunks
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_jobs ON jobs
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_content ON generated_content
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_audit ON audit_logs
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_retrieval ON retrieval_logs
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+CREATE POLICY tenant_isolation_usage ON usage_logs
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid)
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true)::uuid);
 
 -- ============================================
 -- INDEXES FOR COMMON QUERIES
@@ -1010,6 +1111,54 @@ CREATE INDEX idx_chunks_for_rag ON document_chunks(knowledge_base_id, chunk_inde
 -- Fast job queue processing
 CREATE INDEX idx_jobs_queue ON jobs(priority DESC, created_at ASC)
     WHERE status IN ('pending', 'queued');
+
+-- ============================================
+-- FULL-TEXT SEARCH (for Hybrid RAG)
+-- ============================================
+
+-- Add tsvector column for FTS on document chunks
+ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS
+    chunk_tsv TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', chunk_text)) STORED;
+
+-- GIN index for fast FTS queries
+CREATE INDEX idx_chunks_fts ON document_chunks USING GIN (chunk_tsv);
+
+-- Composite index for tenant-scoped FTS
+CREATE INDEX idx_chunks_fts_tenant ON document_chunks(tenant_id)
+    INCLUDE (chunk_tsv) WHERE deleted_at IS NULL;
+
+-- Function for hybrid search combining FTS rank with vector similarity
+CREATE OR REPLACE FUNCTION hybrid_search_chunks(
+    p_tenant_id UUID,
+    p_kb_ids UUID[],
+    p_query TEXT,
+    p_limit INTEGER DEFAULT 50
+) RETURNS TABLE (
+    chunk_id UUID,
+    document_id UUID,
+    chunk_text TEXT,
+    fts_rank REAL,
+    qdrant_point_id UUID
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        dc.id AS chunk_id,
+        dc.document_id,
+        dc.chunk_text,
+        ts_rank(dc.chunk_tsv, websearch_to_tsquery('english', p_query)) AS fts_rank,
+        dc.qdrant_point_id
+    FROM document_chunks dc
+    WHERE dc.tenant_id = p_tenant_id
+      AND dc.knowledge_base_id = ANY(p_kb_ids)
+      AND dc.chunk_tsv @@ websearch_to_tsquery('english', p_query)
+    ORDER BY fts_rank DESC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Grant execute to API role
+GRANT EXECUTE ON FUNCTION hybrid_search_chunks(UUID, UUID[], TEXT, INTEGER) TO force_api_role;
 ```
 
 ---
@@ -1385,6 +1534,153 @@ interface CollectionLifecycleConfig {
 }
 ```
 
+### 4.8 Qdrant Capacity Planning
+
+> **CRITICAL:** Self-hosted Qdrant on Azure Container Apps has significant limitations.
+> **Recommendation: Use Qdrant Cloud for production workloads.**
+
+```typescript
+// infrastructure/capacity-planning/qdrant-estimates.ts
+
+/**
+ * Qdrant Capacity Planning Calculator
+ *
+ * Key factors:
+ * - Embedding dimensions (ada-002 = 1536)
+ * - Storage mode (RAM vs disk)
+ * - Quantization (int8 reduces memory ~4x)
+ * - Payload storage (chunk text in payload)
+ */
+
+interface CapacityEstimate {
+  // Input parameters
+  expectedDocuments: number;
+  avgChunksPerDocument: number;
+  embeddingDimensions: number;
+  avgPayloadSizeBytes: number;  // chunk_text + metadata
+
+  // Calculated estimates
+  totalVectors: number;
+  vectorMemoryGB: number;
+  payloadMemoryGB: number;
+  totalMemoryGB: number;
+  recommendedInstance: string;
+}
+
+const EMBEDDING_CONFIGS = {
+  'ada-002': { dimensions: 1536, bytesPerDim: 4 },  // float32
+  'ada-002-int8': { dimensions: 1536, bytesPerDim: 1 },  // quantized
+};
+
+function calculateCapacity(params: {
+  documents: number;
+  chunksPerDoc: number;
+  avgChunkChars: number;
+  quantized: boolean;
+}): CapacityEstimate {
+  const { documents, chunksPerDoc, avgChunkChars, quantized } = params;
+
+  const totalVectors = documents * chunksPerDoc;
+  const config = quantized
+    ? EMBEDDING_CONFIGS['ada-002-int8']
+    : EMBEDDING_CONFIGS['ada-002'];
+
+  // Vector storage: dimensions * bytes per dim * num vectors
+  const vectorBytes = config.dimensions * config.bytesPerDim * totalVectors;
+  const vectorMemoryGB = vectorBytes / (1024 ** 3);
+
+  // Payload storage: avg chunk text + overhead (~20% for metadata)
+  const avgPayloadBytes = avgChunkChars + (avgChunkChars * 0.2);
+  const payloadBytes = avgPayloadBytes * totalVectors;
+  const payloadMemoryGB = payloadBytes / (1024 ** 3);
+
+  // Total with overhead (indexes, HNSW graph ~30%)
+  const totalMemoryGB = (vectorMemoryGB + payloadMemoryGB) * 1.3;
+
+  // Instance recommendation
+  let recommendedInstance: string;
+  if (totalMemoryGB <= 4) {
+    recommendedInstance = 'Container Apps: 4Gi (dev/small)';
+  } else if (totalMemoryGB <= 16) {
+    recommendedInstance = 'Container Apps: 16Gi OR Qdrant Cloud Starter';
+  } else if (totalMemoryGB <= 64) {
+    recommendedInstance = 'Qdrant Cloud Standard (RECOMMENDED)';
+  } else {
+    recommendedInstance = 'Qdrant Cloud Enterprise (dedicated)';
+  }
+
+  return {
+    expectedDocuments: documents,
+    avgChunksPerDocument: chunksPerDoc,
+    embeddingDimensions: config.dimensions,
+    avgPayloadSizeBytes: avgPayloadBytes,
+    totalVectors,
+    vectorMemoryGB,
+    payloadMemoryGB,
+    totalMemoryGB,
+    recommendedInstance,
+  };
+}
+
+// Example capacity scenarios
+const CAPACITY_SCENARIOS = {
+  // Small deployment: 1000 docs, 50 chunks each
+  small: calculateCapacity({
+    documents: 1_000,
+    chunksPerDoc: 50,
+    avgChunkChars: 1500,
+    quantized: true,
+  }),
+  // Medium deployment: 10,000 docs
+  medium: calculateCapacity({
+    documents: 10_000,
+    chunksPerDoc: 50,
+    avgChunkChars: 1500,
+    quantized: true,
+  }),
+  // Large deployment: 100,000 docs
+  large: calculateCapacity({
+    documents: 100_000,
+    chunksPerDoc: 50,
+    avgChunkChars: 1500,
+    quantized: true,
+  }),
+};
+
+/**
+ * Capacity Recommendations Summary
+ *
+ * | Scenario | Vectors    | Memory (Quantized) | Recommendation              |
+ * |----------|------------|--------------------|-----------------------------|
+ * | Small    | 50,000     | ~1.5 GB           | Container Apps 4Gi OK       |
+ * | Medium   | 500,000    | ~15 GB            | Qdrant Cloud Starter        |
+ * | Large    | 5,000,000  | ~150 GB           | Qdrant Cloud Standard       |
+ *
+ * WARNING: Container Apps with Azure Files storage has high latency.
+ * For production: Qdrant Cloud provides:
+ * - Managed infrastructure
+ * - Auto-scaling
+ * - Built-in backups
+ * - Low-latency storage
+ * - Multi-region support
+ */
+```
+
+**Production Recommendation:**
+
+| Workload | Storage | Recommendation |
+|----------|---------|----------------|
+| < 100K vectors | Dev/Test | Self-hosted Container Apps OK |
+| 100K - 1M vectors | Production | **Qdrant Cloud Starter** |
+| 1M - 10M vectors | Production | **Qdrant Cloud Standard** |
+| > 10M vectors | Enterprise | Qdrant Cloud Enterprise or AKS |
+
+**Azure-specific considerations:**
+- Azure Files has ~2-5ms latency overhead (vs SSD)
+- Container Apps have 4Gi soft limit (8Gi max with Premium)
+- For >16Gi memory, use AKS with managed disks
+- Consider Private Endpoints for Qdrant Cloud
+
 ---
 
 ## 5. Environment Variables
@@ -1468,6 +1764,13 @@ EMBEDDING_PROVIDER=openai  # openai | azure-openai | google
 EMBEDDING_MODEL=text-embedding-ada-002
 
 # ============================================
+# Reranking Provider
+# ============================================
+RERANK_PROVIDER=cohere  # cohere | none
+COHERE_API_KEY=  # Required if RERANK_PROVIDER=cohere
+RERANK_MODEL=rerank-english-v3.0  # or rerank-multilingual-v3.0
+
+# ============================================
 # Rate Limiting
 # ============================================
 RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
@@ -1535,8 +1838,10 @@ storage-connection
 gemini-api-key
 openai-api-key
 azure-openai-api-key
+cohere-api-key          # For reranking service
 github-token
 aad-client-secret
+qdrant-api-key          # For managed Qdrant Cloud
 ```
 
 ---
@@ -1725,6 +2030,343 @@ export function validateRetrievalFilter(filter: RetrievalFilter): void {
     throw new Error('RetrievalFilter: engagement_id must be valid UUID');
   }
 }
+```
+
+### 6.7 JSON Schemas for Runtime Validation (AJV)
+
+> **IMPORTANT:** These are actual JSON Schema objects for use with AJV runtime validation.
+> The TypeScript interfaces above are for compile-time type checking.
+> Both must be kept in sync - consider using `zod` with `zod-to-json-schema` for single source of truth.
+
+```typescript
+// packages/shared/src/schemas/json-schemas/index.ts
+
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
+
+// Initialize AJV with common options
+export const ajv = new Ajv({
+  allErrors: true,
+  coerceTypes: false,
+  removeAdditional: false,
+});
+addFormats(ajv);
+
+/**
+ * Gantt Chart JSON Schema - for AJV runtime validation
+ */
+export const GanttChartJsonSchema = {
+  $id: 'GanttChart',
+  type: 'object',
+  required: ['title', 'timeColumns', 'data', 'legend'],
+  additionalProperties: false,
+  properties: {
+    title: { type: 'string', minLength: 1 },
+    timeColumns: {
+      type: 'array',
+      items: { type: 'string' },
+      minItems: 1,
+    },
+    data: {
+      type: 'array',
+      items: { $ref: '#/$defs/GanttRow' },
+    },
+    legend: {
+      type: 'array',
+      items: { $ref: '#/$defs/LegendItem' },
+    },
+    researchAnalysis: { $ref: '#/$defs/ResearchAnalysis' },
+  },
+  $defs: {
+    GanttRow: {
+      type: 'object',
+      required: ['title', 'isSwimlane', 'entity', 'bar'],
+      properties: {
+        title: { type: 'string' },
+        isSwimlane: { type: 'boolean' },
+        entity: { type: 'string' },
+        bar: {
+          oneOf: [
+            { $ref: '#/$defs/GanttBar' },
+            { type: 'null' },
+          ],
+        },
+        taskType: {
+          type: 'string',
+          enum: ['milestone', 'decision', 'task'],
+        },
+      },
+    },
+    GanttBar: {
+      type: 'object',
+      required: ['startCol', 'endCol', 'color'],
+      properties: {
+        startCol: { type: 'integer', minimum: 0 },
+        endCol: { type: 'integer', minimum: 0 },
+        color: { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' },
+      },
+    },
+    LegendItem: {
+      type: 'object',
+      required: ['color', 'label'],
+      properties: {
+        color: { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' },
+        label: { type: 'string' },
+      },
+    },
+    ResearchAnalysis: {
+      type: 'object',
+      required: ['topics', 'overallScore', 'summary'],
+      properties: {
+        topics: {
+          type: 'array',
+          items: { $ref: '#/$defs/TopicAnalysis' },
+        },
+        overallScore: { type: 'number', minimum: 0, maximum: 1 },
+        summary: { type: 'string' },
+      },
+    },
+    TopicAnalysis: {
+      type: 'object',
+      required: ['name', 'fitnessScore', 'eventDataQuality', 'datesFound'],
+      properties: {
+        name: { type: 'string' },
+        fitnessScore: { type: 'number', minimum: 0, maximum: 1 },
+        eventDataQuality: { type: 'string' },
+        datesFound: { type: 'integer', minimum: 0 },
+      },
+    },
+  },
+} as const;
+
+/**
+ * Slides JSON Schema - for AJV runtime validation
+ */
+export const SlidesJsonSchema = {
+  $id: 'Slides',
+  type: 'object',
+  required: ['slides'],
+  properties: {
+    slides: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['tagline', 'title', 'body'],
+        properties: {
+          tagline: { type: 'string', maxLength: 21 },
+          title: { type: 'string' },
+          body: { type: 'string', minLength: 380, maxLength: 410 },
+          footer: { type: 'string' },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * Document JSON Schema - for AJV runtime validation
+ */
+export const DocumentJsonSchema = {
+  $id: 'Document',
+  type: 'object',
+  required: ['title', 'sections'],
+  properties: {
+    title: { type: 'string', minLength: 1 },
+    sections: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['heading', 'paragraphs'],
+        properties: {
+          heading: { type: 'string' },
+          paragraphs: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * Retrieval Filter JSON Schema - for AJV runtime validation
+ */
+export const RetrievalFilterJsonSchema = {
+  $id: 'RetrievalFilter',
+  type: 'object',
+  required: ['tenant_id', 'kb_types'],
+  properties: {
+    tenant_id: {
+      type: 'string',
+      format: 'uuid',
+    },
+    engagement_id: {
+      oneOf: [
+        { type: 'string', format: 'uuid' },
+        { type: 'null' },
+      ],
+    },
+    kb_types: {
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: ['client', 'firm', 'oss'],
+      },
+      minItems: 1,
+    },
+    knowledge_base_ids: {
+      type: 'array',
+      items: { type: 'string', format: 'uuid' },
+    },
+    document_ids: {
+      type: 'array',
+      items: { type: 'string', format: 'uuid' },
+    },
+    created_after: { type: 'string', format: 'date-time' },
+    created_before: { type: 'string', format: 'date-time' },
+  },
+  // Custom validation: engagement_id required when querying client KB
+  if: {
+    properties: {
+      kb_types: { contains: { const: 'client' } },
+    },
+  },
+  then: {
+    required: ['tenant_id', 'kb_types', 'engagement_id'],
+    properties: {
+      engagement_id: { type: 'string', format: 'uuid' },
+    },
+  },
+} as const;
+
+// Pre-compile validators for performance
+export const validateGanttChart = ajv.compile(GanttChartJsonSchema);
+export const validateSlides = ajv.compile(SlidesJsonSchema);
+export const validateDocument = ajv.compile(DocumentJsonSchema);
+export const validateRetrievalFilter = ajv.compile(RetrievalFilterJsonSchema);
+
+/**
+ * Type-safe validation helper
+ */
+export function validate<T>(
+  validator: ReturnType<typeof ajv.compile>,
+  data: unknown
+): { valid: true; data: T } | { valid: false; errors: typeof validator.errors } {
+  const valid = validator(data);
+  if (valid) {
+    return { valid: true, data: data as T };
+  }
+  return { valid: false, errors: validator.errors };
+}
+```
+
+### 6.8 Contract Tests with JSON Schemas
+
+```typescript
+// tests/contracts/api-schemas.test.ts
+
+import {
+  validateGanttChart,
+  validateSlides,
+  validateDocument,
+  validateRetrievalFilter,
+  GanttChartJsonSchema,
+  SlidesJsonSchema,
+} from '@force/shared/schemas/json-schemas';
+
+describe('API Contract Tests', () => {
+  describe('GanttChart Schema', () => {
+    it('should validate correct roadmap response', () => {
+      const validResponse = {
+        title: 'Project Roadmap',
+        timeColumns: ['Q1 2024', 'Q2 2024', 'Q3 2024'],
+        data: [
+          { title: 'Workstream A', isSwimlane: true, entity: 'Team A', bar: null },
+          {
+            title: 'Task 1',
+            isSwimlane: false,
+            entity: 'Team A',
+            bar: { startCol: 0, endCol: 1, color: '#4A90D9' },
+            taskType: 'task',
+          },
+        ],
+        legend: [{ color: '#4A90D9', label: 'Development' }],
+      };
+
+      const result = validateGanttChart(validResponse);
+      expect(result).toBe(true);
+      expect(validateGanttChart.errors).toBeNull();
+    });
+
+    it('should reject response missing required fields', () => {
+      const invalidResponse = {
+        title: 'Project Roadmap',
+        // Missing required fields: timeColumns, data, legend
+      };
+
+      const result = validateGanttChart(invalidResponse);
+      expect(result).toBe(false);
+      expect(validateGanttChart.errors).toContainEqual(
+        expect.objectContaining({ keyword: 'required' })
+      );
+    });
+
+    it('should reject invalid color format', () => {
+      const invalidResponse = {
+        title: 'Project Roadmap',
+        timeColumns: ['Q1 2024'],
+        data: [{
+          title: 'Task',
+          isSwimlane: false,
+          entity: 'Team',
+          bar: { startCol: 0, endCol: 1, color: 'red' }, // Invalid: not hex
+        }],
+        legend: [],
+      };
+
+      const result = validateGanttChart(invalidResponse);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('RetrievalFilter Schema', () => {
+    it('should require engagement_id when kb_types includes client', () => {
+      const filterWithoutEngagement = {
+        tenant_id: '123e4567-e89b-12d3-a456-426614174000',
+        kb_types: ['client', 'firm'],
+        engagement_id: null,  // Should fail: client KB requires engagement_id
+      };
+
+      const result = validateRetrievalFilter(filterWithoutEngagement);
+      expect(result).toBe(false);
+    });
+
+    it('should allow null engagement_id when only querying firm/oss', () => {
+      const filterFirmOnly = {
+        tenant_id: '123e4567-e89b-12d3-a456-426614174000',
+        kb_types: ['firm', 'oss'],
+        engagement_id: null,
+      };
+
+      const result = validateRetrievalFilter(filterFirmOnly);
+      expect(result).toBe(true);
+    });
+
+    it('should validate UUID format', () => {
+      const invalidUuid = {
+        tenant_id: 'not-a-uuid',
+        kb_types: ['firm'],
+      };
+
+      const result = validateRetrievalFilter(invalidUuid);
+      expect(result).toBe(false);
+      expect(validateRetrievalFilter.errors).toContainEqual(
+        expect.objectContaining({ keyword: 'format' })
+      );
+    });
+  });
+});
 ```
 
 ---
@@ -3144,179 +3786,249 @@ export class EventExtractor {
 
 ## 11. Frontend Authentication Flow
 
-### 11.1 Azure Static Web Apps Authentication
+> **IMPORTANT:** This implementation uses MSAL.js for token acquisition. The frontend obtains
+> Bearer tokens directly from Entra ID and sends them to the Container Apps backend.
+> This is the canonical auth model for Container Apps (NOT SWA header passthrough).
+
+### 11.1 Azure Static Web Apps Configuration
 
 ```json
 // apps/web/staticwebapp.config.json
+// NOTE: SWA is used for hosting only. Auth is handled by MSAL in the browser.
 
 {
   "routes": [
     {
       "route": "/api/*",
-      "allowedRoles": ["authenticated"],
       "rewrite": "https://force-api.azurecontainerapps.io/api/*"
     },
     {
       "route": "/*",
-      "allowedRoles": ["authenticated"]
-    },
-    {
-      "route": "/.auth/*",
       "allowedRoles": ["anonymous"]
     }
   ],
-  "auth": {
-    "identityProviders": {
-      "azureActiveDirectory": {
-        "registration": {
-          "openIdIssuer": "https://login.microsoftonline.com/{TENANT_ID}/v2.0",
-          "clientIdSettingName": "AAD_CLIENT_ID",
-          "clientSecretSettingName": "AAD_CLIENT_SECRET"
-        },
-        "userDetailsClaim": "http://schemas.microsoft.com/identity/claims/objectidentifier",
-        "login": {
-          "loginParameters": ["scope=openid profile email"]
-        }
-      }
-    }
-  },
-  "responseOverrides": {
-    "401": {
-      "redirect": "/.auth/login/aad",
-      "statusCode": 302
-    },
-    "403": {
-      "rewrite": "/unauthorized.html",
-      "statusCode": 403
-    }
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "*.{css,js,svg,png,jpg,ico}"]
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: https:; connect-src 'self' https://force-api.azurecontainerapps.io"
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://alcdn.msauth.net; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: https:; connect-src 'self' https://force-api.azurecontainerapps.io https://login.microsoftonline.com"
   }
 }
 ```
 
-### 11.2 Frontend Auth Integration
+### 11.2 MSAL Configuration
 
-```javascript
-// apps/web/utils/auth.js
+```typescript
+// apps/web/config/auth-config.ts
+
+import { Configuration, LogLevel } from '@azure/msal-browser';
 
 /**
- * Authentication utilities for frontend
- * Handles token management, user info, and auth state
+ * MSAL configuration for Entra ID authentication.
+ * The frontend acquires tokens and sends them as Bearer tokens to the API.
  */
+export const msalConfig: Configuration = {
+  auth: {
+    clientId: import.meta.env.VITE_AZURE_AD_CLIENT_ID,
+    authority: `https://login.microsoftonline.com/${import.meta.env.VITE_AZURE_AD_TENANT_ID}`,
+    redirectUri: import.meta.env.VITE_REDIRECT_URI || window.location.origin,
+    postLogoutRedirectUri: window.location.origin,
+    navigateToLoginRequestUrl: true,
+  },
+  cache: {
+    cacheLocation: 'sessionStorage',  // More secure than localStorage
+    storeAuthStateInCookie: false,
+  },
+  system: {
+    loggerOptions: {
+      logLevel: import.meta.env.DEV ? LogLevel.Info : LogLevel.Error,
+      loggerCallback: (level, message, containsPii) => {
+        if (containsPii) return;
+        switch (level) {
+          case LogLevel.Error: console.error(message); break;
+          case LogLevel.Warning: console.warn(message); break;
+          case LogLevel.Info: console.info(message); break;
+          case LogLevel.Verbose: console.debug(message); break;
+        }
+      },
+    },
+  },
+};
 
-export class AuthService {
+/**
+ * Scopes required for API access.
+ * The API scope is registered in Entra ID app registration.
+ */
+export const apiScopes = {
+  // Scope for Force API access
+  forceApi: [`api://${import.meta.env.VITE_AZURE_AD_CLIENT_ID}/access_as_user`],
+};
+
+/**
+ * Login request configuration
+ */
+export const loginRequest = {
+  scopes: ['openid', 'profile', 'email', ...apiScopes.forceApi],
+};
+```
+
+### 11.3 Frontend Auth Service (MSAL-based)
+
+```typescript
+// apps/web/utils/auth.ts
+
+import {
+  PublicClientApplication,
+  AccountInfo,
+  AuthenticationResult,
+  InteractionRequiredAuthError,
+  SilentRequest,
+} from '@azure/msal-browser';
+import { msalConfig, apiScopes, loginRequest } from '../config/auth-config';
+
+/**
+ * MSAL-based authentication service.
+ * Handles token acquisition, refresh, and user management.
+ */
+class AuthService {
+  private msalInstance: PublicClientApplication;
+  private initialized = false;
+  private initPromise: Promise<void> | null = null;
+
   constructor() {
-    this.userInfo = null;
-    this.tokenRefreshInterval = null;
+    this.msalInstance = new PublicClientApplication(msalConfig);
   }
 
   /**
-   * Initialize auth - call on app startup
+   * Initialize MSAL - must be called before any auth operations
    */
-  async init() {
-    await this.loadUserInfo();
-    this.startTokenRefresh();
-  }
+  async init(): Promise<void> {
+    if (this.initialized) return;
+    if (this.initPromise) return this.initPromise;
 
-  /**
-   * Load current user info from Static Web Apps auth
-   */
-  async loadUserInfo() {
-    try {
-      const response = await fetch('/.auth/me');
-      const data = await response.json();
+    this.initPromise = (async () => {
+      await this.msalInstance.initialize();
 
-      if (data.clientPrincipal) {
-        this.userInfo = {
-          id: data.clientPrincipal.userId,
-          name: data.clientPrincipal.userDetails,
-          email: data.clientPrincipal.userDetails,
-          roles: data.clientPrincipal.userRoles || [],
-          claims: data.clientPrincipal.claims || [],
-          identityProvider: data.clientPrincipal.identityProvider,
-        };
-        return this.userInfo;
+      // Handle redirect response (if returning from login)
+      const response = await this.msalInstance.handleRedirectPromise();
+      if (response) {
+        this.msalInstance.setActiveAccount(response.account);
       }
-      return null;
-    } catch (error) {
-      console.error('Failed to load user info:', error);
-      return null;
-    }
+
+      // Set active account if available
+      const accounts = this.msalInstance.getAllAccounts();
+      if (accounts.length > 0 && !this.msalInstance.getActiveAccount()) {
+        this.msalInstance.setActiveAccount(accounts[0]);
+      }
+
+      this.initialized = true;
+    })();
+
+    return this.initPromise;
   }
 
   /**
    * Check if user is authenticated
    */
-  isAuthenticated() {
-    return this.userInfo !== null;
+  isAuthenticated(): boolean {
+    return this.msalInstance.getActiveAccount() !== null;
   }
 
   /**
-   * Get current user
+   * Get current user account
    */
-  getUser() {
-    return this.userInfo;
+  getUser(): AccountInfo | null {
+    return this.msalInstance.getActiveAccount();
   }
 
   /**
-   * Redirect to login
+   * Get user info in normalized format
    */
-  login(returnUrl = window.location.pathname) {
-    const encodedReturn = encodeURIComponent(returnUrl);
-    window.location.href = `/.auth/login/aad?post_login_redirect_uri=${encodedReturn}`;
+  getUserInfo(): { id: string; email: string; name: string } | null {
+    const account = this.getUser();
+    if (!account) return null;
+
+    return {
+      id: account.localAccountId,
+      email: account.username,
+      name: account.name || account.username,
+    };
+  }
+
+  /**
+   * Initiate login (redirect flow)
+   */
+  async login(returnUrl?: string): Promise<void> {
+    await this.init();
+
+    const request = {
+      ...loginRequest,
+      state: returnUrl ? JSON.stringify({ returnUrl }) : undefined,
+    };
+
+    await this.msalInstance.loginRedirect(request);
   }
 
   /**
    * Logout user
    */
-  async logout() {
-    this.stopTokenRefresh();
-    this.userInfo = null;
-    window.location.href = '/.auth/logout?post_logout_redirect_uri=/';
+  async logout(): Promise<void> {
+    const account = this.getUser();
+    await this.msalInstance.logoutRedirect({
+      account,
+      postLogoutRedirectUri: window.location.origin,
+    });
   }
 
   /**
-   * Start periodic token refresh check
+   * Get access token for API calls.
+   * Attempts silent token acquisition first, falls back to interactive if needed.
    */
-  startTokenRefresh() {
-    // Check token validity every 5 minutes
-    this.tokenRefreshInterval = setInterval(async () => {
-      const user = await this.loadUserInfo();
-      if (!user) {
-        // Token expired, redirect to login
-        this.login();
+  async getAccessToken(): Promise<string> {
+    await this.init();
+
+    const account = this.getUser();
+    if (!account) {
+      throw new Error('No authenticated user');
+    }
+
+    const silentRequest: SilentRequest = {
+      scopes: apiScopes.forceApi,
+      account,
+    };
+
+    try {
+      // Try silent token acquisition (uses cached token or refresh token)
+      const response = await this.msalInstance.acquireTokenSilent(silentRequest);
+      return response.accessToken;
+    } catch (error) {
+      // If silent acquisition fails, user interaction is required
+      if (error instanceof InteractionRequiredAuthError) {
+        // Redirect to login for re-authentication
+        await this.msalInstance.acquireTokenRedirect({
+          scopes: apiScopes.forceApi,
+        });
+        // This will redirect, so we won't reach here
+        throw new Error('Redirecting to login...');
       }
-    }, 5 * 60 * 1000);
-  }
-
-  /**
-   * Stop token refresh
-   */
-  stopTokenRefresh() {
-    if (this.tokenRefreshInterval) {
-      clearInterval(this.tokenRefreshInterval);
-      this.tokenRefreshInterval = null;
+      throw error;
     }
   }
 
   /**
-   * Check if user has required role
+   * Check if user has specific role (from token claims)
    */
-  hasRole(role) {
-    return this.userInfo?.roles?.includes(role) || false;
-  }
+  hasRole(role: string): boolean {
+    const account = this.getUser();
+    if (!account?.idTokenClaims) return false;
 
-  /**
-   * Check if user has any of the required roles
-   */
-  hasAnyRole(roles) {
-    return roles.some(role => this.hasRole(role));
+    const roles = (account.idTokenClaims as any).roles || [];
+    return roles.includes(role);
   }
 }
 
@@ -3324,33 +4036,58 @@ export class AuthService {
 export const auth = new AuthService();
 
 /**
- * Fetch wrapper that handles auth errors
+ * Authenticated fetch wrapper.
+ * Automatically attaches Bearer token to requests.
  */
-export async function authFetch(url, options = {}) {
+export async function authFetch(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  // Get fresh access token
+  const token = await auth.getAccessToken();
+
   const response = await fetch(url, {
     ...options,
-    credentials: 'include',  // Include cookies for auth
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
       ...options.headers,
     },
   });
 
   // Handle auth errors
   if (response.status === 401) {
-    auth.login();
+    // Token may be invalid, try to re-authenticate
+    await auth.login(window.location.pathname);
     throw new Error('Authentication required');
   }
 
   if (response.status === 403) {
-    throw new Error('Access denied');
+    throw new Error('Access denied - insufficient permissions');
   }
 
   return response;
 }
+
+/**
+ * React hook for auth state (if using React)
+ */
+export function useAuth() {
+  // Implementation would use useSyncExternalStore or useState/useEffect
+  // to subscribe to auth state changes
+  return {
+    isAuthenticated: auth.isAuthenticated(),
+    user: auth.getUserInfo(),
+    login: auth.login.bind(auth),
+    logout: auth.logout.bind(auth),
+  };
+}
 ```
 
-### 11.3 API Token Validation (Backend)
+### 11.4 API Token Validation (Backend)
+
+> **NOTE:** This middleware ONLY accepts Bearer tokens. SWA header passthrough is NOT supported.
+> The frontend must acquire tokens via MSAL and send them as `Authorization: Bearer <token>`.
 
 ```typescript
 // apps/api/src/middleware/auth.ts
@@ -3358,24 +4095,27 @@ export async function authFetch(url, options = {}) {
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
+import { db } from '../db';
 
 interface AuthConfig {
-  tenantId: string;
+  azureTenantId: string;  // Azure AD tenant ID
   clientId: string;
   audience: string;
 }
 
 const config: AuthConfig = {
-  tenantId: process.env.AZURE_AD_TENANT_ID!,
+  azureTenantId: process.env.AZURE_AD_TENANT_ID!,
   clientId: process.env.AZURE_AD_CLIENT_ID!,
   audience: process.env.AZURE_AD_AUDIENCE || `api://${process.env.AZURE_AD_CLIENT_ID}`,
 };
 
-// JWKS client for key retrieval
+// JWKS client for key retrieval with caching
 const jwks = jwksClient({
-  jwksUri: `https://login.microsoftonline.com/${config.tenantId}/discovery/v2.0/keys`,
+  jwksUri: `https://login.microsoftonline.com/${config.azureTenantId}/discovery/v2.0/keys`,
   cache: true,
   cacheMaxAge: 86400000, // 24 hours
+  rateLimit: true,
+  jwksRequestsPerMinute: 10,
 });
 
 function getSigningKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
@@ -3384,118 +4124,321 @@ function getSigningKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) 
       callback(err);
       return;
     }
-    const signingKey = key?.getPublicKey();
-    callback(null, signingKey);
+    callback(null, key?.getPublicKey());
   });
 }
 
 export interface AuthenticatedRequest extends Request {
   user: {
-    id: string;           // Object ID from Entra
+    id: string;           // Internal user ID (UUID)
+    entraOid: string;     // Azure AD Object ID
     email: string;
     name: string;
-    tenantId: string;     // App tenant (from DB, not Azure tenant)
+    tenantId: string;     // App tenant ID (from DB, NOT Azure tenant)
     roles: string[];
   };
 }
 
+/**
+ * Authentication middleware - validates Bearer token only.
+ * NO SWA header fallback - frontend must use MSAL.
+ */
 export async function authMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
-) {
-  // Extract token from header or Static Web Apps header
+): Promise<void> {
   const authHeader = req.headers.authorization;
-  const swaHeader = req.headers['x-ms-client-principal'];
 
-  let token: string | undefined;
-
-  if (authHeader?.startsWith('Bearer ')) {
-    token = authHeader.substring(7);
-  } else if (swaHeader) {
-    // Static Web Apps passes user info in header
-    const decoded = Buffer.from(swaHeader as string, 'base64').toString('utf8');
-    const principal = JSON.parse(decoded);
-
-    // Validate and attach user
-    (req as AuthenticatedRequest).user = await getUserFromPrincipal(principal);
-    return next();
+  // ONLY accept Bearer tokens
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({
+      error: 'Authentication required',
+      message: 'Missing or invalid Authorization header. Use: Bearer <token>',
+    });
+    return;
   }
 
-  if (!token) {
-    return res.status(401).json({ error: 'No authentication token provided' });
+  const token = authHeader.substring(7);
+
+  try {
+    const payload = await verifyToken(token);
+
+    // Get or create user in our DB
+    const user = await getOrCreateUser({
+      entraOid: payload.oid!,
+      email: payload.email || payload.preferred_username!,
+      name: payload.name,
+    });
+
+    (req as AuthenticatedRequest).user = user;
+    next();
+  } catch (err) {
+    console.error('Token verification failed:', (err as Error).message);
+    res.status(401).json({
+      error: 'Invalid token',
+      message: 'Token verification failed. Please re-authenticate.',
+    });
   }
-
-  // Verify JWT
-  jwt.verify(
-    token,
-    getSigningKey,
-    {
-      audience: config.audience,
-      issuer: `https://login.microsoftonline.com/${config.tenantId}/v2.0`,
-      algorithms: ['RS256'],
-    },
-    async (err, decoded) => {
-      if (err) {
-        console.error('Token verification failed:', err.message);
-        return res.status(401).json({ error: 'Invalid token' });
-      }
-
-      const payload = decoded as jwt.JwtPayload;
-
-      // Get or create user in our DB
-      const user = await getOrCreateUser({
-        entraOid: payload.oid!,
-        email: payload.email || payload.preferred_username!,
-        name: payload.name,
-      });
-
-      (req as AuthenticatedRequest).user = user;
-      next();
-    }
-  );
 }
 
-async function getUserFromPrincipal(principal: any) {
-  return getOrCreateUser({
-    entraOid: principal.userId,
-    email: principal.userDetails,
-    name: principal.userDetails,
+/**
+ * Verify JWT token with proper async/await handling
+ */
+function verifyToken(token: string): Promise<jwt.JwtPayload> {
+  return new Promise((resolve, reject) => {
+    jwt.verify(
+      token,
+      getSigningKey,
+      {
+        audience: config.audience,
+        issuer: `https://login.microsoftonline.com/${config.azureTenantId}/v2.0`,
+        algorithms: ['RS256'],
+      },
+      (err, decoded) => {
+        if (err) reject(err);
+        else resolve(decoded as jwt.JwtPayload);
+      }
+    );
   });
 }
 
+/**
+ * Get existing user or create new one on first login.
+ * Handles invitation acceptance and email-based tenant assignment.
+ */
 async function getOrCreateUser(data: {
   entraOid: string;
   email: string;
   name?: string;
-}) {
-  // Look up user by Entra OID
+}): Promise<AuthenticatedRequest['user']> {
+  // First, try to find by Entra OID (existing user)
   let user = await db.users.findByEntraOid(data.entraOid);
 
-  if (!user) {
-    // Auto-provision user on first login
-    // Tenant assignment logic would go here
-    user = await db.users.create({
-      entraOid: data.entraOid,
-      email: data.email,
-      displayName: data.name,
-      // Default tenant assignment (customize as needed)
-      tenantId: await getDefaultTenantForEmail(data.email),
-      role: 'member',
+  if (user) {
+    // Update last login and activate if pending
+    await db.users.update(user.id, {
+      lastLoginAt: new Date(),
+      status: user.status === 'pending' ? 'active' : user.status,
     });
+  } else {
+    // Check for pending invitation by email
+    const invitation = await db.userInvitations.findPendingByEmail(data.email);
+
+    if (invitation) {
+      // Accept invitation - create user with invited role/tenant
+      user = await db.users.create({
+        entraOid: data.entraOid,
+        email: data.email,
+        displayName: data.name,
+        tenantId: invitation.tenantId,
+        role: invitation.role,
+        status: 'active',
+      });
+
+      // Mark invitation as accepted
+      await db.userInvitations.accept(invitation.id, user.id);
+    } else {
+      // No invitation - use email domain for tenant assignment
+      const tenantId = await getTenantForEmail(data.email);
+
+      if (!tenantId) {
+        throw new Error(`No tenant found for email domain: ${data.email}`);
+      }
+
+      user = await db.users.create({
+        entraOid: data.entraOid,
+        email: data.email,
+        displayName: data.name,
+        tenantId,
+        role: 'member',
+        status: 'active',
+      });
+    }
   }
 
-  // Update last login
-  await db.users.updateLastLogin(user.id);
-
   return {
-    id: user.entraOid,
+    id: user.id,
+    entraOid: user.entraOid,
     email: user.email,
-    name: user.displayName,
+    name: user.displayName || user.email,
     tenantId: user.tenantId,
     roles: [user.role],
   };
 }
+
+/**
+ * Get tenant ID based on email domain.
+ * Looks up tenant_domains table or uses default tenant.
+ */
+async function getTenantForEmail(email: string): Promise<string | null> {
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return null;
+
+  // Check tenant_domains table for explicit mapping
+  const tenantDomain = await db.tenantDomains.findByDomain(domain);
+  if (tenantDomain) {
+    return tenantDomain.tenantId;
+  }
+
+  // Fall back to default tenant if configured
+  const defaultTenantId = process.env.DEFAULT_TENANT_ID;
+  return defaultTenantId || null;
+}
+```
+
+### 11.5 Tenant Context Middleware (RLS Enforcement)
+
+> **CRITICAL:** This middleware sets the PostgreSQL session variable for RLS policies.
+> It MUST run after authMiddleware and before any database operations.
+
+```typescript
+// apps/api/src/middleware/tenant.ts
+
+import { Response, NextFunction } from 'express';
+import { AuthenticatedRequest } from './auth';
+import { db } from '../db';
+
+/**
+ * Tenant context middleware - sets RLS context for database queries.
+ *
+ * CRITICAL: This middleware:
+ * 1. Extracts tenantId from authenticated user (server-side, NOT from request body)
+ * 2. Sets PostgreSQL session variable for RLS enforcement
+ * 3. Validates user has access to requested resources
+ */
+export async function tenantContextMiddleware(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const { tenantId } = req.user;
+
+  if (!tenantId) {
+    res.status(403).json({
+      error: 'No tenant access',
+      message: 'User is not associated with any tenant',
+    });
+    return;
+  }
+
+  try {
+    // CRITICAL: Set RLS context for this request
+    // This ensures all subsequent queries are tenant-scoped
+    await db.raw(`SET LOCAL app.tenant_id = '${tenantId}'`);
+
+    // Attach tenant context to request for convenience
+    req.tenantContext = {
+      tenantId,
+      setAt: new Date(),
+    };
+
+    next();
+  } catch (err) {
+    console.error('Failed to set tenant context:', err);
+    res.status(500).json({
+      error: 'Internal error',
+      message: 'Failed to establish tenant context',
+    });
+  }
+}
+
+/**
+ * Validate engagement access - use in routes that operate on engagements.
+ * ALWAYS validate server-side, never trust client-provided IDs.
+ */
+export async function validateEngagementAccess(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const engagementId = req.params.engagementId || req.body.engagementId;
+
+  if (!engagementId) {
+    return next(); // No engagement in request, skip validation
+  }
+
+  const { tenantId } = req.user;
+
+  // Query will be RLS-scoped, so if it returns null, user doesn't have access
+  const engagement = await db.engagements.findById(engagementId);
+
+  if (!engagement) {
+    res.status(404).json({
+      error: 'Not found',
+      message: 'Engagement not found or access denied',
+    });
+    return;
+  }
+
+  // Double-check tenant matches (belt and suspenders with RLS)
+  if (engagement.tenantId !== tenantId) {
+    console.error(`Tenant mismatch: user=${tenantId}, engagement=${engagement.tenantId}`);
+    res.status(403).json({
+      error: 'Access denied',
+      message: 'You do not have access to this engagement',
+    });
+    return;
+  }
+
+  // Attach engagement to request
+  req.engagement = engagement;
+  next();
+}
+
+// Extend Express Request type
+declare global {
+  namespace Express {
+    interface Request {
+      tenantContext?: {
+        tenantId: string;
+        setAt: Date;
+      };
+      engagement?: {
+        id: string;
+        tenantId: string;
+        name: string;
+        status: string;
+      };
+    }
+  }
+}
+```
+
+### 11.6 Route Configuration with Auth
+
+```typescript
+// apps/api/src/index.ts
+
+import express from 'express';
+import { authMiddleware } from './middleware/auth';
+import { tenantContextMiddleware, validateEngagementAccess } from './middleware/tenant';
+import { documentsRouter } from './routes/documents';
+import { engagementsRouter } from './routes/engagements';
+import { healthRouter } from './routes/health';
+
+const app = express();
+
+app.use(express.json());
+
+// Health check - no auth required
+app.use('/api/v1/health', healthRouter);
+
+// Protected routes - require auth + tenant context
+app.use('/api/v1',
+  authMiddleware,
+  tenantContextMiddleware,
+  // All routes below are authenticated and tenant-scoped
+);
+
+app.use('/api/v1/documents', documentsRouter);
+app.use('/api/v1/engagements', engagementsRouter);
+
+// Routes with engagement validation
+app.use('/api/v1/engagements/:engagementId',
+  validateEngagementAccess,
+  engagementsRouter
+);
 ```
 
 ---
@@ -3791,7 +4734,10 @@ export class CacheInvalidator {
   }
 
   /**
-   * Invalidate patterns with variable substitution
+   * Invalidate patterns with variable substitution.
+   *
+   * IMPORTANT: Uses SCAN instead of KEYS to avoid blocking Redis.
+   * KEYS is O(N) and blocks the server - dangerous at scale.
    */
   private async invalidatePatterns(
     patterns: string[],
@@ -3799,11 +4745,12 @@ export class CacheInvalidator {
   ): Promise<void> {
     for (const pattern of patterns) {
       const resolvedPattern = this.resolvePattern(pattern, vars);
-      const keys = await this.redis.keys(resolvedPattern);
 
-      if (keys.length > 0) {
-        await this.redis.del(...keys);
-        console.log(`Invalidated ${keys.length} keys matching ${resolvedPattern}`);
+      // Use SCAN for non-blocking iteration (NOT redis.keys!)
+      const deletedCount = await this.scanAndDelete(resolvedPattern);
+
+      if (deletedCount > 0) {
+        console.log(`Invalidated ${deletedCount} keys matching ${resolvedPattern}`);
       }
     }
 
@@ -3812,7 +4759,42 @@ export class CacheInvalidator {
       patterns,
       vars,
       timestamp: Date.now(),
+      nodeId: this.nodeId,
     });
+  }
+
+  /**
+   * SCAN-based key deletion - non-blocking alternative to KEYS.
+   *
+   * SCAN is O(1) per iteration and doesn't block Redis.
+   * Processes keys in batches for efficiency.
+   */
+  private async scanAndDelete(pattern: string): Promise<number> {
+    let cursor = '0';
+    let deletedCount = 0;
+    const batchSize = 100;
+
+    do {
+      // SCAN returns [cursor, keys] - non-blocking iteration
+      const [nextCursor, keys] = await this.redis.scan(
+        cursor,
+        'MATCH', pattern,
+        'COUNT', batchSize
+      );
+      cursor = nextCursor;
+
+      if (keys.length > 0) {
+        // Delete in pipeline for efficiency
+        const pipeline = this.redis.pipeline();
+        for (const key of keys) {
+          pipeline.del(key);
+        }
+        await pipeline.exec();
+        deletedCount += keys.length;
+      }
+    } while (cursor !== '0');
+
+    return deletedCount;
   }
 
   private resolvePattern(pattern: string, vars: Record<string, string>): string {
@@ -3820,7 +4802,8 @@ export class CacheInvalidator {
   }
 
   /**
-   * Subscribe to invalidation events from other nodes
+   * Subscribe to invalidation events from other nodes.
+   * Uses SCAN for safety.
    */
   private subscribeToInvalidations(): void {
     this.pubsub.subscribe(this.config.channel, async (message) => {
@@ -3828,10 +4811,8 @@ export class CacheInvalidator {
       if (message.nodeId !== this.nodeId) {
         for (const pattern of message.patterns) {
           const resolved = this.resolvePattern(pattern, message.vars);
-          const keys = await this.redis.keys(resolved);
-          if (keys.length > 0) {
-            await this.redis.del(...keys);
-          }
+          // Use SCAN, not KEYS
+          await this.scanAndDelete(resolved);
         }
       }
     });
@@ -5147,26 +6128,24 @@ router.delete('/api/v1/engagements/:id', async (req: AuthenticatedRequest, res) 
 export default router;
 ```
 
-### 15.4 Document Management
+### 15.4 Document Management (Streaming Upload)
+
+> **IMPORTANT:** This implementation uses streaming uploads to avoid memory issues.
+> Files are streamed directly to blob storage while computing hash, never held in memory.
 
 ```typescript
 // apps/api/src/routes/documents.ts
 
 import { Router } from 'express';
-import multer from 'multer';
+import { Readable, PassThrough } from 'stream';
+import crypto from 'crypto';
+import Busboy from 'busboy';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth';
+import { objectStore } from '../adapters/storage';
+import { db } from '../db';
+import { jobService } from '../services/jobs';
 
 const router = Router();
-const upload = multer({
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
-  fileFilter: (req, file, cb) => {
-    if (SUPPORTED_MIME_TYPES.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}`));
-    }
-  },
-});
 
 // Supported file types
 const SUPPORTED_MIME_TYPES = [
@@ -5178,81 +6157,247 @@ const SUPPORTED_MIME_TYPES = [
   'application/json',
 ];
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
 router.use(authMiddleware);
 
 /**
- * Upload document to knowledge base
+ * Upload document to knowledge base - STREAMING implementation
+ *
+ * Key improvements over memory-based multer:
+ * - File is streamed directly to blob storage (never fully in memory)
+ * - Hash computed during streaming (no second pass)
+ * - Handles 50MB files with minimal memory footprint
  */
 router.post(
   '/api/v1/documents/upload',
-  upload.single('file'),
   async (req: AuthenticatedRequest, res) => {
     const { tenantId } = req.user;
-    const { knowledgeBaseId } = req.body;
 
-    // Validate KB exists and belongs to tenant
-    const kb = await db.knowledgeBases.findById(knowledgeBaseId);
-    if (!kb || kb.tenantId !== tenantId) {
-      return res.status(404).json({ error: 'Knowledge base not found' });
-    }
-
-    const file = req.file!;
-    const fileHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
-
-    // Check for duplicate
-    const existing = await db.documents.findByHash(knowledgeBaseId, fileHash);
-    if (existing) {
-      return res.status(409).json({
-        error: 'Document already exists',
-        existingDocumentId: existing.id,
-      });
-    }
-
-    // Upload to blob storage
-    const blobPath = `documents/${tenantId}/${kb.id}/${fileHash}/${file.originalname}`;
-    await objectStore.upload(blobPath, file.buffer, {
-      contentType: file.mimetype,
-      metadata: { originalName: file.originalname },
+    // Parse multipart form with streaming
+    const busboy = Busboy({
+      headers: req.headers,
+      limits: { fileSize: MAX_FILE_SIZE, files: 1 },
     });
 
-    // Create document record
-    const document = await db.documents.create({
-      knowledgeBaseId: kb.id,
-      tenantId,
-      filename: `${fileHash}_${file.originalname}`,
-      originalFilename: file.originalname,
-      mimeType: file.mimetype,
-      fileSize: file.size,
-      fileHash,
-      blobPath,
-      status: 'pending',
-      sourceType: 'upload',
-      createdBy: req.user.id,
+    let knowledgeBaseId: string | undefined;
+    let fileProcessed = false;
+
+    // Handle text fields
+    busboy.on('field', (name, value) => {
+      if (name === 'knowledgeBaseId') {
+        knowledgeBaseId = value;
+      }
     });
 
-    // Create ingestion job
-    const job = await jobService.create({
-      tenantId,
-      engagementId: kb.engagementId,
-      jobType: 'document_ingest',
-      inputPayload: {
-        documentId: document.id,
-        knowledgeBaseId: kb.id,
-        blobPath,
-        filename: file.originalname,
-        mimeType: file.mimetype,
-      },
-      priority: 1,
-      createdBy: req.user.id,
+    // Handle file stream
+    busboy.on('file', async (fieldname, fileStream, { filename, mimeType }) => {
+      if (fileProcessed) return;
+      fileProcessed = true;
+
+      // Validate mime type
+      if (!SUPPORTED_MIME_TYPES.includes(mimeType)) {
+        fileStream.resume(); // Drain stream
+        return res.status(400).json({ error: `Unsupported file type: ${mimeType}` });
+      }
+
+      // Validate KB exists (may need to wait for field)
+      await new Promise(resolve => setTimeout(resolve, 10)); // Brief wait for fields
+      if (!knowledgeBaseId) {
+        fileStream.resume();
+        return res.status(400).json({ error: 'knowledgeBaseId is required' });
+      }
+
+      const kb = await db.knowledgeBases.findById(knowledgeBaseId);
+      if (!kb || kb.tenantId !== tenantId) {
+        fileStream.resume();
+        return res.status(404).json({ error: 'Knowledge base not found' });
+      }
+
+      try {
+        // Stream file to blob storage while computing hash
+        const result = await streamUploadWithHash(
+          fileStream,
+          tenantId,
+          kb.id,
+          filename,
+          mimeType
+        );
+
+        // Check for duplicate using computed hash
+        const existing = await db.documents.findByHash(kb.id, result.fileHash);
+        if (existing) {
+          // Delete the uploaded blob (duplicate)
+          await objectStore.delete(result.blobPath);
+          return res.status(409).json({
+            error: 'Document already exists',
+            existingDocumentId: existing.id,
+          });
+        }
+
+        // Create document record
+        const document = await db.documents.create({
+          knowledgeBaseId: kb.id,
+          tenantId,
+          filename: `${result.fileHash}_${filename}`,
+          originalFilename: filename,
+          mimeType,
+          fileSize: result.fileSize,
+          fileHash: result.fileHash,
+          blobPath: result.blobPath,
+          status: 'pending',
+          sourceType: 'upload',
+          createdBy: req.user.id,
+        });
+
+        // Create ingestion job
+        const job = await jobService.create({
+          tenantId,
+          engagementId: kb.engagementId,
+          jobType: 'document_ingest',
+          inputPayload: {
+            documentId: document.id,
+            knowledgeBaseId: kb.id,
+            blobPath: result.blobPath,
+            filename,
+            mimeType,
+          },
+          priority: 1,
+          createdBy: req.user.id,
+        });
+
+        res.status(202).json({
+          documentId: document.id,
+          jobId: job.id,
+          status: 'processing',
+          fileSize: result.fileSize,
+        });
+      } catch (error) {
+        console.error('Upload failed:', error);
+        res.status(500).json({ error: 'Upload failed' });
+      }
     });
 
-    res.status(202).json({
-      documentId: document.id,
-      jobId: job.id,
-      status: 'processing',
+    busboy.on('filesLimit', () => {
+      res.status(400).json({ error: 'Too many files. Only one file allowed.' });
     });
+
+    busboy.on('error', (error) => {
+      console.error('Busboy error:', error);
+      res.status(500).json({ error: 'Upload processing failed' });
+    });
+
+    req.pipe(busboy);
   }
 );
+
+/**
+ * Stream file to blob storage while computing SHA-256 hash.
+ * This avoids holding the entire file in memory.
+ */
+async function streamUploadWithHash(
+  fileStream: Readable,
+  tenantId: string,
+  kbId: string,
+  filename: string,
+  mimeType: string
+): Promise<{ blobPath: string; fileHash: string; fileSize: number }> {
+  // Create hash stream
+  const hash = crypto.createHash('sha256');
+
+  // Create passthrough to tee the stream
+  const uploadStream = new PassThrough();
+
+  let fileSize = 0;
+
+  // Pipe through hash computation
+  fileStream.on('data', (chunk: Buffer) => {
+    hash.update(chunk);
+    fileSize += chunk.length;
+    uploadStream.write(chunk);
+  });
+
+  fileStream.on('end', () => {
+    uploadStream.end();
+  });
+
+  fileStream.on('error', (err) => {
+    uploadStream.destroy(err);
+  });
+
+  // Generate temporary blob path (will rename after hash computed)
+  const tempId = crypto.randomUUID();
+  const tempPath = `uploads/temp/${tenantId}/${tempId}`;
+
+  // Upload stream to blob storage
+  await objectStore.uploadStream(tempPath, uploadStream, {
+    contentType: mimeType,
+    metadata: { originalName: filename, status: 'uploading' },
+  });
+
+  // Compute final hash
+  const fileHash = hash.digest('hex');
+
+  // Move to final location
+  const finalPath = `documents/${tenantId}/${kbId}/${fileHash}/${filename}`;
+  await objectStore.move(tempPath, finalPath);
+
+  return { blobPath: finalPath, fileHash, fileSize };
+}
+```
+
+### 15.4.1 Extracted Text Storage Strategy
+
+> **NOTE:** Full extracted text is stored in blob storage, NOT in Postgres.
+> Only metadata and pointers are kept in the documents table.
+
+```typescript
+// apps/worker/src/processors/documentExtract.ts
+
+/**
+ * After text extraction, store the full text in blob storage.
+ * Update the document record with a pointer, not the text itself.
+ */
+async function storeExtractedText(
+  documentId: string,
+  extractedText: string,
+  tenantId: string
+): Promise<void> {
+  // Store extracted text in blob storage (compressed)
+  const textBlobPath = `extracted/${tenantId}/${documentId}/text.txt.gz`;
+
+  const compressed = await gzip(extractedText);
+  await objectStore.upload(textBlobPath, compressed, {
+    contentType: 'text/plain',
+    contentEncoding: 'gzip',
+    metadata: {
+      documentId,
+      extractedAt: new Date().toISOString(),
+      charCount: String(extractedText.length),
+    },
+  });
+
+  // Update document with pointer (NOT the text itself)
+  await db.documents.update(documentId, {
+    extractedTextPath: textBlobPath,
+    wordCount: extractedText.split(/\s+/).length,
+    status: 'extracted',
+    // extracted_text column stays NULL - use blob storage
+  });
+}
+
+/**
+ * Retrieve extracted text when needed (for re-processing, etc.)
+ */
+async function getExtractedText(document: Document): Promise<string> {
+  if (!document.extractedTextPath) {
+    throw new Error('Document has no extracted text');
+  }
+
+  const compressed = await objectStore.download(document.extractedTextPath);
+  return gunzip(compressed).toString('utf-8');
+}
+```
 
 /**
  * List documents in knowledge base
@@ -6406,9 +7551,798 @@ export function metricsMiddleware(app: Express) {
 
 ---
 
-## 19. Implementation Checklist
+## 19. Security Hardening
 
-### Phase 1: Foundation (Weeks 1-2)
+### 19.1 Malware Scanning for Uploads
+
+> **Enterprise requirement:** All uploaded documents must be scanned for malware
+> before processing. This prevents malicious content from entering the RAG pipeline.
+
+```typescript
+// apps/api/src/services/malware-scanner.ts
+
+import { ClamScan } from 'clamscan';
+import { Readable } from 'stream';
+
+interface ScanResult {
+  isClean: boolean;
+  malwareType?: string;
+  scannedAt: Date;
+  scanDurationMs: number;
+}
+
+/**
+ * Malware scanning service using ClamAV.
+ *
+ * Options:
+ * - Self-hosted ClamAV container (recommended for Azure)
+ * - Microsoft Defender for Storage (Azure-native)
+ * - Third-party API (VirusTotal, etc.)
+ */
+export class MalwareScanner {
+  private scanner: ClamScan;
+
+  constructor(private config: {
+    host: string;       // ClamAV daemon host
+    port: number;       // Default: 3310
+    timeout: number;    // Scan timeout in ms
+  }) {}
+
+  async initialize(): Promise<void> {
+    this.scanner = await new ClamScan().init({
+      clamdscan: {
+        host: this.config.host,
+        port: this.config.port,
+        timeout: this.config.timeout,
+      },
+    });
+  }
+
+  /**
+   * Scan a stream for malware (during upload, before storage)
+   */
+  async scanStream(stream: Readable): Promise<ScanResult> {
+    const startTime = Date.now();
+
+    try {
+      const { isInfected, viruses } = await this.scanner.scanStream(stream);
+
+      return {
+        isClean: !isInfected,
+        malwareType: viruses?.[0],
+        scannedAt: new Date(),
+        scanDurationMs: Date.now() - startTime,
+      };
+    } catch (error) {
+      console.error('Malware scan failed:', error);
+      // Fail closed - treat scan failures as infected
+      return {
+        isClean: false,
+        malwareType: 'SCAN_ERROR',
+        scannedAt: new Date(),
+        scanDurationMs: Date.now() - startTime,
+      };
+    }
+  }
+}
+
+// Environment configuration
+// MALWARE_SCAN_ENABLED=true
+// CLAMAV_HOST=clamav.internal
+// CLAMAV_PORT=3310
+// CLAMAV_TIMEOUT=60000
+```
+
+### 19.2 Private Networking (Azure)
+
+```yaml
+# infrastructure/azure/private-networking.bicep
+# (Simplified - use Azure Bicep or Terraform for production)
+
+# Virtual Network with subnets
+resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
+  name: 'force-vnet'
+  location: location
+  properties:
+    addressSpace:
+      addressPrefixes: ['10.0.0.0/16']
+    subnets:
+      - name: 'container-apps'
+        properties:
+          addressPrefix: '10.0.1.0/24'
+      - name: 'postgres'
+        properties:
+          addressPrefix: '10.0.2.0/24'
+          privateEndpointNetworkPolicies: 'Disabled'
+      - name: 'redis'
+        properties:
+          addressPrefix: '10.0.3.0/24'
+
+# Private Endpoint for Postgres
+resource postgresPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' = {
+  name: 'force-postgres-pe'
+  properties:
+    subnet: { id: vnet.properties.subnets[1].id }
+    privateLinkServiceConnections:
+      - name: 'postgres-connection'
+        properties:
+          privateLinkServiceId: postgresServer.id
+          groupIds: ['postgresqlServer']
+
+# Private DNS Zone for internal resolution
+resource privateDns 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+  name: 'privatelink.postgres.database.azure.com'
+  location: 'global'
+```
+
+**Egress Controls:**
+
+```typescript
+// apps/api/src/middleware/egress-control.ts
+
+/**
+ * Control which external services the API can communicate with.
+ * Prevents data exfiltration to unauthorized endpoints.
+ */
+const ALLOWED_EGRESS_HOSTS = [
+  // LLM providers
+  'api.openai.com',
+  'generativelanguage.googleapis.com',
+  '*.openai.azure.com',
+
+  // Reranking
+  'api.cohere.ai',
+
+  // Vector DB
+  '*.qdrant.io',
+
+  // Azure services
+  '*.blob.core.windows.net',
+  '*.servicebus.windows.net',
+  '*.vault.azure.net',
+
+  // Auth
+  'login.microsoftonline.com',
+];
+
+// In production, use Azure Firewall or NSG rules for network-level enforcement
+```
+
+### 19.3 Prompt Injection Defenses
+
+```typescript
+// apps/worker/src/services/prompt-guard.ts
+
+/**
+ * Prompt injection defense layer.
+ *
+ * Strategies:
+ * 1. Input validation - detect injection patterns
+ * 2. Context isolation - separate user content from system prompts
+ * 3. Output filtering - redact sensitive information
+ */
+export class PromptGuard {
+  // Known injection patterns (regularly update from threat intelligence)
+  private static INJECTION_PATTERNS = [
+    /ignore\s+(all\s+)?(previous|prior|above)\s+instructions/i,
+    /disregard\s+(all\s+)?instructions/i,
+    /you\s+are\s+now\s+(?:a|in)\s+(?:different|new)\s+mode/i,
+    /system\s*:\s*/i,
+    /\[INST\]|\[\/INST\]/i,  // Llama-style markers
+    /<\|im_start\|>|<\|im_end\|>/i,  // ChatML markers
+    /```\s*(?:system|assistant|user)\s*\n/i,
+  ];
+
+  // Sensitive data patterns for output filtering
+  private static SENSITIVE_PATTERNS = [
+    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,  // Email
+    /\b\d{3}-\d{2}-\d{4}\b/g,  // SSN
+    /\b\d{16}\b/g,  // Credit card
+    /(?:api[_-]?key|secret|password|token)\s*[=:]\s*['\"]?[\w-]+['\"]?/gi,
+  ];
+
+  /**
+   * Check input for injection attempts
+   */
+  static detectInjection(input: string): {
+    detected: boolean;
+    patterns: string[];
+    riskScore: number;
+  } {
+    const detectedPatterns: string[] = [];
+
+    for (const pattern of this.INJECTION_PATTERNS) {
+      if (pattern.test(input)) {
+        detectedPatterns.push(pattern.source);
+      }
+    }
+
+    return {
+      detected: detectedPatterns.length > 0,
+      patterns: detectedPatterns,
+      riskScore: Math.min(1, detectedPatterns.length * 0.3),
+    };
+  }
+
+  /**
+   * Sanitize user content before including in prompts.
+   * Use XML-style delimiters for clear context separation.
+   */
+  static wrapUserContent(content: string, source: string): string {
+    // Escape any XML-like tags in user content
+    const escaped = content
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    return `<user_content source="${source}">\n${escaped}\n</user_content>`;
+  }
+
+  /**
+   * Filter sensitive data from LLM output
+   */
+  static filterOutput(output: string): string {
+    let filtered = output;
+
+    for (const pattern of this.SENSITIVE_PATTERNS) {
+      filtered = filtered.replace(pattern, '[REDACTED]');
+    }
+
+    return filtered;
+  }
+}
+
+// Usage in RAG pipeline:
+// const userQuery = PromptGuard.wrapUserContent(rawQuery, 'user_input');
+// const detection = PromptGuard.detectInjection(rawQuery);
+// if (detection.detected) { log and potentially reject }
+```
+
+---
+
+## 20. Data Lifecycle & Governance
+
+### 20.1 Retention Policies
+
+```typescript
+// packages/shared/src/governance/retention-policy.ts
+
+interface RetentionPolicy {
+  // Per-resource retention settings
+  documents: {
+    default: number;        // Days to retain (0 = indefinite)
+    afterEngagementClose: number;  // Days after engagement archived
+    minimumLegalHold: number;      // Minimum for legal compliance
+  };
+
+  generatedContent: {
+    default: number;
+    afterEngagementClose: number;
+  };
+
+  auditLogs: {
+    default: number;        // Typically 7 years for compliance
+    accessLogs: number;     // Shorter for operational logs
+  };
+
+  vectors: {
+    syncWithDocuments: boolean;  // Delete vectors when doc deleted
+    orphanCleanupDays: number;   // Clean orphaned vectors after N days
+  };
+
+  backups: {
+    daily: number;         // Days to retain daily backups
+    weekly: number;        // Weeks to retain weekly backups
+    monthly: number;       // Months to retain monthly backups
+  };
+}
+
+const DEFAULT_RETENTION_POLICY: RetentionPolicy = {
+  documents: {
+    default: 0,              // Keep indefinitely by default
+    afterEngagementClose: 365,  // 1 year after engagement closes
+    minimumLegalHold: 2555,     // 7 years for financial services
+  },
+  generatedContent: {
+    default: 0,
+    afterEngagementClose: 365,
+  },
+  auditLogs: {
+    default: 2555,           // 7 years
+    accessLogs: 90,          // 90 days for operational logs
+  },
+  vectors: {
+    syncWithDocuments: true,
+    orphanCleanupDays: 30,
+  },
+  backups: {
+    daily: 7,
+    weekly: 4,
+    monthly: 12,
+  },
+};
+```
+
+### 20.2 Tenant Offboarding
+
+```typescript
+// apps/api/src/services/tenant-offboarding.ts
+
+interface OffboardingPlan {
+  tenantId: string;
+  requestedAt: Date;
+  requestedBy: string;
+  reason: string;
+
+  // Phases
+  phases: {
+    dataExport: { status: string; completedAt?: Date };
+    userNotification: { status: string; completedAt?: Date };
+    gracePeriod: { endsAt: Date; acknowledged: boolean };
+    dataAnonymization: { status: string; completedAt?: Date };
+    vectorDeletion: { status: string; completedAt?: Date };
+    blobDeletion: { status: string; completedAt?: Date };
+    auditRetention: { status: string; retainUntil: Date };
+    finalDeletion: { status: string; completedAt?: Date };
+  };
+}
+
+/**
+ * Tenant offboarding service - handles data export and deletion.
+ */
+export class TenantOffboardingService {
+  /**
+   * Initiate tenant offboarding with required grace period
+   */
+  async initiateOffboarding(
+    tenantId: string,
+    requestedBy: string,
+    reason: string
+  ): Promise<OffboardingPlan> {
+    const plan: OffboardingPlan = {
+      tenantId,
+      requestedAt: new Date(),
+      requestedBy,
+      reason,
+      phases: {
+        dataExport: { status: 'pending' },
+        userNotification: { status: 'pending' },
+        gracePeriod: {
+          endsAt: addDays(new Date(), 30),  // 30-day grace period
+          acknowledged: false,
+        },
+        dataAnonymization: { status: 'pending' },
+        vectorDeletion: { status: 'pending' },
+        blobDeletion: { status: 'pending' },
+        auditRetention: {
+          status: 'pending',
+          retainUntil: addYears(new Date(), 7),  // Keep audit logs 7 years
+        },
+        finalDeletion: { status: 'pending' },
+      },
+    };
+
+    await db.offboardingPlans.create(plan);
+
+    // Notify tenant admins
+    await this.notifyTenantAdmins(tenantId, plan);
+
+    return plan;
+  }
+
+  /**
+   * Export all tenant data to blob storage for download
+   */
+  async exportTenantData(tenantId: string): Promise<string> {
+    const exportPath = `exports/${tenantId}/${Date.now()}/`;
+
+    // Export documents
+    const documents = await db.documents.findByTenant(tenantId);
+    for (const doc of documents) {
+      await this.exportDocument(doc, exportPath);
+    }
+
+    // Export generated content
+    const content = await db.generatedContent.findByTenant(tenantId);
+    await objectStore.upload(
+      `${exportPath}generated_content.json`,
+      JSON.stringify(content, null, 2)
+    );
+
+    // Export metadata
+    const metadata = await this.collectTenantMetadata(tenantId);
+    await objectStore.upload(
+      `${exportPath}metadata.json`,
+      JSON.stringify(metadata, null, 2)
+    );
+
+    return exportPath;
+  }
+
+  /**
+   * Execute final deletion after grace period
+   */
+  async executeFinalDeletion(plan: OffboardingPlan): Promise<void> {
+    const { tenantId } = plan;
+
+    // 1. Delete vectors from Qdrant
+    const kbs = await db.knowledgeBases.findByTenant(tenantId);
+    for (const kb of kbs) {
+      await qdrant.deleteCollection(kb.qdrantCollection);
+    }
+
+    // 2. Delete blobs
+    await objectStore.deletePrefix(`documents/${tenantId}/`);
+    await objectStore.deletePrefix(`extracted/${tenantId}/`);
+
+    // 3. Anonymize PII in audit logs (don't delete - compliance)
+    await db.raw(`
+      UPDATE audit_logs
+      SET user_id = NULL,
+          details = jsonb_set(details, '{user_email}', '"[REDACTED]"')
+      WHERE tenant_id = $1
+    `, [tenantId]);
+
+    // 4. Delete tenant data
+    await db.transaction(async (trx) => {
+      await trx('document_chunks').where({ tenantId }).delete();
+      await trx('documents').where({ tenantId }).delete();
+      await trx('generated_content').where({ tenantId }).delete();
+      await trx('knowledge_bases').where({ tenantId }).delete();
+      await trx('engagements').where({ tenantId }).delete();
+      await trx('users').where({ tenantId }).delete();
+      await trx('tenant_usage_limits').where({ tenantId }).delete();
+      await trx('tenants').where({ id: tenantId }).delete();
+    });
+  }
+}
+```
+
+### 20.3 Legal Hold
+
+```typescript
+// packages/shared/src/governance/legal-hold.ts
+
+interface LegalHold {
+  id: string;
+  tenantId: string;
+  name: string;
+  reason: string;
+  custodians: string[];      // User IDs under hold
+  scope: {
+    engagementIds?: string[];
+    documentIds?: string[];
+    dateRange?: { start: Date; end: Date };
+    keywords?: string[];
+  };
+  createdAt: Date;
+  createdBy: string;
+  releasedAt?: Date;
+  releasedBy?: string;
+}
+
+/**
+ * When legal hold is active:
+ * - Prevent deletion of in-scope documents
+ * - Preserve all versions
+ * - Disable retention policy for scope
+ * - Log all access
+ */
+export async function checkLegalHold(
+  tenantId: string,
+  documentId: string
+): Promise<{ isHeld: boolean; holds: LegalHold[] }> {
+  const activeHolds = await db.legalHolds.findActive(tenantId);
+
+  const applicableHolds = activeHolds.filter(hold => {
+    if (hold.scope.documentIds?.includes(documentId)) return true;
+    // Additional scope checks...
+    return false;
+  });
+
+  return {
+    isHeld: applicableHolds.length > 0,
+    holds: applicableHolds,
+  };
+}
+```
+
+---
+
+## 21. CI/CD & Migrations
+
+### 21.1 Database Migration Strategy
+
+```typescript
+// packages/shared/src/migrations/migration-runner.ts
+
+/**
+ * Idempotent migration system.
+ *
+ * Principles:
+ * - All migrations are idempotent (safe to run multiple times)
+ * - Forward-only (no automatic rollbacks)
+ * - Version controlled in git
+ * - Tested in staging before production
+ */
+interface Migration {
+  version: string;         // Semver: 1.0.0, 1.1.0, etc.
+  name: string;            // Descriptive name
+  up: () => Promise<void>; // Apply migration
+  verify: () => Promise<boolean>;  // Verify migration succeeded
+}
+
+// Migration files: migrations/001_initial_schema.ts, etc.
+
+export class MigrationRunner {
+  /**
+   * Run pending migrations in order
+   */
+  async runPendingMigrations(): Promise<void> {
+    const applied = await this.getAppliedMigrations();
+    const pending = await this.getPendingMigrations(applied);
+
+    for (const migration of pending) {
+      console.log(`Running migration: ${migration.version} - ${migration.name}`);
+
+      await db.transaction(async (trx) => {
+        // Run migration
+        await migration.up();
+
+        // Verify
+        const verified = await migration.verify();
+        if (!verified) {
+          throw new Error(`Migration verification failed: ${migration.version}`);
+        }
+
+        // Record as applied
+        await trx('schema_migrations').insert({
+          version: migration.version,
+          name: migration.name,
+          appliedAt: new Date(),
+        });
+      });
+
+      console.log(`Completed: ${migration.version}`);
+    }
+  }
+
+  /**
+   * Verify current schema matches expected state
+   */
+  async verifySchema(): Promise<boolean> {
+    // Check critical tables exist
+    const tables = ['tenants', 'users', 'engagements', 'documents', 'document_chunks'];
+
+    for (const table of tables) {
+      const exists = await db.schema.hasTable(table);
+      if (!exists) {
+        console.error(`Missing table: ${table}`);
+        return false;
+      }
+    }
+
+    return true;
+  }
+}
+```
+
+### 21.2 CI/CD Pipeline
+
+```yaml
+# .github/workflows/ci-cd.yml
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+
+jobs:
+  # ============================================
+  # Lint, Type Check, Unit Tests
+  # ============================================
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type Check
+        run: pnpm typecheck
+
+      - name: Unit Tests
+        run: pnpm test:unit
+
+      - name: Contract Tests
+        run: pnpm test:contracts
+
+  # ============================================
+  # Integration Tests (with real services)
+  # ============================================
+  integration:
+    runs-on: ubuntu-latest
+    needs: test
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+      qdrant:
+        image: qdrant/qdrant:v1.7.4
+        ports:
+          - 6333:6333
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+      - uses: actions/setup-node@v4
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run Migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost:5432/test
+
+      - name: Integration Tests
+        run: pnpm test:integration
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost:5432/test
+          REDIS_URL: redis://localhost:6379
+          QDRANT_URL: http://localhost:6333
+
+  # ============================================
+  # Build & Push Container Images
+  # ============================================
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, integration]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and Push API
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+      - run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/force-api:${{ github.sha }} ./apps/api
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/force-api:${{ github.sha }}
+
+      - name: Build and Push Worker
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/force-worker:${{ github.sha }} ./apps/worker
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/force-worker:${{ github.sha }}
+
+  # ============================================
+  # Deploy to Staging
+  # ============================================
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - uses: azure/login@v1
+      - name: Deploy to Container Apps (Staging)
+        run: |
+          az containerapp update \
+            --name force-api-staging \
+            --resource-group force-staging-rg \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/force-api:${{ github.sha }}
+
+  # ============================================
+  # Deploy to Production (requires approval)
+  # ============================================
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - uses: azure/login@v1
+
+      - name: Run Migrations
+        run: |
+          # Connect to production DB and run migrations
+          az containerapp job start \
+            --name force-migrate \
+            --resource-group force-prod-rg
+
+      - name: Deploy to Container Apps (Production)
+        run: |
+          az containerapp update \
+            --name force-api \
+            --resource-group force-prod-rg \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/force-api:${{ github.sha }}
+```
+
+### 21.3 Secret Rotation
+
+```typescript
+// infrastructure/scripts/rotate-secrets.ts
+
+/**
+ * Secret rotation process for Key Vault secrets.
+ *
+ * Run periodically (e.g., monthly) or on-demand.
+ */
+async function rotateSecrets(): Promise<void> {
+  const secretsToRotate = [
+    'database-url',      // Rotate DB password
+    'cohere-api-key',    // External API keys
+    'github-token',
+  ];
+
+  for (const secretName of secretsToRotate) {
+    console.log(`Rotating: ${secretName}`);
+
+    // 1. Generate new secret value
+    const newValue = await generateNewSecretValue(secretName);
+
+    // 2. Create new version in Key Vault
+    await keyVault.setSecret(secretName, newValue);
+
+    // 3. Update external system (if needed)
+    await updateExternalSystem(secretName, newValue);
+
+    // 4. Trigger app restart to pick up new secret
+    await triggerAppRestart();
+
+    // 5. Verify connectivity with new secret
+    await verifyConnectivity(secretName);
+
+    console.log(`Rotated: ${secretName}`);
+  }
+}
+
+// Schedule: Run via Azure Automation or GitHub Action
+// Alerting: PagerDuty if rotation fails
+```
+
+---
+
+## 22. Implementation Checklist
+
+### Phase 1: Foundation
 
 - [ ] **Monorepo Setup**
   - [ ] Initialize pnpm workspace
